@@ -1,4 +1,29 @@
 -- =============================================================
+-- ⚠️ DEPRECATED — 5-may-2026 (Bug 33)
+-- =============================================================
+--
+-- Este seed YA NO se invoca desde setup.sql.
+--
+-- Causa de la deprecación: las 250 preguntas que insertaba están
+-- cubiertas (mejor estructuradas, dump validado en producción) por
+-- seed-preguntas-evaluaciones-universal.sql (265 preguntas, canónico
+-- post-PR #19). Overlap entre ambos: 221 preguntas en común.
+--
+-- Si se invocaban ambos, el resultado en clientes nuevos era 515
+-- filas en lugar de 265 (el ON CONFLICT del seed canónico era
+-- letra muerta sin la UNIQUE constraint que ya está en schema.sql).
+--
+-- ⚠️ NO INVOCAR ESTE SEED en clientes nuevos. Solo se mantiene como
+-- histórico/referencia.
+--
+-- Para clientes existentes con duplicación: ejecutar
+--   scripts/migrations/2026-05-bug33-dedupe-preguntas.sql
+--
+-- Bug 33 documentado en mev-tools/PLAYBOOK-BUGS-CONOCIDOS.md.
+-- =============================================================
+--
+-- [Header histórico original abajo]
+-- =============================================================
 -- SEED UNIVERSAL DE EVALUACIONES Y PREGUNTAS
 -- =============================================================
 -- 250 preguntas pedagógicamente reales (10 por cada una de 25 materias).

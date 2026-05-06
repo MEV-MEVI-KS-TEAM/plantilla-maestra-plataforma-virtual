@@ -45,12 +45,32 @@ Más constraints adicionales y limpieza (NOTIFY pgrst, DROP TRIGGER).
 | Archivo | Razón |
 |---------|-------|
 | seed-materias-ejemplo.sql | **DEPRECATED** — Bug: desplazaba materias reales a orden 13-24, bloqueando acceso a contenido (26-abr-2026) |
+| seed-evaluaciones-y-quiz.sql | **DEPRECATED** — Bug 33: overlap 221 preguntas con seed canónico → 515 filas en lugar de 265 (5-may-2026) |
 | videos-update.sql | Usa columna 'videos' JSONB no presente en schema canónico |
 | quiz-data.sql | Usa columnas 'opciones' JSONB no presentes en schema canónico |
 | add-bilingual-columns.sql | Migration EDVEX |
 | migration-documentos.sql | Tabla ya está en schema.sql |
 | create-admin.sql | Template manual — admin se crea desde Dashboard |
 | verificar-*.sql | SELECTs de diagnóstico (no DDL) |
+
+## Migrations (clientes existentes)
+
+`scripts/migrations/` contiene scripts para clientes ya desplegados que necesitan
+catch-up con cambios de la plantilla. Idempotentes, seguros de re-ejecutar.
+
+| Migration | Aplica a | Para qué |
+|-----------|----------|----------|
+| `2026-05-add-opcion-d-quiz-semana.sql` | Clientes pre-mayo 2026 | Habilita columna `opcion_d` en `quiz_semana` |
+| `2026-05-bug33-dedupe-preguntas.sql` | Clientes con duplicados de preguntas | DELETE duplicados + UNIQUE constraint (Bug 33) |
+
+Auditoría rápida Bug 33:
+```sql
+SELECT COUNT(*) FROM (
+  SELECT evaluacion_id, pregunta, COUNT(*) c
+  FROM preguntas GROUP BY 1,2 HAVING COUNT(*) > 1
+) sub;
+-- 0 = sano | >0 = ejecutar migration
+```
 
 ## Workflow de cliente nuevo (paso a paso)
 

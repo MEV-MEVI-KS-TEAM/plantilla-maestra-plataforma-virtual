@@ -13,9 +13,10 @@
 --   1. seed-contenido-ivs.sql                    — INSERT materias/meses/semanas base
 --   2. seed-demo-materia.sql                     — UPDATE demo + INSERT meses/semanas/quiz demo
 --   3. seed-contenido-semanas.sql                — UPDATE semanas.contenido (texto didáctico)
---   [seed-materias-ejemplo.sql eliminado — ver nota en PASO 4 abajo]
---   4. seed-evaluaciones-y-quiz.sql              — Crea evaluaciones y quizzes
---   5. seed-preguntas-evaluaciones-universal.sql — 265 preguntas reales (cierra Bug C)
+--   [seed-materias-ejemplo.sql eliminado — ver nota más abajo]
+--   4. seed-crear-evaluaciones.sql               — INSERT 1 evaluación por materia (Bug 21)
+--   [seed-evaluaciones-y-quiz.sql DEPRECATED — ver nota Bug 33 abajo]
+--   5. seed-preguntas-evaluaciones-universal.sql — 265 preguntas reales (canónico, cierra Bug C)
 --
 -- Pasos manuales POSTERIORES a este script:
 --   - create-admin.sql            — Crear usuario administrador (requiere UUID real)
@@ -46,12 +47,32 @@
 -- \i seed-materias-ejemplo.sql
 -- ============================================================================
 
-\echo '=== PASO 4/5: seed-evaluaciones-y-quiz.sql ==='
-\echo '── Sembrando evaluaciones y quizzes (estructura + quizzes semanales) ──'
-\i seed-evaluaciones-y-quiz.sql
+\echo '=== PASO 4/5: seed-crear-evaluaciones.sql ==='
+\echo '── Creando 1 evaluación tipo Examen Final por cada materia activa (Bug 21) ──'
+\i seed-crear-evaluaciones.sql
+
+-- ============================================================================
+-- DEPRECATED: seed-evaluaciones-y-quiz.sql — NO ejecutar (Bug 33)
+-- ============================================================================
+-- Bug detectado durante deploy ONCA ACADEMY (5-may-2026):
+-- Este seed insertaba 250 preguntas universales que YA están cubiertas
+-- (mejor estructuradas, dump validado en producción) por
+-- seed-preguntas-evaluaciones-universal.sql (265 preguntas, canónico).
+--
+-- Overlap entre ambos: 221 preguntas en común.
+-- Resultado al ejecutar ambos: 515 filas en lugar de 265 esperadas
+-- (el ON CONFLICT del seed canónico era letra muerta sin la UNIQUE
+-- constraint de schema.sql, que ya está agregada como Bug 33 fix).
+--
+-- El archivo se mantiene en /scripts/ con header DEPRECATED como histórico.
+-- Migration para clientes existentes ya desplegados:
+--   scripts/migrations/2026-05-bug33-dedupe-preguntas.sql
+--
+-- \i seed-evaluaciones-y-quiz.sql
+-- ============================================================================
 
 \echo '=== PASO 5/5: seed-preguntas-evaluaciones-universal.sql ==='
-\echo '── Sembrando 265 preguntas reales por evaluación (cierra Bug C) ──'
+\echo '── Sembrando 265 preguntas reales por evaluación (cierra Bug C, canónico) ──'
 \i seed-preguntas-evaluaciones-universal.sql
 
 \echo '============================================================'

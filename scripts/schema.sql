@@ -1301,3 +1301,22 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
+
+-- =============================================================
+-- Bug 33 fix — UNIQUE (evaluacion_id, pregunta) en preguntas
+-- =============================================================
+-- Causa: setup.sql invocaba 2 seeds con overlap de banco preguntas
+-- universales (250 + 265, 221 en común). Sin esta UNIQUE, el
+-- ON CONFLICT del seed canónico era letra muerta → duplicación 2x.
+-- Idempotente: solo crea si no existe.
+-- =============================================================
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'preguntas_evaluacion_pregunta_unique'
+  ) THEN
+    ALTER TABLE public.preguntas
+      ADD CONSTRAINT preguntas_evaluacion_pregunta_unique
+      UNIQUE (evaluacion_id, pregunta);
+  END IF;
+END $$;
