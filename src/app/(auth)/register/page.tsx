@@ -442,7 +442,7 @@ export default function RegisterPage() {
             {/* Submit */}
             <button
               type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 font-bold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 font-bold text-[var(--color-texto-sobre-acento)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               style={{
                 background: 'var(--color-acento)', borderRadius: 12, height: 52, fontSize: 15,
                 boxShadow: '0 4px 18px rgba(27,47,110,0.38)',

@@ -287,7 +287,7 @@ export default function LoginPage() {
             <div className="pt-1">
               <button
                 type="submit" disabled={loading}
-                className="w-full flex items-center justify-center gap-2 font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 font-semibold text-[var(--color-texto-sobre-acento)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{
                   background: loading ? 'var(--color-acento-hover)' : 'var(--color-acento)',
                   borderRadius: 12, height: 48, fontSize: 15,
