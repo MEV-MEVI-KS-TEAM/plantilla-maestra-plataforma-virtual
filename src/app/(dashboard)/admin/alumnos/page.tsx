@@ -174,9 +174,9 @@ export default function AlumnosPage() {
         <button
           onClick={() => setModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150"
-          style={{ background: '#1565C0', color: '#fff' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#42A5F5' }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#1565C0' }}
+          style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-acento)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-acento)' }}
         >
           <Plus className="w-4 h-4" />
           Nuevo Alumno
@@ -190,7 +190,7 @@ export default function AlumnosPage() {
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
           style={{
             background: tab === 'todos' ? 'rgba(21,101,192,0.15)' : 'transparent',
-            color: tab === 'todos' ? '#42A5F5' : '#94A3B8',
+            color: tab === 'todos' ? 'var(--color-acento)' : '#94A3B8',
             border: tab === 'todos' ? '1px solid rgba(21,101,192,0.35)' : '1px solid #2A2F3E',
           }}
         >
@@ -200,7 +200,7 @@ export default function AlumnosPage() {
             className="px-1.5 py-0.5 rounded-full text-xs font-bold"
             style={{
               background: tab === 'todos' ? 'rgba(21,101,192,0.25)' : 'rgba(255,255,255,0.07)',
-              color: tab === 'todos' ? '#42A5F5' : '#64748B',
+              color: tab === 'todos' ? 'var(--color-acento)' : '#64748B',
             }}
           >
             {alumnos.length}
@@ -254,7 +254,7 @@ export default function AlumnosPage() {
           onChange={e => setBusqueda(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm outline-none"
           style={{ ...INPUT_STYLE }}
-          onFocus={e => { e.currentTarget.style.border = '1px solid #1565C0' }}
+          onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
           onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
         />
       </div>
@@ -264,7 +264,7 @@ export default function AlumnosPage() {
         <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#1565C0' }} />
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--color-acento)' }} />
             </div>
           ) : alumnosFiltrados.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -351,7 +351,7 @@ export default function AlumnosPage() {
                       <button
                         onClick={() => router.push(`/admin/alumnos/${a.id}`)}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all"
-                        style={{ background: 'rgba(21,101,192,0.1)', color: '#42A5F5', border: '1px solid rgba(21,101,192,0.2)' }}
+                        style={{ background: 'rgba(21,101,192,0.1)', color: 'var(--color-acento)', border: '1px solid rgba(21,101,192,0.2)' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(21,101,192,0.2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(21,101,192,0.1)' }}
                       >
@@ -372,7 +372,7 @@ export default function AlumnosPage() {
         <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#1565C0' }} />
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--color-acento)' }} />
             </div>
           ) : error ? (
             <div className="flex items-center justify-center py-16">
@@ -426,7 +426,7 @@ export default function AlumnosPage() {
                     <button
                       onClick={() => router.push(`/admin/alumnos/${a.id}`)}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium"
-                      style={{ background: 'rgba(21,101,192,0.1)', color: '#42A5F5', border: '1px solid rgba(21,101,192,0.2)' }}
+                      style={{ background: 'rgba(21,101,192,0.1)', color: 'var(--color-acento)', border: '1px solid rgba(21,101,192,0.2)' }}
                     >
                       <Eye className="w-3.5 h-3.5" />
                       Ver detalle
@@ -487,7 +487,7 @@ export default function AlumnosPage() {
                           <button
                             onClick={() => router.push(`/admin/alumnos/${a.id}`)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                            style={{ background: 'rgba(21,101,192,0.1)', color: '#42A5F5', border: '1px solid rgba(21,101,192,0.2)' }}
+                            style={{ background: 'rgba(21,101,192,0.1)', color: 'var(--color-acento)', border: '1px solid rgba(21,101,192,0.2)' }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(21,101,192,0.2)' }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(21,101,192,0.1)' }}
                           >
@@ -538,7 +538,7 @@ export default function AlumnosPage() {
                     onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => { e.currentTarget.style.border = '1px solid #1565C0' }}
+                    onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
                     onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
                   />
                 </div>
@@ -595,7 +595,7 @@ export default function AlumnosPage() {
                   type="submit"
                   disabled={submitting}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
-                  style={{ background: '#1565C0', color: '#fff' }}
+                  style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
                 >
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" />Creando...</> : 'Crear Alumno'}
                 </button>

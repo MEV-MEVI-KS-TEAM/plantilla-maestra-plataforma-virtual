@@ -119,7 +119,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
   // ── LOADING ──
   if (estado === 'loading' || estado === 'enviando') return (
     <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
-      <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#1565C0' }} />
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-acento)' }} />
       <p className="text-sm" style={{ color: '#94A3B8' }}>
         {estado === 'enviando' ? 'Calificando...' : 'Cargando examen...'}
       </p>
@@ -131,7 +131,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
     <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
       <AlertCircle className="w-10 h-10" style={{ color: '#EF4444' }} />
       <p className="text-sm font-medium" style={{ color: '#EF4444' }}>{errorMsg}</p>
-      <button onClick={() => router.back()} className="text-sm" style={{ color: '#1565C0' }}>Regresar</button>
+      <button onClick={() => router.back()} className="text-sm" style={{ color: 'var(--color-acento)' }}>Regresar</button>
     </div>
   )
 
@@ -205,9 +205,9 @@ export default function EvaluacionClient({ id }: { id: string }) {
                 setEstado('quiz')
               }}
               className="w-full sm:flex-1 py-3 rounded-lg text-sm font-semibold transition-all"
-              style={{ background: '#1565C0', color: '#fff' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#42A5F5' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#1565C0' }}
+              style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-acento)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-acento)' }}
             >
               Reintentar ({intentosRestantes} {intentosRestantes !== 1 ? 'restantes' : 'restante'})
             </button>
@@ -260,7 +260,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
 
                 {d.retroalimentacion && (
                   <div className="mt-2 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #2A2F3E', color: '#94A3B8' }}>
-                    <span className="font-semibold" style={{ color: '#1565C0' }}>Retroalimentación: </span>
+                    <span className="font-semibold" style={{ color: 'var(--color-acento)' }}>Retroalimentación: </span>
                     {d.retroalimentacion}
                   </div>
                 )}
@@ -278,7 +278,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
     <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
       <AlertCircle className="w-10 h-10" style={{ color: '#F59E0B' }} />
       <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>Este examen no tiene preguntas disponibles.</p>
-      <button onClick={() => router.back()} className="text-sm" style={{ color: '#1565C0' }}>Regresar</button>
+      <button onClick={() => router.back()} className="text-sm" style={{ color: 'var(--color-acento)' }}>Regresar</button>
     </div>
   )
 
@@ -303,7 +303,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
             </p>
           </div>
         </div>
-        <span className="text-xs px-2 py-1 rounded flex-shrink-0" style={{ background: 'rgba(21,101,192,0.15)', color: '#42A5F5' }}>
+        <span className="text-xs px-2 py-1 rounded flex-shrink-0" style={{ background: 'rgba(21,101,192,0.15)', color: 'var(--color-acento)' }}>
           Intento {intentosUsados + 1}/{evaluacion?.intentos_max}
         </span>
       </div>
@@ -312,7 +312,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
         <div
           className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${((preguntaActual + 1) / preguntas.length) * 100}%`, background: '#1565C0' }}
+          style={{ width: `${((preguntaActual + 1) / preguntas.length) * 100}%`, background: 'var(--color-acento)' }}
         />
       </div>
 
@@ -333,14 +333,14 @@ export default function EvaluacionClient({ id }: { id: string }) {
                 style={{
                   minHeight: '52px',
                   background: seleccionada ? 'rgba(21,101,192,0.15)' : 'rgba(255,255,255,0.03)',
-                  border: seleccionada ? '2px solid #1565C0' : '1px solid #2A2F3E',
+                  border: seleccionada ? '2px solid var(--color-acento)' : '1px solid #2A2F3E',
                   color: seleccionada ? '#F1F5F9' : '#94A3B8',
                 }}
               >
                 <span
                   className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0"
                   style={{
-                    background: seleccionada ? '#1565C0' : 'rgba(255,255,255,0.06)',
+                    background: seleccionada ? 'var(--color-acento)' : 'rgba(255,255,255,0.06)',
                     color: seleccionada ? '#fff' : '#94A3B8',
                   }}
                 >
@@ -365,9 +365,9 @@ export default function EvaluacionClient({ id }: { id: string }) {
                 onClick={() => setPreguntaActual(idx)}
                 className="w-8 h-8 rounded-full text-xs font-bold flex-shrink-0 transition-all"
                 style={{
-                  background: esActual ? '#1565C0' : contestada ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)',
+                  background: esActual ? 'var(--color-acento)' : contestada ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)',
                   color: esActual ? '#fff' : contestada ? '#10B981' : '#475569',
-                  border: esActual ? '2px solid #1565C0' : contestada ? '1px solid rgba(16,185,129,0.4)' : '1px solid #2A2F3E',
+                  border: esActual ? '2px solid var(--color-acento)' : contestada ? '1px solid rgba(16,185,129,0.4)' : '1px solid #2A2F3E',
                 }}
               >
                 {idx + 1}
@@ -393,7 +393,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
           <button
             onClick={() => setPreguntaActual(p => p + 1)}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all"
-            style={{ background: '#1565C0', color: '#fff' }}
+            style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
           >
             Siguiente
             <ArrowRight className="w-4 h-4" />

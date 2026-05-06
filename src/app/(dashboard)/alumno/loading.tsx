@@ -7,7 +7,7 @@ export default function AlumnoLoading() {
       style={{ background: '#0B0D11' }}
     >
       <div className="flex flex-col items-center gap-3">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#1565C0' }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-acento)' }} />
         <p className="text-xs" style={{ color: '#475569' }}>Cargando...</p>
       </div>
     </div>

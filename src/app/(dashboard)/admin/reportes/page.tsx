@@ -54,7 +54,7 @@ export default function ReportesPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#1565C0' }} />
+      <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--color-acento)' }} />
     </div>
   )
 
@@ -65,7 +65,7 @@ export default function ReportesPage() {
   )
 
   const statCards = [
-    { label: 'Total Alumnos', value: String(stats?.total_alumnos ?? 0), icon: Users, color: '#1565C0', bg: 'rgba(21,101,192,0.15)' },
+    { label: 'Total Alumnos', value: String(stats?.total_alumnos ?? 0), icon: Users, color: 'var(--color-acento)', bg: 'rgba(21,101,192,0.15)' },
     { label: 'Alumnos Activos', value: String(stats?.alumnos_activos ?? 0), icon: UserCheck, color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
     { label: 'Ingresos Totales', value: fmt(stats?.total_ingresos ?? 0), icon: DollarSign, color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
     { label: 'Promedio Meses', value: String(stats?.promedio_meses ?? 0), icon: TrendingUp, color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' },
@@ -96,7 +96,7 @@ export default function ReportesPage() {
       {/* Rendimiento por materia */}
       <div className="rounded-xl overflow-hidden" style={CARD}>
         <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #2A2F3E' }}>
-          <BookOpen className="w-4 h-4" style={{ color: '#1565C0' }} />
+          <BookOpen className="w-4 h-4" style={{ color: 'var(--color-acento)' }} />
           <h3 className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Rendimiento por Materia</h3>
         </div>
         {rendimiento.length === 0 ? (
@@ -121,7 +121,7 @@ export default function ReportesPage() {
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(21,101,192,0.04)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                   >
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#42A5F5' }}>{r.codigo}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--color-acento)' }}>{r.codigo}</td>
                     <td className="px-4 py-3 font-medium max-w-xs" style={{ color: '#F1F5F9' }}>
                       <span className="block truncate">{r.nombre}</span>
                     </td>

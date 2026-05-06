@@ -53,10 +53,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Bug 31 fix: inyectar CSS vars desde CONFIG.colores para que páginas auth +
+  // dashboard alumno + admin lean var(--color-*) en lugar de hex hardcoded.
+  // Cliente solo configura src/lib/config.ts y la plataforma toma su paleta.
+  const cssVars = {
+    '--color-primario':           ESCUELA_CONFIG.colores.primario,
+    '--color-acento':             ESCUELA_CONFIG.colores.acento,
+    '--color-acento-hover':       ESCUELA_CONFIG.colores.acentoHover,
+    '--color-texto-sobre-acento': ESCUELA_CONFIG.colores.textoSobreAcento,
+    '--color-texto':              ESCUELA_CONFIG.colores.texto,
+    '--color-texto-secundario':   ESCUELA_CONFIG.colores.textoSecundario,
+    '--color-fondo':              ESCUELA_CONFIG.colores.fondo,
+    '--color-superficie':         ESCUELA_CONFIG.colores.superficie,
+    '--color-borde':              ESCUELA_CONFIG.colores.borde,
+  } as React.CSSProperties
+
   return (
     <html lang="es">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        style={cssVars}
       >
         <Providers>
           {children}

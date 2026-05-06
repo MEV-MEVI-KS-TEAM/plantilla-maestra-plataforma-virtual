@@ -20,7 +20,7 @@ const BENEFITS = [
 
 // ─── Input helpers ─────────────────────────────────────────────────────────────
 function onFocus(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
-  e.currentTarget.style.borderColor = '#1565C0'
+  e.currentTarget.style.borderColor = 'var(--color-acento)'
   e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(27,47,110,0.12)'
 }
 function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -30,9 +30,9 @@ function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
 
 const inputStyle: React.CSSProperties = {
   width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
-  padding: '11px 14px 11px 38px', fontSize: 14, color: '#0D1B3E',
+  padding: '11px 14px 11px 38px', fontSize: 14, color: 'var(--color-primario)',
   outline: 'none', transition: 'border-color .2s, box-shadow .2s',
-  background: '#FAFCFF',
+  background: 'var(--color-fondo)',
 }
 const inputNoIcon: React.CSSProperties = { ...inputStyle, paddingLeft: 14 }
 const selectStyle: React.CSSProperties = {
@@ -45,7 +45,7 @@ const selectStyle: React.CSSProperties = {
 // ─── Sub-components ─────────────────────────────────────────────────────────────
 function Label({ text, required: req }: { text: string; required?: boolean }) {
   return (
-    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#0D1B3E' }}>
+    <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
       {text}{req && <span style={{ color: '#EF4444' }}> *</span>}
     </label>
   )
@@ -55,13 +55,13 @@ function SectionHeader({ step, label }: { step: number; label: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
       <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
-        style={{ background: '#1565C0', color: '#fff', flexShrink: 0 }}>
+        style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)', flexShrink: 0 }}>
         {step}
       </div>
-      <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: '#0D1B3E', letterSpacing: '0.07em' }}>
+      <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-primario)', letterSpacing: '0.07em' }}>
         {label}
       </h3>
-      <div className="flex-1 h-px" style={{ background: '#EEF2F7' }} />
+      <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
     </div>
   )
 }
@@ -93,8 +93,8 @@ function ProgressBar({ current }: { current: 1 | 2 | 3 }) {
               <div
                 className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all"
                 style={{
-                  background: done ? '#1565C0' : active ? '#1565C0' : '#EEF2F7',
-                  color:      done || active ? '#fff' : '#B0C4D4',
+                  background: done ? 'var(--color-acento)' : active ? 'var(--color-acento)' : 'var(--color-borde)',
+                  color:      done || active ? '#fff' : 'var(--color-borde)',
                   boxShadow:  active ? '0 0 0 4px rgba(27,47,110,0.18)' : 'none',
                 }}
               >
@@ -102,7 +102,7 @@ function ProgressBar({ current }: { current: 1 | 2 | 3 }) {
               </div>
               <span
                 className="mt-1.5 text-xs font-medium text-center leading-tight hidden sm:block"
-                style={{ color: active ? '#1565C0' : done ? '#1565C0' : '#B0C4D4', maxWidth: 72 }}
+                style={{ color: active ? 'var(--color-acento)' : done ? 'var(--color-acento)' : 'var(--color-borde)', maxWidth: 72 }}
               >
                 {s.label}
               </span>
@@ -110,7 +110,7 @@ function ProgressBar({ current }: { current: 1 | 2 | 3 }) {
             {i < steps.length - 1 && (
               <div
                 className="flex-1 h-0.5 mx-2 mb-4"
-                style={{ background: s.n < current ? '#1565C0' : '#EEF2F7', transition: 'background .3s' }}
+                style={{ background: s.n < current ? 'var(--color-acento)' : 'var(--color-borde)', transition: 'background .3s' }}
               />
             )}
           </div>
@@ -128,7 +128,7 @@ function LeftPanel() {
       style={{
         width: '38%',
         minHeight: '100vh',
-        background: 'linear-gradient(160deg, #0d1b4b 0%, #1565C0 55%, #2E4BA3 100%)',
+        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento) 55%, var(--color-primario) 100%)',
         position: 'relative',
         overflow: 'hidden',
         flexShrink: 0,
@@ -154,7 +154,7 @@ function LeftPanel() {
       <div className="relative z-10">
         <h2 className="text-3xl font-bold leading-tight mb-3" style={{ color: '#fff', fontFamily: 'Syne, sans-serif' }}>
           Comienza hoy<br />
-          <span style={{ color: '#42A5F5' }}>tu camino educativo</span>
+          <span style={{ color: 'var(--color-acento)' }}>tu camino educativo</span>
         </h2>
         <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.75)', lineHeight: 1.7 }}>
           Únete a alumnos que han completado su trayectoria educativa con nosotros.
@@ -163,7 +163,7 @@ function LeftPanel() {
         <div className="flex flex-col gap-3">
           {BENEFITS.map(b => (
             <div key={b} className="flex items-center gap-3">
-              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: '#42A5F5' }} />
+              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: 'var(--color-acento)' }} />
               <span className="text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>{b}</span>
             </div>
           ))}
@@ -280,7 +280,7 @@ export default function RegisterPage() {
         <div className="flex flex-col items-center mb-6 md:hidden">
           <Image src={CONFIG.logo} alt={CONFIG.nombre} width={60} height={60}
             style={{ borderRadius: 12, objectFit: 'contain', border: '1px solid #E2E8F0' }} />
-          <p className="mt-2 text-xs font-semibold" style={{ color: '#6B8FA8', letterSpacing: '0.05em' }}>
+          <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)', letterSpacing: '0.05em' }}>
             {CONFIG.nombreCompleto.toUpperCase()}
           </p>
         </div>
@@ -292,17 +292,17 @@ export default function RegisterPage() {
             maxWidth: 560,
             background: '#fff',
             borderRadius: 20,
-            border: '1px solid #EEF2F7',
+            border: '1px solid var(--color-borde)',
             boxShadow: '0 4px 32px rgba(27,58,87,0.08)',
             padding: '36px 32px 32px',
           }}
         >
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold" style={{ color: '#0D1B3E', fontFamily: 'Syne, sans-serif' }}>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-primario)', fontFamily: 'Syne, sans-serif' }}>
               Crear mi cuenta gratis
             </h1>
-            <p className="mt-1 text-sm" style={{ color: '#7A92A9' }}>
+            <p className="mt-1 text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
               Completa el formulario y comienza hoy
             </p>
           </div>
@@ -321,7 +321,7 @@ export default function RegisterPage() {
                 <div>
                   <Label text="Nombre(s)" required />
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#B0C4D4' }} />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
                     <input type="text" required value={nombre} onChange={e => setNombre(e.target.value)}
                       placeholder="María" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
                   </div>
@@ -342,7 +342,7 @@ export default function RegisterPage() {
               <div>
                 <Label text="Teléfono / WhatsApp" required />
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#B0C4D4' }} />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
                   <input type="tel" required value={telefono}
                     onChange={e => setTelefono(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10 dígitos" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
@@ -358,7 +358,7 @@ export default function RegisterPage() {
               <div className="mb-3">
                 <Label text="Correo electrónico" required />
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#B0C4D4' }} />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
                   <input type="email" required autoComplete="email" value={email}
                     onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com"
                     style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
@@ -370,14 +370,14 @@ export default function RegisterPage() {
                 <div>
                   <Label text="Contraseña" required />
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#B0C4D4' }} />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
                     <input type={showPass ? 'text' : 'password'} required autoComplete="new-password"
                       value={password} onChange={e => setPassword(e.target.value)}
                       placeholder="Mín. 8 caracteres"
                       style={{ ...inputStyle, paddingRight: 38 }} onFocus={onFocus} onBlur={onBlur} />
                     <button type="button" tabIndex={-1} onClick={() => setShowPass(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B0C4D4', padding: 2 }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-borde)', padding: 2 }}>
                       {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -385,14 +385,14 @@ export default function RegisterPage() {
                 <div>
                   <Label text="Confirmar contraseña" required />
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#B0C4D4' }} />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
                     <input type={showConfirm ? 'text' : 'password'} required autoComplete="new-password"
                       value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="Repite tu contraseña"
                       style={{ ...inputStyle, paddingRight: 38 }} onFocus={onFocus} onBlur={onBlur} />
                     <button type="button" tabIndex={-1} onClick={() => setShowConfirm(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B0C4D4', padding: 2 }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-borde)', padding: 2 }}>
                       {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -444,12 +444,12 @@ export default function RegisterPage() {
               type="submit" disabled={loading}
               className="w-full flex items-center justify-center gap-2 font-bold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               style={{
-                background: '#1565C0', borderRadius: 12, height: 52, fontSize: 15,
+                background: 'var(--color-acento)', borderRadius: 12, height: 52, fontSize: 15,
                 boxShadow: '0 4px 18px rgba(27,47,110,0.38)',
                 border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
               }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#2E4BA3' }}
-              onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#1565C0' }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--color-primario)' }}
+              onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--color-acento)' }}
             >
               {loading
                 ? <><Loader2 className="w-5 h-5 animate-spin" />Creando cuenta...</>
@@ -457,17 +457,17 @@ export default function RegisterPage() {
             </button>
 
             {/* Legal */}
-            <p className="text-xs text-center leading-relaxed" style={{ color: '#B0C4D4' }}>
+            <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--color-borde)' }}>
               Al registrarte aceptas que {CONFIG.nombreCompleto} tratará tus datos
               conforme a su política de privacidad.
             </p>
 
             {/* Login link */}
-            <p className="text-center text-sm" style={{ color: '#7A92A9' }}>
+            <p className="text-center text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
               ¿Ya tienes cuenta?{' '}
-              <Link href="/login" className="font-semibold transition-colors" style={{ color: '#42A5F5' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#42A5F5' }}>
+              <Link href="/login" className="font-semibold transition-colors" style={{ color: 'var(--color-acento)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}>
                 Inicia sesión
               </Link>
             </p>
@@ -479,9 +479,9 @@ export default function RegisterPage() {
           <a
             href={WA_URL} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm transition-colors"
-            style={{ color: '#7A92A9', textDecoration: 'none' }}
+            style={{ color: 'var(--color-texto-secundario)', textDecoration: 'none' }}
             onMouseEnter={e => { e.currentTarget.style.color = '#16A34A' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#7A92A9' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-texto-secundario)' }}
           >
             <span style={{ color: '#22C55E' }}><WaSvg size={16} /></span>
             ¿Necesitas ayuda? WhatsApp

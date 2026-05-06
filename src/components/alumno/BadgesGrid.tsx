@@ -17,8 +17,8 @@ const ACCENT_BY_TIPO: Record<
   primera_semana: {
     border: '',
     iconBg: 'bg-[#E3F2FD]',
-    iconTint: 'text-[#1565C0]',
-    check: 'text-[#1565C0]',
+    iconTint: 'text-[var(--color-acento)]',
+    check: 'text-[var(--color-acento)]',
     borderColorInline: withAlpha(CONFIG.colores.primario, 0.30),
   },
   materia_completada: {

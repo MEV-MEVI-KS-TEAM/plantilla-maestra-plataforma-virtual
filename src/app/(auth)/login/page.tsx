@@ -21,7 +21,7 @@ const BENEFITS = [
 
 // ─── Input helpers ─────────────────────────────────────────────────────────────
 function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = '#1565C0'
+  e.currentTarget.style.borderColor = 'var(--color-acento)'
   e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(27,47,110,0.12)'
 }
 function onBlur(e: React.FocusEvent<HTMLInputElement>) {
@@ -47,7 +47,7 @@ function LeftPanel() {
       style={{
         width: '40%',
         minHeight: '100vh',
-        background: 'linear-gradient(160deg, #0d1b4b 0%, #1565C0 55%, #2E4BA3 100%)',
+        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento) 55%, var(--color-primario) 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -91,7 +91,7 @@ function LeftPanel() {
       <div className="relative z-10">
         <h2 className="text-4xl font-bold leading-tight mb-3" style={{ color: '#fff', fontFamily: 'Syne, sans-serif' }}>
           Tu educación,<br />
-          <span style={{ color: '#42A5F5' }}>a tu ritmo</span>
+          <span style={{ color: 'var(--color-acento)' }}>a tu ritmo</span>
         </h2>
         <p className="text-base mb-8" style={{ color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
           Estudia desde la comodidad de tu hogar y obtén acompañamiento en tu certificación.
@@ -100,7 +100,7 @@ function LeftPanel() {
         <div className="flex flex-col gap-3">
           {BENEFITS.map(b => (
             <div key={b} className="flex items-center gap-3">
-              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: '#42A5F5' }} />
+              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: 'var(--color-acento)' }} />
               <span className="text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>{b}</span>
             </div>
           ))}
@@ -189,7 +189,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-8 md:hidden">
           <Image src={CONFIG.logo} alt={CONFIG.nombre} width={64} height={64}
             style={{ borderRadius: 12, objectFit: 'contain', border: '1px solid #E2E8F0' }} />
-          <p className="mt-2 text-xs font-semibold" style={{ color: '#6B8FA8', letterSpacing: '0.05em' }}>
+          <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)', letterSpacing: '0.05em' }}>
             {CONFIG.nombreCompleto.toUpperCase()}
           </p>
         </div>
@@ -201,17 +201,17 @@ export default function LoginPage() {
             maxWidth: 420,
             background: '#fff',
             borderRadius: 20,
-            border: '1px solid #EEF2F7',
+            border: '1px solid var(--color-borde)',
             boxShadow: '0 4px 32px rgba(27,58,87,0.08)',
             padding: '36px 32px',
           }}
         >
           {/* Header */}
           <div className="mb-7">
-            <h1 className="text-2xl font-bold" style={{ color: '#0D1B3E', fontFamily: 'Syne, sans-serif' }}>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-primario)', fontFamily: 'Syne, sans-serif' }}>
               Bienvenido de vuelta
             </h1>
-            <p className="mt-1 text-sm" style={{ color: '#7A92A9' }}>
+            <p className="mt-1 text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
               Ingresa a tu plataforma {CONFIG.nombre}
             </p>
           </div>
@@ -219,11 +219,11 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#0D1B3E' }}>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
                 Correo electrónico
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#B0C4D4' }} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
                 <input
                   type="email" required autoComplete="email"
                   value={email} onChange={e => setEmail(e.target.value)}
@@ -231,8 +231,8 @@ export default function LoginPage() {
                   onFocus={onFocus} onBlur={onBlur}
                   style={{
                     width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
-                    padding: '12px 14px 12px 38px', fontSize: 15, color: '#0D1B3E',
-                    outline: 'none', transition: 'border-color .2s, box-shadow .2s', background: '#FAFCFF',
+                    padding: '12px 14px 12px 38px', fontSize: 15, color: 'var(--color-primario)',
+                    outline: 'none', transition: 'border-color .2s, box-shadow .2s', background: 'var(--color-fondo)',
                   }}
                 />
               </div>
@@ -241,20 +241,20 @@ export default function LoginPage() {
             {/* Contraseña */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-semibold" style={{ color: '#0D1B3E' }}>
+                <label className="text-sm font-semibold" style={{ color: 'var(--color-primario)' }}>
                   Contraseña
                 </label>
                 <Link href="/forgot-password"
                   className="text-xs font-medium transition-colors"
-                  style={{ color: '#42A5F5' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = '#42A5F5' }}
+                  style={{ color: 'var(--color-acento)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#B0C4D4' }} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
                 <input
                   type={showPass ? 'text' : 'password'} required autoComplete="current-password"
                   value={password} onChange={e => setPassword(e.target.value)}
@@ -262,13 +262,13 @@ export default function LoginPage() {
                   onFocus={onFocus} onBlur={onBlur}
                   style={{
                     width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
-                    padding: '12px 40px 12px 38px', fontSize: 15, color: '#0D1B3E',
-                    outline: 'none', transition: 'border-color .2s, box-shadow .2s', background: '#FAFCFF',
+                    padding: '12px 40px 12px 38px', fontSize: 15, color: 'var(--color-primario)',
+                    outline: 'none', transition: 'border-color .2s, box-shadow .2s', background: 'var(--color-fondo)',
                   }}
                 />
                 <button type="button" tabIndex={-1} onClick={() => setShowPass(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#B0C4D4' }}>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--color-borde)' }}>
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -289,13 +289,13 @@ export default function LoginPage() {
                 type="submit" disabled={loading}
                 className="w-full flex items-center justify-center gap-2 font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{
-                  background: loading ? '#1565C0' : '#1565C0',
+                  background: loading ? 'var(--color-acento-hover)' : 'var(--color-acento)',
                   borderRadius: 12, height: 48, fontSize: 15,
                   boxShadow: '0 4px 16px rgba(27,47,110,0.35)',
                   border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
                 }}
-                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#2E4BA3' }}
-                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#1565C0' }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--color-primario)' }}
+                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--color-acento)' }}
               >
                 {loading
                   ? <><Loader2 className="w-4 h-4 animate-spin" />Iniciando sesión...</>
@@ -306,9 +306,9 @@ export default function LoginPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px" style={{ background: '#EEF2F7' }} />
-            <span className="text-xs px-1" style={{ color: '#B0C4D4' }}>o</span>
-            <div className="flex-1 h-px" style={{ background: '#EEF2F7' }} />
+            <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
+            <span className="text-xs px-1" style={{ color: 'var(--color-borde)' }}>o</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
           </div>
 
           {/* WhatsApp button */}
@@ -318,7 +318,7 @@ export default function LoginPage() {
             style={{
               display: 'flex',
               background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: 12,
-              color: '#0D1B3E', padding: '12px 16px', textDecoration: 'none',
+              color: 'var(--color-primario)', padding: '12px 16px', textDecoration: 'none',
             }}
             onMouseEnter={e => {
               e.currentTarget.style.borderColor = '#22C55E'
@@ -327,7 +327,7 @@ export default function LoginPage() {
             }}
             onMouseLeave={e => {
               e.currentTarget.style.borderColor = '#E2E8F0'
-              e.currentTarget.style.color = '#0D1B3E'
+              e.currentTarget.style.color = 'var(--color-primario)'
               e.currentTarget.style.background = '#fff'
             }}
           >
@@ -336,13 +336,13 @@ export default function LoginPage() {
           </a>
 
           {/* Register link */}
-          <p className="mt-5 text-center text-sm" style={{ color: '#7A92A9' }}>
+          <p className="mt-5 text-center text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
             ¿No tienes cuenta?{' '}
             <Link href="/register"
               className="font-semibold transition-colors"
-              style={{ color: '#42A5F5' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#42A5F5' }}
+              style={{ color: 'var(--color-acento)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
             >
               Regístrate gratis
             </Link>
@@ -350,7 +350,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="mt-8 text-xs" style={{ color: '#B0C4D4' }}>
+        <p className="mt-8 text-xs" style={{ color: 'var(--color-borde)' }}>
           © {new Date().getFullYear()} {CONFIG.nombreCompleto}
         </p>
       </div>

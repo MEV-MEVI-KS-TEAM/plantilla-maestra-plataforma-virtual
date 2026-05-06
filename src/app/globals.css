@@ -9,6 +9,20 @@
   --secondary: #0D1B3E;
   --accent: #1E88E5;
   --primary-light: #42A5F5;
+
+  /* Bug 31 fix: CSS vars semánticas overridden por layout.tsx desde CONFIG.colores.
+     Defaults aquí son fallback genéricos; el cliente ve los suyos via inline style
+     en <body>. NO eliminar — Next.js render server pinta antes de que los inline
+     styles aterricen y necesita estos defaults para evitar flash of unstyled. */
+  --color-primario:           #0F172A;
+  --color-acento:             #3B82F6;
+  --color-acento-hover:       #2563EB;
+  --color-texto-sobre-acento: #FFFFFF;
+  --color-texto:              #0F172A;
+  --color-texto-secundario:   #525252;
+  --color-fondo:              #F8FAFC;
+  --color-superficie:         #FFFFFF;
+  --color-borde:              #E5E7EB;
 }
 
 @media (prefers-color-scheme: dark) {

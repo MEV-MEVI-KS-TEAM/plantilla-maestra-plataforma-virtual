@@ -42,10 +42,10 @@ export default function ForgotPasswordPage() {
         <div className="flex flex-col items-center mb-7">
           <Image src={CONFIG.logo} alt={CONFIG.nombre} width={60} height={60}
             style={{ borderRadius: 10, objectFit: 'contain', marginBottom: 14 }} />
-          <h1 className="text-xl font-bold text-center" style={{ color: '#0D1B3E', fontFamily: 'Syne, sans-serif' }}>
+          <h1 className="text-xl font-bold text-center" style={{ color: 'var(--color-primario)', fontFamily: 'Syne, sans-serif' }}>
             Recuperar contraseña
           </h1>
-          <p className="text-sm mt-2 text-center leading-relaxed" style={{ color: '#6B8FA8' }}>
+          <p className="text-sm mt-2 text-center leading-relaxed" style={{ color: 'var(--color-texto-secundario)' }}>
             Te enviaremos un correo para restablecer tu contraseña
           </p>
         </div>
@@ -58,19 +58,19 @@ export default function ForgotPasswordPage() {
               <div>
                 <p className="text-sm font-semibold" style={{ color: '#10B981' }}>¡Correo enviado!</p>
                 <p className="text-sm mt-2 leading-relaxed" style={{ color: '#4A6785' }}>
-                  Si el correo <strong style={{ color: '#0D1B3E' }}>{email}</strong> está registrado,
+                  Si el correo <strong style={{ color: 'var(--color-primario)' }}>{email}</strong> está registrado,
                   recibirás instrucciones para restablecer tu contraseña.
                 </p>
-                <p className="text-xs mt-2" style={{ color: '#9DB0C0' }}>
+                <p className="text-xs mt-2" style={{ color: 'var(--color-texto-secundario)' }}>
                   Revisa también tu carpeta de spam.
                 </p>
               </div>
             </div>
             <button onClick={() => router.push('/login')}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all"
-              style={{ background: '#1565C0', color: '#fff' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#1E88E5' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#1565C0' }}>
+              style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-acento)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-acento)' }}>
               Volver al inicio de sesión
             </button>
           </div>
@@ -81,15 +81,15 @@ export default function ForgotPasswordPage() {
                 Correo electrónico
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9DB0C0' }} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                 <input type="email" required autoComplete="email" value={email}
                   onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com"
                   style={{
-                    background: '#fff', border: '1.5px solid #E2EAF0', color: '#0D1B3E',
+                    background: '#fff', border: '1.5px solid #E2EAF0', color: 'var(--color-primario)',
                     borderRadius: 10, fontSize: 14, width: '100%',
                     padding: '11px 12px 11px 40px', outline: 'none', transition: 'border .15s, box-shadow .15s',
                   }}
-                  onFocus={e => { e.currentTarget.style.border = '1.5px solid #1565C0'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,101,192,0.12)' }}
+                  onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--color-acento)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,101,192,0.12)' }}
                   onBlur={e => { e.currentTarget.style.border = '1.5px solid #E2EAF0'; e.currentTarget.style.boxShadow = 'none' }}
                 />
               </div>
@@ -104,18 +104,18 @@ export default function ForgotPasswordPage() {
 
             <button type="submit" disabled={loading}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ background: '#1565C0', color: '#fff', boxShadow: '0 4px 14px rgba(21,101,192,0.3)' }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#1E88E5' }}
-              onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#1565C0' }}>
+              style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)', boxShadow: '0 4px 14px rgba(21,101,192,0.3)' }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--color-acento)' }}
+              onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--color-acento)' }}>
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Enviando...</> : 'Enviar instrucciones'}
             </button>
 
             <div className="text-center">
               <Link href="/login"
                 className="inline-flex items-center gap-1.5 text-sm transition-colors"
-                style={{ color: '#6B8FA8' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#6B8FA8' }}>
+                style={{ color: 'var(--color-texto-secundario)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-texto-secundario)' }}>
                 <ArrowLeft className="w-3.5 h-3.5" /> Volver al inicio de sesión
               </Link>
             </div>
@@ -123,7 +123,7 @@ export default function ForgotPasswordPage() {
         )}
       </div>
 
-      <p className="text-xs" style={{ color: '#9DB0C0' }}>
+      <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
         © {new Date().getFullYear()} {CONFIG.nombreCompleto}
       </p>
     </div>

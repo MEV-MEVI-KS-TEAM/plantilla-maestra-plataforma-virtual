@@ -296,14 +296,14 @@ export default function AlumnoDetallePage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#1565C0' }} />
+      <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--color-acento)' }} />
     </div>
   )
 
   if (error || !alumno) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
       <p className="text-sm" style={{ color: '#EF4444' }}>{error ?? 'Error al cargar el alumno'}</p>
-      <button onClick={() => router.push('/admin/alumnos')} className="text-sm" style={{ color: '#1565C0' }}>
+      <button onClick={() => router.push('/admin/alumnos')} className="text-sm" style={{ color: 'var(--color-acento)' }}>
         Regresar
       </button>
     </div>
@@ -330,7 +330,7 @@ export default function AlumnoDetallePage() {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-bold text-gray-100">{alumno.usuario.nombre_completo}</h1>
-              <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(21,101,192,0.15)', color: '#42A5F5' }}>
+              <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(21,101,192,0.15)', color: 'var(--color-acento)' }}>
                 {alumno.matricula}
               </span>
               <span
@@ -389,7 +389,7 @@ export default function AlumnoDetallePage() {
               onClick={() => setModalInscripcion(true)}
               disabled={marcandoInscripcion}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-60"
-              style={{ background: 'rgba(21,101,192,0.12)', color: '#42A5F5', border: '1px solid rgba(21,101,192,0.25)' }}
+              style={{ background: 'rgba(21,101,192,0.12)', color: 'var(--color-acento)', border: '1px solid rgba(21,101,192,0.25)' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(21,101,192,0.22)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(21,101,192,0.12)' }}
             >
@@ -439,9 +439,9 @@ export default function AlumnoDetallePage() {
               <button
                 onClick={() => { setModalPago(true); setDesbloquearError(null) }}
                 className="flex items-center gap-2 px-6 py-3 rounded-xl text-base font-bold transition-all shadow-lg"
-                style={{ background: '#1565C0', color: '#fff', boxShadow: '0 4px 20px rgba(21,101,192,0.4)' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#1976D2'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#1565C0'; e.currentTarget.style.transform = 'translateY(0)' }}
+                style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)', boxShadow: '0 4px 20px rgba(21,101,192,0.4)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-acento)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-acento)'; e.currentTarget.style.transform = 'translateY(0)' }}
               >
                 <LockOpen className="w-5 h-5" />
                 Abrir Mes {alumno.meses_desbloqueados + 1}
@@ -589,7 +589,7 @@ export default function AlumnoDetallePage() {
           placeholder="Escribe notas sobre este alumno (motivos de contacto, observaciones, seguimiento, etc.)..."
           className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-y"
           style={{ ...INPUT_STYLE, minHeight: 100 }}
-          onFocus={e => { e.currentTarget.style.border = '1px solid #1565C0' }}
+          onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
           onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
         />
         <div className="flex justify-end">
@@ -597,9 +597,9 @@ export default function AlumnoDetallePage() {
             onClick={handleGuardarNotas}
             disabled={savingNotas}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
-            style={{ background: '#1565C0', color: '#fff' }}
+            style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
             onMouseEnter={e => { if (!savingNotas) e.currentTarget.style.background = '#2D8C87' }}
-            onMouseLeave={e => { if (!savingNotas) e.currentTarget.style.background = '#1565C0' }}
+            onMouseLeave={e => { if (!savingNotas) e.currentTarget.style.background = 'var(--color-acento)' }}
           >
             {savingNotas ? <><Loader2 className="w-4 h-4 animate-spin" />Guardando...</> : <><Save className="w-4 h-4" />Guardar notas</>}
           </button>
@@ -609,7 +609,7 @@ export default function AlumnoDetallePage() {
       {/* Documentos */}
       <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
         <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid #2A2F3E' }}>
-          <FileText className="w-4 h-4" style={{ color: '#42A5F5' }} />
+          <FileText className="w-4 h-4" style={{ color: 'var(--color-acento)' }} />
           <h3 className="text-sm font-semibold text-gray-100">Documentos del Alumno</h3>
         </div>
         <div className="divide-y" style={{ borderColor: '#2A2F3E' }}>
@@ -675,7 +675,7 @@ export default function AlumnoDetallePage() {
                       onChange={e => setDocEdits(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], comentario: e.target.value } }))}
                       className="w-full px-3 py-1.5 rounded-lg text-xs outline-none"
                       style={INPUT_STYLE}
-                      onFocus={e => { e.currentTarget.style.border = '1px solid #1565C0' }}
+                      onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
                     />
                     {/* Guardar */}
@@ -683,9 +683,9 @@ export default function AlumnoDetallePage() {
                       onClick={() => handleGuardarDoc(doc.id)}
                       disabled={isSaving}
                       className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-60"
-                      style={{ background: '#1565C0', color: '#fff' }}
-                      onMouseEnter={e => { if (!isSaving) e.currentTarget.style.background = '#42A5F5' }}
-                      onMouseLeave={e => { if (!isSaving) e.currentTarget.style.background = '#1565C0' }}
+                      style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+                      onMouseEnter={e => { if (!isSaving) e.currentTarget.style.background = 'var(--color-acento)' }}
+                      onMouseLeave={e => { if (!isSaving) e.currentTarget.style.background = 'var(--color-acento)' }}
                     >
                       {isSaving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Guardando...</> : 'Guardar cambios'}
                     </button>
@@ -817,9 +817,9 @@ export default function AlumnoDetallePage() {
                 <button
                   onClick={() => { setModalReset(false); setResetSuccess(null) }}
                   className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all"
-                  style={{ background: '#1565C0', color: '#fff' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#42A5F5' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#1565C0' }}
+                  style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-acento)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-acento)' }}
                 >
                   Cerrar
                 </button>
@@ -837,7 +837,7 @@ export default function AlumnoDetallePage() {
                       onChange={e => setResetPass(p => ({ ...p, password: e.target.value }))}
                       className="w-full pl-3 pr-10 py-2.5 rounded-lg text-sm outline-none"
                       style={INPUT_STYLE}
-                      onFocus={e => { e.currentTarget.style.border = '1px solid #1565C0' }}
+                      onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
                     />
                     <button
@@ -863,7 +863,7 @@ export default function AlumnoDetallePage() {
                       onChange={e => setResetPass(p => ({ ...p, confirm: e.target.value }))}
                       className="w-full pl-3 pr-10 py-2.5 rounded-lg text-sm outline-none"
                       style={INPUT_STYLE}
-                      onFocus={e => { e.currentTarget.style.border = '1px solid #1565C0' }}
+                      onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
                     />
                     <button
@@ -938,7 +938,7 @@ export default function AlumnoDetallePage() {
               <p className="text-4xl mb-2">💳</p>
               <p className="text-sm font-medium text-gray-100">
                 ¿Confirmas que el alumno pagó su inscripción de{' '}
-                <span style={{ color: '#42A5F5' }}>${config.precios.inscripcion}</span>?
+                <span style={{ color: 'var(--color-acento)' }}>${config.precios.inscripcion}</span>?
               </p>
               <p className="text-sm font-bold mt-0.5 text-gray-100">
                 {alumno.usuario.nombre_completo}
@@ -961,9 +961,9 @@ export default function AlumnoDetallePage() {
                 onClick={handleMarcarInscripcion}
                 disabled={marcandoInscripcion}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all"
-                style={{ background: '#1565C0', color: '#fff' }}
+                style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
                 onMouseEnter={e => { if (!marcandoInscripcion) e.currentTarget.style.background = '#4A5AE0' }}
-                onMouseLeave={e => { if (!marcandoInscripcion) e.currentTarget.style.background = '#1565C0' }}
+                onMouseLeave={e => { if (!marcandoInscripcion) e.currentTarget.style.background = 'var(--color-acento)' }}
               >
                 {marcandoInscripcion
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</>
@@ -1001,7 +1001,7 @@ export default function AlumnoDetallePage() {
               <p className="text-4xl mb-2">🔓</p>
               <p className="text-sm font-medium text-gray-100">
                 ¿Confirmas abrir el{' '}
-                <span style={{ color: '#1565C0' }}>Mes {alumno.meses_desbloqueados + 1}</span>
+                <span style={{ color: 'var(--color-acento)' }}>Mes {alumno.meses_desbloqueados + 1}</span>
                 {' '}para
               </p>
               <p className="text-sm font-bold mt-0.5 text-gray-100">
@@ -1029,9 +1029,9 @@ export default function AlumnoDetallePage() {
                 onClick={handleDesbloquear}
                 disabled={submitting}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all"
-                style={{ background: '#1565C0', color: '#fff' }}
+                style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
                 onMouseEnter={e => { if (!submitting) e.currentTarget.style.background = '#2D8C87' }}
-                onMouseLeave={e => { if (!submitting) e.currentTarget.style.background = '#1565C0' }}
+                onMouseLeave={e => { if (!submitting) e.currentTarget.style.background = 'var(--color-acento)' }}
               >
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" />Desbloqueando...</> : 'Confirmar'}
               </button>

@@ -66,7 +66,7 @@ export default function NotasPersonales({ semanaId, lang }: NotasPersonalesProps
     <div className="rounded-xl p-5 space-y-3 mt-2" style={CARD}>
       {/* Header */}
       <div className="flex items-center gap-2">
-        <span style={{ color: '#1565C0', fontSize: '1rem' }}>📝</span>
+        <span style={{ color: 'var(--color-acento)', fontSize: '1rem' }}>📝</span>
         <p className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>
           {loc('Mis apuntes', 'My notes')}
         </p>
@@ -85,7 +85,7 @@ export default function NotasPersonales({ semanaId, lang }: NotasPersonalesProps
           color: '#CBD5E1',
           fontFamily: 'inherit',
         }}
-        onFocus={e => { e.currentTarget.style.borderColor = '#1565C0' }}
+        onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-acento)' }}
         onBlur={e => { e.currentTarget.style.borderColor = '#2A2F3E' }}
       />
 

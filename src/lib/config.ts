@@ -23,13 +23,23 @@ export const CONFIG = {
   urlBase:         'https://mev-edu.online',
 
   // === BRANDING (cliente personaliza con sus colores) ===
+  // Bug 31 fix (5-may-2026): estos colores se inyectan en globals.css via
+  // CSS variables (--color-primario, --color-acento, etc.) desde layout.tsx.
+  // Las páginas auth + dashboard alumno + admin leen var(--color-*) en lugar
+  // de hex hardcoded para que el cliente solo configure aquí y la plataforma
+  // tome su paleta automáticamente.
   colores: {
-    primario:    '#0F172A',  // slate-900 — neutro, cliente cambia
-    secundario:  '#1E293B',  // slate-800
-    acento:      '#3B82F6',  // blue-500 — neutro, cliente cambia
-    acentoClaro: '#DBEAFE',  // blue-100
-    texto:       '#0F172A',
-    fondo:       '#F8FAFC',  // slate-50
+    primario:          '#0F172A',  // slate-900 — sidebar, headings, fondos oscuros
+    secundario:        '#1E293B',  // slate-800
+    acento:            '#3B82F6',  // blue-500 — botones primarios, links, highlights
+    acentoClaro:       '#DBEAFE',  // blue-100
+    acentoHover:       '#2563EB',  // blue-600 — hover de botones primarios
+    textoSobreAcento:  '#FFFFFF',  // texto contrastante sobre el acento. Override a '#0A0A0A' si acento es claro (ej: amarillo)
+    texto:             '#0F172A',  // texto sobre fondos claros
+    textoSecundario:   '#525252',  // labels, placeholders, captions
+    fondo:             '#F8FAFC',  // slate-50 — fondo de página
+    superficie:        '#FFFFFF',  // cards, modales, inputs
+    borde:             '#E5E7EB',  // gray-200 — bordes sutiles
   },
 
   // === NIVELES ACADÉMICOS ===

@@ -85,9 +85,9 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
 
   const isAlumno = role === 'ALUMNO'
 
-  const sidebarBg     = '#0D1B3E'
+  const sidebarBg     = 'var(--color-primario)'
   const sidebarBorder = 'rgba(30,136,229,0.22)'
-  const activeBg      = '#1565C0'
+  const activeBg      = 'var(--color-acento)'
   const activeColor   = '#fff'
   const inactiveColor = 'rgba(255,255,255,0.65)'
   const hoverBg       = 'rgba(21,101,192,0.28)'
@@ -257,7 +257,7 @@ function MobileBottomNav({ items, isActive }: { items: NavItem[]; isActive: (h: 
     <nav
       className="fixed bottom-0 left-0 right-0 z-30 md:hidden flex items-center justify-around px-2 pb-safe"
       style={{
-        background: '#0D1B3E',
+        background: 'var(--color-primario)',
         borderTop:  '1px solid rgba(30,136,229,0.25)',
         height:     60,
         paddingBottom: 'env(safe-area-inset-bottom, 0)',
@@ -271,7 +271,7 @@ function MobileBottomNav({ items, isActive }: { items: NavItem[]; isActive: (h: 
             key={`mobile-${item.href}-${item.label}`}
             href={item.href}
             className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-all"
-            style={{ color: active ? '#42A5F5' : 'rgba(255,255,255,0.45)' }}
+            style={{ color: active ? 'var(--color-acento)' : 'rgba(255,255,255,0.45)' }}
           >
             {item.emoji
               ? <span className="text-lg leading-none">{item.emoji}</span>
