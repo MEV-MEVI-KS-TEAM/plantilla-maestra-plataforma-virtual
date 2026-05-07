@@ -112,3 +112,17 @@ END $$;
 NOTIFY pgrst, 'reload schema';
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- ============================================================================
+-- PASO 6: Quiz semanal universal (576 preguntas balanceadas)
+-- ============================================================================
+\echo '=== PASO 6: seed-quiz-semanal-universal.sql ==='
+\echo '── Sembrando 576 preguntas pedagógicas (3/semana × 8 semanas × 24 materias) ──'
+\i seed-quiz-semanal-universal.sql
+
+-- ============================================================================
+-- PASO 7: Migration opción-d quiz_semana (CHECK a/b/c/d + explicacion)
+-- ============================================================================
+\echo '=== PASO 7: migrations/2026-05-add-opcion-d-quiz-semana.sql ==='
+\echo '── Idempotente: opcion_d + explicacion + CHECK a/b/c/d (no-op si schema canónico) ──'
+\i migrations/2026-05-add-opcion-d-quiz-semana.sql
