@@ -388,7 +388,7 @@ export default function LandingPage() {
                   <p className="text-xs font-semibold mb-6" style={{ color: C.royal }}>Inscripción: {fmt(p.inscripcion)}</p>
                   <div className="space-y-3 flex-1">
                     {[
-                      ...getModalidadesActivas().map(m => ({ label: `Plan ${getPlanLabel(m)}`, price: m.mensualidad, unit: '/mes' })),
+                      ...getModalidadesActivas().map(m => ({ label: `Plan ${getPlanLabel(m)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
                       { label: 'Certificación', price: p.certificacionSecundaria, unit: ' único' },
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
