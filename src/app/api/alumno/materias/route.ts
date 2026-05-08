@@ -11,7 +11,7 @@ export async function GET() {
     // ── Alumno: nivel + meses desbloqueados + duración (modalidad) ────────────
     const { data: alumno } = await supabase
       .from('alumnos')
-      .select('nivel, meses_desbloqueados, modalidad, duracion_meses, inscripcion_pagada')
+      .select('nivel, meses_desbloqueados, modalidad, duracion_meses')
       .eq('id', user.id)
       .single()
 
@@ -22,14 +22,12 @@ export async function GET() {
       meses_desbloqueados: number
       modalidad?: string | null
       duracion_meses?: number | null
-      inscripcion_pagada?: boolean | null
     }
     const nivel              = row.nivel
     const mesesDesbloqueados = row.meses_desbloqueados ?? 0
     const duracionMeses      = row.duracion_meses ?? getMesesByModalidad(row.modalidad)
     const materiasPorMes     = getMateriasPorMesByModalidad(row.modalidad)
     const limiteMaterias     = Math.max(0, mesesDesbloqueados * materiasPorMes)
-    const inscripcionPagada  = row.inscripcion_pagada ?? false
 
     // ── Materias del nivel del alumno con meses y semanas ───────────────────
     const { data: materias, error } = await supabase
@@ -50,7 +48,7 @@ export async function GET() {
           semanas ( id )
         )
       `)
-      .or(inscripcionPagada ? `nivel.eq.${nivel}` : `nivel.eq.${nivel},nivel.eq.demo`)
+      .or(`nivel.eq.${nivel},nivel.eq.demo`)
       .eq('activa', true)
       .order('orden')
 
@@ -70,11 +68,30 @@ export async function GET() {
       (a, b) => (a.orden ?? 0) - (b.orden ?? 0)
     )
 
-    const result = sorted.map((mat, idx) => {
+    let idxRegular = 0
+    const result = sorted.map(mat => {
       const meses        = mat.meses_contenido ?? []
       const totalSemanas = meses.reduce((acc, mes) => acc + (mes.semanas?.length ?? 0), 0)
-      const esTutorial   = mat.nombre.toLowerCase().includes('tutor')
-      const disponible   = (esTutorial && !inscripcionPagada) || (mesesDesbloqueados > 0 && idx < limiteMaterias)
+      const esTutorial   = mat.nivel === 'demo' || mat.nombre.toLowerCase().includes('tutor')
+
+      // Tutoría: siempre visible (estándar MEV)
+      if (esTutorial) {
+        return {
+          id:             mat.id,
+          nombre:         mat.nombre,
+          descripcion:    mat.descripcion ?? null,
+          icono:          mat.icono       ?? '📚',
+          color:          mat.color       ?? '#1565C0',
+          orden:          mat.orden       ?? 0,
+          total_meses:    meses.length,
+          total_semanas:  totalSemanas,
+          disponible:     true,
+        }
+      }
+
+      // Materia regular: idx separado, NO el de la iteración
+      const disponible = mesesDesbloqueados > 0 && idxRegular < limiteMaterias
+      idxRegular++
 
       return {
         id:             mat.id,
