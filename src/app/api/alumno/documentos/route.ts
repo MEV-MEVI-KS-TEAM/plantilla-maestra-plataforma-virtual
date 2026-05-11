@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { mapDocumentoAlumnoRow } from '@/lib/admin/documentos-admin'
 
 export async function GET() {
   try {
@@ -13,24 +14,27 @@ export async function GET() {
     // Schema nuevo: alumnos.id = user.id (no usuario_id)
     const { data: alumno } = await admin
       .from('alumnos')
-      .select('id')
+      .select('id, nivel')
       .eq('id', user.id)
       .single()
 
     if (!alumno) return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
 
-    const a = alumno as { id: string }
+    const a = alumno as { id: string; nivel?: string | null }
 
-    const { data: documentos, error } = await admin
+    const { data: rows, error } = await admin
       .from('documentos_alumno')
       .select('*')
       .eq('alumno_id', a.id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    const documentos = (rows ?? []).map(row => mapDocumentoAlumnoRow(row as Record<string, unknown>))
+    const plan_nombre = a.nivel === 'secundaria' ? 'Secundaria' : 'Preparatoria'
+
     return NextResponse.json({
-      documentos: documentos ?? [],
-      plan_nombre: '',
+      documentos,
+      plan_nombre,
     })
   } catch {
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
