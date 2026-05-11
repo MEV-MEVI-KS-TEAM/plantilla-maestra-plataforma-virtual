@@ -99,6 +99,11 @@ export async function GET() {
       const mat = mes.materias
       if (!mat) continue
 
+      // Bug #42: solo mostrar materias de meses desbloqueados
+      // mes_numero=0/null se trata como demo/tutoría → siempre visible
+      const mesNumero = mes.numero_mes ?? 0
+      if (mesNumero > 0 && mesNumero > mesesDesbloqueados) continue
+
       if (califMap.has(mat.id)) {
         resultado.push({
           materia_id:     mat.id,
@@ -107,7 +112,7 @@ export async function GET() {
           mes_numero:     mes.numero_mes,
           estado:         califMap.get(mat.id) ? 'Acreditada' : 'No acreditada',
         })
-      } else if (mes.numero_mes <= mesesDesbloqueados) {
+      } else {
         resultado.push({
           materia_id:     mat.id,
           codigo:         '',
