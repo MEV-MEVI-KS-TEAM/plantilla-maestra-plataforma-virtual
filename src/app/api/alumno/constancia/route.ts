@@ -48,28 +48,38 @@ export async function GET() {
     // meses_contenido.materia_id → materias.id (many-to-one → materias es objeto único)
     const { data: meses } = await supabase
       .from('meses_contenido')
-      .select('numero_mes, materias(id, nombre)')
+      .select('numero_mes, materias(id, nombre, nivel)')
       .order('numero_mes')
       .lte('numero_mes', alumno.meses_desbloqueados ?? 0)
 
     type MesRow = {
       numero_mes: number
-      materias: { id: string; nombre: string } | null
+      materias: { id: string; nombre: string; nivel: string } | null
     }
 
     const materias_cursadas: {
-      codigo: string; nombre: string; mes_numero: number
+      materia_id: string; codigo: string; nombre_materia: string; mes_numero: number
       estado: 'Acreditada' | 'No acreditada' | 'Pendiente'
     }[] = []
+
+    const contadorPorMes: Record<number, number> = {}
 
     for (const mes of ((meses ?? []) as unknown as MesRow[])) {
       const mat = mes.materias
       if (!mat) continue
+      const mesNum = mes.numero_mes ?? 0
+      contadorPorMes[mesNum] = (contadorPorMes[mesNum] ?? 0) + 1
+      const nivelPrefix = mat.nivel === 'preparatoria' ? 'PREP'
+                        : mat.nivel === 'secundaria'   ? 'SECU'
+                        : mat.nivel === 'demo'         ? 'TUT'
+                        : 'GEN'
+      const codigoGenerado = `${nivelPrefix}-M${mesNum}-${String(contadorPorMes[mesNum]).padStart(2, '0')}`
       materias_cursadas.push({
-        codigo:     '',
-        nombre:     mat.nombre,
-        mes_numero: mes.numero_mes,
-        estado:     califMap.has(mat.id)
+        materia_id:     mat.id,
+        codigo:         codigoGenerado,
+        nombre_materia: mat.nombre,
+        mes_numero:     mesNum,
+        estado:         califMap.has(mat.id)
           ? (califMap.get(mat.id) ? 'Acreditada' : 'No acreditada')
           : 'Pendiente',
       })

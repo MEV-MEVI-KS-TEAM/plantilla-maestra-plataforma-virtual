@@ -96,7 +96,7 @@ export default function ConstanciaPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center', width: '100%', maxWidth: 780, margin: '0 auto' }}>
 
         {/* ── Botones de acción ── */}
-        <div style={{ display: 'flex', gap: 12, alignSelf: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 12, alignSelf: 'flex-start', flexWrap: 'wrap', width: '100%' }}>
           <button
             onClick={() => window.print()}
             style={{
@@ -104,6 +104,7 @@ export default function ConstanciaPage() {
               cursor: 'pointer', fontFamily: '"DM Sans", sans-serif',
               display: 'flex', alignItems: 'center', gap: 7,
               background: 'transparent', border: '1px solid #2a3a5e', color: '#94a3b8',
+              flex: '1 1 auto', minWidth: 140,
             }}
           >
             <Printer className="w-4 h-4" />
@@ -116,6 +117,7 @@ export default function ConstanciaPage() {
               cursor: 'pointer', fontFamily: '"DM Sans", sans-serif',
               display: 'flex', alignItems: 'center', gap: 7,
               background: C.primario, color: '#fff', border: 'none',
+              flex: '1 1 auto', minWidth: 140,
             }}
           >
             <Download className="w-4 h-4" />
@@ -259,7 +261,7 @@ export default function ConstanciaPage() {
             {/* Datos institucionales */}
             <div style={{
               marginTop: 14, padding: '10px 16px', borderRadius: 8,
-              background: CONFIG.colores.fondo, border: `1px solid rgba(27, 47, 110, 0.12)`,
+              background: '#f8fafd', border: `1px solid rgba(27, 47, 110, 0.12)`,
               display: 'flex', flexWrap: 'wrap', gap: '6px 24px',
             }}>
               {[
@@ -373,8 +375,12 @@ export default function ConstanciaPage() {
               <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', letterSpacing: '0.05em' }}>
                 Dirección Académica
               </div>
-              <div style={{ fontSize: 10, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3 }}>
-                {CONFIG.nombre}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={CONFIG.logo} alt={CONFIG.nombre} style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', letterSpacing: '0.04em' }}>
+                  {CONFIG.nombre}
+                </span>
               </div>
             </div>
           </div>
