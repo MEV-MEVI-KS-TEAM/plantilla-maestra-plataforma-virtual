@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getMesesByModalidad } from '@/lib/modalidades'
 
 export async function GET() {
   try {
@@ -8,14 +7,15 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    // ── Resolver alumno_id y duracion (IVS: preferir alumnos.id = user.id) ─────
-    let alumnoId:        string | null = null
-    let mesesDesbloqueados             = 0
-    let duracionMeses                  = 0
+    // ── Resolver alumno ─────────────────────────────────────────────────────────
+    let alumnoId:         string | null = null
+    let mesesDesbloqueados              = 0
+    let alumnoNivel:      string | null = null
+    let inscripcionPagada               = false
 
     const { data: aNuevo } = await supabase
       .from('alumnos')
-      .select('id, meses_desbloqueados, modalidad')
+      .select('id, meses_desbloqueados, nivel, inscripcion_pagada')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -23,17 +23,19 @@ export async function GET() {
       const row = aNuevo as unknown as {
         id: string
         meses_desbloqueados: number
-        modalidad?: string
+        nivel: string | null
+        inscripcion_pagada: boolean
       }
       alumnoId           = row.id
       mesesDesbloqueados = row.meses_desbloqueados ?? 0
-      duracionMeses      = getMesesByModalidad(row.modalidad)
+      alumnoNivel        = row.nivel ?? null
+      inscripcionPagada  = row.inscripcion_pagada ?? false
     }
 
     if (!alumnoId) {
       const { data: a1 } = await supabase
         .from('alumnos')
-        .select('id, meses_desbloqueados, planes_estudio(duracion_meses)')
+        .select('id, meses_desbloqueados, nivel, inscripcion_pagada')
         .eq('usuario_id', user.id)
         .maybeSingle()
 
@@ -41,11 +43,13 @@ export async function GET() {
         const row = a1 as unknown as {
           id: string
           meses_desbloqueados: number
-          planes_estudio: { duracion_meses: number } | null
+          nivel: string | null
+          inscripcion_pagada: boolean
         }
         alumnoId           = row.id
         mesesDesbloqueados = row.meses_desbloqueados ?? 0
-        duracionMeses      = row.planes_estudio?.duracion_meses ?? 6
+        alumnoNivel        = row.nivel ?? null
+        inscripcionPagada  = row.inscripcion_pagada ?? false
       }
     }
 
@@ -54,10 +58,10 @@ export async function GET() {
       return NextResponse.json({
         materias: [],
         resumen: {
-          total_materias_plan:    0,
-          materias_acreditadas:   0,
+          total_materias_plan:     0,
+          materias_acreditadas:    0,
           materias_no_acreditadas: 0,
-          materias_pendientes:    0,
+          materias_pendientes:     0,
         },
       })
     }
@@ -75,17 +79,22 @@ export async function GET() {
     }
 
     // ── Materias del plan via meses_contenido ─────────────────────────────────
-    // meses_contenido.materia_id → materias.id (many-to-one → materias es objeto único)
     const { data: meses } = await supabase
       .from('meses_contenido')
-      .select('numero_mes, materias(id, nombre)')
+      .select('numero_mes, materias(id, nombre, nivel)')
       .order('numero_mes')
-      .lte('numero_mes', duracionMeses)
 
     type MesRow = {
       numero_mes: number
-      materias: { id: string; nombre: string } | null
+      materias: { id: string; nombre: string; nivel: string } | null
     }
+
+    // Bug 1+2: solo materias del nivel del alumno; si pagó excluye demo automáticamente
+    const mesesFiltrados = ((meses ?? []) as unknown as MesRow[]).filter((mc) => {
+      const matNivel = mc.materias?.nivel
+      if (!matNivel) return false
+      return inscripcionPagada ? matNivel === alumnoNivel : matNivel === 'demo'
+    })
 
     const resultado: {
       materia_id:     string
@@ -95,16 +104,12 @@ export async function GET() {
       estado:         'Acreditada' | 'No acreditada' | 'Pendiente'
     }[] = []
 
-    for (const mes of ((meses ?? []) as unknown as MesRow[])) {
+    for (const mes of mesesFiltrados) {
       const mat = mes.materias
       if (!mat) continue
 
-      // Bug #42: solo mostrar materias de meses desbloqueados
-      // mes_numero=0/null se trata como demo/tutoría → siempre visible
-      const mesNumero = mes.numero_mes ?? 0
-      if (mesNumero > 0 && mesNumero > mesesDesbloqueados) continue
-
       if (califMap.has(mat.id)) {
+        // Bug 3: acreditadas siempre visibles, sin importar numero_mes
         resultado.push({
           materia_id:     mat.id,
           codigo:         '',
@@ -112,7 +117,7 @@ export async function GET() {
           mes_numero:     mes.numero_mes,
           estado:         califMap.get(mat.id) ? 'Acreditada' : 'No acreditada',
         })
-      } else {
+      } else if (mes.numero_mes <= mesesDesbloqueados) {
         resultado.push({
           materia_id:     mat.id,
           codigo:         '',
@@ -123,9 +128,9 @@ export async function GET() {
       }
     }
 
-    const acreditadas    = resultado.filter(r => r.estado === 'Acreditada').length
-    const noAcreditadas  = resultado.filter(r => r.estado === 'No acreditada').length
-    const pendientes     = resultado.filter(r => r.estado === 'Pendiente').length
+    const acreditadas   = resultado.filter(r => r.estado === 'Acreditada').length
+    const noAcreditadas = resultado.filter(r => r.estado === 'No acreditada').length
+    const pendientes    = resultado.filter(r => r.estado === 'Pendiente').length
 
     return NextResponse.json({
       materias: resultado,
