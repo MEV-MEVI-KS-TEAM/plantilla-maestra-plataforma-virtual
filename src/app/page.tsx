@@ -624,8 +624,33 @@ export default function LandingPage() {
             <Image src={CONFIG.logoOscuro || CONFIG.logo} alt={CONFIG.nombreCompleto} width={200} height={80} className="h-16 md:h-20 w-auto brightness-0 invert drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] object-contain" />
           </div>
           <p className="text-sm font-semibold" style={{ color: C.ice }}>{CONFIG.nombreCompleto}</p>
-          <p className="text-xs mt-1.5">Puebla, México · {CONFIG.dominio}</p>
-          <p className="text-xs mt-6 opacity-40">© {new Date().getFullYear()} {CONFIG.nombreCompleto}. Todos los derechos reservados.</p>
+          <p className="text-xs mt-1.5">{CONFIG.dominio}</p>
+          <div className="flex items-center justify-center gap-3 mt-4 flex-wrap text-xs" style={{ color: 'rgba(224,235,255,0.4)' }}>
+            <a href={`mailto:${CONFIG.contactoEmail}`} className="hover:text-white transition-colors">{CONFIG.contactoEmail}</a>
+            <span>·</span>
+            <a href={CONFIG.whatsappUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a>
+          </div>
+          {/* Redes sociales */}
+          <div className="flex items-center justify-center gap-5 mt-5">
+            {CONFIG.redes?.instagram && (
+              <a href={CONFIG.redes.instagram} target="_blank" rel="noopener noreferrer"
+                aria-label="Instagram" className="hover:opacity-70 transition-opacity">
+                <Instagram className="w-5 h-5" style={{ color: C.azure }} />
+              </a>
+            )}
+            {CONFIG.redes?.facebook && (
+              <a href={CONFIG.redes.facebook} target="_blank" rel="noopener noreferrer"
+                aria-label="Facebook" className="hover:opacity-70 transition-opacity">
+                <Facebook className="w-5 h-5" style={{ color: C.azure }} />
+              </a>
+            )}
+          </div>
+          <div className="flex items-center justify-center gap-4 mt-6 text-xs flex-wrap" style={{ color: 'rgba(224,235,255,0.35)' }}>
+            <Link href="/aviso-de-privacidad" className="hover:text-white transition-colors">Aviso de Privacidad</Link>
+            <span>·</span>
+            <Link href="/terminos-y-condiciones" className="hover:text-white transition-colors">Términos y Condiciones</Link>
+          </div>
+          <p className="text-xs mt-3 opacity-40">© {new Date().getFullYear()} {CONFIG.nombreCompleto}. Todos los derechos reservados.</p>
         </footer>
 
       </main>

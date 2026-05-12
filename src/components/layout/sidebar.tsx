@@ -110,33 +110,13 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: `1px solid ${sidebarBorder}` }}>
-          <div className="flex items-center gap-3">
-            <div style={{
-              background: 'rgba(255,255,255,0.95)',
-              borderRadius: 10,
-              padding: '4px 6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Image
-                src={CONFIG.logo}
-                alt={CONFIG.nombre}
-                width={56}
-                height={40}
-                style={{ height: 40, width: 'auto', display: 'block', objectFit: 'contain' }}
-              />
-            </div>
-            <div>
-              <p className="text-sm font-bold leading-tight"
-                style={{ color: '#fff', fontFamily: 'Syne, sans-serif' }}>
-                {CONFIG.nombre}
-              </p>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)', letterSpacing: '0.08em' }}>
-                INSTITUTO
-              </p>
-            </div>
-          </div>
+          <Image
+            src={CONFIG.logoOscuro || CONFIG.logo}
+            alt={CONFIG.nombre}
+            width={180}
+            height={56}
+            style={{ height: 44, width: 'auto', objectFit: 'contain' }}
+          />
           <button onClick={onClose} className="md:hidden p-1 rounded-lg"
             style={{ color: 'rgba(255,255,255,0.5)' }}>
             <X className="w-4 h-4" />
