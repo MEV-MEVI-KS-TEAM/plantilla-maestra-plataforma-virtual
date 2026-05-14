@@ -43,7 +43,8 @@ export async function GET() {
           nombre,
           apellidos,
           email,
-          foto_url
+          foto_url,
+          telefono
         )
       `)
       .order('created_at', { ascending: false })
@@ -56,7 +57,7 @@ export async function GET() {
         id: string; matricula?: string; nivel?: string; modalidad?: string
         sindicalizado?: boolean; activo?: boolean; meses_desbloqueados?: number
         inscripcion_pagada?: boolean; created_at: string
-        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null } | null
+        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null } | null
       }
       const result = (data as unknown as Row[]).map(a => {
         const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
@@ -74,6 +75,7 @@ export async function GET() {
           nombre_completo:      [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || '—',
           email:                u?.email ?? '—',
           foto_url:             u?.foto_url ?? null,
+          telefono:             u?.telefono ?? null,
         }
       })
       return NextResponse.json(result)
@@ -97,7 +99,8 @@ export async function GET() {
           nombre,
           apellidos,
           email,
-          foto_url
+          foto_url,
+          telefono
         )
       `)
       .order('created_at', { ascending: false })
@@ -110,7 +113,7 @@ export async function GET() {
         id: string; matricula?: string; nivel?: string; modalidad?: string
         sindicalizado?: boolean; activo?: boolean; meses_desbloqueados?: number
         inscripcion_pagada?: boolean; created_at: string; usuario_id?: string
-        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null } | null
+        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null } | null
       }
       const result2 = (data2 as unknown as Row2[]).map(a => {
         const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
@@ -128,6 +131,7 @@ export async function GET() {
           nombre_completo:      [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || '—',
           email:                u?.email ?? '—',
           foto_url:             u?.foto_url ?? null,
+          telefono:             u?.telefono ?? null,
         }
       })
       return NextResponse.json(result2)
@@ -152,7 +156,7 @@ export async function GET() {
     }[]) {
       const { data: u } = await admin
         .from('usuarios')
-        .select('nombre, apellidos, email, foto_url')
+        .select('nombre, apellidos, email, foto_url, telefono')
         .eq('id', a.id)
         .single()
       resultFallback.push({
@@ -169,6 +173,7 @@ export async function GET() {
         nombre_completo:      [(u as {nombre?:string}|null)?.nombre, (u as {apellidos?:string}|null)?.apellidos].filter(Boolean).join(' ') || '—',
         email:                (u as {email?:string}|null)?.email ?? '—',
         foto_url:             (u as {foto_url?:string|null}|null)?.foto_url ?? null,
+        telefono:             (u as {telefono?:string|null}|null)?.telefono ?? null,
       })
     }
     return NextResponse.json(resultFallback)
@@ -189,7 +194,7 @@ export async function POST(request: NextRequest) {
     if (!isAdmin) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 
     const body = await request.json()
-    const { nombre_completo, email, password, nivel, modalidad } = body
+    const { nombre_completo, email, password, nivel, modalidad, telefono } = body
 
     // Aceptar "nombre_completo" del form y dividirlo en nombre / apellidos
     const partes     = (nombre_completo as string | undefined)?.trim().split(/\s+/) ?? []
@@ -228,7 +233,7 @@ export async function POST(request: NextRequest) {
     const { error: usuarioError } = await admin
       .from('usuarios')
       .upsert(
-        { id: newUserId, nombre, apellidos, email, rol: 'alumno' },
+        { id: newUserId, nombre, apellidos, email, telefono: telefono ?? null, rol: 'alumno' },
         { onConflict: 'id' }
       )
 
