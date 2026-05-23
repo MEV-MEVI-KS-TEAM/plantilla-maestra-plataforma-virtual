@@ -712,3 +712,30 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
+
+-- =============================================================
+-- KEEP-ALIVE HEARTBEAT (Bug 46)
+-- =============================================================
+-- Tabla mínima usada por .github/workflows/keep-alive.yml para
+-- generar actividad REAL de DB. Los GET con anon responden 200
+-- pero NO cuentan como actividad → Supabase free pausa a 7d aunque
+-- el workflow esté verde. Un INSERT sí cuenta.
+--
+-- RLS: anon SOLO puede INSERT. Sin SELECT/UPDATE/DELETE.
+-- Mínimo privilegio formal — la tabla no es legible desde el cliente.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.keep_alive_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ts timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.keep_alive_log ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON public.keep_alive_log FROM anon;
+
+DROP POLICY IF EXISTS keep_alive_anon_insert ON public.keep_alive_log;
+CREATE POLICY keep_alive_anon_insert ON public.keep_alive_log
+  FOR INSERT TO anon WITH CHECK (true);
+
+GRANT INSERT ON public.keep_alive_log TO anon;
