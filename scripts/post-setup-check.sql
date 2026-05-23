@@ -147,6 +147,7 @@ WITH tablas_sin_policy AS (
   WHERE c.relnamespace = 'public'::regnamespace
     AND c.relkind = 'r'
     AND c.relrowsecurity = true
+    AND c.relname <> 'keep_alive_log'  -- keep_alive_log: solo anon INSERT, sin SELECT por diseño (keep-alive Bug 46)
   GROUP BY c.relname
   HAVING COUNT(p.oid) = 0
 )
