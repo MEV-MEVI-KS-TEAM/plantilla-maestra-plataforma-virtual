@@ -1,15 +1,29 @@
 name: Keep Supabase Alive
+
 on:
   schedule:
-    - cron: '0 12 */3 * *'
+    - cron: '0 12 * * *'
   workflow_dispatch:
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase
+      - name: Heartbeat INSERT (actividad real de DB)
         run: |
-          curl -s -o /dev/null \
+          curl -fsS -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/keep_alive_log" \
+            --retry 3 --retry-delay 5 --retry-all-errors \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/materias?select=id&limit=1"
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{}'
+          echo "Heartbeat PV OK"
+      - name: Notify on failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.ALERT_WEBHOOK_URL }}" ]; then
+            curl -s -X POST "${{ secrets.ALERT_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"content\":\"🚨 keep-alive PV falló — repo ${{ github.repository }}, Supabase posiblemente pausado.\"}"
+          fi
