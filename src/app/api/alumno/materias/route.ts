@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getMesesByModalidad, getMateriasPorMesByModalidad } from '@/lib/modalidades'
 
 export async function GET() {
   try {
@@ -8,7 +7,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    // ── Alumno: nivel + meses desbloqueados + duración (modalidad) ────────────
+    // ── Alumno: nivel + meses desbloqueados ──────────────────────────────────
     const { data: alumno } = await supabase
       .from('alumnos')
       .select('nivel, meses_desbloqueados, modalidad, duracion_meses')
@@ -25,9 +24,6 @@ export async function GET() {
     }
     const nivel              = row.nivel
     const mesesDesbloqueados = row.meses_desbloqueados ?? 0
-    const duracionMeses      = row.duracion_meses ?? getMesesByModalidad(row.modalidad)
-    const materiasPorMes     = getMateriasPorMesByModalidad(row.modalidad)
-    const limiteMaterias     = Math.max(0, mesesDesbloqueados * materiasPorMes)
 
     // ── Materias del nivel del alumno con meses y semanas ───────────────────
     const { data: materias, error } = await supabase
@@ -68,11 +64,11 @@ export async function GET() {
       (a, b) => (a.orden ?? 0) - (b.orden ?? 0)
     )
 
-    let idxRegular = 0
     const result = sorted.map(mat => {
       const meses        = mat.meses_contenido ?? []
       const totalSemanas = meses.reduce((acc, mes) => acc + (mes.semanas?.length ?? 0), 0)
       const esTutorial   = mat.nivel === 'demo' || mat.nombre.toLowerCase().includes('tutor')
+      const numeroMes    = meses.length > 0 ? Math.min(...meses.map(m => m.numero_mes)) : 1
 
       // Tutoría: siempre visible (estándar MEV)
       if (esTutorial) {
@@ -83,15 +79,15 @@ export async function GET() {
           icono:          mat.icono       ?? '📚',
           color:          mat.color       ?? '#1565C0',
           orden:          mat.orden       ?? 0,
+          numero_mes:     numeroMes,
           total_meses:    meses.length,
           total_semanas:  totalSemanas,
           disponible:     true,
         }
       }
 
-      // Materia regular: idx separado, NO el de la iteración
-      const disponible = mesesDesbloqueados > 0 && idxRegular < limiteMaterias
-      idxRegular++
+      // Materia regular: gating por mes (numero_mes <= meses_desbloqueados)
+      const disponible = numeroMes <= mesesDesbloqueados
 
       return {
         id:             mat.id,
@@ -100,6 +96,7 @@ export async function GET() {
         icono:          mat.icono       ?? '📚',
         color:          mat.color       ?? '#1565C0',
         orden:          mat.orden       ?? 0,
+        numero_mes:     numeroMes,
         total_meses:    meses.length,
         total_semanas:  totalSemanas,
         disponible,
