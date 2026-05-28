@@ -86,7 +86,11 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
-    const { data: { publicUrl } } = admin.storage.from('documentos').getPublicUrl(storagePath)
+    const { data: signedData, error: signedError } = await admin.storage
+      .from('documentos')
+      .createSignedUrl(storagePath, 3600)
+    if (signedError) return NextResponse.json({ error: signedError.message }, { status: 500 })
+    const signedUrl = signedData?.signedUrl ?? null
 
     const { error: upsertError } = await admin
       .from('documentos_alumno')
@@ -94,7 +98,7 @@ export async function POST(req: NextRequest) {
         alumno_id: alumno.id,
         tipo_documento: tipo,
         nombre_archivo: archivo.name,
-        url_archivo: publicUrl,
+        url_archivo: signedUrl,
         verificado: false,
         fecha_subida: new Date().toISOString(),
       }, { onConflict: 'alumno_id,tipo_documento' })
