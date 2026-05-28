@@ -102,7 +102,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-30 h-screen flex flex-col transition-transform duration-300 md:translate-x-0 ${
+        className={`fixed top-0 left-0 z-40 h-screen flex flex-col transition-transform duration-300 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ width: 260, background: sidebarBg, borderRight: `1px solid ${sidebarBorder}` }}
