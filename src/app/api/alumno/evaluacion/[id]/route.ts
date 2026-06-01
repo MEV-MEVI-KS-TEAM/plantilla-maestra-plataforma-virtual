@@ -98,7 +98,18 @@ export async function GET(
           .slice()
           .sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
         const idx = ordenadas.findIndex(m => m.id === ev.materia_id)
-        if (idx === -1 || idx >= limiteMaterias) {
+
+        // Acreditadas: bypass del gating de índice
+        const { data: califEv } = await supabase
+          .from('calificaciones')
+          .select('materia_id')
+          .eq('alumno_id', alumno.id)
+          .eq('materia_id', ev.materia_id ?? '')
+          .eq('acreditado', true)
+          .maybeSingle()
+        const estaAcreditada = !!califEv
+
+        if (!estaAcreditada && (idx === -1 || idx >= limiteMaterias)) {
           return NextResponse.json({ error: 'No tienes acceso a esta evaluación' }, { status: 403 })
         }
       }

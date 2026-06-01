@@ -60,19 +60,31 @@ export async function GET(
     } else if (alumno.meses_desbloqueados <= 0) {
       return Response.json({ error: 'Aún no tienes meses desbloqueados. Contacta a tu administrador.' }, { status: 403 })
     } else {
-      const { data: planMaterias } = await admin
-        .from('materias')
-        .select('id, orden')
-        .eq('nivel', alumno.nivel)
-        .eq('activa', true)
-        .order('orden')
+      // Acreditadas: bypass del gating de índice
+      const { data: califData } = await admin
+        .from('calificaciones')
+        .select('materia_id')
+        .eq('alumno_id', user.id)
+        .eq('materia_id', params.id)
+        .eq('acreditado', true)
+        .maybeSingle()
+      const estaAcreditada = !!califData
 
-      const ordenadas = ((planMaterias ?? []) as { id: string; orden: number | null }[])
-        .slice()
-        .sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
-      const idx = ordenadas.findIndex(m => m.id === params.id)
-      if (idx === -1 || idx >= limiteMaterias) {
-        return Response.json({ error: 'Esta materia aún no está disponible en tu progreso mensual.' }, { status: 403 })
+      if (!estaAcreditada) {
+        const { data: planMaterias } = await admin
+          .from('materias')
+          .select('id, orden')
+          .eq('nivel', alumno.nivel)
+          .eq('activa', true)
+          .order('orden')
+
+        const ordenadas = ((planMaterias ?? []) as { id: string; orden: number | null }[])
+          .slice()
+          .sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
+        const idx = ordenadas.findIndex(m => m.id === params.id)
+        if (idx === -1 || idx >= limiteMaterias) {
+          return Response.json({ error: 'Esta materia aún no está disponible en tu progreso mensual.' }, { status: 403 })
+        }
       }
     }
 
