@@ -43,7 +43,7 @@ export const CONFIG = {
   },
 
   // === NIVELES ACADÉMICOS ===
-  niveles: ['secundaria', 'preparatoria'] as const,
+  niveles: ['secundaria', 'preparatoria', 'licenciatura'] as const,
 
   // === MODALIDADES (cliente activa/desactiva) ===
   // Si solo 3 meses: poner activa:false en 6meses

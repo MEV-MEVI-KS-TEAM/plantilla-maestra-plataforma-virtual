@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
 CREATE TABLE IF NOT EXISTS public.alumnos (
   id                   UUID        PRIMARY KEY REFERENCES public.usuarios(id) ON DELETE CASCADE,
   matricula            TEXT        UNIQUE,
-  nivel                TEXT        CHECK (nivel IN ('secundaria', 'preparatoria')),
+  nivel                TEXT        CHECK (nivel IN ('secundaria', 'preparatoria', 'licenciatura')),
   modalidad            TEXT        CHECK (modalidad IN ('6_meses', '3_meses')),
   es_sindicalizado     BOOLEAN     NOT NULL DEFAULT false,
   sindicato            TEXT,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.materias (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre      TEXT        NOT NULL,
   descripcion TEXT,
-  nivel       TEXT        CHECK (nivel IN ('secundaria', 'preparatoria', 'demo')),
+  nivel       TEXT        CHECK (nivel IN ('secundaria', 'preparatoria', 'demo', 'licenciatura')),
   orden       INTEGER,
   icono       TEXT,
   color       TEXT,

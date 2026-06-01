@@ -413,6 +413,7 @@ export default function RegisterPage() {
                     <option value="">Selecciona…</option>
                     <option value="secundaria">Secundaria</option>
                     <option value="preparatoria">Preparatoria</option>
+                    <option value="licenciatura">Licenciatura</option>
                   </select>
                 </div>
                 <div>

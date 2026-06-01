@@ -15,7 +15,7 @@ export interface SignUpData {
   email:            string
   password:         string
   telefono:         string
-  nivel:            'secundaria' | 'preparatoria'
+  nivel:            'secundaria' | 'preparatoria' | 'licenciatura'
   modalidad:        ModalidadId
   esSindicalizado:  boolean
   sindicato?:       string | null
