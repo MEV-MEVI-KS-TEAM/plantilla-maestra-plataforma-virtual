@@ -204,8 +204,8 @@ export async function POST(request: NextRequest) {
     if (!nombre || !email || !password) {
       return NextResponse.json({ error: 'nombre, email y password son requeridos' }, { status: 400 })
     }
-    if (!nivel || !['secundaria', 'preparatoria', 'excel'].includes(nivel)) {
-      return NextResponse.json({ error: 'nivel es requerido (secundaria, preparatoria o excel)' }, { status: 400 })
+    if (!nivel || !['secundaria', 'preparatoria', 'licenciatura', 'excel'].includes(nivel)) {
+      return NextResponse.json({ error: 'nivel es requerido (secundaria, preparatoria, licenciatura o excel)' }, { status: 400 })
     }
 
     const admin = createAdminClient()
