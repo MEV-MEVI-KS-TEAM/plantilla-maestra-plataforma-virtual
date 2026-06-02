@@ -11,7 +11,7 @@ export async function GET() {
     // ── Alumno: nivel + meses desbloqueados + duración (modalidad) ────────────
     const { data: alumno } = await supabase
       .from('alumnos')
-      .select('nivel, meses_desbloqueados, modalidad, duracion_meses')
+      .select('nivel, meses_desbloqueados, modalidad, duracion_meses, carrera')
       .eq('id', user.id)
       .single()
 
@@ -22,6 +22,7 @@ export async function GET() {
       meses_desbloqueados: number
       modalidad?: string | null
       duracion_meses?: number | null
+      carrera?: string | null
     }
     const nivel              = row.nivel
     const mesesDesbloqueados = row.meses_desbloqueados ?? 0
@@ -40,7 +41,7 @@ export async function GET() {
     )
 
     // ── Materias del nivel del alumno con meses y semanas ───────────────────
-    const { data: materias, error } = await supabase
+    let materiasQuery = supabase
       .from('materias')
       .select(`
         id,
@@ -60,7 +61,17 @@ export async function GET() {
       `)
       .or(`nivel.eq.${nivel},nivel.eq.demo`)
       .eq('activa', true)
-      .order('orden')
+
+    if (nivel === 'licenciatura') {
+      if (row.carrera) {
+        materiasQuery = materiasQuery.eq('carrera', row.carrera)
+      }
+      if (row.modalidad) {
+        materiasQuery = materiasQuery.eq('modalidad', row.modalidad)
+      }
+    }
+
+    const { data: materias, error } = await materiasQuery.order('orden')
 
     if (error) {
       console.error('[api/alumno/materias] query error:', error)
