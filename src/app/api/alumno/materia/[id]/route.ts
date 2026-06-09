@@ -60,29 +60,43 @@ export async function GET(
     } else if (alumno.meses_desbloqueados <= 0) {
       return Response.json({ error: 'Aún no tienes meses desbloqueados. Contacta a tu administrador.' }, { status: 403 })
     } else {
-      // Acreditadas: bypass del gating de índice
+      // Acreditadas: bypass del gating de índice (no consumen lugar de la ventana)
       const { data: califData } = await admin
         .from('calificaciones')
         .select('materia_id')
         .eq('alumno_id', user.id)
-        .eq('materia_id', params.id)
         .eq('acreditado', true)
-        .maybeSingle()
-      const estaAcreditada = !!califData
+      const acreditadasSet = new Set(
+        ((califData ?? []) as { materia_id: string }[]).map(c => c.materia_id)
+      )
+      const estaAcreditada = acreditadasSet.has(params.id)
 
       if (!estaAcreditada) {
         const { data: planMaterias } = await admin
           .from('materias')
-          .select('id, orden')
+          .select('id, orden, nombre, nivel')
           .eq('nivel', alumno.nivel)
           .eq('activa', true)
           .order('orden')
 
-        const ordenadas = ((planMaterias ?? []) as { id: string; orden: number | null }[])
+        const ordenadas = ((planMaterias ?? []) as { id: string; orden: number | null; nombre: string; nivel: string }[])
           .slice()
           .sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
-        const idx = ordenadas.findIndex(m => m.id === params.id)
-        if (idx === -1 || idx >= limiteMaterias) {
+
+        // idxPendiente: MISMO conteo que el listado — tutoriales y acreditadas
+        // NO consumen lugar de la ventana; solo se cuentan materias pendientes.
+        let idxPendiente = 0
+        let disponible = false
+        for (const m of ordenadas) {
+          const esTut = m.nivel === 'demo' || m.nombre.toLowerCase().includes('tutor')
+          if (esTut || acreditadasSet.has(m.id)) continue
+          if (m.id === params.id) {
+            disponible = idxPendiente < limiteMaterias
+            break
+          }
+          idxPendiente++
+        }
+        if (!disponible) {
           return Response.json({ error: 'Esta materia aún no está disponible en tu progreso mensual.' }, { status: 403 })
         }
       }

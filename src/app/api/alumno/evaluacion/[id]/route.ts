@@ -87,30 +87,46 @@ export async function GET(
       }
 
       if (ev.materia_id && nivelMat && nivelMat === alumno.nivel) {
-        const { data: planMaterias } = await supabase
-          .from('materias')
-          .select('id, orden')
-          .eq('nivel', alumno.nivel)
-          .eq('activa', true)
-          .order('orden')
-
-        const ordenadas = ((planMaterias ?? []) as { id: string; orden: number | null }[])
-          .slice()
-          .sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
-        const idx = ordenadas.findIndex(m => m.id === ev.materia_id)
-
-        // Acreditadas: bypass del gating de índice
+        // Acreditadas: bypass del gating de índice (no consumen lugar de la ventana)
         const { data: califEv } = await supabase
           .from('calificaciones')
           .select('materia_id')
           .eq('alumno_id', alumno.id)
-          .eq('materia_id', ev.materia_id ?? '')
           .eq('acreditado', true)
-          .maybeSingle()
-        const estaAcreditada = !!califEv
+        const acreditadasSet = new Set(
+          ((califEv ?? []) as { materia_id: string }[]).map(c => c.materia_id)
+        )
+        const estaAcreditada = acreditadasSet.has(ev.materia_id ?? '')
 
-        if (!estaAcreditada && (idx === -1 || idx >= limiteMaterias)) {
-          return NextResponse.json({ error: 'No tienes acceso a esta evaluación' }, { status: 403 })
+        if (!estaAcreditada) {
+          const { data: planMaterias } = await supabase
+            .from('materias')
+            .select('id, orden, nombre, nivel')
+            .eq('nivel', alumno.nivel)
+            .eq('activa', true)
+            .order('orden')
+
+          const ordenadas = ((planMaterias ?? []) as { id: string; orden: number | null; nombre: string; nivel: string }[])
+            .slice()
+            .sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
+
+          // idxPendiente: MISMO conteo que el listado — tutoriales y acreditadas
+          // NO consumen lugar de la ventana; solo se cuentan materias pendientes.
+          let idxPendiente = 0
+          let disponible = false
+          for (const m of ordenadas) {
+            const esTut = m.nivel === 'demo' || m.nombre.toLowerCase().includes('tutor')
+            if (esTut || acreditadasSet.has(m.id)) continue
+            if (m.id === ev.materia_id) {
+              disponible = idxPendiente < limiteMaterias
+              break
+            }
+            idxPendiente++
+          }
+
+          if (!disponible) {
+            return NextResponse.json({ error: 'No tienes acceso a esta evaluación' }, { status: 403 })
+          }
         }
       }
     }
