@@ -38,6 +38,7 @@ export async function GET() {
         activo,
         meses_desbloqueados,
         inscripcion_pagada,
+        contactado_whatsapp,
         created_at,
         usuarios!inner(
           nombre,
@@ -56,7 +57,7 @@ export async function GET() {
       type Row = {
         id: string; matricula?: string; nivel?: string; modalidad?: string
         sindicalizado?: boolean; activo?: boolean; meses_desbloqueados?: number
-        inscripcion_pagada?: boolean; created_at: string
+        inscripcion_pagada?: boolean; contactado_whatsapp?: boolean; created_at: string
         usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null } | null
       }
       const result = (data as unknown as Row[]).map(a => {
@@ -71,6 +72,7 @@ export async function GET() {
           meses_desbloqueados:  a.meses_desbloqueados ?? 0,
           duracion_meses:       getMesesByModalidad(a.modalidad),
           inscripcion_pagada:   a.inscripcion_pagada ?? false,
+          contactado_whatsapp:  a.contactado_whatsapp ?? false,
           created_at:           a.created_at,
           nombre_completo:      [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || '—',
           email:                u?.email ?? '—',
@@ -93,6 +95,7 @@ export async function GET() {
         activo,
         meses_desbloqueados,
         inscripcion_pagada,
+        contactado_whatsapp,
         created_at,
         usuario_id,
         usuarios!alumnos_usuario_id_fkey(
@@ -112,7 +115,7 @@ export async function GET() {
       type Row2 = {
         id: string; matricula?: string; nivel?: string; modalidad?: string
         sindicalizado?: boolean; activo?: boolean; meses_desbloqueados?: number
-        inscripcion_pagada?: boolean; created_at: string; usuario_id?: string
+        inscripcion_pagada?: boolean; contactado_whatsapp?: boolean; created_at: string; usuario_id?: string
         usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null } | null
       }
       const result2 = (data2 as unknown as Row2[]).map(a => {
@@ -127,6 +130,7 @@ export async function GET() {
           meses_desbloqueados:  a.meses_desbloqueados ?? 0,
           duracion_meses:       getMesesByModalidad(a.modalidad),
           inscripcion_pagada:   a.inscripcion_pagada ?? false,
+          contactado_whatsapp:  a.contactado_whatsapp ?? false,
           created_at:           a.created_at,
           nombre_completo:      [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || '—',
           email:                u?.email ?? '—',
@@ -152,7 +156,7 @@ export async function GET() {
     for (const a of (alumnos ?? []) as {
       id: string; matricula?: string; nivel?: string; modalidad?: string
       sindicalizado?: boolean; activo?: boolean; meses_desbloqueados?: number
-      inscripcion_pagada?: boolean; created_at: string
+      inscripcion_pagada?: boolean; contactado_whatsapp?: boolean; created_at: string
     }[]) {
       const { data: u } = await admin
         .from('usuarios')
@@ -169,6 +173,7 @@ export async function GET() {
         meses_desbloqueados:  a.meses_desbloqueados ?? 0,
         duracion_meses:       getMesesByModalidad(a.modalidad),
         inscripcion_pagada:   a.inscripcion_pagada ?? false,
+        contactado_whatsapp:  a.contactado_whatsapp ?? false,
         created_at:           a.created_at,
         nombre_completo:      [(u as {nombre?:string}|null)?.nombre, (u as {apellidos?:string}|null)?.apellidos].filter(Boolean).join(' ') || '—',
         email:                (u as {email?:string}|null)?.email ?? '—',
