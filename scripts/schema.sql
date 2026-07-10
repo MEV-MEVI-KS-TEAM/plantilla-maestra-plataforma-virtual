@@ -86,12 +86,14 @@ $$;
 --
 
 CREATE FUNCTION public.es_admin() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
     AS $$
-  SELECT EXISTS (
+BEGIN
+  RETURN EXISTS (
     SELECT 1 FROM public.usuarios
      WHERE id = auth.uid() AND rol = 'admin'
   );
+END;
 $$;
 
 --
@@ -1292,12 +1294,14 @@ CREATE POLICY "usuarios: ver propio perfil" ON public.usuarios FOR SELECT USING 
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
 SET search_path = public
 AS $$
-  SELECT public.es_admin();
+BEGIN
+  RETURN public.es_admin();
+END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
