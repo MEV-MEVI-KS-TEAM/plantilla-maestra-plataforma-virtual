@@ -739,3 +739,21 @@ CREATE POLICY keep_alive_anon_insert ON public.keep_alive_log
   FOR INSERT TO anon WITH CHECK (true);
 
 GRANT INSERT ON public.keep_alive_log TO anon;
+
+-- ============================================================================
+-- Bug 47 — Cerrar escalada de privilegios de rol (usuarios/alumnos).
+-- ----------------------------------------------------------------------------
+-- Supabase otorga UPDATE de TABLA a `authenticated` sobre las tablas de public
+-- vía default privileges. Con la policy "usuarios: actualizar propio perfil"
+-- (id = auth.uid()) eso permitía que un alumno hiciera
+--   supabase.from('usuarios').update({ rol: 'admin' }).eq('id', suId)
+-- y se volviera admin. Se revoca el UPDATE amplio y se re-otorga SOLO las
+-- columnas de perfil inofensivas. En `alumnos` se revoca UPDATE por completo:
+-- su RLS ya es admin-only (es_admin()) y el panel admin escribe con service_role.
+-- Debe correr DESPUÉS de crear las tablas (por eso va al final del schema).
+-- Para retrofit de clientes ya desplegados: scripts/fix-escalada-rol.sql.
+-- ============================================================================
+REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
+REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
+GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
+REVOKE UPDATE ON public.alumnos  FROM anon, authenticated;

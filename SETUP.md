@@ -23,7 +23,16 @@ Editar SOLO este archivo: src/lib/config.ts
 4. SQL Editor → ejecutar scripts/distribuir-meses.sql
 5. SQL Editor → ejecutar scripts/create-admin.sql
    (cambiar email y password del admin)
-6. Copiar: Project URL, anon key, service_role key
+6. **Módulo Cursos y Diplomados** → ejecutar `scripts/migracion-cursos-diplomados.sql`
+   (crea las 5 tablas curso_* + el bucket privado `cursos`). Corre DESPUÉS de schema.sql.
+   Si las políticas de storage fallan por ownership, crearlas desde la UI (ver el
+   comentario del archivo).
+7. **Buckets de Storage** (todos privados):
+   - `avatars` — foto de perfil del alumno
+   - `documentos` — documentos del alumno (CURP, acta, etc.)
+   - `cursos` — portadas y materiales PDF de Cursos y Diplomados · **límite 10 MB**
+     (lo crea la migración del paso 6; verificar que quede `public = false`)
+8. Copiar: Project URL, anon key, service_role key
 
 ## Paso 4 — Variables de entorno (5 min)
 Copiar .env.example → .env.local y llenar con datos de Supabase
