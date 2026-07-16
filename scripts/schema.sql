@@ -1462,3 +1462,22 @@ AS $$
    GROUP BY m.inicio
    ORDER BY m.inicio;
 $$;
+-- Bug 52 — Cerrar escalada de privilegios de rol (usuarios/alumnos)
+-- =============================================================
+-- SÍNTOMA: un alumno autenticado se vuelve admin desde el navegador:
+--   supabase.from('usuarios').update({ rol: 'admin' }).eq('id', suId)
+-- CAUSA: Supabase otorga UPDATE de TABLA a `authenticated` sobre las
+--   tablas de public (default privileges) y la policy RLS de UPDATE de
+--   usuarios ("actualizar propio perfil") solo exige USING (id = auth.uid())
+--   SIN WITH CHECK ni restricción de columna → el usuario reescribe su
+--   propio `rol`. Este fix opera a nivel de GRANT de columna (capa
+--   ortogonal a RLS): sin privilegio sobre `rol`, el UPDATE falla con 42501.
+-- SEGURO: ningún flujo legítimo escribe usuarios/alumnos con la sesión del
+--   usuario — perfil (SELECT), avatar/registro y panel admin usan
+--   service_role. Se re-otorga UPDATE solo sobre columnas de perfil.
+-- Retrofit de clientes ya desplegados: scripts/fix-escalada-rol.sql.
+-- =============================================================
+REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
+REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
+GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
+REVOKE UPDATE ON public.alumnos  FROM anon, authenticated;

@@ -678,11 +678,15 @@ CREATE INDEX IF NOT EXISTS idx_pagos_created_at         ON public.pagos (created
 --  (Ejecutar en SQL Editor de Supabase o desde el Dashboard)
 -- ============================================================
 
+-- NOTA CLIENTES NUEVOS: los 4 buckets son necesarios desde el día 1.
+-- 'recibos' guarda los PDF de recibo de pago (Fase 3 Panel Admin Unificado);
+-- son archivos pequeños, de ahí el límite de 2MB.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('avatares',    'avatares',    true,  5242880,   ARRAY['image/jpeg','image/png','image/webp']),
   ('documentos',  'documentos',  false, 10485760,  ARRAY['image/jpeg','image/png','application/pdf']),
-  ('constancias', 'constancias', false, 10485760,  ARRAY['application/pdf','image/jpeg','image/png'])
+  ('constancias', 'constancias', false, 10485760,  ARRAY['application/pdf','image/jpeg','image/png']),
+  ('recibos',     'recibos',     false, 2097152,   ARRAY['application/pdf'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Políticas de Storage
@@ -726,6 +730,22 @@ CREATE POLICY "constancias: ver propio"
 CREATE POLICY "constancias: admin sube"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'constancias' AND public.es_admin());
+
+-- Recibos de pago: el dueño (alumno) y el staff pueden verlos;
+-- solo el staff los sube (en la práctica los genera el servidor con
+-- service role; el alumno los recibe vía signed URL por WhatsApp).
+CREATE POLICY "recibos: ver propio"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'recibos' AND (
+      auth.uid()::TEXT = (storage.foldername(name))[1]
+      OR public.es_staff()
+    )
+  );
+
+CREATE POLICY "recibos: staff sube"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'recibos' AND public.es_staff());
 
 
 -- ============================================================
@@ -872,3 +892,22 @@ AS $$
    GROUP BY m.inicio
    ORDER BY m.inicio;
 $$;
+-- Bug 52 — Cerrar escalada de privilegios de rol (usuarios/alumnos)
+-- =============================================================
+-- SÍNTOMA: un alumno autenticado se vuelve admin desde el navegador:
+--   supabase.from('usuarios').update({ rol: 'admin' }).eq('id', suId)
+-- CAUSA: Supabase otorga UPDATE de TABLA a `authenticated` sobre las
+--   tablas de public (default privileges) y la policy RLS de UPDATE de
+--   usuarios ("actualizar propio perfil") solo exige USING (id = auth.uid())
+--   SIN WITH CHECK ni restricción de columna → el usuario reescribe su
+--   propio `rol`. Este fix opera a nivel de GRANT de columna (capa
+--   ortogonal a RLS): sin privilegio sobre `rol`, el UPDATE falla con 42501.
+-- SEGURO: ningún flujo legítimo escribe usuarios/alumnos con la sesión del
+--   usuario — perfil (SELECT), avatar/registro y panel admin usan
+--   service_role. Se re-otorga UPDATE solo sobre columnas de perfil.
+-- Retrofit de clientes ya desplegados: scripts/fix-escalada-rol.sql.
+-- =============================================================
+REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
+REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
+GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
+REVOKE UPDATE ON public.alumnos  FROM anon, authenticated;
