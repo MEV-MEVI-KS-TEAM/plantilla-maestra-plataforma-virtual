@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   Home, BookOpen, BarChart3, Trophy, FolderOpen,
-  ClipboardList, LogOut, X, Users, Settings, LayoutDashboard,
+  ClipboardList, LogOut, X, Users, Settings, LayoutDashboard, GraduationCap,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types'
@@ -25,12 +25,13 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users           },
     { label: 'Estado de Cuenta', href: '/admin/estado-cuenta', emoji: '🧾', icon: BarChart3       },
     { label: 'Contenido',        href: '/admin/contenido',     emoji: '📚', icon: BookOpen        },
+    { label: 'Gestionar Cursos', href: '/admin/cursos',        emoji: '🎓', icon: GraduationCap   },
     { label: 'Documentos',       href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
     { label: 'Usuarios',         href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
     { label: 'Configuración',    href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
   ],
   // Rol acotado: ve Alumnos (lectura + registrar pagos) y Estado de Cuenta.
-  // Usuarios/Contenido/Documentos/Configuración/Reportes quedan ocultos.
+  // Usuarios/Contenido/Documentos/Configuración/Reportes/Cursos quedan ocultos.
   SECRETARIO: [
     { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users     },
     { label: 'Estado de Cuenta', href: '/admin/estado-cuenta', emoji: '🧾', icon: BarChart3 },
@@ -57,8 +58,18 @@ interface SidebarProps {
 export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
-  const navItems = NAV_ITEMS[role]
   const [pendientesCount, setPendientesCount] = useState(0)
+  // El alumno solo ve "Cursos y Diplomados" si tiene ≥1 curso publicado asignado
+  const [tieneCursos, setTieneCursos] = useState(false)
+
+  // Se agrega al FINAL (no en medio) para no desplazar 'Constancia' fuera de
+  // los 5 ítems que muestra la barra inferior en móvil.
+  const navItems = role === 'ALUMNO' && tieneCursos
+    ? [
+        ...NAV_ITEMS.ALUMNO,
+        { label: 'Cursos y Diplomados', href: '/alumno/cursos', emoji: '🎓', icon: GraduationCap },
+      ]
+    : NAV_ITEMS[role]
 
   useEffect(() => {
     if (role !== 'ADMIN') return
@@ -74,6 +85,16 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
     fetchCount()
     const interval = setInterval(fetchCount, 60_000)
     return () => { cancelled = true; clearInterval(interval) }
+  }, [role])
+
+  useEffect(() => {
+    if (role !== 'ALUMNO') return
+    let cancelled = false
+    fetch('/api/alumno/cursos/tiene')
+      .then(r => r.ok ? r.json() : { tiene: false })
+      .then(json => { if (!cancelled) setTieneCursos(Boolean(json.tiene)) })
+      .catch(() => { /* silencioso */ })
+    return () => { cancelled = true }
   }, [role])
 
   const initials = userName.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()

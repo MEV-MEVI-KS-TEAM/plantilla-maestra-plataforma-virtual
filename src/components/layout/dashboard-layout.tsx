@@ -49,8 +49,11 @@ export function DashboardLayout({
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main content area */}
-      <div className="flex flex-col flex-1 min-w-0 md:ml-[260px] pb-[60px] md:pb-0">
+      {/* Main content area.
+          En móvil se reserva la altura de la bottom-nav (60px) + el safe-area
+          inferior (home-indicator de iPhones) para que el footer nunca quede
+          tapado por la barra fija. En desktop no hay bottom-nav → sin padding. */}
+      <div className="flex flex-col flex-1 min-w-0 md:ml-[260px] pb-[calc(60px_+_env(safe-area-inset-bottom,0px))] md:pb-0">
         <Header
           pageTitle={translatedTitle}
           userName={userName}
