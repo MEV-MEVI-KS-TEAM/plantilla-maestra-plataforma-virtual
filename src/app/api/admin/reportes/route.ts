@@ -80,6 +80,24 @@ export async function GET() {
         created_at: p.created_at,
       }))
 
+    // Desglose por semana (lunes, 8 últimas) y por mes (6 últimos) — agregado
+    // server-side con GROUP BY date_trunc (RPC), no en JS. Degrada a [] si la
+    // función aún no existe en la BD (migración 20260716150000 sin aplicar).
+    let ingresosSemanales: { semana_inicio: string; total: number }[] = []
+    let ingresosMensuales: { mes: string; total: number }[] = []
+    const [semRes, mesRes] = await Promise.all([
+      admin.rpc('reporte_ingresos_semanales', { num_semanas: 8 }),
+      admin.rpc('reporte_ingresos_mensuales', { num_meses: 6 }),
+    ])
+    if (!semRes.error && Array.isArray(semRes.data)) {
+      ingresosSemanales = (semRes.data as { semana_inicio: string; total: number | string }[])
+        .map(r => ({ semana_inicio: r.semana_inicio, total: Number(r.total ?? 0) }))
+    }
+    if (!mesRes.error && Array.isArray(mesRes.data)) {
+      ingresosMensuales = (mesRes.data as { mes: string; total: number | string }[])
+        .map(r => ({ mes: r.mes, total: Number(r.total ?? 0) }))
+    }
+
     const { data: califs } = await admin
       .from('calificaciones')
       .select('materia_id, acreditado, materias(nombre)')
@@ -133,6 +151,9 @@ export async function GET() {
       ingresos_mes_actual: ingresosMesActual,
       ingresos_totales: totalIngresos,
       ultimos_pagos: ultimosPagos,
+      // Fase 4 — desglose de tendencia (solo agrega, no rompe lo anterior)
+      ingresos_ultimas_8_semanas: ingresosSemanales,
+      ingresos_ultimos_6_meses: ingresosMensuales,
     })
   } catch {
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
