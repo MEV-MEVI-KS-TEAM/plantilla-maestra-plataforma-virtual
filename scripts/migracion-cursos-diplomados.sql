@@ -243,10 +243,25 @@ VALUES ('cursos', 'cursos', false, 10485760)
 ON CONFLICT (id) DO UPDATE
   SET public = false, file_size_limit = 10485760;
 
+-- SELECT restringido a inscritos (o admin): el path es
+-- cursos/{curso_id}/{leccion_id}/{archivo}, así que el curso_id es el primer
+-- segmento (storage.foldername(name))[1]. Se compara curso_id::text contra ese
+-- segmento (ambos text) en vez de castear el path a uuid: un path malformado
+-- simplemente no matchea, en vez de tumbar la query con un error de cast.
 DROP POLICY IF EXISTS "cursos storage: select authenticated" ON storage.objects;
-CREATE POLICY "cursos storage: select authenticated" ON storage.objects
+DROP POLICY IF EXISTS "cursos: ver si inscrito o admin" ON storage.objects;
+CREATE POLICY "cursos: ver si inscrito o admin" ON storage.objects
   FOR SELECT TO authenticated
-  USING (bucket_id = 'cursos');
+  USING (
+    bucket_id = 'cursos' AND (
+      public.es_admin() OR
+      EXISTS (
+        SELECT 1 FROM public.curso_inscripciones ci
+        WHERE ci.alumno_id = auth.uid()
+          AND ci.curso_id::text = (storage.foldername(name))[1]
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "cursos storage: insert admin" ON storage.objects;
 CREATE POLICY "cursos storage: insert admin" ON storage.objects
