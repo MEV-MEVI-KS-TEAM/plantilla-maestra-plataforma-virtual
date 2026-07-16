@@ -97,6 +97,23 @@ END;
 $$;
 
 --
+-- Name: es_staff(); Type: FUNCTION; Schema: public; Owner: -
+-- Staff = admin O secretario. Solo para lectura básica de alumnos/usuarios
+-- y registro de pagos; es_admin() se mantiene intacto para todo lo demás.
+--
+
+CREATE FUNCTION public.es_staff() RETURNS boolean
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.usuarios
+     WHERE id = auth.uid() AND rol IN ('admin', 'secretario')
+  );
+END;
+$$;
+
+--
 -- Name: generar_matricula(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -430,7 +447,7 @@ CREATE TABLE public.usuarios (
     foto_url text,
     rol text DEFAULT 'alumno'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT usuarios_rol_check CHECK ((rol = ANY (ARRAY['alumno'::text, 'admin'::text])))
+    CONSTRAINT usuarios_rol_check CHECK ((rol = ANY (ARRAY['alumno'::text, 'admin'::text, 'secretario'::text])))
 );
 
 --
@@ -1277,7 +1294,7 @@ CREATE POLICY "usuarios: admin puede insertar" ON public.usuarios FOR INSERT WIT
 -- Name: usuarios usuarios: ver propio perfil; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "usuarios: ver propio perfil" ON public.usuarios FOR SELECT USING (((id = auth.uid()) OR public.es_admin()));
+CREATE POLICY "usuarios: ver propio perfil" ON public.usuarios FOR SELECT USING (((id = auth.uid()) OR public.es_staff()));
 
 --
 --
@@ -1324,3 +1341,196 @@ DO $$ BEGIN
       UNIQUE (evaluacion_id, pregunta);
   END IF;
 END $$;
+
+-- =============================================================
+-- MÓDULO DE PAGOS — Panel Admin Unificado (Fase 1)
+-- =============================================================
+-- Registro manual de pagos por Control Escolar (admin) dentro de
+-- Plataforma Virtual. Sustituye al Sistema de Control Escolar para
+-- clientes nuevos. Idempotente: IF NOT EXISTS / DROP POLICY IF EXISTS.
+--
+-- RLS base: admin gestiona todo vía es_admin(); alumno solo SELECT de
+-- sus propios pagos (alumnos.id = usuarios.id = auth.uid()). El bloque
+-- ROL SECRETARIO (más abajo) reemplaza estas policies por la versión
+-- separada por operación con es_staff() para SELECT/INSERT.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.pagos (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumno_id        UUID NOT NULL REFERENCES public.alumnos(id) ON DELETE CASCADE,
+  monto            NUMERIC(10,2) NOT NULL CHECK (monto > 0),
+  concepto         TEXT NOT NULL DEFAULT 'mensualidad',
+    -- 'inscripcion' | 'mensualidad' | 'otro'
+  mes_desbloqueado INTEGER CHECK (mes_desbloqueado IS NULL OR mes_desbloqueado > 0),
+    -- NULL si concepto = 'inscripcion' u 'otro'
+  metodo_pago      TEXT NOT NULL,
+    -- 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'OTRO'
+  referencia       TEXT,
+  registrado_por   UUID NOT NULL REFERENCES auth.users(id),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pagos_alumno     ON public.pagos (alumno_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_created_at ON public.pagos (created_at DESC);
+
+ALTER TABLE public.pagos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "pagos: ver propios" ON public.pagos;
+CREATE POLICY "pagos: ver propios" ON public.pagos FOR SELECT USING (((alumno_id = auth.uid()) OR public.es_admin()));
+
+DROP POLICY IF EXISTS "pagos: admin gestiona" ON public.pagos;
+CREATE POLICY "pagos: admin gestiona" ON public.pagos USING (public.es_admin()) WITH CHECK (public.es_admin());
+
+-- =============================================================
+-- ROL SECRETARIO — ajuste condicional de policies de pagos
+-- =============================================================
+-- Con la tabla pagos ya creada arriba, separa la policy ALL de admin
+-- en policies por operación:
+--   SELECT/INSERT → es_staff()   (secretario consulta y registra)
+--   UPDATE/DELETE → es_admin()   (el secretario NO edita ni borra)
+-- Idempotente; el to_regclass() lo mantiene seguro también en BDs
+-- donde el módulo de pagos aún no se aplica.
+-- =============================================================
+DO $$
+BEGIN
+  IF to_regclass('public.pagos') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "pagos: ver propios"     ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin gestiona"  ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: staff registra"  ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin actualiza" ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin elimina"   ON public.pagos;
+
+    CREATE POLICY "pagos: ver propios" ON public.pagos
+      FOR SELECT USING (((alumno_id = auth.uid()) OR public.es_staff()));
+
+    CREATE POLICY "pagos: staff registra" ON public.pagos
+      FOR INSERT WITH CHECK (public.es_staff());
+
+    CREATE POLICY "pagos: admin actualiza" ON public.pagos
+      FOR UPDATE USING (public.es_admin()) WITH CHECK (public.es_admin());
+
+    CREATE POLICY "pagos: admin elimina" ON public.pagos
+      FOR DELETE USING (public.es_admin());
+  END IF;
+END $$;
+
+-- =============================================================
+-- ESTADO DE CUENTA — vista agregada de pagos por alumno (Fase 5)
+-- =============================================================
+-- Para /admin/estado-cuenta (staff). Reporta HECHOS, no conclusiones:
+-- "meses_sin_pago_registrado" = meses desbloqueados sin pago de
+-- mensualidad capturado (puede ser pago no capturado, cortesía o error).
+-- inscripcion_pagada viene de la columna existente (fuente de verdad).
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.estado_cuenta_alumnos()
+RETURNS TABLE (
+  alumno_id uuid,
+  nombre text,
+  apellidos text,
+  email text,
+  matricula text,
+  nivel text,
+  modalidad text,
+  meses_desbloqueados integer,
+  meses_con_pago integer,
+  meses_sin_pago_registrado integer,
+  inscripcion_pagada boolean,
+  fecha_ultimo_pago timestamptz
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT a.id,
+         u.nombre,
+         u.apellidos,
+         u.email,
+         a.matricula,
+         a.nivel,
+         a.modalidad,
+         a.meses_desbloqueados,
+         COALESCE(mp.meses_con_pago, 0)::integer,
+         GREATEST(a.meses_desbloqueados - COALESCE(mp.meses_con_pago, 0), 0)::integer,
+         a.inscripcion_pagada,
+         up.fecha_ultimo_pago
+    FROM public.alumnos a
+    JOIN public.usuarios u ON u.id = a.id
+    LEFT JOIN (
+      SELECT p.alumno_id, COUNT(DISTINCT p.mes_desbloqueado)::integer AS meses_con_pago
+        FROM public.pagos p
+       WHERE p.concepto = 'mensualidad'
+       GROUP BY p.alumno_id
+    ) mp ON mp.alumno_id = a.id
+    LEFT JOIN (
+      SELECT p.alumno_id, MAX(p.created_at) AS fecha_ultimo_pago
+        FROM public.pagos p
+       GROUP BY p.alumno_id
+    ) up ON up.alumno_id = a.id
+   WHERE a.activo = true
+   ORDER BY u.nombre, u.apellidos;
+$$;
+-- REPORTES DE INGRESOS — agregación por semana y mes (Fase 4)
+-- =============================================================
+-- Para /admin/reportes (admin-only vía API). GROUP BY date_trunc en
+-- America/Mexico_City, semana ISO (lunes), rellena periodos sin pagos
+-- con 0. SECURITY INVOKER: con service role ve todo; un alumno directo
+-- solo agregaría sus propios pagos (RLS).
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.reporte_ingresos_semanales(num_semanas integer DEFAULT 8)
+RETURNS TABLE (semana_inicio date, total numeric)
+LANGUAGE sql STABLE
+AS $$
+  WITH semanas AS (
+    SELECT generate_series(
+      date_trunc('week', (now() AT TIME ZONE 'America/Mexico_City')) - make_interval(weeks => num_semanas - 1),
+      date_trunc('week', (now() AT TIME ZONE 'America/Mexico_City')),
+      interval '1 week'
+    ) AS inicio
+  )
+  SELECT s.inicio::date AS semana_inicio,
+         COALESCE(SUM(p.monto), 0)::numeric AS total
+    FROM semanas s
+    LEFT JOIN public.pagos p
+      ON date_trunc('week', (p.created_at AT TIME ZONE 'America/Mexico_City')) = s.inicio
+   GROUP BY s.inicio
+   ORDER BY s.inicio;
+$$;
+
+CREATE OR REPLACE FUNCTION public.reporte_ingresos_mensuales(num_meses integer DEFAULT 6)
+RETURNS TABLE (mes text, total numeric)
+LANGUAGE sql STABLE
+AS $$
+  WITH meses AS (
+    SELECT generate_series(
+      date_trunc('month', (now() AT TIME ZONE 'America/Mexico_City')) - make_interval(months => num_meses - 1),
+      date_trunc('month', (now() AT TIME ZONE 'America/Mexico_City')),
+      interval '1 month'
+    ) AS inicio
+  )
+  SELECT to_char(m.inicio, 'YYYY-MM') AS mes,
+         COALESCE(SUM(p.monto), 0)::numeric AS total
+    FROM meses m
+    LEFT JOIN public.pagos p
+      ON date_trunc('month', (p.created_at AT TIME ZONE 'America/Mexico_City')) = m.inicio
+   GROUP BY m.inicio
+   ORDER BY m.inicio;
+$$;
+-- Bug 52 — Cerrar escalada de privilegios de rol (usuarios/alumnos)
+-- =============================================================
+-- SÍNTOMA: un alumno autenticado se vuelve admin desde el navegador:
+--   supabase.from('usuarios').update({ rol: 'admin' }).eq('id', suId)
+-- CAUSA: Supabase otorga UPDATE de TABLA a `authenticated` sobre las
+--   tablas de public (default privileges) y la policy RLS de UPDATE de
+--   usuarios ("actualizar propio perfil") solo exige USING (id = auth.uid())
+--   SIN WITH CHECK ni restricción de columna → el usuario reescribe su
+--   propio `rol`. Este fix opera a nivel de GRANT de columna (capa
+--   ortogonal a RLS): sin privilegio sobre `rol`, el UPDATE falla con 42501.
+-- SEGURO: ningún flujo legítimo escribe usuarios/alumnos con la sesión del
+--   usuario — perfil (SELECT), avatar/registro y panel admin usan
+--   service_role. Se re-otorga UPDATE solo sobre columnas de perfil.
+-- Retrofit de clientes ya desplegados: scripts/fix-escalada-rol.sql.
+-- =============================================================
+REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
+REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
+GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
+REVOKE UPDATE ON public.alumnos  FROM anon, authenticated;

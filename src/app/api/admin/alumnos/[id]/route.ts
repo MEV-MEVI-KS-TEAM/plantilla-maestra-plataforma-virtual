@@ -14,10 +14,14 @@ export async function GET(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    // Verificar rol ADMIN (normaliza mayúsculas)
-    const { data: usuarioAdmin } = await supabase.from('usuarios').select('rol').eq('id', user.id).single()
-    const rolAdmin = (usuarioAdmin?.rol as string | undefined)?.toUpperCase()
-    if (rolAdmin !== 'ADMIN') return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    // Detalle básico: staff (ADMIN o SECRETARIO). El secretario recibe la
+    // respuesta SIN notas internas ni documentos (solo lectura básica).
+    const { data: usuarioStaff } = await supabase.from('usuarios').select('rol').eq('id', user.id).single()
+    const viewerRol = (usuarioStaff?.rol as string | undefined)?.toUpperCase()
+    if (viewerRol !== 'ADMIN' && viewerRol !== 'SECRETARIO') {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    }
+    const esAdminViewer = viewerRol === 'ADMIN'
 
     const admin = createAdminClient()
 
@@ -60,11 +64,13 @@ export async function GET(
       }
     })
 
-    // ── Paso 4: documentos ────────────────────────────────────────────────────
-    const { data: documentos } = await admin
-      .from('documentos_alumno')
-      .select('*')
-      .eq('alumno_id', params.id)
+    // ── Paso 4: documentos (solo admin — el secretario no los ve) ─────────────
+    const { data: documentos } = esAdminViewer
+      ? await admin
+          .from('documentos_alumno')
+          .select('*')
+          .eq('alumno_id', params.id)
+      : { data: [] }
 
     // ── Paso 5: intentos de evaluación con join a evaluaciones y materias ─────
     const { data: intentosRaw } = await admin
@@ -96,7 +102,9 @@ export async function GET(
       inscripcion_pagada:  a.inscripcion_pagada ?? false,
       sindicalizado:       Boolean(a.es_sindicalizado ?? a.sindicalizado),
       sindicato:           a.sindicato ?? null,
-      notas_admin:         a.notas_admin ?? '',
+      // Notas internas: solo visibles para admin (el secretario recibe null)
+      notas_admin:         esAdminViewer ? (a.notas_admin ?? '') : null,
+      viewer_rol:          viewerRol,
       created_at:          a.created_at,
       // Objeto plan para compatibilidad con UI existente
       plan: {

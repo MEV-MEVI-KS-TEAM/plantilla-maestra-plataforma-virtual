@@ -33,10 +33,10 @@ export async function GET() {
       ? alumnosList.reduce((s, a) => s + (a.meses_desbloqueados ?? 0), 0) / alumnosList.length
       : 0
 
-    let pagosList: { monto: number; alumno_id: string; metodo_pago: string; created_at: string }[] = []
+    let pagosList: { monto: number; alumno_id: string; concepto?: string | null; metodo_pago: string; referencia?: string | null; created_at: string }[] = []
     const pagosRes = await admin
       .from('pagos')
-      .select('monto, alumno_id, metodo_pago, created_at')
+      .select('monto, alumno_id, concepto, metodo_pago, referencia, created_at')
     if (!pagosRes.error && pagosRes.data) {
       pagosList = pagosRes.data as typeof pagosList
     }
@@ -48,10 +48,12 @@ export async function GET() {
 
     const uMap = new Map((usuariosPagos ?? []).map(u => [u.id, u]))
 
-    const totalIngresos = pagosList.reduce((s, p) => s + (p.monto ?? 0), 0)
+    const totalIngresos = pagosList.reduce((s, p) => s + Number(p.monto ?? 0), 0)
 
-    const pagosRecientes = pagosList
+    const pagosOrdenados = pagosList
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+    const pagosRecientes = pagosOrdenados
       .slice(0, 20)
       .map(p => ({
         alumno: nombreCompleto(uMap.get(p.alumno_id)),
@@ -59,6 +61,51 @@ export async function GET() {
         metodo_pago: p.metodo_pago,
         created_at: p.created_at,
       }))
+
+    const ultimosPagos = pagosOrdenados
+      .slice(0, 20)
+      .map(p => ({
+        alumno: nombreCompleto(uMap.get(p.alumno_id)),
+        monto: p.monto,
+        concepto: p.concepto ?? 'mensualidad',
+        metodo_pago: p.metodo_pago,
+        referencia: p.referencia ?? null,
+        created_at: p.created_at,
+      }))
+
+    // Desglose por semana (lunes, 8 últimas) y por mes (6 últimos) — agregado
+    // server-side con GROUP BY date_trunc (RPC), no en JS. Degrada a [] si la
+    // función aún no existe en la BD (migración 20260716150000 sin aplicar).
+    let ingresosSemanales: { semana_inicio: string; total: number }[] = []
+    let ingresosMensuales: { mes: string; total: number }[] = []
+    const [semRes, mesRes] = await Promise.all([
+      admin.rpc('reporte_ingresos_semanales', { num_semanas: 8 }),
+      admin.rpc('reporte_ingresos_mensuales', { num_meses: 6 }),
+    ])
+    if (!semRes.error && Array.isArray(semRes.data)) {
+      ingresosSemanales = (semRes.data as { semana_inicio: string; total: number | string }[])
+        .map(r => ({ semana_inicio: r.semana_inicio, total: Number(r.total ?? 0) }))
+    }
+    if (!mesRes.error && Array.isArray(mesRes.data)) {
+      ingresosMensuales = (mesRes.data as { mes: string; total: number | string }[])
+        .map(r => ({ mes: r.mes, total: Number(r.total ?? 0) }))
+    }
+
+    // Ingresos del mes en curso: mismo corte SQL America/Mexico_City que el
+    // desglose de 6 meses (su último elemento ES el mes actual) — antes se
+    // cortaba con Date de JS en la TZ del servidor (UTC en Vercel), desfasando
+    // hasta 6h los pagos de fin de mes respecto a la gráfica mensual.
+    // Fallback JS solo si la migración 20260716150000 no está aplicada.
+    let ingresosMesActual: number
+    if (ingresosMensuales.length > 0) {
+      ingresosMesActual = ingresosMensuales[ingresosMensuales.length - 1].total
+    } else {
+      const ahora = new Date()
+      const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1)
+      ingresosMesActual = pagosList
+        .filter(p => new Date(p.created_at) >= inicioMes)
+        .reduce((s, p) => s + Number(p.monto ?? 0), 0)
+    }
 
     const { data: califs } = await admin
       .from('calificaciones')
@@ -109,6 +156,13 @@ export async function GET() {
       },
       rendimiento_materias: rendimientoMaterias,
       pagos_recientes: pagosRecientes,
+      // Módulo de pagos (Panel Admin Unificado) — campos nuevos, no romper los anteriores
+      ingresos_mes_actual: ingresosMesActual,
+      ingresos_totales: totalIngresos,
+      ultimos_pagos: ultimosPagos,
+      // Fase 4 — desglose de tendencia (solo agrega, no rompe lo anterior)
+      ingresos_ultimas_8_semanas: ingresosSemanales,
+      ingresos_ultimos_6_meses: ingresosMensuales,
     })
   } catch {
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })

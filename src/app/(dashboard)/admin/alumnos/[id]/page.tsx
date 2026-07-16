@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, StickyNote, Save, LockOpen, Lock, CheckCircle2, CreditCard } from 'lucide-react'
+import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, FileDown, StickyNote, Save, LockOpen, Lock, CheckCircle2, CreditCard, DollarSign, Plus, Trash2 } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import { config } from '@/lib/config'
 
@@ -13,6 +13,8 @@ interface AlumnoDetalle {
   inscripcion_pagada: boolean
   created_at: string
   notas_admin: string | null
+  // Rol del usuario que consulta (lo calcula el servidor): 'ADMIN' | 'SECRETARIO'
+  viewer_rol?: string
   usuario: { id: string; nombre_completo: string; email: string; activo: boolean; telefono: string | null }
   plan: { id: string; nombre: string; duracion_meses: number; precio_mensual: number }
   calificaciones: { id: string; calificacion_final: number; aprobada: boolean; materias: { nombre: string; codigo: string } }[]
@@ -25,6 +27,27 @@ interface AlumnoDetalle {
     evaluaciones: { id: string; titulo: string; materias: { nombre: string } | null } | null
   }[]
 }
+
+interface PagoAlumno {
+  id: string
+  monto: number
+  concepto: 'inscripcion' | 'mensualidad' | 'otro' | string
+  mes_desbloqueado: number | null
+  metodo_pago: string
+  referencia: string | null
+  created_at: string
+}
+
+const CONCEPTO_LABELS: Record<string, string> = {
+  inscripcion: 'Inscripción',
+  mensualidad: 'Mensualidad',
+  otro:        'Otro',
+}
+
+const METODOS_PAGO = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'OTRO']
+
+const fmtMoneda = (n: number) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(n)
 
 type DocTipo =
   | 'acta_nacimiento' | 'curp' | 'certificado_primaria'
@@ -94,17 +117,38 @@ export default function AlumnoDetallePage() {
   const [notas, setNotas] = useState('')
   const [savingNotas, setSavingNotas] = useState(false)
 
+  // Pagos
+  const [pagos, setPagos] = useState<PagoAlumno[]>([])
+  const [totalPagado, setTotalPagado] = useState(0)
+  const [modalRegistrarPago, setModalRegistrarPago] = useState(false)
+  const [registrandoPago, setRegistrandoPago] = useState(false)
+  const [pagoError, setPagoError] = useState<string | null>(null)
+  const [pagoForm, setPagoForm] = useState({
+    monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '',
+  })
+  const [pagoAEliminar, setPagoAEliminar] = useState<PagoAlumno | null>(null)
+  const [eliminandoPago, setEliminandoPago] = useState(false)
+  const [eliminarPagoError, setEliminarPagoError] = useState<string | null>(null)
+  // Recibo PDF: "{pagoId}:descargar" | "{pagoId}:whatsapp" mientras genera
+  const [reciboLoading, setReciboLoading] = useState<string | null>(null)
+
   const cargar = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [alumnoRes, docsRes] = await Promise.all([
+      const [alumnoRes, docsRes, pagosRes] = await Promise.all([
         fetch(`/api/admin/alumnos/${id}`),
         fetch(`/api/admin/documentos/${id}`),
+        fetch(`/api/admin/alumnos/${id}/pagos`),
       ])
       if (!alumnoRes.ok) throw new Error('Alumno no encontrado')
       const alumnoData = await alumnoRes.json()
       setAlumno(alumnoData)
+      if (pagosRes.ok) {
+        const pagosData = await pagosRes.json()
+        setPagos(pagosData.pagos ?? [])
+        setTotalPagado(pagosData.total_pagado ?? 0)
+      }
       if (alumnoData.notas_admin !== undefined) {
         setNotas(alumnoData.notas_admin ?? '')
       }
@@ -124,6 +168,38 @@ export default function AlumnoDetallePage() {
   }, [id])
 
   useEffect(() => { cargar() }, [cargar])
+
+  // Refresca solo la tabla de pagos y el total, sin recargar toda la página
+  const cargarPagos = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/alumnos/${id}/pagos`)
+      if (!res.ok) return
+      const data = await res.json()
+      setPagos(data.pagos ?? [])
+      setTotalPagado(data.total_pagado ?? 0)
+    } catch {
+      // silencioso: la tabla conserva los datos previos
+    }
+  }, [id])
+
+  async function handleEliminarPago() {
+    if (!pagoAEliminar) return
+    setEliminarPagoError(null)
+    setEliminandoPago(true)
+    try {
+      const res = await fetch(`/api/admin/pagos/${pagoAEliminar.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) { setEliminarPagoError(data.error ?? 'Error al eliminar el pago'); return }
+      const montoEliminado = Number(pagoAEliminar.monto)
+      setPagoAEliminar(null)
+      await cargarPagos()
+      showToast(`🗑️ Pago de ${fmtMoneda(montoEliminado)} eliminado`, 'info')
+    } catch {
+      setEliminarPagoError('Error inesperado. Intenta de nuevo.')
+    } finally {
+      setEliminandoPago(false)
+    }
+  }
 
   async function handleDesbloquear() {
     setDesbloquearError(null)
@@ -276,6 +352,69 @@ export default function AlumnoDetallePage() {
     }
   }
 
+  async function handleRegistrarPago(e: React.FormEvent) {
+    e.preventDefault()
+    setPagoError(null)
+    const montoNum = Number(pagoForm.monto)
+    if (!Number.isFinite(montoNum) || montoNum <= 0) {
+      setPagoError('El monto debe ser mayor a 0.')
+      return
+    }
+    setRegistrandoPago(true)
+    try {
+      const res = await fetch('/api/admin/pagos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alumno_id: id,
+          monto: montoNum,
+          concepto: pagoForm.concepto,
+          mes_desbloqueado: pagoForm.concepto === 'mensualidad' && pagoForm.mes_desbloqueado !== '' ? Number(pagoForm.mes_desbloqueado) : null,
+          metodo_pago: pagoForm.metodo_pago,
+          referencia: pagoForm.referencia,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setPagoError(data.error ?? 'Error al registrar el pago'); return }
+      setModalRegistrarPago(false)
+      setPagoForm({ monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '' })
+      await cargar()
+      showToast(`💵 Pago de ${fmtMoneda(montoNum)} registrado para ${alumno?.usuario.nombre_completo}`, 'success')
+    } catch {
+      setPagoError('Error inesperado. Intenta de nuevo.')
+    } finally {
+      setRegistrandoPago(false)
+    }
+  }
+
+  async function handleRecibo(p: PagoAlumno, accion: 'descargar' | 'whatsapp') {
+    setReciboLoading(`${p.id}:${accion}`)
+    // Abrir la pestaña ANTES del fetch para que el popup blocker no la mate
+    const win = window.open('about:blank', '_blank')
+    try {
+      const res = await fetch(`/api/admin/pagos/${p.id}/recibo`)
+      const data = await res.json()
+      if (!res.ok) {
+        win?.close()
+        showToast(data.error ?? 'Error al generar el recibo', 'error')
+        return
+      }
+      const url = accion === 'whatsapp' ? data.whatsappUrl : data.signedUrl
+      if (!url) {
+        win?.close()
+        showToast('Alumno sin teléfono registrado', 'error')
+        return
+      }
+      if (win) win.location.href = url
+      else window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
+      win?.close()
+      showToast('Error inesperado al generar el recibo', 'error')
+    } finally {
+      setReciboLoading(null)
+    }
+  }
+
   async function handleGuardarNotas() {
     setSavingNotas(true)
     try {
@@ -310,6 +449,8 @@ export default function AlumnoDetallePage() {
   )
 
   const todosBloqueados = alumno.meses_desbloqueados >= alumno.plan.duracion_meses
+  // Secretario: modo lectura — sin acciones de admin, sin notas internas ni documentos
+  const esSecretario = alumno.viewer_rol === 'SECRETARIO'
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -346,6 +487,7 @@ export default function AlumnoDetallePage() {
             <p className="text-sm mt-1" style={{ color: '#94A3B8' }}>{alumno.usuario.email}</p>
           </div>
         </div>
+        {!esSecretario && (
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
           <button
             onClick={() => { setModalReset(true); setResetError(null); setResetSuccess(null) }}
@@ -369,6 +511,7 @@ export default function AlumnoDetallePage() {
             {togglingActivo ? <Loader2 className="w-4 h-4 animate-spin inline" /> : (alumno.usuario.activo ? 'Desactivar alumno' : 'Activar alumno')}
           </button>
         </div>
+        )}
       </div>
 
       {/* Info General */}
@@ -383,6 +526,14 @@ export default function AlumnoDetallePage() {
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               Inscripción pagada
+            </span>
+          ) : esSecretario ? (
+            <span
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-semibold"
+              style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Inscripción pendiente
             </span>
           ) : (
             <button
@@ -435,6 +586,7 @@ export default function AlumnoDetallePage() {
               {alumno.meses_desbloqueados} de {alumno.plan.duracion_meses} meses desbloqueados
             </p>
           </div>
+          {!esSecretario && (
           <div className="flex items-center gap-2 flex-wrap">
             {alumno.meses_desbloqueados > 0 && (
               <button
@@ -469,6 +621,7 @@ export default function AlumnoDetallePage() {
               </button>
             )}
           </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -491,7 +644,113 @@ export default function AlumnoDetallePage() {
         </div>
       </div>
 
-
+      {/* Pagos */}
+      <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
+        <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3" style={{ borderBottom: '1px solid #2A2F3E' }}>
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4" style={{ color: '#10B981' }} />
+            <h3 className="text-sm font-semibold text-gray-100">Pagos</h3>
+            <span className="text-xs" style={{ color: '#94A3B8' }}>
+              Total pagado: <span className="font-semibold" style={{ color: '#10B981' }}>{fmtMoneda(totalPagado)}</span>
+            </span>
+          </div>
+          <button
+            onClick={() => { setModalRegistrarPago(true); setPagoError(null) }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.22)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.12)' }}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Registrar pago
+          </button>
+        </div>
+        {pagos.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm" style={{ color: '#94A3B8' }}>Sin pagos registrados</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid #2A2F3E' }}>
+                  {['Fecha', 'Concepto', 'Mes', 'Monto', 'Método', 'Referencia', ''].map((h, i) => (
+                    <th key={i} className="text-left px-4 py-3 font-medium" style={{ color: '#94A3B8' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pagos.map(p => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid rgba(42,47,62,0.5)' }}>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
+                      {new Date(p.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>
+                      {CONCEPTO_LABELS[p.concepto] ?? p.concepto}
+                    </td>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
+                      {p.mes_desbloqueado ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmtMoneda(Number(p.monto))}</td>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#64748B' }}>{p.referencia ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Recibo PDF: descargar (staff) */}
+                        <button
+                          onClick={() => handleRecibo(p, 'descargar')}
+                          disabled={reciboLoading !== null}
+                          title="Descargar recibo PDF"
+                          aria-label={`Descargar recibo del pago de ${fmtMoneda(Number(p.monto))}`}
+                          className="p-1.5 rounded-lg transition-all disabled:opacity-50"
+                          style={{ color: 'var(--color-acento)', background: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(21,101,192,0.12)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                        >
+                          {reciboLoading === `${p.id}:descargar`
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <FileDown className="w-4 h-4" />}
+                        </button>
+                        {/* Recibo por WhatsApp (staff); deshabilitado sin teléfono */}
+                        <button
+                          onClick={() => handleRecibo(p, 'whatsapp')}
+                          disabled={reciboLoading !== null || !alumno.usuario.telefono}
+                          title={alumno.usuario.telefono ? 'Enviar recibo por WhatsApp' : 'Alumno sin teléfono registrado'}
+                          aria-label={`Enviar recibo por WhatsApp del pago de ${fmtMoneda(Number(p.monto))}`}
+                          className="p-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ color: '#25D366', background: 'transparent' }}
+                          onMouseEnter={e => { if (alumno.usuario.telefono) e.currentTarget.style.background = 'rgba(37,211,102,0.12)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                        >
+                          {reciboLoading === `${p.id}:whatsapp`
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                              </svg>
+                            )}
+                        </button>
+                        {/* Eliminar pago: admin-only (Fase 1.1) — oculto para secretario */}
+                        {!esSecretario && (
+                        <button
+                          onClick={() => { setPagoAEliminar(p); setEliminarPagoError(null) }}
+                          title="Eliminar pago"
+                          aria-label={`Eliminar pago de ${fmtMoneda(Number(p.monto))}`}
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{ color: '#EF4444', background: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Calificaciones */}
       <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
@@ -596,7 +855,8 @@ export default function AlumnoDetallePage() {
         )}
       </div>
 
-      {/* Notas del Admin */}
+      {/* Notas del Admin — ocultas para secretario */}
+      {!esSecretario && (
       <div className="rounded-xl p-5 space-y-3" style={CARD_STYLE}>
         <div className="flex items-center gap-2">
           <StickyNote className="w-4 h-4" style={{ color: '#F59E0B' }} />
@@ -626,8 +886,10 @@ export default function AlumnoDetallePage() {
           </button>
         </div>
       </div>
+      )}
 
-      {/* Documentos */}
+      {/* Documentos — ocultos para secretario */}
+      {!esSecretario && (
       <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
         <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid #2A2F3E' }}>
           <FileText className="w-4 h-4" style={{ color: 'var(--color-acento)' }} />
@@ -719,6 +981,7 @@ export default function AlumnoDetallePage() {
           })}
         </div>
       </div>
+      )}
 
       {/* Modal Cerrar Mes */}
       {modalCerrarMes && (
@@ -992,6 +1255,217 @@ export default function AlumnoDetallePage() {
                 }
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Eliminar Pago */}
+      {pagoAEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-100">⚠️ ¿Eliminar pago?</h3>
+              <button
+                onClick={() => { setPagoAEliminar(null); setEliminarPagoError(null) }}
+                className="p-1.5 rounded-lg"
+                style={{ color: '#94A3B8' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div
+              className="rounded-xl p-4 mb-4 space-y-2"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+            >
+              <p className="text-sm leading-relaxed" style={{ color: '#FCA5A5' }}>
+                ¿Confirmas eliminar el pago de{' '}
+                <strong>{fmtMoneda(Number(pagoAEliminar.monto))}</strong>{' '}
+                ({CONCEPTO_LABELS[pagoAEliminar.concepto] ?? pagoAEliminar.concepto}) del{' '}
+                <strong>{new Date(pagoAEliminar.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>?
+              </p>
+              <p className="text-sm font-bold pt-1" style={{ color: '#EF4444' }}>
+                Esta acción NO se puede deshacer.
+              </p>
+            </div>
+
+            {eliminarPagoError && (
+              <div
+                className="rounded-lg px-3 py-2.5 text-sm mb-4"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#FCA5A5' }}
+              >
+                {eliminarPagoError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setPagoAEliminar(null); setEliminarPagoError(null) }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+                style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleEliminarPago}
+                disabled={eliminandoPago}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all"
+                style={{ background: '#EF4444', color: '#fff' }}
+                onMouseEnter={e => { if (!eliminandoPago) e.currentTarget.style.background = '#DC2626' }}
+                onMouseLeave={e => { if (!eliminandoPago) e.currentTarget.style.background = '#EF4444' }}
+              >
+                {eliminandoPago
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />Eliminando...</>
+                  : <><Trash2 className="w-4 h-4" />Sí, eliminar</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Registrar Pago */}
+      {modalRegistrarPago && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-gray-100">Registrar pago</h3>
+                <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>
+                  Alumno: {alumno.usuario.nombre_completo}
+                </p>
+              </div>
+              <button
+                onClick={() => { setModalRegistrarPago(false); setPagoError(null) }}
+                className="p-1.5 rounded-lg"
+                style={{ color: '#94A3B8' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRegistrarPago} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto (MXN)</label>
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={pagoForm.monto}
+                  onChange={e => setPagoForm(f => ({ ...f, monto: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
+                  onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Concepto</label>
+                  <select
+                    value={pagoForm.concepto}
+                    onChange={e => setPagoForm(f => ({ ...f, concepto: e.target.value, mes_desbloqueado: e.target.value === 'mensualidad' ? f.mes_desbloqueado : '' }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                  >
+                    <option value="mensualidad">Mensualidad</option>
+                    <option value="inscripcion">Inscripción</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Método</label>
+                  <select
+                    value={pagoForm.metodo_pago}
+                    onChange={e => setPagoForm(f => ({ ...f, metodo_pago: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                  >
+                    {METODOS_PAGO.map(m => <option key={m} value={m}>{m.charAt(0) + m.slice(1).toLowerCase()}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {pagoForm.concepto === 'mensualidad' && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>
+                    Mes que cubre <span style={{ color: '#475569' }}>(opcional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={alumno.plan.duracion_meses}
+                    step="1"
+                    placeholder={`1 - ${alumno.plan.duracion_meses}`}
+                    value={pagoForm.mes_desbloqueado}
+                    onChange={e => setPagoForm(f => ({ ...f, mes_desbloqueado: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                    onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
+                    onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>
+                  Referencia <span style={{ color: '#475569' }}>(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Folio, núm. de transferencia, etc."
+                  value={pagoForm.referencia}
+                  onChange={e => setPagoForm(f => ({ ...f, referencia: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
+                  onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
+                />
+              </div>
+
+              <p className="text-xs" style={{ color: '#64748B' }}>
+                Esto solo registra el pago en el historial. Los meses se desbloquean por separado con &quot;Abrir Mes&quot;.
+              </p>
+
+              {pagoError && (
+                <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#FCA5A5' }}>
+                  {pagoError}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setModalRegistrarPago(false); setPagoError(null) }}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+                  style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={registrandoPago}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all"
+                  style={{ background: '#10B981', color: '#062B1F' }}
+                  onMouseEnter={e => { if (!registrandoPago) e.currentTarget.style.background = '#34D399' }}
+                  onMouseLeave={e => { if (!registrandoPago) e.currentTarget.style.background = '#10B981' }}
+                >
+                  {registrandoPago
+                    ? <><Loader2 className="w-4 h-4 animate-spin" />Registrando...</>
+                    : <><DollarSign className="w-4 h-4" />Registrar pago</>
+                  }
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

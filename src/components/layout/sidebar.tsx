@@ -21,12 +21,20 @@ interface NavItem {
 
 const NAV_ITEMS: Record<UserRole, NavItem[]> = {
   ADMIN: [
-    { label: 'Dashboard',     href: '/admin',               emoji: '🏠', icon: LayoutDashboard },
-    { label: 'Alumnos',       href: '/admin/alumnos',       emoji: '👥', icon: Users           },
-    { label: 'Contenido',     href: '/admin/contenido',     emoji: '📚', icon: BookOpen        },
-    { label: 'Gestionar Cursos', href: '/admin/cursos',     emoji: '🎓', icon: GraduationCap   },
-    { label: 'Documentos',    href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
-    { label: 'Configuración', href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
+    { label: 'Dashboard',        href: '/admin',               emoji: '🏠', icon: LayoutDashboard },
+    { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users           },
+    { label: 'Estado de Cuenta', href: '/admin/estado-cuenta', emoji: '🧾', icon: BarChart3       },
+    { label: 'Contenido',        href: '/admin/contenido',     emoji: '📚', icon: BookOpen        },
+    { label: 'Gestionar Cursos', href: '/admin/cursos',        emoji: '🎓', icon: GraduationCap   },
+    { label: 'Documentos',       href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
+    { label: 'Usuarios',         href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
+    { label: 'Configuración',    href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
+  ],
+  // Rol acotado: ve Alumnos (lectura + registrar pagos) y Estado de Cuenta.
+  // Usuarios/Contenido/Documentos/Configuración/Reportes/Cursos quedan ocultos.
+  SECRETARIO: [
+    { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users     },
+    { label: 'Estado de Cuenta', href: '/admin/estado-cuenta', emoji: '🧾', icon: BarChart3 },
   ],
   ALUMNO: [
     { label: 'Inicio',         href: '/alumno',                emoji: '🏠', icon: Home          },
@@ -216,7 +224,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
               )}
               {!nivelLabel && (
                 <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  {role === 'ADMIN' ? 'Administrador' : 'Alumno'}
+                  {role === 'ADMIN' ? 'Administrador' : role === 'SECRETARIO' ? 'Secretario' : 'Alumno'}
                 </span>
               )}
             </div>

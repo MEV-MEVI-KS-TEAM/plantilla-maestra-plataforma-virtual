@@ -21,10 +21,10 @@ VALUES (
   'admin@cliente.com',
   'Admin',
   'Sistema',
-  'ADMIN'
+  'admin'
 )
 ON CONFLICT (id) DO UPDATE SET
-  rol = 'ADMIN',
+  rol = 'admin',
   email = EXCLUDED.email,
   nombre = EXCLUDED.nombre,
   apellidos = EXCLUDED.apellidos;
