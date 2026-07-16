@@ -1534,3 +1534,22 @@ REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
 REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
 GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
 REVOKE UPDATE ON public.alumnos  FROM anon, authenticated;
+
+-- =============================================================
+-- REVOKE EXECUTE — funciones de reporte solo vía service_role (Fase 4/5 hardening)
+-- =============================================================
+-- reporte_ingresos_* y estado_cuenta_alumnos son SECURITY INVOKER y el default
+-- de Postgres otorga EXECUTE a PUBLIC (anon+authenticated). La RLS ya impide que
+-- un alumno vea datos ajenos al invocarlas, pero como TODO acceso legítimo pasa
+-- por /api/admin/* con service_role, se cierra el vector de defensa en profundidad:
+-- si alguna función pasara a SECURITY DEFINER, el EXECUTE abierto sería fuga
+-- inmediata. En Supabase las funciones reciben EXECUTE DIRECTO a anon/
+-- authenticated vía ALTER DEFAULT PRIVILEGES (no solo vía PUBLIC), así que el
+-- REVOKE debe nombrar los tres; luego se re-otorga solo a service_role.
+-- =============================================================
+REVOKE EXECUTE ON FUNCTION public.reporte_ingresos_semanales(integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.reporte_ingresos_mensuales(integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.estado_cuenta_alumnos()             FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.reporte_ingresos_semanales(integer) TO service_role;
+GRANT  EXECUTE ON FUNCTION public.reporte_ingresos_mensuales(integer) TO service_role;
+GRANT  EXECUTE ON FUNCTION public.estado_cuenta_alumnos()             TO service_role;
