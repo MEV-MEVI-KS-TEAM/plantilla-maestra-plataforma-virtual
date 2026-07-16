@@ -26,7 +26,7 @@
 - Guardar: Project URL, anon key, service_role key, database password
 
 ### Paso 3: Ejecutar schema de base de datos
-- En Supabase SQL Editor del cliente, ejecutar SUPABASE-SCHEMA.sql
+- En Supabase SQL Editor del cliente, ejecutar `scripts/schema.sql` (schema canónico completo: tablas, RLS, funciones, triggers)
 - Ejecutar los 6 archivos SEED de contenido académico
 - Ejecutar los 2 archivos UPDATE-VIDEOS
 - Ejecutar `scripts/seed-crear-evaluaciones.sql` (crea 1 evaluación por materia activa — Bug 21)

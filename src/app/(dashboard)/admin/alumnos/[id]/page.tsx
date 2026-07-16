@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, StickyNote, Save, LockOpen, Lock, CheckCircle2, CreditCard } from 'lucide-react'
+import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, StickyNote, Save, LockOpen, Lock, CheckCircle2, CreditCard, DollarSign, Plus } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import { config } from '@/lib/config'
 
@@ -25,6 +25,27 @@ interface AlumnoDetalle {
     evaluaciones: { id: string; titulo: string; materias: { nombre: string } | null } | null
   }[]
 }
+
+interface PagoAlumno {
+  id: string
+  monto: number
+  concepto: 'inscripcion' | 'mensualidad' | 'otro' | string
+  mes_desbloqueado: number | null
+  metodo_pago: string
+  referencia: string | null
+  created_at: string
+}
+
+const CONCEPTO_LABELS: Record<string, string> = {
+  inscripcion: 'Inscripción',
+  mensualidad: 'Mensualidad',
+  otro:        'Otro',
+}
+
+const METODOS_PAGO = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'OTRO']
+
+const fmtMoneda = (n: number) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(n)
 
 type DocTipo =
   | 'acta_nacimiento' | 'curp' | 'certificado_primaria'
@@ -94,17 +115,33 @@ export default function AlumnoDetallePage() {
   const [notas, setNotas] = useState('')
   const [savingNotas, setSavingNotas] = useState(false)
 
+  // Pagos
+  const [pagos, setPagos] = useState<PagoAlumno[]>([])
+  const [totalPagado, setTotalPagado] = useState(0)
+  const [modalRegistrarPago, setModalRegistrarPago] = useState(false)
+  const [registrandoPago, setRegistrandoPago] = useState(false)
+  const [pagoError, setPagoError] = useState<string | null>(null)
+  const [pagoForm, setPagoForm] = useState({
+    monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '',
+  })
+
   const cargar = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [alumnoRes, docsRes] = await Promise.all([
+      const [alumnoRes, docsRes, pagosRes] = await Promise.all([
         fetch(`/api/admin/alumnos/${id}`),
         fetch(`/api/admin/documentos/${id}`),
+        fetch(`/api/admin/alumnos/${id}/pagos`),
       ])
       if (!alumnoRes.ok) throw new Error('Alumno no encontrado')
       const alumnoData = await alumnoRes.json()
       setAlumno(alumnoData)
+      if (pagosRes.ok) {
+        const pagosData = await pagosRes.json()
+        setPagos(pagosData.pagos ?? [])
+        setTotalPagado(pagosData.total_pagado ?? 0)
+      }
       if (alumnoData.notas_admin !== undefined) {
         setNotas(alumnoData.notas_admin ?? '')
       }
@@ -273,6 +310,41 @@ export default function AlumnoDetallePage() {
       showToast('Error inesperado', 'error')
     } finally {
       setSavingDoc(null)
+    }
+  }
+
+  async function handleRegistrarPago(e: React.FormEvent) {
+    e.preventDefault()
+    setPagoError(null)
+    const montoNum = Number(pagoForm.monto)
+    if (!Number.isFinite(montoNum) || montoNum <= 0) {
+      setPagoError('El monto debe ser mayor a 0.')
+      return
+    }
+    setRegistrandoPago(true)
+    try {
+      const res = await fetch('/api/admin/pagos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alumno_id: id,
+          monto: montoNum,
+          concepto: pagoForm.concepto,
+          mes_desbloqueado: pagoForm.concepto === 'mensualidad' && pagoForm.mes_desbloqueado !== '' ? Number(pagoForm.mes_desbloqueado) : null,
+          metodo_pago: pagoForm.metodo_pago,
+          referencia: pagoForm.referencia,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setPagoError(data.error ?? 'Error al registrar el pago'); return }
+      setModalRegistrarPago(false)
+      setPagoForm({ monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '' })
+      await cargar()
+      showToast(`💵 Pago de ${fmtMoneda(montoNum)} registrado para ${alumno?.usuario.nombre_completo}`, 'success')
+    } catch {
+      setPagoError('Error inesperado. Intenta de nuevo.')
+    } finally {
+      setRegistrandoPago(false)
     }
   }
 
@@ -491,7 +563,61 @@ export default function AlumnoDetallePage() {
         </div>
       </div>
 
-
+      {/* Pagos */}
+      <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
+        <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3" style={{ borderBottom: '1px solid #2A2F3E' }}>
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4" style={{ color: '#10B981' }} />
+            <h3 className="text-sm font-semibold text-gray-100">Pagos</h3>
+            <span className="text-xs" style={{ color: '#94A3B8' }}>
+              Total pagado: <span className="font-semibold" style={{ color: '#10B981' }}>{fmtMoneda(totalPagado)}</span>
+            </span>
+          </div>
+          <button
+            onClick={() => { setModalRegistrarPago(true); setPagoError(null) }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.22)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.12)' }}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Registrar pago
+          </button>
+        </div>
+        {pagos.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm" style={{ color: '#94A3B8' }}>Sin pagos registrados</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid #2A2F3E' }}>
+                  {['Fecha', 'Concepto', 'Mes', 'Monto', 'Método', 'Referencia'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: '#94A3B8' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pagos.map(p => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid rgba(42,47,62,0.5)' }}>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
+                      {new Date(p.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>
+                      {CONCEPTO_LABELS[p.concepto] ?? p.concepto}
+                    </td>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
+                      {p.mes_desbloqueado ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmtMoneda(Number(p.monto))}</td>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#64748B' }}>{p.referencia ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Calificaciones */}
       <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
@@ -992,6 +1118,148 @@ export default function AlumnoDetallePage() {
                 }
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Registrar Pago */}
+      {modalRegistrarPago && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-gray-100">Registrar pago</h3>
+                <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>
+                  Alumno: {alumno.usuario.nombre_completo}
+                </p>
+              </div>
+              <button
+                onClick={() => { setModalRegistrarPago(false); setPagoError(null) }}
+                className="p-1.5 rounded-lg"
+                style={{ color: '#94A3B8' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRegistrarPago} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto (MXN)</label>
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={pagoForm.monto}
+                  onChange={e => setPagoForm(f => ({ ...f, monto: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
+                  onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Concepto</label>
+                  <select
+                    value={pagoForm.concepto}
+                    onChange={e => setPagoForm(f => ({ ...f, concepto: e.target.value, mes_desbloqueado: e.target.value === 'mensualidad' ? f.mes_desbloqueado : '' }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                  >
+                    <option value="mensualidad">Mensualidad</option>
+                    <option value="inscripcion">Inscripción</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Método</label>
+                  <select
+                    value={pagoForm.metodo_pago}
+                    onChange={e => setPagoForm(f => ({ ...f, metodo_pago: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                  >
+                    {METODOS_PAGO.map(m => <option key={m} value={m}>{m.charAt(0) + m.slice(1).toLowerCase()}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {pagoForm.concepto === 'mensualidad' && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>
+                    Mes que cubre <span style={{ color: '#475569' }}>(opcional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={alumno.plan.duracion_meses}
+                    step="1"
+                    placeholder={`1 - ${alumno.plan.duracion_meses}`}
+                    value={pagoForm.mes_desbloqueado}
+                    onChange={e => setPagoForm(f => ({ ...f, mes_desbloqueado: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                    onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
+                    onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>
+                  Referencia <span style={{ color: '#475569' }}>(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Folio, núm. de transferencia, etc."
+                  value={pagoForm.referencia}
+                  onChange={e => setPagoForm(f => ({ ...f, referencia: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
+                  onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
+                />
+              </div>
+
+              <p className="text-xs" style={{ color: '#64748B' }}>
+                Esto solo registra el pago en el historial. Los meses se desbloquean por separado con &quot;Abrir Mes&quot;.
+              </p>
+
+              {pagoError && (
+                <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#FCA5A5' }}>
+                  {pagoError}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setModalRegistrarPago(false); setPagoError(null) }}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+                  style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={registrandoPago}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all"
+                  style={{ background: '#10B981', color: '#062B1F' }}
+                  onMouseEnter={e => { if (!registrandoPago) e.currentTarget.style.background = '#34D399' }}
+                  onMouseLeave={e => { if (!registrandoPago) e.currentTarget.style.background = '#10B981' }}
+                >
+                  {registrandoPago
+                    ? <><Loader2 className="w-4 h-4 animate-spin" />Registrando...</>
+                    : <><DollarSign className="w-4 h-4" />Registrar pago</>
+                  }
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
