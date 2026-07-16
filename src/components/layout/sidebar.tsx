@@ -21,17 +21,19 @@ interface NavItem {
 
 const NAV_ITEMS: Record<UserRole, NavItem[]> = {
   ADMIN: [
-    { label: 'Dashboard',     href: '/admin',               emoji: '🏠', icon: LayoutDashboard },
-    { label: 'Alumnos',       href: '/admin/alumnos',       emoji: '👥', icon: Users           },
-    { label: 'Contenido',     href: '/admin/contenido',     emoji: '📚', icon: BookOpen        },
-    { label: 'Documentos',    href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
-    { label: 'Usuarios',      href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
-    { label: 'Configuración', href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
+    { label: 'Dashboard',        href: '/admin',               emoji: '🏠', icon: LayoutDashboard },
+    { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users           },
+    { label: 'Estado de Cuenta', href: '/admin/estado-cuenta', emoji: '🧾', icon: BarChart3       },
+    { label: 'Contenido',        href: '/admin/contenido',     emoji: '📚', icon: BookOpen        },
+    { label: 'Documentos',       href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
+    { label: 'Usuarios',         href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
+    { label: 'Configuración',    href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
   ],
-  // Rol acotado: solo ve Alumnos (lectura) y ahí registra pagos.
+  // Rol acotado: ve Alumnos (lectura + registrar pagos) y Estado de Cuenta.
   // Usuarios/Contenido/Documentos/Configuración/Reportes quedan ocultos.
   SECRETARIO: [
-    { label: 'Alumnos', href: '/admin/alumnos', emoji: '👥', icon: Users },
+    { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users     },
+    { label: 'Estado de Cuenta', href: '/admin/estado-cuenta', emoji: '🧾', icon: BarChart3 },
   ],
   ALUMNO: [
     { label: 'Inicio',         href: '/alumno',                emoji: '🏠', icon: Home          },
