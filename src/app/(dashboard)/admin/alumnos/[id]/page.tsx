@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, StickyNote, Save, LockOpen, Lock, CheckCircle2, CreditCard, DollarSign, Plus } from 'lucide-react'
+import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, StickyNote, Save, LockOpen, Lock, CheckCircle2, CreditCard, DollarSign, Plus, Trash2 } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import { config } from '@/lib/config'
 
@@ -124,6 +124,9 @@ export default function AlumnoDetallePage() {
   const [pagoForm, setPagoForm] = useState({
     monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '',
   })
+  const [pagoAEliminar, setPagoAEliminar] = useState<PagoAlumno | null>(null)
+  const [eliminandoPago, setEliminandoPago] = useState(false)
+  const [eliminarPagoError, setEliminarPagoError] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -161,6 +164,38 @@ export default function AlumnoDetallePage() {
   }, [id])
 
   useEffect(() => { cargar() }, [cargar])
+
+  // Refresca solo la tabla de pagos y el total, sin recargar toda la página
+  const cargarPagos = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/alumnos/${id}/pagos`)
+      if (!res.ok) return
+      const data = await res.json()
+      setPagos(data.pagos ?? [])
+      setTotalPagado(data.total_pagado ?? 0)
+    } catch {
+      // silencioso: la tabla conserva los datos previos
+    }
+  }, [id])
+
+  async function handleEliminarPago() {
+    if (!pagoAEliminar) return
+    setEliminarPagoError(null)
+    setEliminandoPago(true)
+    try {
+      const res = await fetch(`/api/admin/pagos/${pagoAEliminar.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) { setEliminarPagoError(data.error ?? 'Error al eliminar el pago'); return }
+      const montoEliminado = Number(pagoAEliminar.monto)
+      setPagoAEliminar(null)
+      await cargarPagos()
+      showToast(`🗑️ Pago de ${fmtMoneda(montoEliminado)} eliminado`, 'info')
+    } catch {
+      setEliminarPagoError('Error inesperado. Intenta de nuevo.')
+    } finally {
+      setEliminandoPago(false)
+    }
+  }
 
   async function handleDesbloquear() {
     setDesbloquearError(null)
@@ -591,8 +626,8 @@ export default function AlumnoDetallePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid #2A2F3E' }}>
-                  {['Fecha', 'Concepto', 'Mes', 'Monto', 'Método', 'Referencia'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: '#94A3B8' }}>{h}</th>
+                  {['Fecha', 'Concepto', 'Mes', 'Monto', 'Método', 'Referencia', ''].map((h, i) => (
+                    <th key={i} className="text-left px-4 py-3 font-medium" style={{ color: '#94A3B8' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -611,6 +646,19 @@ export default function AlumnoDetallePage() {
                     <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmtMoneda(Number(p.monto))}</td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: '#64748B' }}>{p.referencia ?? '—'}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => { setPagoAEliminar(p); setEliminarPagoError(null) }}
+                        title="Eliminar pago"
+                        aria-label={`Eliminar pago de ${fmtMoneda(Number(p.monto))}`}
+                        className="p-1.5 rounded-lg transition-all"
+                        style={{ color: '#EF4444', background: 'transparent' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1115,6 +1163,75 @@ export default function AlumnoDetallePage() {
                 {marcandoInscripcion
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</>
                   : <><CheckCircle2 className="w-4 h-4" /> Confirmar pago</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Eliminar Pago */}
+      {pagoAEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-100">⚠️ ¿Eliminar pago?</h3>
+              <button
+                onClick={() => { setPagoAEliminar(null); setEliminarPagoError(null) }}
+                className="p-1.5 rounded-lg"
+                style={{ color: '#94A3B8' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div
+              className="rounded-xl p-4 mb-4 space-y-2"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+            >
+              <p className="text-sm leading-relaxed" style={{ color: '#FCA5A5' }}>
+                ¿Confirmas eliminar el pago de{' '}
+                <strong>{fmtMoneda(Number(pagoAEliminar.monto))}</strong>{' '}
+                ({CONCEPTO_LABELS[pagoAEliminar.concepto] ?? pagoAEliminar.concepto}) del{' '}
+                <strong>{new Date(pagoAEliminar.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>?
+              </p>
+              <p className="text-sm font-bold pt-1" style={{ color: '#EF4444' }}>
+                Esta acción NO se puede deshacer.
+              </p>
+            </div>
+
+            {eliminarPagoError && (
+              <div
+                className="rounded-lg px-3 py-2.5 text-sm mb-4"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#FCA5A5' }}
+              >
+                {eliminarPagoError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setPagoAEliminar(null); setEliminarPagoError(null) }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+                style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleEliminarPago}
+                disabled={eliminandoPago}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition-all"
+                style={{ background: '#EF4444', color: '#fff' }}
+                onMouseEnter={e => { if (!eliminandoPago) e.currentTarget.style.background = '#DC2626' }}
+                onMouseLeave={e => { if (!eliminandoPago) e.currentTarget.style.background = '#EF4444' }}
+              >
+                {eliminandoPago
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />Eliminando...</>
+                  : <><Trash2 className="w-4 h-4" />Sí, eliminar</>
                 }
               </button>
             </div>
