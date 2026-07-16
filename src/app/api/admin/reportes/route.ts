@@ -50,13 +50,6 @@ export async function GET() {
 
     const totalIngresos = pagosList.reduce((s, p) => s + Number(p.monto ?? 0), 0)
 
-    // Ingresos del mes calendario en curso
-    const ahora = new Date()
-    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1)
-    const ingresosMesActual = pagosList
-      .filter(p => new Date(p.created_at) >= inicioMes)
-      .reduce((s, p) => s + Number(p.monto ?? 0), 0)
-
     const pagosOrdenados = pagosList
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
@@ -96,6 +89,22 @@ export async function GET() {
     if (!mesRes.error && Array.isArray(mesRes.data)) {
       ingresosMensuales = (mesRes.data as { mes: string; total: number | string }[])
         .map(r => ({ mes: r.mes, total: Number(r.total ?? 0) }))
+    }
+
+    // Ingresos del mes en curso: mismo corte SQL America/Mexico_City que el
+    // desglose de 6 meses (su último elemento ES el mes actual) — antes se
+    // cortaba con Date de JS en la TZ del servidor (UTC en Vercel), desfasando
+    // hasta 6h los pagos de fin de mes respecto a la gráfica mensual.
+    // Fallback JS solo si la migración 20260716150000 no está aplicada.
+    let ingresosMesActual: number
+    if (ingresosMensuales.length > 0) {
+      ingresosMesActual = ingresosMensuales[ingresosMensuales.length - 1].total
+    } else {
+      const ahora = new Date()
+      const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1)
+      ingresosMesActual = pagosList
+        .filter(p => new Date(p.created_at) >= inicioMes)
+        .reduce((s, p) => s + Number(p.monto ?? 0), 0)
     }
 
     const { data: califs } = await admin
