@@ -1343,14 +1343,53 @@ DO $$ BEGIN
 END $$;
 
 -- =============================================================
+-- MÓDULO DE PAGOS — Panel Admin Unificado (Fase 1)
+-- =============================================================
+-- Registro manual de pagos por Control Escolar (admin) dentro de
+-- Plataforma Virtual. Sustituye al Sistema de Control Escolar para
+-- clientes nuevos. Idempotente: IF NOT EXISTS / DROP POLICY IF EXISTS.
+--
+-- RLS base: admin gestiona todo vía es_admin(); alumno solo SELECT de
+-- sus propios pagos (alumnos.id = usuarios.id = auth.uid()). El bloque
+-- ROL SECRETARIO (más abajo) reemplaza estas policies por la versión
+-- separada por operación con es_staff() para SELECT/INSERT.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.pagos (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumno_id        UUID NOT NULL REFERENCES public.alumnos(id) ON DELETE CASCADE,
+  monto            NUMERIC(10,2) NOT NULL CHECK (monto > 0),
+  concepto         TEXT NOT NULL DEFAULT 'mensualidad',
+    -- 'inscripcion' | 'mensualidad' | 'otro'
+  mes_desbloqueado INTEGER CHECK (mes_desbloqueado IS NULL OR mes_desbloqueado > 0),
+    -- NULL si concepto = 'inscripcion' u 'otro'
+  metodo_pago      TEXT NOT NULL,
+    -- 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'OTRO'
+  referencia       TEXT,
+  registrado_por   UUID NOT NULL REFERENCES auth.users(id),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pagos_alumno     ON public.pagos (alumno_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_created_at ON public.pagos (created_at DESC);
+
+ALTER TABLE public.pagos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "pagos: ver propios" ON public.pagos;
+CREATE POLICY "pagos: ver propios" ON public.pagos FOR SELECT USING (((alumno_id = auth.uid()) OR public.es_admin()));
+
+DROP POLICY IF EXISTS "pagos: admin gestiona" ON public.pagos;
+CREATE POLICY "pagos: admin gestiona" ON public.pagos USING (public.es_admin()) WITH CHECK (public.es_admin());
+
+-- =============================================================
 -- ROL SECRETARIO — ajuste condicional de policies de pagos
 -- =============================================================
--- El módulo de pagos (feature/panel-admin-pagos) puede no estar
--- aplicado aún en esta BD. Si public.pagos existe, se separa la
--- policy ALL de admin en policies por operación:
+-- Con la tabla pagos ya creada arriba, separa la policy ALL de admin
+-- en policies por operación:
 --   SELECT/INSERT → es_staff()   (secretario consulta y registra)
 --   UPDATE/DELETE → es_admin()   (el secretario NO edita ni borra)
--- Idempotente y seguro en cualquier orden de merge.
+-- Idempotente; el to_regclass() lo mantiene seguro también en BDs
+-- donde el módulo de pagos aún no se aplica.
 -- =============================================================
 DO $$
 BEGIN

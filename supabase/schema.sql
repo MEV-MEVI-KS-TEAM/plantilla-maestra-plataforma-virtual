@@ -229,6 +229,23 @@ CREATE TABLE IF NOT EXISTS public.constancias (
   materia_id   UUID        REFERENCES public.materias(id) ON DELETE SET NULL
 );
 
+-- ── PAGOS ───────────────────────────────────────────────────
+-- Registro manual de pagos por Control Escolar (admin).
+CREATE TABLE IF NOT EXISTS public.pagos (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumno_id        UUID NOT NULL REFERENCES public.alumnos(id) ON DELETE CASCADE,
+  monto            NUMERIC(10,2) NOT NULL CHECK (monto > 0),
+  concepto         TEXT NOT NULL DEFAULT 'mensualidad',
+    -- 'inscripcion' | 'mensualidad' | 'otro'
+  mes_desbloqueado INTEGER CHECK (mes_desbloqueado IS NULL OR mes_desbloqueado > 0),
+    -- NULL si concepto = 'inscripcion' u 'otro'
+  metodo_pago      TEXT NOT NULL,
+    -- 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'OTRO'
+  referencia       TEXT,
+  registrado_por   UUID NOT NULL REFERENCES auth.users(id),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 
 -- ============================================================
 --  2. FUNCIÓN: GENERAR MATRÍCULA
@@ -386,6 +403,7 @@ ALTER TABLE public.racha_actividad       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.glosario_materia      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documentos_alumno     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.constancias           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pagos                 ENABLE ROW LEVEL SECURITY;
 
 -- Helper: detectar si el usuario autenticado es admin
 CREATE OR REPLACE FUNCTION public.es_admin()
@@ -621,6 +639,19 @@ CREATE POLICY "constancias: admin gestiona"
   ON public.constancias FOR ALL
   USING (public.es_admin());
 
+-- ── POLÍTICAS: PAGOS ─────────────────────────────────────────
+-- Alumno: solo SELECT de sus propios pagos (alumnos.id = auth.uid()).
+-- Admin: gestiona todo. Los pagos SIEMPRE los registra el admin;
+-- ningún INSERT/UPDATE/DELETE para alumno.
+CREATE POLICY "pagos: ver propios"
+  ON public.pagos FOR SELECT
+  USING (alumno_id = auth.uid() OR public.es_admin());
+
+CREATE POLICY "pagos: admin gestiona"
+  ON public.pagos FOR ALL
+  USING (public.es_admin())
+  WITH CHECK (public.es_admin());
+
 
 -- ============================================================
 --  6. ÍNDICES (performance)
@@ -638,6 +669,8 @@ CREATE INDEX IF NOT EXISTS idx_notas_alumno             ON public.notas_alumno (
 CREATE INDEX IF NOT EXISTS idx_semanas_mes              ON public.semanas (mes_id);
 CREATE INDEX IF NOT EXISTS idx_meses_materia            ON public.meses_contenido (materia_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_semana              ON public.quiz_semana (semana_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_alumno             ON public.pagos (alumno_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_created_at         ON public.pagos (created_at DESC);
 
 
 -- ============================================================

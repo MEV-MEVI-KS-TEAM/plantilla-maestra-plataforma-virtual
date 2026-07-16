@@ -23,8 +23,16 @@ interface RendimientoMateria {
 interface PagoReciente {
   alumno: string
   monto: number
+  concepto?: string
   metodo_pago: string
+  referencia?: string | null
   created_at: string
+}
+
+const CONCEPTO_LABELS: Record<string, string> = {
+  inscripcion: 'Inscripción',
+  mensualidad: 'Mensualidad',
+  otro:        'Otro',
 }
 
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
@@ -34,6 +42,7 @@ const fmt = (n: number) =>
 
 export default function ReportesPage() {
   const [stats, setStats] = useState<Stats | null>(null)
+  const [ingresosMes, setIngresosMes] = useState(0)
   const [rendimiento, setRendimiento] = useState<RendimientoMateria[]>([])
   const [pagos, setPagos] = useState<PagoReciente[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,8 +54,9 @@ export default function ReportesPage() {
       .then(data => {
         if (data.error) { setError(data.error); return }
         setStats(data.stats)
+        setIngresosMes(data.ingresos_mes_actual ?? 0)
         setRendimiento(data.rendimiento_materias ?? [])
-        setPagos(data.pagos_recientes ?? [])
+        setPagos(data.ultimos_pagos ?? data.pagos_recientes ?? [])
       })
       .catch(() => setError('Error al cargar reportes'))
       .finally(() => setLoading(false))
@@ -67,6 +77,7 @@ export default function ReportesPage() {
   const statCards = [
     { label: 'Total Alumnos', value: String(stats?.total_alumnos ?? 0), icon: Users, color: 'var(--color-acento)', bg: 'rgba(21,101,192,0.15)' },
     { label: 'Alumnos Activos', value: String(stats?.alumnos_activos ?? 0), icon: UserCheck, color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+    { label: 'Ingresos del Mes', value: fmt(ingresosMes), icon: DollarSign, color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
     { label: 'Ingresos Totales', value: fmt(stats?.total_ingresos ?? 0), icon: DollarSign, color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
     { label: 'Promedio Meses', value: String(stats?.promedio_meses ?? 0), icon: TrendingUp, color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' },
   ]
@@ -79,7 +90,7 @@ export default function ReportesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="rounded-xl p-5 flex items-center gap-4" style={CARD}>
             <div className="flex items-center justify-center w-11 h-11 rounded-xl flex-shrink-0" style={{ background: bg }}>
@@ -169,7 +180,7 @@ export default function ReportesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid #2A2F3E' }}>
-                  {['Fecha', 'Alumno', 'Monto', 'Método'].map(h => (
+                  {['Fecha', 'Alumno', 'Concepto', 'Monto', 'Método', 'Referencia'].map(h => (
                     <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: '#94A3B8' }}>{h}</th>
                   ))}
                 </tr>
@@ -186,8 +197,10 @@ export default function ReportesPage() {
                       {new Date(p.created_at).toLocaleDateString('es-MX')}
                     </td>
                     <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>{p.alumno}</td>
-                    <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmt(p.monto)}</td>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.concepto ? (CONCEPTO_LABELS[p.concepto] ?? p.concepto) : '—'}</td>
+                    <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmt(Number(p.monto))}</td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#64748B' }}>{p.referencia ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
