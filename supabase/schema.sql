@@ -678,11 +678,15 @@ CREATE INDEX IF NOT EXISTS idx_pagos_created_at         ON public.pagos (created
 --  (Ejecutar en SQL Editor de Supabase o desde el Dashboard)
 -- ============================================================
 
+-- NOTA CLIENTES NUEVOS: los 4 buckets son necesarios desde el día 1.
+-- 'recibos' guarda los PDF de recibo de pago (Fase 3 Panel Admin Unificado);
+-- son archivos pequeños, de ahí el límite de 2MB.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('avatares',    'avatares',    true,  5242880,   ARRAY['image/jpeg','image/png','image/webp']),
   ('documentos',  'documentos',  false, 10485760,  ARRAY['image/jpeg','image/png','application/pdf']),
-  ('constancias', 'constancias', false, 10485760,  ARRAY['application/pdf','image/jpeg','image/png'])
+  ('constancias', 'constancias', false, 10485760,  ARRAY['application/pdf','image/jpeg','image/png']),
+  ('recibos',     'recibos',     false, 2097152,   ARRAY['application/pdf'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Políticas de Storage
@@ -726,6 +730,22 @@ CREATE POLICY "constancias: ver propio"
 CREATE POLICY "constancias: admin sube"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'constancias' AND public.es_admin());
+
+-- Recibos de pago: el dueño (alumno) y el staff pueden verlos;
+-- solo el staff los sube (en la práctica los genera el servidor con
+-- service role; el alumno los recibe vía signed URL por WhatsApp).
+CREATE POLICY "recibos: ver propio"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'recibos' AND (
+      auth.uid()::TEXT = (storage.foldername(name))[1]
+      OR public.es_staff()
+    )
+  );
+
+CREATE POLICY "recibos: staff sube"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'recibos' AND public.es_staff());
 
 
 -- ============================================================
@@ -878,3 +898,69 @@ AS $$
    WHERE a.activo = true
    ORDER BY u.nombre, u.apellidos;
 $$;
+-- REPORTES DE INGRESOS — agregación por semana y mes (Fase 4)
+-- =============================================================
+-- Para /admin/reportes (admin-only vía API). GROUP BY date_trunc en
+-- America/Mexico_City, semana ISO (lunes), rellena periodos sin pagos
+-- con 0. SECURITY INVOKER: con service role ve todo; un alumno directo
+-- solo agregaría sus propios pagos (RLS).
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.reporte_ingresos_semanales(num_semanas integer DEFAULT 8)
+RETURNS TABLE (semana_inicio date, total numeric)
+LANGUAGE sql STABLE
+AS $$
+  WITH semanas AS (
+    SELECT generate_series(
+      date_trunc('week', (now() AT TIME ZONE 'America/Mexico_City')) - make_interval(weeks => num_semanas - 1),
+      date_trunc('week', (now() AT TIME ZONE 'America/Mexico_City')),
+      interval '1 week'
+    ) AS inicio
+  )
+  SELECT s.inicio::date AS semana_inicio,
+         COALESCE(SUM(p.monto), 0)::numeric AS total
+    FROM semanas s
+    LEFT JOIN public.pagos p
+      ON date_trunc('week', (p.created_at AT TIME ZONE 'America/Mexico_City')) = s.inicio
+   GROUP BY s.inicio
+   ORDER BY s.inicio;
+$$;
+
+CREATE OR REPLACE FUNCTION public.reporte_ingresos_mensuales(num_meses integer DEFAULT 6)
+RETURNS TABLE (mes text, total numeric)
+LANGUAGE sql STABLE
+AS $$
+  WITH meses AS (
+    SELECT generate_series(
+      date_trunc('month', (now() AT TIME ZONE 'America/Mexico_City')) - make_interval(months => num_meses - 1),
+      date_trunc('month', (now() AT TIME ZONE 'America/Mexico_City')),
+      interval '1 month'
+    ) AS inicio
+  )
+  SELECT to_char(m.inicio, 'YYYY-MM') AS mes,
+         COALESCE(SUM(p.monto), 0)::numeric AS total
+    FROM meses m
+    LEFT JOIN public.pagos p
+      ON date_trunc('month', (p.created_at AT TIME ZONE 'America/Mexico_City')) = m.inicio
+   GROUP BY m.inicio
+   ORDER BY m.inicio;
+$$;
+-- Bug 52 — Cerrar escalada de privilegios de rol (usuarios/alumnos)
+-- =============================================================
+-- SÍNTOMA: un alumno autenticado se vuelve admin desde el navegador:
+--   supabase.from('usuarios').update({ rol: 'admin' }).eq('id', suId)
+-- CAUSA: Supabase otorga UPDATE de TABLA a `authenticated` sobre las
+--   tablas de public (default privileges) y la policy RLS de UPDATE de
+--   usuarios ("actualizar propio perfil") solo exige USING (id = auth.uid())
+--   SIN WITH CHECK ni restricción de columna → el usuario reescribe su
+--   propio `rol`. Este fix opera a nivel de GRANT de columna (capa
+--   ortogonal a RLS): sin privilegio sobre `rol`, el UPDATE falla con 42501.
+-- SEGURO: ningún flujo legítimo escribe usuarios/alumnos con la sesión del
+--   usuario — perfil (SELECT), avatar/registro y panel admin usan
+--   service_role. Se re-otorga UPDATE solo sobre columnas de perfil.
+-- Retrofit de clientes ya desplegados: scripts/fix-escalada-rol.sql.
+-- =============================================================
+REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
+REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
+GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
+REVOKE UPDATE ON public.alumnos  FROM anon, authenticated;

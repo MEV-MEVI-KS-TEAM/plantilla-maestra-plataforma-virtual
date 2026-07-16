@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, UserCheck, DollarSign, TrendingUp, Loader2, BookOpen, Award } from 'lucide-react'
+import { Users, UserCheck, DollarSign, TrendingUp, BarChart3, Loader2, BookOpen, Award } from 'lucide-react'
 
 interface Stats {
   total_alumnos: number
@@ -35,6 +35,69 @@ const CONCEPTO_LABELS: Record<string, string> = {
   otro:        'Otro',
 }
 
+interface IngresoSemana {
+  semana_inicio: string // fecha del lunes (YYYY-MM-DD)
+  total: number
+}
+
+interface IngresoMes {
+  mes: string // YYYY-MM
+  total: number
+}
+
+const fmtSemana = (iso: string) => {
+  // iso es un date puro (YYYY-MM-DD); anclar a mediodía evita el corrimiento de TZ
+  const d = new Date(`${iso}T12:00:00`)
+  return `Sem del ${d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`
+}
+
+const fmtMes = (yyyymm: string) => {
+  const d = new Date(`${yyyymm}-15T12:00:00`)
+  const label = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+// Tabla de barras simple (sin librería de charts — no hay ninguna en el proyecto)
+function TablaBarras({ titulo, icono: Icono, filas }: {
+  titulo: string
+  icono: React.ElementType
+  filas: { etiqueta: string; total: number; actual?: boolean }[]
+}) {
+  const max = Math.max(...filas.map(f => f.total), 1)
+  return (
+    <div className="rounded-xl overflow-hidden" style={CARD}>
+      <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #2A2F3E' }}>
+        <Icono className="w-4 h-4" style={{ color: '#10B981' }} />
+        <h3 className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>{titulo}</h3>
+      </div>
+      {filas.length === 0 ? (
+        <div className="px-5 py-10 text-center text-sm" style={{ color: '#94A3B8' }}>
+          Sin datos (aplica la migración 20260716150000_reporte_ingresos.sql)
+        </div>
+      ) : (
+        <div className="p-5 space-y-2.5">
+          {filas.map(f => (
+            <div key={f.etiqueta} className="flex items-center gap-3">
+              <span className="w-36 flex-shrink-0 text-xs" style={{ color: f.actual ? '#F1F5F9' : '#94A3B8', fontWeight: f.actual ? 600 : 400 }}>
+                {f.etiqueta}{f.actual ? ' •' : ''}
+              </span>
+              <div className="flex-1 h-4 rounded overflow-hidden" style={{ background: '#0B0D11' }}>
+                <div
+                  className="h-full rounded transition-all"
+                  style={{ width: `${Math.max((f.total / max) * 100, f.total > 0 ? 2 : 0)}%`, background: f.actual ? '#10B981' : 'rgba(16,185,129,0.45)' }}
+                />
+              </div>
+              <span className="w-28 flex-shrink-0 text-right text-xs font-semibold" style={{ color: f.total > 0 ? '#10B981' : '#475569' }}>
+                {fmt(f.total)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
 
 const fmt = (n: number) =>
@@ -45,6 +108,8 @@ export default function ReportesPage() {
   const [ingresosMes, setIngresosMes] = useState(0)
   const [rendimiento, setRendimiento] = useState<RendimientoMateria[]>([])
   const [pagos, setPagos] = useState<PagoReciente[]>([])
+  const [ingresosSemanas, setIngresosSemanas] = useState<IngresoSemana[]>([])
+  const [ingresosMeses, setIngresosMeses] = useState<IngresoMes[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,6 +122,8 @@ export default function ReportesPage() {
         setIngresosMes(data.ingresos_mes_actual ?? 0)
         setRendimiento(data.rendimiento_materias ?? [])
         setPagos(data.ultimos_pagos ?? data.pagos_recientes ?? [])
+        setIngresosSemanas(data.ingresos_ultimas_8_semanas ?? [])
+        setIngresosMeses(data.ingresos_ultimos_6_meses ?? [])
       })
       .catch(() => setError('Error al cargar reportes'))
       .finally(() => setLoading(false))
@@ -102,6 +169,28 @@ export default function ReportesPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Tendencia de ingresos — semana / mes (Fase 4, admin-only como toda esta página) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TablaBarras
+          titulo="Ingresos — últimas 8 semanas"
+          icono={TrendingUp}
+          filas={ingresosSemanas.map((s, i) => ({
+            etiqueta: fmtSemana(s.semana_inicio),
+            total: s.total,
+            actual: i === ingresosSemanas.length - 1,
+          }))}
+        />
+        <TablaBarras
+          titulo="Ingresos — últimos 6 meses"
+          icono={BarChart3}
+          filas={ingresosMeses.map((m, i) => ({
+            etiqueta: fmtMes(m.mes),
+            total: m.total,
+            actual: i === ingresosMeses.length - 1,
+          }))}
+        />
       </div>
 
       {/* Rendimiento por materia */}
