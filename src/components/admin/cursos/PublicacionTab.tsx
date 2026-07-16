@@ -38,11 +38,11 @@ export function PublicacionTab({ curso, numInscritos, onChanged, onError }: Publ
   return (
     <div
       className="rounded-2xl p-6 space-y-6 max-w-2xl"
-      style={{ background: '#fff', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
+      style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
     >
       <div>
         <h2 className="text-base font-bold mb-1" style={{ color: 'var(--color-primario)' }}>Publicación</h2>
-        <p className="text-sm" style={{ color: '#525252' }}>
+        <p className="text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
           Tus alumnos asignados solo ven cursos <strong>publicados</strong>. Mientras el curso
           esté en borrador, puedes editarlo con calma sin que nadie lo vea.
         </p>
@@ -58,13 +58,13 @@ export function PublicacionTab({ curso, numInscritos, onChanged, onError }: Publ
       >
         <div className="flex items-center gap-3">
           {publicado
-            ? <Globe className="w-5 h-5 flex-shrink-0" style={{ color: '#059669' }} />
-            : <PencilLine className="w-5 h-5 flex-shrink-0" style={{ color: '#B45309' }} />}
+            ? <Globe className="w-5 h-5 flex-shrink-0" style={{ color: '#10B981' }} />
+            : <PencilLine className="w-5 h-5 flex-shrink-0" style={{ color: '#F59E0B' }} />}
           <div>
-            <p className="text-sm font-bold" style={{ color: publicado ? '#059669' : '#B45309' }}>
+            <p className="text-sm font-bold" style={{ color: publicado ? '#10B981' : '#F59E0B' }}>
               {publicado ? 'Publicado' : 'Borrador'}
             </p>
-            <p className="text-xs" style={{ color: '#525252' }}>
+            <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
               {publicado
                 ? `Visible para tus ${numInscritos} alumno(s) asignados.`
                 : 'Oculto para los alumnos (aunque estén asignados).'}
@@ -81,7 +81,7 @@ export function PublicacionTab({ curso, numInscritos, onChanged, onError }: Publ
           className="relative flex-shrink-0 rounded-full transition-colors disabled:opacity-50"
           style={{
             width: 52, height: 28,
-            background: publicado ? '#059669' : '#D1D5DB',
+            background: publicado ? '#10B981' : '#D1D5DB',
           }}
         >
           <span

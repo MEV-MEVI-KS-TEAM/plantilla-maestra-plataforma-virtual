@@ -65,7 +65,7 @@ export default function MisCursosPage() {
       {aviso && (
         <div
           className="rounded-xl px-4 py-3 text-sm"
-          style={{ background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.25)', color: '#B45309' }}
+          style={{ background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.25)', color: '#F59E0B' }}
         >
           {aviso}
         </div>
@@ -79,7 +79,7 @@ export default function MisCursosPage() {
       {!error && cursos.length === 0 && (
         <div
           className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl text-center px-6"
-          style={{ background: '#fff', border: '1px solid #E2E8F0' }}
+          style={{ background: 'var(--color-superficie)', border: '1px solid #E2E8F0' }}
         >
           <GraduationCap className="w-10 h-10" style={{ color: '#CBD5E1' }} />
           <p className="text-sm font-semibold" style={{ color: '#64748B' }}>Aún no tienes cursos asignados</p>
@@ -97,7 +97,7 @@ export default function MisCursosPage() {
               key={curso.id}
               onClick={() => router.push(`/cursos/${curso.id}`)}
               className="text-left rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-0.5"
-              style={{ background: '#fff', border: '1px solid #E8F0F7', boxShadow: '0 1px 4px rgba(27,58,87,0.06)' }}
+              style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 1px 4px rgba(27,58,87,0.06)' }}
             >
               {/* Portada */}
               <div className="relative w-full" style={{ aspectRatio: '16/9', background: 'linear-gradient(135deg, var(--color-primario) 0%, color-mix(in srgb, var(--color-primario) 78%, #000) 100%)' }}>
@@ -117,7 +117,7 @@ export default function MisCursosPage() {
                 {curso.porcentaje >= 100 && (
                   <span
                     className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                    style={{ background: '#10B981', color: '#fff' }}
+                    style={{ background: '#10B981', color: 'var(--color-texto-sobre-acento)' }}
                   >
                     Completado
                   </span>

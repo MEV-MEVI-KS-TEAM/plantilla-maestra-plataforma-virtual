@@ -142,7 +142,7 @@ export default function VisorCursoPage() {
         const abierto = expandidos.has(modulo.id)
         const compl = modulo.lecciones.filter(l => l.completada).length
         return (
-          <div key={modulo.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8F0F7', background: '#fff' }}>
+          <div key={modulo.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8F0F7', background: 'var(--color-superficie)' }}>
             <button
               onClick={() => toggleModulo(modulo.id)}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-left"
@@ -150,7 +150,7 @@ export default function VisorCursoPage() {
               aria-expanded={abierto}
             >
               <span className="flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold flex-shrink-0"
-                style={{ background: 'var(--color-primario)', color: '#fff' }}>
+                style={{ background: 'var(--color-primario)', color: 'var(--color-texto-sobre-acento)' }}>
                 {mi + 1}
               </span>
               <span className="flex-1 text-sm font-semibold truncate" style={{ color: 'var(--color-primario)' }}>
@@ -199,7 +199,7 @@ export default function VisorCursoPage() {
       {/* Top bar */}
       <header
         className="sticky top-0 z-30 flex items-center gap-3 px-3 sm:px-5 py-3"
-        style={{ background: 'var(--color-primario)', color: '#fff' }}
+        style={{ background: 'var(--color-primario)', color: 'var(--color-texto-sobre-acento)' }}
       >
         <button onClick={volver} className="p-1.5 rounded-lg flex-shrink-0" style={{ background: 'rgba(255,255,255,0.12)' }} aria-label="Volver">
           <ArrowLeft className="w-4 h-4" />
@@ -224,7 +224,7 @@ export default function VisorCursoPage() {
       {/* Banner vista previa admin */}
       {modoPreview && (
         <div className="flex items-center gap-2 px-4 py-2 text-xs font-medium"
-          style={{ background: 'rgba(180,83,9,0.12)', color: '#B45309' }}>
+          style={{ background: 'rgba(180,83,9,0.12)', color: '#F59E0B' }}>
           <Eye className="w-4 h-4 flex-shrink-0" />
           Vista previa de administrador — así ve el curso el alumno. No se registra progreso.
         </div>
@@ -247,18 +247,18 @@ export default function VisorCursoPage() {
             {detalle.completado && (
               <div className="flex items-center gap-3 rounded-2xl px-4 py-4"
                 style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.35)' }}>
-                <PartyPopper className="w-6 h-6 flex-shrink-0" style={{ color: '#059669' }} />
+                <PartyPopper className="w-6 h-6 flex-shrink-0" style={{ color: '#10B981' }} />
                 <div>
-                  <p className="text-sm font-bold" style={{ color: '#059669' }}>
+                  <p className="text-sm font-bold" style={{ color: '#10B981' }}>
                     ¡Completaste este {curso.tipo === 'diplomado' ? 'diplomado' : 'curso'}!
                   </p>
-                  <p className="text-xs" style={{ color: '#047857' }}>Terminaste todas las lecciones. ¡Felicidades!</p>
+                  <p className="text-xs" style={{ color: '#10B981' }}>Terminaste todas las lecciones. ¡Felicidades!</p>
                 </div>
               </div>
             )}
 
             {!activa ? (
-              <div className="rounded-2xl p-10 text-center" style={{ background: '#fff', border: '1px solid #E8F0F7' }}>
+              <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
                 <p className="text-sm" style={{ color: '#64748B' }}>
                   Este curso todavía no tiene lecciones.
                 </p>
@@ -276,7 +276,7 @@ export default function VisorCursoPage() {
                 {activa.contenido_texto && (
                   <div
                     className="text-sm leading-relaxed rounded-2xl p-4 sm:p-5"
-                    style={{ background: '#fff', border: '1px solid #E8F0F7', color: '#334155', whiteSpace: 'pre-wrap' }}
+                    style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', color: '#334155', whiteSpace: 'pre-wrap' }}
                   >
                     {activa.contenido_texto}
                   </div>
@@ -307,7 +307,7 @@ export default function VisorCursoPage() {
                     disabled={marcando}
                     className="flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold w-full sm:w-auto disabled:opacity-60"
                     style={activa.completada
-                      ? { background: 'rgba(16,185,129,0.12)', color: '#059669', border: '1px solid rgba(16,185,129,0.4)' }
+                      ? { background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.4)' }
                       : { background: 'var(--color-acento)', color: '#fff' }}
                   >
                     {activa.completada ? <><Check className="w-4 h-4" /> Completada</> : <>Marcar como completada</>}
@@ -320,7 +320,7 @@ export default function VisorCursoPage() {
                     onClick={() => anterior && irALeccion(anterior.id)}
                     disabled={!anterior}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-30"
-                    style={{ border: '1px solid #E2E8F0', color: '#475569', background: '#fff' }}
+                    style={{ border: '1px solid #E2E8F0', color: '#475569', background: 'var(--color-superficie)' }}
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Anterior
@@ -329,7 +329,7 @@ export default function VisorCursoPage() {
                     onClick={() => siguiente && irALeccion(siguiente.id)}
                     disabled={!siguiente}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-30"
-                    style={{ border: '1px solid #E2E8F0', color: '#475569', background: '#fff' }}
+                    style={{ border: '1px solid #E2E8F0', color: '#475569', background: 'var(--color-superficie)' }}
                   >
                     Siguiente
                     <ChevronRight className="w-4 h-4" />
@@ -345,7 +345,7 @@ export default function VisorCursoPage() {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-sm overflow-y-auto p-4" style={{ background: '#F8FAFB' }}>
+          <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-sm overflow-y-auto p-4" style={{ background: 'var(--color-fondo)' }}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold" style={{ color: 'var(--color-primario)' }}>Contenido del curso</h2>
               <button onClick={() => setDrawerOpen(false)} className="p-1 rounded-lg" style={{ color: '#64748B' }} aria-label="Cerrar índice">

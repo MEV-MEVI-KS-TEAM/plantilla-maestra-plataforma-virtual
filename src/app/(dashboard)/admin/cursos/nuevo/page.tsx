@@ -88,7 +88,7 @@ export default function NuevoCursoPage() {
     }
   }
 
-  const inputStyle = { border: '1px solid #E5E7EB', color: 'var(--color-primario)', background: '#fff' }
+  const inputStyle = { border: '1px solid var(--color-borde)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -104,7 +104,7 @@ export default function NuevoCursoPage() {
           Volver a cursos
         </Link>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-primario)' }}>Nuevo curso</h1>
-        <p className="text-sm mt-1" style={{ color: '#525252' }}>
+        <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
           Se crea como borrador: podrás agregar módulos y lecciones antes de publicarlo.
         </p>
       </div>
@@ -112,11 +112,11 @@ export default function NuevoCursoPage() {
       <form
         onSubmit={handleSubmit}
         className="rounded-2xl p-6 space-y-5"
-        style={{ background: '#fff', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
+        style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
       >
         <div>
           <label htmlFor="nombre" className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-            Nombre <span style={{ color: '#DC2626' }}>*</span>
+            Nombre <span style={{ color: '#EF4444' }}>*</span>
           </label>
           <input
             id="nombre"
@@ -148,7 +148,7 @@ export default function NuevoCursoPage() {
 
         <div>
           <span className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-            Tipo <span style={{ color: '#DC2626' }}>*</span>
+            Tipo <span style={{ color: '#EF4444' }}>*</span>
           </span>
           <div className="flex gap-2">
             {(['curso', 'diplomado'] as const).map(t => (
@@ -158,8 +158,8 @@ export default function NuevoCursoPage() {
                 onClick={() => setTipo(t)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold capitalize"
                 style={tipo === t
-                  ? { background: 'var(--color-acento)', color: '#fff', border: '1px solid var(--color-acento)' }
-                  : { background: '#fff', color: '#525252', border: '1px solid #E5E7EB' }}
+                  ? { background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)', border: '1px solid var(--color-acento)' }
+                  : { background: 'var(--color-superficie)', color: 'var(--color-texto-secundario)', border: '1px solid var(--color-borde)' }}
                 aria-pressed={tipo === t}
               >
                 {t}
@@ -170,7 +170,7 @@ export default function NuevoCursoPage() {
 
         <div>
           <span className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-            Portada <span className="font-normal text-xs" style={{ color: '#525252' }}>(opcional · JPG/PNG/WebP · máx 5MB)</span>
+            Portada <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(opcional · JPG/PNG/WebP · máx 5MB)</span>
           </span>
           {portadaPreview ? (
             <div className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', maxWidth: 420 }}>
@@ -192,7 +192,7 @@ export default function NuevoCursoPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium w-full justify-center"
-              style={{ border: '2px dashed #D1D5DB', color: '#525252', background: '#FAFAFA' }}
+              style={{ border: '2px dashed #D1D5DB', color: 'var(--color-texto-secundario)', background: '#FAFAFA' }}
             >
               <ImagePlus className="w-4 h-4" />
               Seleccionar imagen
@@ -212,7 +212,7 @@ export default function NuevoCursoPage() {
           <Link
             href="/admin/cursos"
             className="px-4 py-2.5 rounded-xl text-sm font-medium"
-            style={{ border: '1px solid #E5E7EB', color: '#525252' }}
+            style={{ border: '1px solid var(--color-borde)', color: 'var(--color-texto-secundario)' }}
           >
             Cancelar
           </Link>
@@ -220,7 +220,7 @@ export default function NuevoCursoPage() {
             type="submit"
             disabled={guardando}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-            style={{ background: 'var(--color-acento)', color: '#fff' }}
+            style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
           >
             {guardando ? 'Creando…' : 'Crear curso'}
           </button>

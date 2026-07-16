@@ -46,11 +46,11 @@ export function ConfirmDialog({
       <div className="absolute inset-0 bg-black/50" onClick={busy ? undefined : handleCancel} />
       <div
         className="relative w-full max-w-md rounded-2xl p-6"
-        style={{ background: '#fff', border: '1px solid #E5E7EB', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
+        style={{ background: 'var(--color-superficie)', border: '1px solid var(--color-borde)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
       >
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex items-center gap-2">
-            {danger && <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: '#DC2626' }} />}
+            {danger && <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: '#EF4444' }} />}
             <h3 className="text-lg font-bold" style={{ color: 'var(--color-primario)' }}>{title}</h3>
           </div>
           <button onClick={handleCancel} disabled={busy} className="p-1 rounded-lg disabled:opacity-40" style={{ color: '#9CA3AF' }} aria-label="Cerrar">
@@ -64,15 +64,15 @@ export function ConfirmDialog({
 
         {requireText && (
           <div className="mb-4">
-            <label className="block text-xs font-medium mb-1" style={{ color: '#525252' }}>
-              Escribe <span className="font-bold" style={{ color: '#DC2626' }}>{requireText}</span> para confirmar:
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-texto-secundario)' }}>
+              Escribe <span className="font-bold" style={{ color: '#EF4444' }}>{requireText}</span> para confirmar:
             </label>
             <input
               type="text"
               value={typed}
               onChange={e => setTyped(e.target.value)}
               className="w-full rounded-xl px-3 py-2 text-sm outline-none"
-              style={{ border: '1px solid #E5E7EB', color: 'var(--color-primario)' }}
+              style={{ border: '1px solid var(--color-borde)', color: 'var(--color-primario)' }}
               placeholder={requireText}
               autoFocus
             />
@@ -84,7 +84,7 @@ export function ConfirmDialog({
             onClick={handleCancel}
             disabled={busy}
             className="px-4 py-2 rounded-xl text-sm font-medium"
-            style={{ border: '1px solid #E5E7EB', color: '#525252', background: '#fff' }}
+            style={{ border: '1px solid var(--color-borde)', color: 'var(--color-texto-secundario)', background: 'var(--color-superficie)' }}
           >
             {cancelLabel}
           </button>
@@ -93,7 +93,7 @@ export function ConfirmDialog({
             disabled={!textOk || busy}
             className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: danger ? '#DC2626' : 'var(--color-acento)',
+              background: danger ? '#EF4444' : 'var(--color-acento)',
               color: '#fff',
             }}
           >

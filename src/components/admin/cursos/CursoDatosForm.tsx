@@ -100,13 +100,13 @@ export function CursoDatosForm({ curso, onChanged, onError }: CursoDatosFormProp
     }
   }
 
-  const inputStyle = { border: '1px solid #E5E7EB', color: 'var(--color-primario)', background: '#fff' }
+  const inputStyle = { border: '1px solid var(--color-borde)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }
 
   return (
     <form
       onSubmit={guardarDatos}
       className="rounded-2xl p-6 space-y-5"
-      style={{ background: '#fff', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
+      style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
     >
       <h2 className="text-base font-bold" style={{ color: 'var(--color-primario)' }}>Datos del curso</h2>
 
@@ -114,7 +114,7 @@ export function CursoDatosForm({ curso, onChanged, onError }: CursoDatosFormProp
         <div className="space-y-4">
           <div>
             <label htmlFor="curso-nombre" className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-              Nombre <span style={{ color: '#DC2626' }}>*</span>
+              Nombre <span style={{ color: '#EF4444' }}>*</span>
             </label>
             <input
               id="curso-nombre"
@@ -152,8 +152,8 @@ export function CursoDatosForm({ curso, onChanged, onError }: CursoDatosFormProp
                   onClick={() => setTipo(t)}
                   className="px-4 py-2 rounded-xl text-sm font-semibold capitalize"
                   style={tipo === t
-                    ? { background: 'var(--color-acento)', color: '#fff', border: '1px solid var(--color-acento)' }
-                    : { background: '#fff', color: '#525252', border: '1px solid #E5E7EB' }}
+                    ? { background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)', border: '1px solid var(--color-acento)' }
+                    : { background: 'var(--color-superficie)', color: 'var(--color-texto-secundario)', border: '1px solid var(--color-borde)' }}
                   aria-pressed={tipo === t}
                 >
                   {t}
@@ -166,7 +166,7 @@ export function CursoDatosForm({ curso, onChanged, onError }: CursoDatosFormProp
         {/* Portada */}
         <div>
           <span className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-            Portada <span className="font-normal text-xs" style={{ color: '#525252' }}>(JPG/PNG/WebP · máx 5MB)</span>
+            Portada <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(JPG/PNG/WebP · máx 5MB)</span>
           </span>
           <div className="relative rounded-xl overflow-hidden mb-2" style={{ aspectRatio: '16/9', background: 'linear-gradient(135deg, var(--color-primario) 0%, color-mix(in srgb, var(--color-primario) 78%, #000) 100%)' }}>
             {curso.portadaUrl && (
@@ -190,7 +190,7 @@ export function CursoDatosForm({ curso, onChanged, onError }: CursoDatosFormProp
               onClick={() => fileInputRef.current?.click()}
               disabled={subiendoPortada}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
-              style={{ border: '1px solid #E5E7EB', color: 'var(--color-acento)', background: '#fff' }}
+              style={{ border: '1px solid var(--color-borde)', color: 'var(--color-acento)', background: 'var(--color-superficie)' }}
             >
               <ImagePlus className="w-3.5 h-3.5" />
               {subiendoPortada ? 'Subiendo…' : curso.portadaUrl ? 'Reemplazar' : 'Subir portada'}
@@ -201,7 +201,7 @@ export function CursoDatosForm({ curso, onChanged, onError }: CursoDatosFormProp
                 onClick={quitarPortada}
                 disabled={subiendoPortada}
                 className="flex items-center justify-center px-3 py-2 rounded-xl disabled:opacity-50"
-                style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#DC2626', background: '#fff' }}
+                style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
                 aria-label="Quitar portada"
                 title="Quitar portada"
               >
@@ -225,7 +225,7 @@ export function CursoDatosForm({ curso, onChanged, onError }: CursoDatosFormProp
           type="submit"
           disabled={guardando || !hayCambios || !nombre.trim()}
           className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
-          style={{ background: 'var(--color-acento)', color: '#fff' }}
+          style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
         >
           {guardando ? 'Guardando…' : 'Guardar cambios'}
         </button>

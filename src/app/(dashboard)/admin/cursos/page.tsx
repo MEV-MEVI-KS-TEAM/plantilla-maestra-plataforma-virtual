@@ -16,7 +16,7 @@ function EstadoBadge({ estado }: { estado: string }) {
       className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
       style={{
         background: publicado ? 'rgba(16,185,129,0.12)' : 'rgba(180,83,9,0.12)',
-        color: publicado ? '#059669' : '#B45309',
+        color: publicado ? '#10B981' : '#F59E0B',
       }}
     >
       {publicado ? 'Publicado' : 'Borrador'}
@@ -91,7 +91,7 @@ export default function AdminCursosPage() {
         <button
           onClick={() => router.push('/admin/cursos/nuevo')}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: 'var(--color-acento)', color: '#fff' }}
+          style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
         >
           <Plus className="w-4 h-4" />
           Nuevo curso
@@ -100,25 +100,25 @@ export default function AdminCursosPage() {
 
       {/* Estado de carga */}
       {cursos === null && (
-        <div className="rounded-2xl p-10 text-center" style={{ background: '#fff', border: '1px solid #E8F0F7' }}>
-          <p className="text-sm" style={{ color: '#525252' }}>Cargando cursos…</p>
+        <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
+          <p className="text-sm" style={{ color: 'var(--color-texto-secundario)' }}>Cargando cursos…</p>
         </div>
       )}
 
       {/* Vacío */}
       {cursos !== null && cursos.length === 0 && (
-        <div className="rounded-2xl p-10 text-center" style={{ background: '#fff', border: '1px solid #E8F0F7' }}>
+        <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
           <GraduationCap className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--color-primario)', opacity: 0.4 }} />
           <p className="text-base font-semibold mb-1" style={{ color: 'var(--color-primario)' }}>
             Aún no hay cursos
           </p>
-          <p className="text-sm mb-4" style={{ color: '#525252' }}>
+          <p className="text-sm mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
             Crea tu primer curso o diplomado para empezar.
           </p>
           <Link
             href="/admin/cursos/nuevo"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: 'var(--color-acento)', color: '#fff' }}
+            style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
           >
             <Plus className="w-4 h-4" />
             Nuevo curso
@@ -133,7 +133,7 @@ export default function AdminCursosPage() {
             <div
               key={curso.id}
               className="rounded-2xl overflow-hidden flex flex-col"
-              style={{ background: '#fff', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
+              style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
             >
               {/* Portada */}
               <div className="relative w-full" style={{ aspectRatio: '16/9', background: 'linear-gradient(135deg, var(--color-primario) 0%, color-mix(in srgb, var(--color-primario) 78%, #000) 100%)' }}>
@@ -164,7 +164,7 @@ export default function AdminCursosPage() {
                   <EstadoBadge estado={curso.estado} />
                 </div>
 
-                <div className="flex items-center gap-4 text-xs" style={{ color: '#525252' }}>
+                <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
                   <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" />{curso.numModulos} módulos</span>
                   <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{curso.numLecciones} lecciones</span>
                   <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{curso.numAlumnos} alumnos</span>
@@ -174,7 +174,7 @@ export default function AdminCursosPage() {
                   <Link
                     href={`/admin/cursos/${curso.id}`}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
-                    style={{ background: 'var(--color-acento)', color: '#fff' }}
+                    style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     Editar
@@ -182,7 +182,7 @@ export default function AdminCursosPage() {
                   <button
                     onClick={() => setAEliminar(curso)}
                     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
-                    style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#DC2626', background: '#fff' }}
+                    style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
                     aria-label={`Eliminar ${curso.nombre}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />

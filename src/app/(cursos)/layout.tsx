@@ -17,7 +17,7 @@ export default async function CursosViewerLayout({
   if (!user) redirect('/login')
 
   return (
-    <div className="min-h-screen" style={{ background: '#F8FAFB' }}>
+    <div className="min-h-screen" style={{ background: 'var(--color-fondo)' }}>
       {children}
     </div>
   )

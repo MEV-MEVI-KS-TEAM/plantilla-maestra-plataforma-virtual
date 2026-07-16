@@ -72,7 +72,7 @@ export default function EditorCursoPage() {
 
   if (noEncontrado) {
     return (
-      <div className="rounded-2xl p-10 text-center" style={{ background: '#fff', border: '1px solid #E8F0F7' }}>
+      <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
         <p className="text-base font-semibold mb-2" style={{ color: 'var(--color-primario)' }}>
           Curso no encontrado
         </p>
@@ -89,8 +89,8 @@ export default function EditorCursoPage() {
 
   if (!detalle) {
     return (
-      <div className="rounded-2xl p-10 text-center" style={{ background: '#fff', border: '1px solid #E8F0F7' }}>
-        <p className="text-sm" style={{ color: '#525252' }}>Cargando curso…</p>
+      <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
+        <p className="text-sm" style={{ color: 'var(--color-texto-secundario)' }}>Cargando curso…</p>
       </div>
     )
   }
@@ -118,7 +118,7 @@ export default function EditorCursoPage() {
             className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
             style={{
               background: publicado ? 'rgba(16,185,129,0.12)' : 'rgba(180,83,9,0.12)',
-              color: publicado ? '#059669' : '#B45309',
+              color: publicado ? '#10B981' : '#F59E0B',
             }}
           >
             {publicado ? 'Publicado' : 'Borrador'}
@@ -145,7 +145,7 @@ export default function EditorCursoPage() {
               aria-selected={active}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
               style={active
-                ? { background: '#fff', color: 'var(--color-primario)', boxShadow: '0 1px 4px rgba(27,58,87,0.12)' }
+                ? { background: 'var(--color-superficie)', color: 'var(--color-primario)', boxShadow: '0 1px 4px rgba(27,58,87,0.12)' }
                 : { background: 'transparent', color: '#64748B' }}
             >
               <Icon className="w-4 h-4" />

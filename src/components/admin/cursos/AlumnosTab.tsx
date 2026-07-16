@@ -120,7 +120,7 @@ export function AlumnosTab({ cursoId, inscritos, onChanged, onError }: AlumnosTa
       {/* Buscador + asignación masiva */}
       <div
         className="rounded-2xl p-5 space-y-3"
-        style={{ background: '#fff', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
+        style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-bold" style={{ color: 'var(--color-primario)' }}>Asignar alumnos</h2>
@@ -144,7 +144,7 @@ export function AlumnosTab({ cursoId, inscritos, onChanged, onError }: AlumnosTa
             placeholder={alumnos === null ? 'Cargando alumnos…' : 'Buscar por nombre o email…'}
             disabled={alumnos === null}
             className="w-full rounded-xl pl-9 pr-3.5 py-2.5 text-sm outline-none"
-            style={{ border: '1px solid #E5E7EB', color: 'var(--color-primario)', background: '#fff' }}
+            style={{ border: '1px solid var(--color-borde)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
             aria-label="Buscar alumnos por nombre o email"
           />
         </div>
@@ -160,7 +160,7 @@ export function AlumnosTab({ cursoId, inscritos, onChanged, onError }: AlumnosTa
               <div
                 key={a.id}
                 className="flex items-center gap-3 rounded-xl px-3 py-2"
-                style={{ background: '#F8FAFC', border: '1px solid #EEF2F6' }}
+                style={{ background: 'var(--color-fondo)', border: '1px solid #EEF2F6' }}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: 'var(--color-primario)' }}>{a.nombre_completo}</p>
@@ -190,7 +190,7 @@ export function AlumnosTab({ cursoId, inscritos, onChanged, onError }: AlumnosTa
       {/* Lista de asignados */}
       <div
         className="rounded-2xl p-5"
-        style={{ background: '#fff', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
+        style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 2px 8px rgba(27,58,87,0.06)' }}
       >
         <h2 className="text-base font-bold mb-3" style={{ color: 'var(--color-primario)' }}>
           Alumnos asignados ({inscritos.length})
@@ -205,7 +205,7 @@ export function AlumnosTab({ cursoId, inscritos, onChanged, onError }: AlumnosTa
               <div
                 key={i.alumno_id}
                 className="flex items-center gap-3 rounded-xl px-3 py-2"
-                style={{ background: '#F8FAFC', border: '1px solid #EEF2F6' }}
+                style={{ background: 'var(--color-fondo)', border: '1px solid #EEF2F6' }}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: 'var(--color-primario)' }}>{i.nombre}</p>
@@ -223,7 +223,7 @@ export function AlumnosTab({ cursoId, inscritos, onChanged, onError }: AlumnosTa
                   onClick={() => quitar(i.alumno_id, i.nombre)}
                   disabled={ocupadoId === i.alumno_id}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
-                  style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#DC2626', background: '#fff' }}
+                  style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
                 >
                   <UserMinus className="w-3.5 h-3.5" />
                   Quitar

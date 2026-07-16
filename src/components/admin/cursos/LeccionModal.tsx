@@ -135,7 +135,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
     }
   }
 
-  const inputStyle = { border: '1px solid #E5E7EB', color: 'var(--color-primario)', background: '#fff' }
+  const inputStyle = { border: '1px solid var(--color-borde)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }
   const materialActualVisible = Boolean(leccion?.material_path) && !material && !quitarMaterialActual
 
   return (
@@ -143,7 +143,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
       <div className="absolute inset-0 bg-black/50" onClick={guardando ? undefined : onClose} />
       <div
         className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6"
-        style={{ background: '#fff', border: '1px solid #E5E7EB', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
+        style={{ background: 'var(--color-superficie)', border: '1px solid var(--color-borde)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold" style={{ color: 'var(--color-primario)' }}>
@@ -157,7 +157,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
         <div className="space-y-4">
           <div>
             <label htmlFor="leccion-titulo" className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-              Título <span style={{ color: '#DC2626' }}>*</span>
+              Título <span style={{ color: '#EF4444' }}>*</span>
             </label>
             <input
               id="leccion-titulo"
@@ -173,7 +173,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
 
           <div>
             <label htmlFor="leccion-video" className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-              URL de video <span className="font-normal text-xs" style={{ color: '#525252' }}>(YouTube, Vimeo o Loom)</span>
+              URL de video <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(YouTube, Vimeo o Loom)</span>
             </label>
             <input
               id="leccion-video"
@@ -204,11 +204,11 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
 
           <div>
             <span className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-              Material PDF <span className="font-normal text-xs" style={{ color: '#525252' }}>(opcional · máx 10MB)</span>
+              Material PDF <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(opcional · máx 10MB)</span>
             </span>
 
             {materialActualVisible && (
-              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-2" style={{ background: '#F8FAFC', border: '1px solid #E5E7EB' }}>
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-2" style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
                 <FileText className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-acento)' }} />
                 {leccion?.materialUrl ? (
                   <a
@@ -221,7 +221,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
                     {leccion.material_path?.split('/').pop()}
                   </a>
                 ) : (
-                  <span className="text-sm truncate flex-1" style={{ color: '#525252' }}>
+                  <span className="text-sm truncate flex-1" style={{ color: 'var(--color-texto-secundario)' }}>
                     {leccion?.material_path?.split('/').pop()}
                   </span>
                 )}
@@ -229,7 +229,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
                   type="button"
                   onClick={() => setQuitarMaterialActual(true)}
                   className="p-1 rounded"
-                  style={{ color: '#DC2626' }}
+                  style={{ color: '#EF4444' }}
                   aria-label="Quitar PDF actual"
                   title="Quitar PDF"
                 >
@@ -239,7 +239,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
             )}
 
             {quitarMaterialActual && (
-              <p className="text-xs mb-2" style={{ color: '#B45309' }}>
+              <p className="text-xs mb-2" style={{ color: '#F59E0B' }}>
                 El PDF actual se eliminará al guardar.{' '}
                 <button type="button" onClick={() => setQuitarMaterialActual(false)} className="underline font-medium">
                   Deshacer
@@ -249,13 +249,13 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
 
             {material ? (
               <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: '#F0FDF4', border: '1px solid rgba(16,185,129,0.3)' }}>
-                <FileText className="w-4 h-4 flex-shrink-0" style={{ color: '#059669' }} />
+                <FileText className="w-4 h-4 flex-shrink-0" style={{ color: '#10B981' }} />
                 <span className="text-sm font-medium truncate flex-1" style={{ color: '#065F46' }}>{material.name}</span>
                 <button
                   type="button"
                   onClick={() => { setMaterial(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
                   className="p-1 rounded"
-                  style={{ color: '#DC2626' }}
+                  style={{ color: '#EF4444' }}
                   aria-label="Quitar PDF seleccionado"
                 >
                   <X className="w-4 h-4" />
@@ -266,7 +266,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium w-full justify-center"
-                style={{ border: '2px dashed #D1D5DB', color: '#525252', background: '#FAFAFA' }}
+                style={{ border: '2px dashed #D1D5DB', color: 'var(--color-texto-secundario)', background: '#FAFAFA' }}
               >
                 <Upload className="w-4 h-4" />
                 {leccion?.material_path && !quitarMaterialActual ? 'Reemplazar PDF' : 'Seleccionar PDF'}
@@ -288,7 +288,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
             onClick={onClose}
             disabled={guardando}
             className="px-4 py-2 rounded-xl text-sm font-medium"
-            style={{ border: '1px solid #E5E7EB', color: '#525252', background: '#fff' }}
+            style={{ border: '1px solid var(--color-borde)', color: 'var(--color-texto-secundario)', background: 'var(--color-superficie)' }}
           >
             Cancelar
           </button>

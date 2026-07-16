@@ -29,7 +29,7 @@ export function ProgressBar({
         {showLabel && (
           <span
             className="text-xs font-bold tabular-nums flex-shrink-0"
-            style={{ color: completo ? '#059669' : 'var(--color-primario)', minWidth: 34, textAlign: 'right' }}
+            style={{ color: completo ? '#10B981' : 'var(--color-primario)', minWidth: 34, textAlign: 'right' }}
           >
             {pct}%
           </span>

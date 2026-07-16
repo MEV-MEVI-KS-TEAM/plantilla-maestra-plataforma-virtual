@@ -98,7 +98,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
           placeholder="Nombre del nuevo módulo…"
           maxLength={200}
           className="flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
-          style={{ border: '1px solid #E5E7EB', color: 'var(--color-primario)', background: '#fff' }}
+          style={{ border: '1px solid var(--color-borde)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
           aria-label="Nombre del nuevo módulo"
         />
         <button
@@ -113,8 +113,8 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
       </form>
 
       {modulos.length === 0 && (
-        <div className="rounded-2xl p-8 text-center" style={{ background: '#F8FAFC', border: '1px dashed #D1D5DB' }}>
-          <p className="text-sm" style={{ color: '#525252' }}>
+        <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--color-fondo)', border: '1px dashed #D1D5DB' }}>
+          <p className="text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
             Este curso aún no tiene módulos. Agrega el primero arriba. 👆
           </p>
         </div>
@@ -125,7 +125,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
         <div
           key={modulo.id}
           className="rounded-2xl overflow-hidden"
-          style={{ background: '#fff', border: '1px solid #E8F0F7' }}
+          style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}
         >
           {/* Encabezado del módulo */}
           <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(27,48,104,0.04)', borderBottom: '1px solid #E8F0F7' }}>
@@ -148,7 +148,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                   autoFocus
                   aria-label="Nuevo nombre del módulo"
                 />
-                <button onClick={() => renombrarModulo(modulo.id)} disabled={ocupado || !editandoNombre.trim()} className={btnIcon} style={{ color: '#059669' }} aria-label="Guardar nombre">
+                <button onClick={() => renombrarModulo(modulo.id)} disabled={ocupado || !editandoNombre.trim()} className={btnIcon} style={{ color: '#10B981' }} aria-label="Guardar nombre">
                   <Check className="w-4 h-4" />
                 </button>
                 <button onClick={() => setEditandoId(null)} className={btnIcon} style={{ color: '#9CA3AF' }} aria-label="Cancelar edición">
@@ -166,7 +166,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                 <button
                   onClick={() => moverModulo(modulo.id, 'up')}
                   disabled={ocupado || mi === 0}
-                  className={btnIcon} style={{ color: '#525252' }}
+                  className={btnIcon} style={{ color: 'var(--color-texto-secundario)' }}
                   aria-label={`Subir módulo ${modulo.nombre}`} title="Subir"
                 >
                   <ArrowUp className="w-4 h-4" />
@@ -174,7 +174,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                 <button
                   onClick={() => moverModulo(modulo.id, 'down')}
                   disabled={ocupado || mi === modulos.length - 1}
-                  className={btnIcon} style={{ color: '#525252' }}
+                  className={btnIcon} style={{ color: 'var(--color-texto-secundario)' }}
                   aria-label={`Bajar módulo ${modulo.nombre}`} title="Bajar"
                 >
                   <ArrowDown className="w-4 h-4" />
@@ -190,7 +190,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                 <button
                   onClick={() => setModuloAEliminar(modulo)}
                   disabled={ocupado}
-                  className={btnIcon} style={{ color: '#DC2626' }}
+                  className={btnIcon} style={{ color: '#EF4444' }}
                   aria-label={`Eliminar módulo ${modulo.nombre}`} title="Eliminar"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -208,7 +208,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
               <div
                 key={leccion.id}
                 className="flex items-center gap-2 rounded-xl px-3 py-2"
-                style={{ background: '#F8FAFC', border: '1px solid #EEF2F6' }}
+                style={{ background: 'var(--color-fondo)', border: '1px solid #EEF2F6' }}
               >
                 <span className="text-xs font-bold w-5 text-center flex-shrink-0" style={{ color: '#9CA3AF' }}>
                   {li + 1}
@@ -217,13 +217,13 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                   {leccion.titulo}
                 </span>
                 <span className="flex items-center gap-1.5 flex-shrink-0">
-                  {leccion.video_url && <Play className="w-3.5 h-3.5" style={{ color: '#059669' }} aria-label="Tiene video" />}
-                  {leccion.material_path && <FileText className="w-3.5 h-3.5" style={{ color: '#B45309' }} aria-label="Tiene PDF" />}
+                  {leccion.video_url && <Play className="w-3.5 h-3.5" style={{ color: '#10B981' }} aria-label="Tiene video" />}
+                  {leccion.material_path && <FileText className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} aria-label="Tiene PDF" />}
                 </span>
                 <button
                   onClick={() => moverLeccion(leccion.id, 'up')}
                   disabled={ocupado || li === 0}
-                  className={btnIcon} style={{ color: '#525252' }}
+                  className={btnIcon} style={{ color: 'var(--color-texto-secundario)' }}
                   aria-label={`Subir lección ${leccion.titulo}`} title="Subir"
                 >
                   <ArrowUp className="w-3.5 h-3.5" />
@@ -231,7 +231,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                 <button
                   onClick={() => moverLeccion(leccion.id, 'down')}
                   disabled={ocupado || li === modulo.lecciones.length - 1}
-                  className={btnIcon} style={{ color: '#525252' }}
+                  className={btnIcon} style={{ color: 'var(--color-texto-secundario)' }}
                   aria-label={`Bajar lección ${leccion.titulo}`} title="Bajar"
                 >
                   <ArrowDown className="w-3.5 h-3.5" />
@@ -247,7 +247,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                 <button
                   onClick={() => setLeccionAEliminar({ leccion, modulo })}
                   disabled={ocupado}
-                  className={btnIcon} style={{ color: '#DC2626' }}
+                  className={btnIcon} style={{ color: '#EF4444' }}
                   aria-label={`Eliminar lección ${leccion.titulo}`} title="Eliminar"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

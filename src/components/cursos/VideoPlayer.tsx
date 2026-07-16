@@ -39,7 +39,7 @@ export function VideoPlayer({ url, titulo }: { url: string; titulo: string }) {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: '#0F172A' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-primario)' }}>
       <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
         <iframe
           src={parsed.embedUrl}
