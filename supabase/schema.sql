@@ -678,11 +678,15 @@ CREATE INDEX IF NOT EXISTS idx_pagos_created_at         ON public.pagos (created
 --  (Ejecutar en SQL Editor de Supabase o desde el Dashboard)
 -- ============================================================
 
+-- NOTA CLIENTES NUEVOS: los 4 buckets son necesarios desde el día 1.
+-- 'recibos' guarda los PDF de recibo de pago (Fase 3 Panel Admin Unificado);
+-- son archivos pequeños, de ahí el límite de 2MB.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('avatares',    'avatares',    true,  5242880,   ARRAY['image/jpeg','image/png','image/webp']),
   ('documentos',  'documentos',  false, 10485760,  ARRAY['image/jpeg','image/png','application/pdf']),
-  ('constancias', 'constancias', false, 10485760,  ARRAY['application/pdf','image/jpeg','image/png'])
+  ('constancias', 'constancias', false, 10485760,  ARRAY['application/pdf','image/jpeg','image/png']),
+  ('recibos',     'recibos',     false, 2097152,   ARRAY['application/pdf'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Políticas de Storage
@@ -726,6 +730,22 @@ CREATE POLICY "constancias: ver propio"
 CREATE POLICY "constancias: admin sube"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'constancias' AND public.es_admin());
+
+-- Recibos de pago: el dueño (alumno) y el staff pueden verlos;
+-- solo el staff los sube (en la práctica los genera el servidor con
+-- service role; el alumno los recibe vía signed URL por WhatsApp).
+CREATE POLICY "recibos: ver propio"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'recibos' AND (
+      auth.uid()::TEXT = (storage.foldername(name))[1]
+      OR public.es_staff()
+    )
+  );
+
+CREATE POLICY "recibos: staff sube"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'recibos' AND public.es_staff());
 
 
 -- ============================================================
