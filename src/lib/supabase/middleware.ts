@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
     const rol = (usuario?.rol as string | undefined)?.toUpperCase()
     const roleRedirects: Record<string, string> = {
       ADMIN: '/admin',
+      SECRETARIO: '/admin/alumnos',
       ALUMNO: '/alumno',
     }
 
@@ -62,8 +63,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protección de rutas por rol:
-  // - /admin/** → requiere rol ADMIN; si es ALUMNO → redirigir a /alumno
-  // - /alumno/** → requiere rol ALUMNO; si es ADMIN → redirigir a /admin
+  // - /admin/** → requiere rol de staff (ADMIN o SECRETARIO); cada página/API
+  //   dentro decide su propio nivel de acceso (verifyAdmin vs verifyStaff)
+  // - /alumno/** → requiere rol ALUMNO; el staff es redirigido a su panel
   const isAdminRoute  = request.nextUrl.pathname.startsWith('/admin')
   const isAlumnoRoute = request.nextUrl.pathname.startsWith('/alumno')
 
@@ -76,16 +78,17 @@ export async function updateSession(request: NextRequest) {
 
     // Normalizar rol a mayúsculas
     const rol = (usuarioRol?.rol as string | undefined)?.toUpperCase()
+    const esStaff = rol === 'ADMIN' || rol === 'SECRETARIO'
 
-    if (isAdminRoute && rol !== 'ADMIN') {
+    if (isAdminRoute && !esStaff) {
       const url = request.nextUrl.clone()
       url.pathname = rol === 'ALUMNO' ? '/alumno' : '/login'
       return NextResponse.redirect(url)
     }
 
-    if (isAlumnoRoute && rol === 'ADMIN') {
+    if (isAlumnoRoute && esStaff) {
       const url = request.nextUrl.clone()
-      url.pathname = '/admin'
+      url.pathname = rol === 'SECRETARIO' ? '/admin/alumnos' : '/admin'
       return NextResponse.redirect(url)
     }
   }

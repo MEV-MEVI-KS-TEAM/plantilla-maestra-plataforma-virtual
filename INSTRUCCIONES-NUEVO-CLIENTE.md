@@ -37,7 +37,9 @@
 - En Supabase → Authentication → Add User → Create new user
 - Email y password del admin del cliente
 - Copiar el UUID
-- En SQL Editor: INSERT INTO usuarios (id, email, nombre_completo, rol, activo) VALUES ('UUID', 'email', 'nombre', 'ADMIN', true);
+- En SQL Editor (rol en minúsculas — el CHECK de usuarios.rol solo acepta 'alumno' | 'admin' | 'secretario'):
+  INSERT INTO usuarios (id, email, nombre, rol) VALUES ('UUID', 'email', 'nombre', 'admin') ON CONFLICT (id) DO UPDATE SET rol = 'admin';
+- Las cuentas de staff adicionales (admin o secretario) se crean después desde la app en /admin/usuarios
 
 ### Paso 5: Crear planes de estudio
 - En SQL Editor:
