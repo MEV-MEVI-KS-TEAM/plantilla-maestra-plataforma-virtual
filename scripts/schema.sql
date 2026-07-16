@@ -940,7 +940,7 @@ CREATE POLICY "alumnos: admin puede insertar" ON public.alumnos FOR INSERT WITH 
 -- Name: alumnos alumnos: ver propio registro; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "alumnos: ver propio registro" ON public.alumnos FOR SELECT USING (((id = auth.uid()) OR public.es_staff()));
+CREATE POLICY "alumnos: ver propio registro" ON public.alumnos FOR SELECT USING (((id = auth.uid()) OR public.es_admin()));
 
 --
 -- Name: calificaciones; Type: ROW SECURITY; Schema: public; Owner: -

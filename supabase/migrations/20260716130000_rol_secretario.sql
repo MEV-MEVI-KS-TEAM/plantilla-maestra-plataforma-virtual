@@ -25,17 +25,16 @@ BEGIN
 END;
 $$;
 
--- 3. Lectura básica de usuarios/alumnos pasa a es_staff().
+-- 3. Lectura básica de usuarios pasa a es_staff() (sin columnas sensibles:
+--    nombre/apellidos/email/telefono/rol — el secretario las necesita).
 --    Escrituras (INSERT/UPDATE/DELETE) siguen admin-only.
+--    IMPORTANTE: la policy SELECT de ALUMNOS se queda en es_admin() — RLS no
+--    filtra columnas y alumnos.notas_admin es sensible; el secretario lee
+--    alumnos solo vía /api/admin/* (service role, que filtra notas_admin).
 --    documentos_alumno y demás tablas NO se tocan (siguen es_admin()).
 DROP POLICY IF EXISTS "usuarios: ver propio perfil" ON public.usuarios;
 CREATE POLICY "usuarios: ver propio perfil"
   ON public.usuarios FOR SELECT
-  USING (id = auth.uid() OR public.es_staff());
-
-DROP POLICY IF EXISTS "alumnos: ver propio registro" ON public.alumnos;
-CREATE POLICY "alumnos: ver propio registro"
-  ON public.alumnos FOR SELECT
   USING (id = auth.uid() OR public.es_staff());
 
 -- 4. Policies de pagos (condicional: la tabla pagos llega con el PR del

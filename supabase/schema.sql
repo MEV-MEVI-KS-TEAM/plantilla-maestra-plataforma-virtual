@@ -429,13 +429,13 @@ CREATE POLICY "usuarios: admin puede insertar"
   WITH CHECK (public.es_admin() OR id = auth.uid());
 
 -- ── POLÍTICAS: ALUMNOS ───────────────────────────────────────
--- Lectura básica: staff (admin O secretario) puede listar/ver alumnos.
--- NOTA: notas_admin es columna de esta tabla; su ocultamiento al secretario
--- se aplica a nivel API (el cliente admin usa service-role). Escrituras
--- siguen siendo admin-only.
+-- SELECT directo de alumnos: SOLO es_admin(). El secretario lee alumnos
+-- únicamente vía /api/admin/* (service role, filtra notas_admin) — RLS no
+-- filtra columnas y esta tabla contiene notas_admin (sensible), así que
+-- NO se abre a es_staff().
 CREATE POLICY "alumnos: ver propio registro"
   ON public.alumnos FOR SELECT
-  USING (id = auth.uid() OR public.es_staff());
+  USING (id = auth.uid() OR public.es_admin());
 
 CREATE POLICY "alumnos: admin puede insertar"
   ON public.alumnos FOR INSERT
