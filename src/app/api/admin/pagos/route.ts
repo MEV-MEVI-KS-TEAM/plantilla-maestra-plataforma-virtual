@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 
 const CONCEPTOS = ['inscripcion', 'mensualidad', 'otro'] as const
 const METODOS = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'OTRO'] as const
@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const denied = await verifyAdmin(supabase, user.id)
+    // Staff: el secretario también registra pagos (el DELETE sigue admin-only)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
 
     const body = await request.json()

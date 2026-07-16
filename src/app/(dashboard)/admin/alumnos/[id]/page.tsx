@@ -13,6 +13,8 @@ interface AlumnoDetalle {
   inscripcion_pagada: boolean
   created_at: string
   notas_admin: string | null
+  // Rol del usuario que consulta (lo calcula el servidor): 'ADMIN' | 'SECRETARIO'
+  viewer_rol?: string
   usuario: { id: string; nombre_completo: string; email: string; activo: boolean; telefono: string | null }
   plan: { id: string; nombre: string; duracion_meses: number; precio_mensual: number }
   calificaciones: { id: string; calificacion_final: number; aprobada: boolean; materias: { nombre: string; codigo: string } }[]
@@ -417,6 +419,8 @@ export default function AlumnoDetallePage() {
   )
 
   const todosBloqueados = alumno.meses_desbloqueados >= alumno.plan.duracion_meses
+  // Secretario: modo lectura — sin acciones de admin, sin notas internas ni documentos
+  const esSecretario = alumno.viewer_rol === 'SECRETARIO'
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -453,6 +457,7 @@ export default function AlumnoDetallePage() {
             <p className="text-sm mt-1" style={{ color: '#94A3B8' }}>{alumno.usuario.email}</p>
           </div>
         </div>
+        {!esSecretario && (
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
           <button
             onClick={() => { setModalReset(true); setResetError(null); setResetSuccess(null) }}
@@ -476,6 +481,7 @@ export default function AlumnoDetallePage() {
             {togglingActivo ? <Loader2 className="w-4 h-4 animate-spin inline" /> : (alumno.usuario.activo ? 'Desactivar alumno' : 'Activar alumno')}
           </button>
         </div>
+        )}
       </div>
 
       {/* Info General */}
@@ -490,6 +496,14 @@ export default function AlumnoDetallePage() {
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               Inscripción pagada
+            </span>
+          ) : esSecretario ? (
+            <span
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-semibold"
+              style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Inscripción pendiente
             </span>
           ) : (
             <button
@@ -542,6 +556,7 @@ export default function AlumnoDetallePage() {
               {alumno.meses_desbloqueados} de {alumno.plan.duracion_meses} meses desbloqueados
             </p>
           </div>
+          {!esSecretario && (
           <div className="flex items-center gap-2 flex-wrap">
             {alumno.meses_desbloqueados > 0 && (
               <button
@@ -576,6 +591,7 @@ export default function AlumnoDetallePage() {
               </button>
             )}
           </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -647,6 +663,8 @@ export default function AlumnoDetallePage() {
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: '#64748B' }}>{p.referencia ?? '—'}</td>
                     <td className="px-4 py-3 text-right">
+                      {/* Eliminar pago: admin-only (Fase 1.1) — oculto para secretario */}
+                      {!esSecretario && (
                       <button
                         onClick={() => { setPagoAEliminar(p); setEliminarPagoError(null) }}
                         title="Eliminar pago"
@@ -658,6 +676,7 @@ export default function AlumnoDetallePage() {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -770,7 +789,8 @@ export default function AlumnoDetallePage() {
         )}
       </div>
 
-      {/* Notas del Admin */}
+      {/* Notas del Admin — ocultas para secretario */}
+      {!esSecretario && (
       <div className="rounded-xl p-5 space-y-3" style={CARD_STYLE}>
         <div className="flex items-center gap-2">
           <StickyNote className="w-4 h-4" style={{ color: '#F59E0B' }} />
@@ -800,8 +820,10 @@ export default function AlumnoDetallePage() {
           </button>
         </div>
       </div>
+      )}
 
-      {/* Documentos */}
+      {/* Documentos — ocultos para secretario */}
+      {!esSecretario && (
       <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
         <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid #2A2F3E' }}>
           <FileText className="w-4 h-4" style={{ color: 'var(--color-acento)' }} />
@@ -893,6 +915,7 @@ export default function AlumnoDetallePage() {
           })}
         </div>
       </div>
+      )}
 
       {/* Modal Cerrar Mes */}
       {modalCerrarMes && (

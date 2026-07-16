@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
   telefono    TEXT,
   foto_url    TEXT,
   rol         TEXT        NOT NULL DEFAULT 'alumno'
-                          CHECK (rol IN ('alumno', 'admin')),
+                          CHECK (rol IN ('alumno', 'admin', 'secretario')),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -418,10 +418,25 @@ AS $$
   );
 $$;
 
+-- Helper: detectar si el usuario autenticado es staff (admin O secretario).
+-- Para lectura básica de alumnos/usuarios y registro de pagos.
+-- es_admin() se mantiene intacto para todo lo demás.
+CREATE OR REPLACE FUNCTION public.es_staff()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.usuarios
+     WHERE id = auth.uid() AND rol IN ('admin', 'secretario')
+  );
+$$;
+
 -- ── POLÍTICAS: USUARIOS ──────────────────────────────────────
 CREATE POLICY "usuarios: ver propio perfil"
   ON public.usuarios FOR SELECT
-  USING (id = auth.uid() OR public.es_admin());
+  USING (id = auth.uid() OR public.es_staff());
 
 CREATE POLICY "usuarios: actualizar propio perfil"
   ON public.usuarios FOR UPDATE
@@ -432,6 +447,10 @@ CREATE POLICY "usuarios: admin puede insertar"
   WITH CHECK (public.es_admin() OR id = auth.uid());
 
 -- ── POLÍTICAS: ALUMNOS ───────────────────────────────────────
+-- SELECT directo de alumnos: SOLO es_admin(). El secretario lee alumnos
+-- únicamente vía /api/admin/* (service role, filtra notas_admin) — RLS no
+-- filtra columnas y esta tabla contiene notas_admin (sensible), así que
+-- NO se abre a es_staff().
 CREATE POLICY "alumnos: ver propio registro"
   ON public.alumnos FOR SELECT
   USING (id = auth.uid() OR public.es_admin());
@@ -772,3 +791,35 @@ CREATE POLICY keep_alive_anon_insert ON public.keep_alive_log
   FOR INSERT TO anon WITH CHECK (true);
 
 GRANT INSERT ON public.keep_alive_log TO anon;
+
+-- =============================================================
+-- ROL SECRETARIO — ajuste condicional de policies de pagos
+-- =============================================================
+-- Si el módulo de pagos (feature/panel-admin-pagos) está aplicado
+-- en esta BD, separa la policy ALL de admin en policies por operación:
+--   SELECT/INSERT → es_staff()   (secretario consulta y registra)
+--   UPDATE/DELETE → es_admin()   (el secretario NO edita ni borra)
+-- Idempotente y seguro en cualquier orden de merge.
+-- =============================================================
+DO $$
+BEGIN
+  IF to_regclass('public.pagos') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "pagos: ver propios"     ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin gestiona"  ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: staff registra"  ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin actualiza" ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin elimina"   ON public.pagos;
+
+    CREATE POLICY "pagos: ver propios" ON public.pagos
+      FOR SELECT USING (alumno_id = auth.uid() OR public.es_staff());
+
+    CREATE POLICY "pagos: staff registra" ON public.pagos
+      FOR INSERT WITH CHECK (public.es_staff());
+
+    CREATE POLICY "pagos: admin actualiza" ON public.pagos
+      FOR UPDATE USING (public.es_admin()) WITH CHECK (public.es_admin());
+
+    CREATE POLICY "pagos: admin elimina" ON public.pagos
+      FOR DELETE USING (public.es_admin());
+  END IF;
+END $$;

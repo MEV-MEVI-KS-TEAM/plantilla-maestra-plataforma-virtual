@@ -18,15 +18,16 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single()
 
-  // Normalizar rol a mayúsculas para comparación robusta (soporta 'admin' y 'ADMIN')
+  // Normalizar rol a mayúsculas para comparación robusta (soporta 'admin' y 'ADMIN').
+  // Staff = ADMIN o SECRETARIO; cada página/API interna decide su nivel de acceso.
   const rol = (usuario?.rol as string | undefined)?.toUpperCase()
-  if (!usuario || rol !== 'ADMIN') redirect('/login')
+  if (!usuario || (rol !== 'ADMIN' && rol !== 'SECRETARIO')) redirect('/login')
 
   const userName = [usuario.nombre, usuario.apellidos].filter(Boolean).join(' ') || user.email || 'Admin'
 
   return (
     <DashboardLayout
-      role="ADMIN"
+      role={rol === 'SECRETARIO' ? 'SECRETARIO' : 'ADMIN'}
       userName={userName}
       pageTitle="Panel de Administración"
       theme="light"

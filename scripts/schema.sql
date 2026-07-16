@@ -97,6 +97,23 @@ END;
 $$;
 
 --
+-- Name: es_staff(); Type: FUNCTION; Schema: public; Owner: -
+-- Staff = admin O secretario. Solo para lectura básica de alumnos/usuarios
+-- y registro de pagos; es_admin() se mantiene intacto para todo lo demás.
+--
+
+CREATE FUNCTION public.es_staff() RETURNS boolean
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.usuarios
+     WHERE id = auth.uid() AND rol IN ('admin', 'secretario')
+  );
+END;
+$$;
+
+--
 -- Name: generar_matricula(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -430,7 +447,7 @@ CREATE TABLE public.usuarios (
     foto_url text,
     rol text DEFAULT 'alumno'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT usuarios_rol_check CHECK ((rol = ANY (ARRAY['alumno'::text, 'admin'::text])))
+    CONSTRAINT usuarios_rol_check CHECK ((rol = ANY (ARRAY['alumno'::text, 'admin'::text, 'secretario'::text])))
 );
 
 --
@@ -1277,7 +1294,7 @@ CREATE POLICY "usuarios: admin puede insertar" ON public.usuarios FOR INSERT WIT
 -- Name: usuarios usuarios: ver propio perfil; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "usuarios: ver propio perfil" ON public.usuarios FOR SELECT USING (((id = auth.uid()) OR public.es_admin()));
+CREATE POLICY "usuarios: ver propio perfil" ON public.usuarios FOR SELECT USING (((id = auth.uid()) OR public.es_staff()));
 
 --
 --
@@ -1332,9 +1349,10 @@ END $$;
 -- Plataforma Virtual. Sustituye al Sistema de Control Escolar para
 -- clientes nuevos. Idempotente: IF NOT EXISTS / DROP POLICY IF EXISTS.
 --
--- RLS: admin gestiona todo vía es_admin(); alumno solo SELECT de sus
--- propios pagos (alumnos.id = usuarios.id = auth.uid()). Ningún
--- INSERT/UPDATE/DELETE para alumno.
+-- RLS base: admin gestiona todo vía es_admin(); alumno solo SELECT de
+-- sus propios pagos (alumnos.id = usuarios.id = auth.uid()). El bloque
+-- ROL SECRETARIO (más abajo) reemplaza estas policies por la versión
+-- separada por operación con es_staff() para SELECT/INSERT.
 -- =============================================================
 
 CREATE TABLE IF NOT EXISTS public.pagos (
@@ -1362,3 +1380,36 @@ CREATE POLICY "pagos: ver propios" ON public.pagos FOR SELECT USING (((alumno_id
 
 DROP POLICY IF EXISTS "pagos: admin gestiona" ON public.pagos;
 CREATE POLICY "pagos: admin gestiona" ON public.pagos USING (public.es_admin()) WITH CHECK (public.es_admin());
+
+-- =============================================================
+-- ROL SECRETARIO — ajuste condicional de policies de pagos
+-- =============================================================
+-- Con la tabla pagos ya creada arriba, separa la policy ALL de admin
+-- en policies por operación:
+--   SELECT/INSERT → es_staff()   (secretario consulta y registra)
+--   UPDATE/DELETE → es_admin()   (el secretario NO edita ni borra)
+-- Idempotente; el to_regclass() lo mantiene seguro también en BDs
+-- donde el módulo de pagos aún no se aplica.
+-- =============================================================
+DO $$
+BEGIN
+  IF to_regclass('public.pagos') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "pagos: ver propios"     ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin gestiona"  ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: staff registra"  ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin actualiza" ON public.pagos;
+    DROP POLICY IF EXISTS "pagos: admin elimina"   ON public.pagos;
+
+    CREATE POLICY "pagos: ver propios" ON public.pagos
+      FOR SELECT USING (((alumno_id = auth.uid()) OR public.es_staff()));
+
+    CREATE POLICY "pagos: staff registra" ON public.pagos
+      FOR INSERT WITH CHECK (public.es_staff());
+
+    CREATE POLICY "pagos: admin actualiza" ON public.pagos
+      FOR UPDATE USING (public.es_admin()) WITH CHECK (public.es_admin());
+
+    CREATE POLICY "pagos: admin elimina" ON public.pagos
+      FOR DELETE USING (public.es_admin());
+  END IF;
+END $$;

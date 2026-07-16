@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 
 /**
  * GET /api/admin/alumnos/[id]/pagos
@@ -16,7 +16,8 @@ export async function GET(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const denied = await verifyAdmin(supabase, user.id)
+    // Staff: el secretario necesita el historial + total para registrar pagos
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
 
     const admin = createAdminClient()

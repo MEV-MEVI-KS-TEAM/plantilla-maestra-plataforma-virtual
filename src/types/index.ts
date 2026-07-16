@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'ALUMNO'
+export type UserRole = 'ADMIN' | 'ALUMNO' | 'SECRETARIO'
 
 export interface ConfigEscuela {
   nombre: string

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONFIG } from '@/lib/config'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 
@@ -21,8 +22,9 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const isAdmin = await checkAdmin(user.id)
-    if (!isAdmin) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    // Lectura de la lista: staff (ADMIN o SECRETARIO)
+    const denied = await verifyStaff(supabase, user.id)
+    if (denied) return denied
 
     const admin = createAdminClient()
 
