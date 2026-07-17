@@ -68,7 +68,9 @@ export default function MateriaPage() {
   const [semanaSeleccionada, setSemanaSeleccionada] = useState<string | null>(null)
   const [alumnoId, setAlumnoId] = useState<string>('')
   const [semanasCompletadas, setSemanasCompletadas] = useState<Set<string>>(new Set())
-  const [materiaAcreditada, setMateriaAcreditada] = useState(false)
+  // Completar todas las semanas NO acredita la materia (eso lo decide el
+  // examen general); este estado solo dispara el banner de "materia completada".
+  const [materiaCompletada, setMateriaCompletada] = useState(false)
   const [glosario, setGlosario] = useState<{ id: string; termino: string; definicion: string }[]>([])
 
   const [mostrarGuia, setMostrarGuia] = useState(true)
@@ -91,7 +93,7 @@ export default function MateriaPage() {
       const nuevas = new Set([...semanasCompletadas, semanaId])
       setSemanasCompletadas(nuevas)
       if (materia && materia.semanas.every(s => nuevas.has(s.id))) {
-        setMateriaAcreditada(true)
+        setMateriaCompletada(true)
       }
     } catch {
       // silencioso — no bloquear al alumno
@@ -398,7 +400,7 @@ export default function MateriaPage() {
                           const nuevas = new Set([...semanasCompletadas, semana.id])
                           setSemanasCompletadas(nuevas)
                           if (materia && materia.semanas.every(s => nuevas.has(s.id))) {
-                            setMateriaAcreditada(true)
+                            setMateriaCompletada(true)
                           }
                         }}
                       />
@@ -712,12 +714,12 @@ export default function MateriaPage() {
 
       </FadeIn>
 
-      {materiaAcreditada && (
+      {materiaCompletada && (
         <CelebrationBanner
           materiaNombre={materia.nombre}
           materiaNombre_en={materia.nombre_en}
           lang="es"
-          onClose={() => setMateriaAcreditada(false)}
+          onClose={() => setMateriaCompletada(false)}
         />
       )}
     </div>

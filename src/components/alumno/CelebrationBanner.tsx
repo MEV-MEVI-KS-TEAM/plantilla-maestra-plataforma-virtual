@@ -75,13 +75,16 @@ export default function CelebrationBanner({
           style={{ background: '#181C26', border: '1px solid rgba(99,102,241,0.4)' }}
           onClick={e => e.stopPropagation()}
         >
-          <div className="text-6xl select-none">🎓</div>
+          <div className="text-6xl select-none">🎯</div>
 
           <div className="space-y-1">
             <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>
-              {lang === 'en' ? 'Subject passed!' : '¡Materia acreditada!'}
+              {lang === 'en' ? 'Subject completed!' : '¡Materia completada!'}
             </h2>
             <p className="text-sm" style={{ color: '#94A3B8' }}>{nombre}</p>
+            <p className="text-sm" style={{ color: '#94A3B8' }}>
+              {lang === 'en' ? 'You can now take your final exam' : 'Ya puedes presentar tu examen final'}
+            </p>
           </div>
 
           <button
