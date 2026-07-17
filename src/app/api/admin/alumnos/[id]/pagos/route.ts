@@ -24,8 +24,9 @@ export async function GET(
 
     const { data: pagos, error } = await admin
       .from('pagos')
-      .select('id, monto, concepto, mes_desbloqueado, metodo_pago, referencia, created_at')
+      .select('id, monto, concepto, mes_desbloqueado, metodo_pago, referencia, fecha_pago, created_at')
       .eq('alumno_id', params.id)
+      .order('fecha_pago', { ascending: false })
       .order('created_at', { ascending: false })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -26,7 +26,7 @@ interface PagoReciente {
   concepto?: string
   metodo_pago: string
   referencia?: string | null
-  created_at: string
+  fecha_pago: string
 }
 
 const CONCEPTO_LABELS: Record<string, string> = {
@@ -283,7 +283,7 @@ export default function ReportesPage() {
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                   >
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
-                      {new Date(p.created_at).toLocaleDateString('es-MX')}
+                      {new Date(`${p.fecha_pago}T12:00:00`).toLocaleDateString('es-MX')}
                     </td>
                     <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>{p.alumno}</td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.concepto ? (CONCEPTO_LABELS[p.concepto] ?? p.concepto) : '—'}</td>

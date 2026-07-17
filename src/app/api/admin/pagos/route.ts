@@ -26,6 +26,25 @@ export async function POST(request: NextRequest) {
     const concepto = body.concepto ?? 'mensualidad'
     const metodo_pago = body.metodo_pago
 
+    // fecha_pago editable (YYYY-MM-DD). Si no viene, la BD usa CURRENT_DATE por
+    // default. Permite registrar pagos con fecha real/retroactiva. Se valida que
+    // sea una fecha REAL (el regex solo no basta: new Date('2026-02-30') hace
+    // roll-over y Postgres la rechazaría con un 500 críptico).
+    let fechaPago: string | undefined
+    if (body.fecha_pago !== undefined && body.fecha_pago !== null && body.fecha_pago !== '') {
+      const f = String(body.fecha_pago)
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(f)
+      const d = m ? new Date(`${f}T12:00:00`) : null
+      const esFechaReal = !!m && !!d && !Number.isNaN(d.getTime())
+        && d.getFullYear() === Number(m[1])
+        && d.getMonth() + 1 === Number(m[2])
+        && d.getDate() === Number(m[3])
+      if (!esFechaReal) {
+        return NextResponse.json({ error: 'fecha_pago inválida. Usa una fecha real en formato YYYY-MM-DD' }, { status: 400 })
+      }
+      fechaPago = f
+    }
+
     if (typeof alumno_id !== 'string' || !alumno_id) {
       return NextResponse.json({ error: 'El campo alumno_id es requerido' }, { status: 400 })
     }
@@ -72,6 +91,7 @@ export async function POST(request: NextRequest) {
         metodo_pago: metodo_pago.toUpperCase(),
         referencia: typeof referencia === 'string' && referencia.trim() !== '' ? referencia.trim() : null,
         registrado_por: user.id,
+        ...(fechaPago ? { fecha_pago: fechaPago } : {}),
       })
       .select()
       .single()

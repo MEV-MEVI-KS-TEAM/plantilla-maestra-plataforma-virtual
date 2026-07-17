@@ -33,10 +33,10 @@ export async function GET() {
       ? alumnosList.reduce((s, a) => s + (a.meses_desbloqueados ?? 0), 0) / alumnosList.length
       : 0
 
-    let pagosList: { monto: number; alumno_id: string; concepto?: string | null; metodo_pago: string; referencia?: string | null; created_at: string }[] = []
+    let pagosList: { monto: number; alumno_id: string; concepto?: string | null; metodo_pago: string; referencia?: string | null; fecha_pago: string }[] = []
     const pagosRes = await admin
       .from('pagos')
-      .select('monto, alumno_id, concepto, metodo_pago, referencia, created_at')
+      .select('monto, alumno_id, concepto, metodo_pago, referencia, fecha_pago')
     if (!pagosRes.error && pagosRes.data) {
       pagosList = pagosRes.data as typeof pagosList
     }
@@ -51,7 +51,7 @@ export async function GET() {
     const totalIngresos = pagosList.reduce((s, p) => s + Number(p.monto ?? 0), 0)
 
     const pagosOrdenados = pagosList
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort((a, b) => new Date(b.fecha_pago).getTime() - new Date(a.fecha_pago).getTime())
 
     const pagosRecientes = pagosOrdenados
       .slice(0, 20)
@@ -59,7 +59,7 @@ export async function GET() {
         alumno: nombreCompleto(uMap.get(p.alumno_id)),
         monto: p.monto,
         metodo_pago: p.metodo_pago,
-        created_at: p.created_at,
+        fecha_pago: p.fecha_pago,
       }))
 
     const ultimosPagos = pagosOrdenados
@@ -70,7 +70,7 @@ export async function GET() {
         concepto: p.concepto ?? 'mensualidad',
         metodo_pago: p.metodo_pago,
         referencia: p.referencia ?? null,
-        created_at: p.created_at,
+        fecha_pago: p.fecha_pago,
       }))
 
     // Desglose por semana (lunes, 8 últimas) y por mes (6 últimos) — agregado
@@ -103,7 +103,7 @@ export async function GET() {
       const ahora = new Date()
       const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1)
       ingresosMesActual = pagosList
-        .filter(p => new Date(p.created_at) >= inicioMes)
+        .filter(p => new Date(`${p.fecha_pago}T12:00:00`) >= inicioMes)
         .reduce((s, p) => s + Number(p.monto ?? 0), 0)
     }
 

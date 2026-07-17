@@ -38,7 +38,7 @@ export async function GET(
     // ── Pago + datos para el recibo ──────────────────────────────────────────
     const { data: pago, error: pagoErr } = await admin
       .from('pagos')
-      .select('id, alumno_id, monto, concepto, mes_desbloqueado, metodo_pago, referencia, registrado_por, created_at')
+      .select('id, alumno_id, monto, concepto, mes_desbloqueado, metodo_pago, referencia, registrado_por, fecha_pago, created_at')
       .eq('id', params.id)
       .single()
     if (pagoErr || !pago) {
@@ -71,7 +71,7 @@ export async function GET(
         monto: Number(pago.monto),
         metodoPago: pago.metodo_pago,
         referencia: pago.referencia ?? null,
-        fechaPago: pago.created_at,
+        fechaPago: pago.fecha_pago ?? pago.created_at,
         registradoPor,
       })
 

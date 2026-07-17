@@ -1366,12 +1366,15 @@ CREATE TABLE IF NOT EXISTS public.pagos (
   metodo_pago      TEXT NOT NULL,
     -- 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'OTRO'
   referencia       TEXT,
+  fecha_pago       DATE NOT NULL DEFAULT CURRENT_DATE,
+    -- fecha real del pago (editable por el admin; puede ser retroactiva)
   registrado_por   UUID NOT NULL REFERENCES auth.users(id),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_pagos_alumno     ON public.pagos (alumno_id);
 CREATE INDEX IF NOT EXISTS idx_pagos_created_at ON public.pagos (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pagos_fecha_pago ON public.pagos (fecha_pago DESC);
 
 ALTER TABLE public.pagos ENABLE ROW LEVEL SECURITY;
 
@@ -1461,7 +1464,7 @@ AS $$
        GROUP BY p.alumno_id
     ) mp ON mp.alumno_id = a.id
     LEFT JOIN (
-      SELECT p.alumno_id, MAX(p.created_at) AS fecha_ultimo_pago
+      SELECT p.alumno_id, MAX(p.fecha_pago)::timestamptz AS fecha_ultimo_pago
         FROM public.pagos p
        GROUP BY p.alumno_id
     ) up ON up.alumno_id = a.id
@@ -1491,7 +1494,7 @@ AS $$
          COALESCE(SUM(p.monto), 0)::numeric AS total
     FROM semanas s
     LEFT JOIN public.pagos p
-      ON date_trunc('week', (p.created_at AT TIME ZONE 'America/Mexico_City')) = s.inicio
+      ON date_trunc('week', p.fecha_pago) = s.inicio
    GROUP BY s.inicio
    ORDER BY s.inicio;
 $$;
@@ -1511,7 +1514,7 @@ AS $$
          COALESCE(SUM(p.monto), 0)::numeric AS total
     FROM meses m
     LEFT JOIN public.pagos p
-      ON date_trunc('month', (p.created_at AT TIME ZONE 'America/Mexico_City')) = m.inicio
+      ON date_trunc('month', p.fecha_pago) = m.inicio
    GROUP BY m.inicio
    ORDER BY m.inicio;
 $$;
