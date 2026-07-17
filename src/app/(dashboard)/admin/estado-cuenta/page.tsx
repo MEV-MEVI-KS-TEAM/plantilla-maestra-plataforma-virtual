@@ -189,7 +189,7 @@ export default function EstadoCuentaPage() {
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>
                       {a.fecha_ultimo_pago
-                        ? new Date(a.fecha_ultimo_pago).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' })
+                        ? new Date(`${a.fecha_ultimo_pago.slice(0, 10)}T12:00:00`).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' })
                         : 'Sin pagos registrados'}
                     </td>
                     <td className="px-4 py-3">
