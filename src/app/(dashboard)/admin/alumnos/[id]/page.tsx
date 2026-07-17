@@ -35,6 +35,7 @@ interface PagoAlumno {
   mes_desbloqueado: number | null
   metodo_pago: string
   referencia: string | null
+  fecha_pago: string
   created_at: string
 }
 
@@ -42,6 +43,19 @@ const CONCEPTO_LABELS: Record<string, string> = {
   inscripcion: 'Inscripción',
   mensualidad: 'Mensualidad',
   otro:        'Otro',
+}
+
+// Fecha local de hoy en formato YYYY-MM-DD (para el input date, sin corrimiento de TZ)
+function hoyISO(): string {
+  const d = new Date()
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mes}-${dia}`
+}
+
+// Muestra una fecha DATE (YYYY-MM-DD) sin corrimiento de zona horaria
+function fmtFechaPago(fecha: string, opts?: Intl.DateTimeFormatOptions): string {
+  return new Date(`${fecha}T12:00:00`).toLocaleDateString('es-MX', opts)
 }
 
 const METODOS_PAGO = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'OTRO']
@@ -124,7 +138,7 @@ export default function AlumnoDetallePage() {
   const [registrandoPago, setRegistrandoPago] = useState(false)
   const [pagoError, setPagoError] = useState<string | null>(null)
   const [pagoForm, setPagoForm] = useState({
-    monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '',
+    monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '', fecha_pago: hoyISO(),
   })
   const [pagoAEliminar, setPagoAEliminar] = useState<PagoAlumno | null>(null)
   const [eliminandoPago, setEliminandoPago] = useState(false)
@@ -372,12 +386,13 @@ export default function AlumnoDetallePage() {
           mes_desbloqueado: pagoForm.concepto === 'mensualidad' && pagoForm.mes_desbloqueado !== '' ? Number(pagoForm.mes_desbloqueado) : null,
           metodo_pago: pagoForm.metodo_pago,
           referencia: pagoForm.referencia,
+          fecha_pago: pagoForm.fecha_pago,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setPagoError(data.error ?? 'Error al registrar el pago'); return }
       setModalRegistrarPago(false)
-      setPagoForm({ monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '' })
+      setPagoForm({ monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '', fecha_pago: hoyISO() })
       await cargar()
       showToast(`💵 Pago de ${fmtMoneda(montoNum)} registrado para ${alumno?.usuario.nombre_completo}`, 'success')
     } catch {
@@ -681,7 +696,7 @@ export default function AlumnoDetallePage() {
                 {pagos.map(p => (
                   <tr key={p.id} style={{ borderBottom: '1px solid rgba(42,47,62,0.5)' }}>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
-                      {new Date(p.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      {fmtFechaPago(p.fecha_pago, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
                     <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>
                       {CONCEPTO_LABELS[p.concepto] ?? p.concepto}
@@ -1284,7 +1299,7 @@ export default function AlumnoDetallePage() {
                 ¿Confirmas eliminar el pago de{' '}
                 <strong>{fmtMoneda(Number(pagoAEliminar.monto))}</strong>{' '}
                 ({CONCEPTO_LABELS[pagoAEliminar.concepto] ?? pagoAEliminar.concepto}) del{' '}
-                <strong>{new Date(pagoAEliminar.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>?
+                <strong>{fmtFechaPago(pagoAEliminar.fecha_pago, { year: 'numeric', month: 'long', day: 'numeric' })}</strong>?
               </p>
               <p className="text-sm font-bold pt-1" style={{ color: '#EF4444' }}>
                 Esta acción NO se puede deshacer.
@@ -1361,6 +1376,20 @@ export default function AlumnoDetallePage() {
                   placeholder="0.00"
                   value={pagoForm.monto}
                   onChange={e => setPagoForm(f => ({ ...f, monto: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}
+                  onBlur={e => { e.currentTarget.style.border = '1px solid #2A2F3E' }}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Fecha de Pago</label>
+                <input
+                  type="date"
+                  required
+                  value={pagoForm.fecha_pago}
+                  onChange={e => setPagoForm(f => ({ ...f, fecha_pago: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                   style={INPUT_STYLE}
                   onFocus={e => { e.currentTarget.style.border = '1px solid var(--color-acento)' }}

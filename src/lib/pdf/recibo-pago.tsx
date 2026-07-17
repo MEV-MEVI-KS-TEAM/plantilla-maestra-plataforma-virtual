@@ -12,7 +12,7 @@ export interface ReciboData {
   monto: number
   metodoPago: string
   referencia: string | null
-  fechaPago: string // ISO
+  fechaPago: string // YYYY-MM-DD (fecha_pago) o ISO (fallback created_at)
   registradoPor: string
 }
 
@@ -25,8 +25,13 @@ const CONCEPTO_LABELS: Record<string, string> = {
 const fmtMoneda = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(n)
 
-const fmtFecha = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Mexico_City' })
+const fmtFecha = (fecha: string) => {
+  // fecha_pago llega como YYYY-MM-DD (date puro): anclar a mediodía evita el
+  // corrimiento de día al formatear en America/Mexico_City. created_at (ISO con
+  // hora) ya trae su propio instante y se formatea igual.
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? new Date(`${fecha}T12:00:00`) : new Date(fecha)
+  return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Mexico_City' })
+}
 
 const styles = StyleSheet.create({
   page:      { padding: 40, fontSize: 11, fontFamily: 'Helvetica', color: '#111827' },
