@@ -21,6 +21,13 @@ type CarreraCfg = {
   icono: string
   desc: string
   incluye: readonly string[]
+  /**
+   * Un diplomado montado sobre los rieles de licenciatura: se guarda como
+   * `nivel='licenciatura'` + su `carrera`, y hereda modalidades, precios,
+   * materias y constancia del add-on. Lo único que cambia es cómo se le
+   * presenta al prospecto (TICKET-2026-09-07-52).
+   */
+  esDiplomado?: boolean
 }
 
 function cfgLic() {
@@ -33,6 +40,33 @@ export function licenciaturasActivas(): boolean {
 
 export function getCarreras(): readonly CarreraCfg[] {
   return cfgLic()?.carreras ?? []
+}
+
+/**
+ * Carreras de licenciatura propiamente dichas — sin los diplomados.
+ *
+ * ⚠️ NO sustituye a `getCarreras()`: esa sigue devolviendo TODO, porque el resto
+ * de la plataforma (materias, constancia, scoping por carrera) trata a un
+ * diplomado exactamente igual que a una licenciatura y necesita verlo. La
+ * separación es solo de cara al prospecto.
+ */
+export function getCarrerasLicenciatura(): readonly CarreraCfg[] {
+  return getCarreras().filter(c => c.esDiplomado !== true)
+}
+
+/** Solo los diplomados montados sobre el riel de licenciaturas. */
+export function getCarrerasDiplomado(): readonly CarreraCfg[] {
+  return getCarreras().filter(c => c.esDiplomado === true)
+}
+
+/**
+ * Cómo llama la escuela a su oferta de licenciatura. Por defecto «Licenciatura»;
+ * un cliente que venda «Licenciatura ejecutiva» lo pone en
+ * `CONFIG.licenciaturas.etiqueta` y el formulario lo llama igual que su landing.
+ */
+export function getEtiquetaLicenciatura(): string {
+  const cfg = cfgLic() as { etiqueta?: string } | undefined
+  return cfg?.etiqueta?.trim() || 'Licenciatura'
 }
 
 export function esAlumnoLicenciatura(alumno: { nivel?: string | null }): boolean {

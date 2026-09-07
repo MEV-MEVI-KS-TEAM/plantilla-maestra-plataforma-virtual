@@ -85,6 +85,46 @@ Esto REVOCA acceso que el alumno ya tenia: ` +
     }
   }
 
+  /**
+   * Emite la constancia de una inscripción.
+   *
+   * ⚠️ Este botón faltaba. El endpoint, la función SQL con sus guards, el folio
+   * permanente, la bitácora con actor y la vista del alumno YA existían — pero
+   * nada en la UI llamaba a POST /api/admin/inscripciones/[id]/constancia, así
+   * que la emisión era imposible y el alumno que aprobaba se quedaba para
+   * siempre en "Tu constancia está en emisión" (TICKET-2026-09-07-51).
+   *
+   * Los guards viven en la función SQL: sin examen aprobado responde 422, y si
+   * la constancia ya existe devuelve la existente sin quemar un folio nuevo.
+   * Por eso aquí no se comprueba nada: preguntarle al cliente si el alumno
+   * aprobó sería confiar en el caller justo en el dato que decide el folio.
+   */
+  const emitirConstancia = async (inscripcionId: string, nombre: string) => {
+    const ok = window.confirm(
+      `Emitir la constancia de ${nombre}.
+
+El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
+      `calificación tal como están hoy.
+
+¿Continuar?`
+    )
+    if (!ok) return
+    setOcupadoId(inscripcionId)
+    try {
+      const res = await fetch(`/api/admin/inscripciones/${inscripcionId}/constancia`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo emitir la constancia')
+      onChanged()
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo emitir la constancia')
+    } finally {
+      setOcupadoId(null)
+    }
+  }
+
   const resultados = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
     if (!q) return []
@@ -295,6 +335,15 @@ Esto REVOCA acceso que el alumno ya tenia: ` +
                     style={{ background: 'var(--color-acento)', color: '#fff' }}
                   >
                     + Abrir mes
+                  </button>
+                  <button
+                    onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}
+                    disabled={ocupadoId === i.inscripcion_id}
+                    title="Emitir la constancia (requiere examen aprobado; el folio es permanente)"
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+                    style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
+                  >
+                    Constancia
                   </button>
                 </div>
 

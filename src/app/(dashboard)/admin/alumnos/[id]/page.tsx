@@ -8,7 +8,8 @@ import { config } from '@/lib/config'
 // Mismos catálogos que el select de alta: el modal de corrección ofrece
 // exactamente lo que el alta ofrece, ni más ni menos.
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
-import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { getCarreras } from '@/lib/licenciatura-utils'
+import { getOpcionesNivelAdmin } from '@/lib/niveles'
 
 interface AlumnoDetalle {
   id: string
@@ -101,6 +102,22 @@ const DOC_LABELS: Record<DocTipo, string> = {
   certificado_secundaria: 'Certificado de Secundaria',
   identificacion_oficial: 'Identificación Oficial',
   foto_perfil_doc:        'Foto (fondo blanco)',
+}
+
+/**
+ * Etiqueta del documento para ESTE alumno.
+ *
+ * ⚠️ Licenciatura reutiliza el slot `certificado_secundaria`, pero el documento
+ * que un aspirante a licenciatura debe acreditar es el BACHILLERATO. La pantalla
+ * del alumno ya lo decía así y esta no, así que al mismo alumno el panel le
+ * pedía «Certificado de Secundaria» mientras él veía «de Bachillerato»
+ * (Bug 94 · TICKET-2026-09-07-49). Si cambia una, cambia la otra.
+ */
+function docLabel(tipo: DocTipo, nivel: string | null | undefined): string {
+  if (nivel === 'licenciatura' && tipo === 'certificado_secundaria') {
+    return 'Certificado de Bachillerato'
+  }
+  return DOC_LABELS[tipo]
 }
 
 const CARD_STYLE = { background: '#181C26', border: '1px solid #2A2F3E' }
@@ -1184,7 +1201,7 @@ export default function AlumnoDetallePage() {
               <div key={tipo} className="px-5 py-4 flex flex-col sm:flex-row sm:items-start gap-4">
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>{DOC_LABELS[tipo]}</p>
+                  <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>{docLabel(tipo, alumno?.nivel)}</p>
                   {doc ? (
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-xs" style={{ color: '#64748B' }}>{doc.nombre_archivo}</span>
@@ -1376,9 +1393,11 @@ export default function AlumnoDetallePage() {
                   style={INPUT_STYLE}
                 >
                   <option value="">Selecciona nivel...</option>
-                  <option value="secundaria">Secundaria</option>
-                  <option value="preparatoria">Preparatoria</option>
-                  {licenciaturasActivas() && <option value="licenciatura">Licenciatura</option>}
+                  {/* ⚠️ NO escribir opciones a mano: salen de los productos
+                      activos del cliente (TICKET-2026-09-07-52). */}
+                  {getOpcionesNivelAdmin().map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </div>
 

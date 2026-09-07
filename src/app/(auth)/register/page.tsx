@@ -7,20 +7,29 @@ import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, Phone, User, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
-import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatura-utils'
+import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
 import { CONFIG } from '@/lib/config'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
 
 const WA_URL = `https://wa.me/${CONFIG.whatsapp}`
 
+// La última viñeta enumera la oferta real de la escuela en vez de una frase
+// fija: si el cliente activa o retira un programa, el copy lo sigue solo.
+// (Los cursos del catálogo no entran: son asíncronos y esto es una constante.)
+function ofertaTexto(): string {
+  const labels = getOpcionesNivel(false).map(o => o.label)
+  if (labels.length === 0) return 'Programas en línea'
+  if (labels.length === 1) return labels[0]
+  return `${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}`
+}
+
 const BENEFITS = [
   'Acompañamiento para tu certificado SEP',
   'Estudia desde casa, a tu ritmo',
   'Centro de Apoyo para la Acreditación de Conocimientos',
-  licenciaturasActivas()
-    ? 'Secundaria, Preparatoria y Licenciaturas'
-    : 'Secundaria y Preparatoria',
+  ofertaTexto(),
 ]
 
 // ─── Input helpers ─────────────────────────────────────────────────────────────
@@ -222,7 +231,12 @@ export default function RegisterPage() {
   // componente cliente lee las tablas curso_*.
   const [diplomados,  setDiplomados]  = useState<{ id: string; nombre: string; tipo: string }[]>([])
   const [diplomadoId, setDiplomadoId] = useState('')
-  const esDiplomado = nivel === 'diplomado'
+  // ⚠️ `nivel` guarda el VALOR DE LA OPCIÓN, no el nivel de BD. «Diplomados» es
+  // presentación de `nivel='licenciatura'`; se traduce con nivelDeOpcion() justo
+  // antes de mandar. Ver src/lib/niveles.ts (TICKET-2026-09-07-52).
+  const opcionesNivel  = getOpcionesNivel(diplomados.length > 0)
+  const esDiplomadoLic = esOpcionDiplomadoLic(nivel)
+  const esDiplomado = esOpcionCurso(nivel)
 
   useEffect(() => {
     let vivo = true
@@ -238,7 +252,11 @@ export default function RegisterPage() {
   // desde una selección previa dejaría al alumno con un dato que no le toca.
   useEffect(() => { setModalidad(''); setCarrera('') }, [nivel])
 
-  const esLicenciatura = nivel === 'licenciatura'
+  const esLicenciatura = nivel === 'licenciatura' || esDiplomadoLic
+
+  // Las carreras ofrecidas dependen de la opción: quien eligió «Diplomados» no
+  // debe ver las licenciaturas, ni al revés.
+  const carrerasOfrecidas = esDiplomadoLic ? getCarrerasDiplomado() : getCarrerasLicenciatura()
 
   // Derive current progress step
   const filledStep1 = !!(nombre && apellidoPat && apellidoMat && telefono)
@@ -320,7 +338,9 @@ export default function RegisterPage() {
           nombre:           nombre.trim(),
           apellidos:        `${apellidoPat.trim()} ${apellidoMat.trim()}`.trim(),
           telefono:         telefono.trim(),
-          nivel,
+          // ⚠️ Se manda el NIVEL DE BD, no el valor del desplegable: «Diplomados» es
+          // presentación de 'licenciatura'. La traducción vive en src/lib/niveles.ts.
+          nivel: nivelDeOpcion(nivel),
           modalidad,
           carrera: esLicenciatura ? carrera : null,
           es_sindicalizado: false,
@@ -497,12 +517,13 @@ export default function RegisterPage() {
                   <select value={nivel} onChange={e => { setNivel(e.target.value); setModalidad('') }}
                     style={selectStyle} onFocus={onFocus} onBlur={onBlur}>
                     <option value="">{pidioCurso ? 'Ninguno (solo el curso)' : 'Selecciona…'}</option>
-                    <option value="secundaria">Secundaria</option>
-                    <option value="preparatoria">Preparatoria</option>
-                    {licenciaturasActivas() && <option value="licenciatura">Licenciatura</option>}
-                    {/* Solo si la escuela tiene cursos publicados: si no, la
-                        opción llevaría a un selector vacío. */}
-                    {diplomados.length > 0 && <option value="diplomado">Curso o diplomado</option>}
+                    {/* ⚠️ NO escribir opciones a mano. Salen de
+                        getOpcionesNivel(), que las deriva de los productos que
+                        el cliente tiene activos (TICKET-2026-09-07-52). */}
+                    {opcionesNivel.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+
                   </select>
                 </div>
                 <div>
@@ -544,7 +565,7 @@ export default function RegisterPage() {
                     <select value={carrera} onChange={e => setCarrera(e.target.value)}
                       style={selectStyle} onFocus={onFocus} onBlur={onBlur}>
                       <option value="">Selecciona tu carrera…</option>
-                      {getCarreras().map(c => (
+                      {carrerasOfrecidas.map(c => (
                         <option key={c.slug} value={c.slug}>{c.nombre}</option>
                       ))}
                     </select>

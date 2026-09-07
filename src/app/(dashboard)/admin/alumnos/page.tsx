@@ -7,7 +7,8 @@ import { useToast, ToastContainer } from '@/components/ui/toast'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
 // El nombre del programa lo arma la API (plan_nombre); aquí solo hacen falta
 // el catálogo de carreras y el switch del add-on.
-import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { getCarreras } from '@/lib/licenciatura-utils'
+import { getOpcionesNivelAdmin } from '@/lib/niveles'
 import { hayOfertasIngreso } from '@/lib/cursos/oferta'
 
 interface Alumno {
@@ -688,9 +689,11 @@ export default function AlumnosPage() {
                   style={INPUT_STYLE}
                 >
                   <option value="">Selecciona nivel...</option>
-                  <option value="secundaria">Secundaria</option>
-                  <option value="preparatoria">Preparatoria</option>
-                  {licenciaturasActivas() && <option value="licenciatura">Licenciatura</option>}
+                  {/* ⚠️ NO escribir opciones a mano: salen de los productos
+                      activos del cliente (TICKET-2026-09-07-52). */}
+                  {getOpcionesNivelAdmin().map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </div>
 
