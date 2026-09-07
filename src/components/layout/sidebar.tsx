@@ -126,6 +126,13 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
         ]
       : NAV_ITEMS[role]
 
+  // 'Pagos' del alumno solo existe si la escuela cargó enlaces de cobro. La
+  // pantalla /alumno/pagar viene desde el onboarding, pero sin este item solo
+  // se llegaba escribiendo la URL a mano.
+  const itemsFinales = role === 'ALUMNO' && CONFIG.pagos?.activo
+    ? [...navItems, { label: 'Pagos', href: '/alumno/pagar', emoji: '💳', icon: CreditCard }]
+    : navItems
+
   useEffect(() => {
     if (role !== 'ADMIN') return
     let cancelled = false
@@ -233,7 +240,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {navItems.map((item) => {
+          {itemsFinales.map((item) => {
             const Icon   = item.icon
             const active = isActive(item.href)
             const showBadge = item.href === '/admin/alumnos' && pendientesCount > 0
@@ -331,7 +338,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
 
       {/* Mobile bottom navigation (ALUMNO only) */}
       {isAlumno && (
-        <MobileBottomNav items={navItems} isActive={isActive} />
+        <MobileBottomNav items={itemsFinales} isActive={isActive} />
       )}
     </>
   )

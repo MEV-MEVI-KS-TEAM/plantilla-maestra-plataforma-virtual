@@ -250,8 +250,25 @@ export async function PATCH(
   }
 }
 
+/**
+ * Baja de un alumno. Dos modos, y la diferencia importa:
+ *
+ *  - por defecto DESACTIVA (`activo: false`). Es lo que hacía este endpoint
+ *    desde siempre, pese a llamarse DELETE: el alumno desaparece de las listas
+ *    pero conserva su avance y se puede reactivar.
+ *
+ *  - con `?definitivo=true` BORRA de verdad. Las 14 tablas que referencian a
+ *    `alumnos` lo hacen con ON DELETE CASCADE, así que se van con él su
+ *    progreso, calificaciones, intentos, notas, logros, documentos y
+ *    constancias. Después se limpian su fila de `usuarios` y su cuenta de
+ *    Auth, que no cuelgan de esa cascada y quedarían huérfanas.
+ *
+ * El borrado definitivo existe porque las escuelas terminan el onboarding con
+ * alumnos de prueba —los siembra nuestro propio proceso— y necesitan dejar la
+ * lista limpia antes de operar. Lo pidieron MARD e INEV (TICKET-2026-09-07-44).
+ */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -262,16 +279,49 @@ export async function DELETE(
     const denied = await verifyAdmin(supabase, user.id)
     if (denied) return denied
 
-    // Schema nuevo: alumnos.id = user.id — desactivar en alumnos directamente
+    // Un admin no puede borrarse a sí mismo: se quedaría sin panel.
+    if (params.id === user.id) {
+      return NextResponse.json(
+        { error: 'No puedes eliminar tu propia cuenta.' },
+        { status: 400 },
+      )
+    }
+
     const admin = createAdminClient()
-    const { error } = await admin
-      .from('alumnos')
-      .update({ activo: false })
-      .eq('id', params.id)
+    const definitivo = request.nextUrl.searchParams.get('definitivo') === 'true'
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!definitivo) {
+      // Schema nuevo: alumnos.id = user.id — desactivar en alumnos directamente
+      const { error } = await admin
+        .from('alumnos')
+        .update({ activo: false })
+        .eq('id', params.id)
 
-    return NextResponse.json({ success: true })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ success: true, modo: 'desactivado' })
+    }
+
+    // ── Borrado definitivo ────────────────────────────────────────────────
+    const { error: errAlumno } = await admin.from('alumnos').delete().eq('id', params.id)
+    if (errAlumno) return NextResponse.json({ error: errAlumno.message }, { status: 500 })
+
+    // `usuarios` no cuelga de la cascada de `alumnos`: se limpia aparte.
+    await admin.from('usuarios').delete().eq('id', params.id)
+
+    // Y la cuenta de Auth, o el correo queda ocupado y no puede volver a
+    // registrarse. Si esto falla no se revierte lo anterior: el alumno ya no
+    // existe para la escuela, que es lo que se pidió.
+    const { error: errAuth } = await admin.auth.admin.deleteUser(params.id)
+    if (errAuth) {
+      console.error('[alumnos DELETE] no se pudo borrar el usuario de Auth:', errAuth)
+      return NextResponse.json({
+        success: true,
+        modo: 'eliminado',
+        aviso: 'El alumno se eliminó, pero su cuenta de acceso quedó pendiente de limpiar.',
+      })
+    }
+
+    return NextResponse.json({ success: true, modo: 'eliminado' })
   } catch {
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
