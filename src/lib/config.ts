@@ -234,6 +234,34 @@ export const CONFIG = {
     }>,
   },
 
+  // === ENLACES DE COBRO ===
+  // DESACTIVADO por defecto: una escuela sin enlaces no ve ningún cambio — ni el
+  // item "Pagos" en el menú del alumno, ni el botón del aviso de inscripción.
+  //
+  // Se enciende poniendo `activo: true` y cargando los enlaces que la escuela
+  // emita desde SU pasarela (Clip, Mercado Pago, el que use). La plataforma NO
+  // cobra ni confirma nada: abre el enlace, y el pago lo sigue registrando el
+  // admin a mano en /admin/pagos cuando recibe el comprobante.
+  //
+  // `niveles` decide a quién se le muestra cada enlace. Vacío = no se muestra a
+  // nadie, útil para dejar cargado un cobro que todavía no aplica.
+  pagos: {
+    activo: false,
+    /** Marca con la que la pasarela emite los enlaces, si no es la de la escuela.
+     *  Se le avisa al alumno para que no dude al llegar al checkout. */
+    emisor: '',
+    enlaces: [] as ReadonlyArray<{
+      id: string
+      concepto: string
+      detalle: string
+      /** null = el monto lo confirma el asesor; no se pinta cifra. */
+      monto: number | null
+      /** Vacío = no se le muestra a nadie todavía. */
+      niveles: readonly string[]
+      url: string
+    }>,
+  },
+
   cursosIngreso: {
     activa: false,
     pagoUnico: true,

@@ -276,7 +276,28 @@ export default function AlumnoDashboard() {
               Control Escolar te contactará por WhatsApp para darte la bienvenida y solicitarte tus documentos.
             </p>
           </div>
-          <a href={`https://wa.me/${CONFIG.whatsapp}`} target="_blank" rel="noopener noreferrer"
+
+          {/* El aviso dice "pendiente de pago" y su único botón mandaba al chat de
+
+              WhatsApp: el alumno que quería pagar no encontraba dónde, aunque la
+
+              escuela tuviera sus enlaces de cobro cargados. Cuando los hay, el
+
+              botón lleva a Pagos; si no, se queda como estaba. */}
+
+          {CONFIG.pagos?.activo ? (
+
+            <Link href="/alumno/pagar"
+
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap flex-shrink-0 transition-opacity hover:opacity-90"
+
+              style={{ background: 'var(--color-primario)', color: '#fff' }}>
+
+              💳 Pagar en línea
+
+            </Link>
+
+          ) : (          <a href={`https://wa.me/${CONFIG.whatsapp}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap flex-shrink-0 bg-green-500 hover:bg-green-600 transition-colors"
             style={{ color: '#fff' }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -285,6 +306,8 @@ export default function AlumnoDashboard() {
             </svg>
             WhatsApp
           </a>
+
+          )}
         </div>
       )}
 

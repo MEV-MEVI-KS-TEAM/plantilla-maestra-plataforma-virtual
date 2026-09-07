@@ -201,6 +201,13 @@ export default function AlumnoDetallePage() {
     monto: '', concepto: 'mensualidad', mes_desbloqueado: '', metodo_pago: 'EFECTIVO', referencia: '', fecha_pago: hoyISO(),
   })
   const [pagoAEliminar, setPagoAEliminar] = useState<PagoAlumno | null>(null)
+  // Baja definitiva del alumno. `confirmaMatricula` obliga a teclear la
+  // matrícula: un "¿Seguro?" se acepta sin leerlo, y esto borra el avance
+  // completo de una persona (TICKET-2026-09-07-44).
+  const [borrarAlumno, setBorrarAlumno]         = useState(false)
+  const [confirmaMatricula, setConfirmaMatricula] = useState('')
+  const [borrandoAlumno, setBorrandoAlumno]     = useState(false)
+  const [borrarError, setBorrarError]           = useState<string | null>(null)
   const [eliminandoPago, setEliminandoPago] = useState(false)
   const [eliminarPagoError, setEliminarPagoError] = useState<string | null>(null)
   // Recibo PDF: "{pagoId}:descargar" | "{pagoId}:whatsapp" mientras genera
@@ -263,6 +270,21 @@ export default function AlumnoDetallePage() {
       // silencioso: la tabla conserva los datos previos
     }
   }, [id])
+
+  async function handleBorrarAlumno() {
+    if (!alumno || confirmaMatricula.trim() !== alumno.matricula) return
+    setBorrandoAlumno(true); setBorrarError(null)
+    try {
+      const res = await fetch(`/api/admin/alumnos/${alumno.id}?definitivo=true`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setBorrarError(data.error || 'No se pudo eliminar al alumno.'); return }
+      router.push('/admin/alumnos')
+    } catch {
+      setBorrarError('No se pudo eliminar al alumno. Revisa tu conexión.')
+    } finally {
+      setBorrandoAlumno(false)
+    }
+  }
 
   async function handleEliminarPago() {
     if (!pagoAEliminar) return
@@ -1631,6 +1653,61 @@ export default function AlumnoDetallePage() {
       )}
 
       {/* Modal Confirmar Eliminar Pago */}
+      {/* Zona de riesgo: separada del resto y al final, para que no se pulse
+          por accidente al recorrer la ficha. */}
+      <div className="mt-10 rounded-2xl p-5" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.3)' }}>
+        <p className="text-sm font-bold" style={{ color: '#F87171' }}>Eliminar alumno</p>
+        <p className="text-xs mt-1 mb-4" style={{ color: '#94A3B8' }}>
+          Borra al alumno y todo su avance: calificaciones, documentos, constancias y su
+          acceso a la plataforma. No se puede deshacer. Si solo quieres que deje de
+          aparecer en las listas, usa <strong>Dar de baja</strong> en su lugar.
+        </p>
+        <button
+          onClick={() => { setBorrarAlumno(true); setConfirmaMatricula(''); setBorrarError(null) }}
+          className="px-4 py-2 rounded-lg text-sm font-semibold"
+          style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.4)' }}>
+          Eliminar alumno definitivamente
+        </button>
+      </div>
+
+      {borrarAlumno && alumno && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
+            <h3 className="text-lg font-bold text-gray-100 mb-2">⚠️ Eliminar a {alumno.matricula}</h3>
+            <p className="text-sm mb-4" style={{ color: '#94A3B8' }}>
+              Se borrarán su avance, sus calificaciones, sus documentos y su acceso.
+              <strong style={{ color: '#F87171' }}> Esto no se puede deshacer.</strong>
+            </p>
+            <label className="block text-xs mb-2" style={{ color: '#94A3B8' }}>
+              Escribe <strong style={{ color: '#E2E8F0' }}>{alumno.matricula}</strong> para confirmar:
+            </label>
+            <input
+              value={confirmaMatricula}
+              onChange={e => setConfirmaMatricula(e.target.value)}
+              placeholder={alumno.matricula}
+              className="w-full px-3 py-2 rounded-lg text-sm mb-4"
+              style={{ background: '#0F1419', border: '1px solid #2A2F3E', color: '#E2E8F0' }}
+            />
+            {borrarError && <p className="text-xs mb-3" style={{ color: '#F87171' }}>{borrarError}</p>}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setBorrarAlumno(false); setBorrarError(null) }}
+                className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold"
+                style={{ background: '#1E2430', color: '#E2E8F0' }}>
+                Cancelar
+              </button>
+              <button
+                onClick={handleBorrarAlumno}
+                disabled={confirmaMatricula.trim() !== alumno.matricula || borrandoAlumno}
+                className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: '#DC2626', color: '#fff' }}>
+                {borrandoAlumno ? 'Eliminando…' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {pagoAEliminar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
