@@ -62,6 +62,21 @@ catch-up con cambios de la plantilla. Idempotentes, seguros de re-ejecutar.
 |-----------|----------|----------|
 | `2026-05-add-opcion-d-quiz-semana.sql` | Clientes pre-mayo 2026 | Habilita columna `opcion_d` en `quiz_semana` |
 | `2026-05-bug33-dedupe-preguntas.sql` | Clientes con duplicados de preguntas | DELETE duplicados + UNIQUE constraint (Bug 33) |
+| `2026-09-fix-lecciones-truncadas.sql` | Clientes sembrados antes de sep-2026 | Reescribe 52 lecciones que el seed dejaba cortadas en la primera comilla simple del texto |
+
+Auditoría rápida lecciones truncadas:
+```sql
+-- Una lección cortada termina en apóstrofo SIN cerrar la frase.
+-- (Dos lecciones terminan en apóstrofo de forma legítima, cerrando una cita:
+--  por eso no basta con LIKE '%''' y se mira el carácter anterior.)
+SELECT COUNT(*) FROM public.semanas
+WHERE contenido LIKE '%'''
+  AND substring(contenido FROM length(contenido) - 1 FOR 1) NOT IN ('.', '!', '?');
+-- 0 = sano | >0 = ejecutar 2026-09-fix-lecciones-truncadas.sql
+```
+
+El seed ya no genera lecciones truncadas, así que un cliente **nuevo** no necesita
+esta migration: aplica solo a los que se sembraron con un seed anterior.
 
 Auditoría rápida Bug 33:
 ```sql
