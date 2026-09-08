@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, Printer, Download } from 'lucide-react'
 import { CONFIG } from '@/lib/config'
+import { getPlanNombre } from '@/lib/licenciatura-utils'
 
 const C = CONFIG.colores
 
@@ -22,6 +23,7 @@ interface DatosConstancia {
   apellidos: string
   matricula: string
   nivel?: string | null
+  carrera?: string | null
   plan_nombre: string
   meses_desbloqueados: number
   duracion_meses: number
@@ -163,11 +165,11 @@ export default function ConstanciaPage() {
                   fontSize: 8, letterSpacing: '0.12em', color: '#94a3b8', fontWeight: 400,
                   borderTop: '1px solid #e2e8f0', paddingTop: 4, marginTop: 5,
                 }}>
-                  {datos.nivel === 'preparatoria'
-                    ? 'Preparatoria'
-                    : datos.nivel === 'secundaria'
-                    ? 'Secundaria'
-                    : 'Preparatoria\u00A0•\u00A0Secundaria'}
+                  {/* ⚠️ El fallback era 'Preparatoria • Secundaria': a un
+                      alumno de licenciatura la constancia le anunciaba los dos
+                      niveles que NO cursa. Es la rama del Bug 94 que más
+                      clientes tienen viva (TICKET-2026-09-07-49). */}
+                  {getPlanNombre(datos.nivel, datos.carrera)}
                 </span>
               </div>
             </div>

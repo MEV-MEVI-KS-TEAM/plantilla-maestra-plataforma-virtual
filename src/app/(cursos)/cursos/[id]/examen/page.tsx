@@ -259,28 +259,41 @@ export default function ExamenCursoPage() {
                     {LETRAS.map(L => {
                       // r.respuesta_correcta llega undefined cuando no contestaste
                       // esta pregunta: entonces ninguna opción se marca correcta.
+                      // r.respuesta_correcta llega undefined cuando la clave NO
+                      // se revela: o no contestaste esta pregunta, o todavía te
+                      // quedan intentos (TICKET-2026-09-07-51). En ese caso
+                      // ninguna opción se marca como la buena — pero la TUYA sí
+                      // se pinta según hayas acertado o no, que es la
+                      // retroalimentación que sí corresponde darte.
                       const esCorrecta = r.respuesta_correcta !== undefined && L === r.respuesta_correcta
                       const esTuya = L === r.tu_respuesta
+                      const tuyaAcertada = esTuya && r.es_correcta
                       return (
                         <p
                           key={L}
                           className="text-xs px-2 py-1 rounded-lg"
                           style={
-                            esCorrecta ? { background: 'rgba(16,185,129,0.12)', color: '#047857', fontWeight: 600 }
+                            esCorrecta || tuyaAcertada
+                              ? { background: 'rgba(16,185,129,0.12)', color: '#047857', fontWeight: 600 }
                               : esTuya ? { background: 'rgba(239,68,68,0.1)', color: '#B91C1C' }
                                 : { color: '#64748B' }
                           }
                         >
                           {L}) {r.opciones[L]}
-                          {esTuya && !esCorrecta && ' — tu respuesta'}
-                          {esCorrecta && ' ✓'}
+                          {esTuya && !r.es_correcta && ' — tu respuesta'}
+                          {tuyaAcertada && ' — tu respuesta ✓'}
+                          {esCorrecta && !esTuya && ' ✓'}
                         </p>
                       )
                     })}
                     {r.tu_respuesta === null && (
                       <p className="text-xs" style={{ color: '#B45309' }}>
-                        No la contestaste, cuenta como incorrecta. La respuesta correcta se
-                        muestra solo en las preguntas que sí contestaste.
+                        No la contestaste, cuenta como incorrecta.
+                      </p>
+                    )}
+                    {r.tu_respuesta !== null && !r.es_correcta && r.respuesta_correcta === undefined && (
+                      <p className="text-xs" style={{ color: '#B45309' }}>
+                        Repasa este tema antes de tu siguiente intento.
                       </p>
                     )}
                   </div>
@@ -326,7 +339,9 @@ export default function ExamenCursoPage() {
                 {sinIntentos
                   ? 'Ya usaste todos tus intentos.'
                   : `Te ${intentosRestantes === 1 ? 'queda' : 'quedan'} ${intentosRestantes} de ${intentosPermitidos} ${intentosRestantes === 1 ? 'intento' : 'intentos'}.`}{' '}
-                Al terminar verás la respuesta correcta de las preguntas que hayas contestado.
+                Al terminar verás qué preguntas acertaste y tu desglose por tema.
+                Las respuestas correctas se muestran cuando acredites el examen o
+                uses tu último intento.
               </p>
 
               {preguntas.map((p, i) => (

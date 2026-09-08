@@ -154,6 +154,9 @@ export async function GET() {
       foto_url:            fotoPerfilUrl,
       matricula:           alumno.matricula   ?? `${CONFIG.nombre}-0000`,
       nivel:               acceso.nivel       ?? null,
+      // Necesaria para que el encabezado no anuncie «Preparatoria • Secundaria»
+      // a un alumno de licenciatura (Bug 94 · TICKET-2026-09-07-49).
+      carrera:             alumnoCarrera,
       modalidad:           alumno.modalidad   ?? getDefaultModalidadId(),
       meses_desbloqueados: mesesDesbloqueados,
       duracion_meses:      duracionMeses,

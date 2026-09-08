@@ -184,7 +184,15 @@ export async function leerPreguntas(
  */
 export function calificar(
   preguntas: PreguntaExamen[],
-  enviadas: RespuestaEnviada[]
+  enviadas: RespuestaEnviada[],
+  /**
+   * Si se adjuntan la clave y la explicación a la revisión.
+   *
+   * ⚠️ La ruta lo pone en `true` SOLO cuando el alumno ya no puede volver a
+   * presentar (aprobó, o gastó su último intento). Ver el comentario del
+   * cuerpo: con esto en `true` siempre, los reintentos no evaluaban nada.
+   */
+  revelarClaves = false
 ): {
   aciertos: number
   total: number
@@ -221,12 +229,24 @@ export function calificar(
 
     respuestas.push({ pregunta_id: p.id, respuesta: dada, es_correcta: correcta })
 
-    // ⚠️ SEGURIDAD — la clave y la explicación SOLO se adjuntan si el alumno
-    // contestó ESTA pregunta en ESTE envío. Antes se adjuntaban siempre, así
-    // que un POST con todas las respuestas en null devolvía el banco completo:
-    // enviar en blanco, leer las claves de la respuesta HTTP y reenviar
-    // contestando bien daba 100% sin estudiar. Las claves se OMITEN (no van
-    // como null) para no revelar ni siquiera su existencia posicional.
+    // ⚠️ SEGURIDAD — dos candados sobre la clave y la explicación:
+    //
+    // 1. Solo se adjuntan si el alumno contestó ESTA pregunta en ESTE envío.
+    //    Antes se adjuntaban siempre, así que un POST con todas las respuestas
+    //    en null devolvía el banco completo: enviar en blanco, leer las claves
+    //    de la respuesta HTTP y reenviar contestando bien daba 100% sin
+    //    estudiar. Las claves se OMITEN (no van como null) para no revelar ni
+    //    siquiera su existencia posicional.
+    //
+    // 2. `revelarClaves` — solo cuando ya NO quedan reintentos por proteger.
+    //    El banco de preguntas es único por curso y se sirve SIN barajar
+    //    (leerPreguntas ordena por `orden, id`), así que el intento 2 es el
+    //    examen idéntico al 1. Revelando la clave al fallar, reintentar no
+    //    evaluaba nada: bastaba copiar las respuestas de la pantalla anterior.
+    //    Lo reportó el cliente de Búfalo el 7-sep (TICKET-2026-09-07-51).
+    //    Sigue habiendo retroalimentación en todos los casos: el alumno ve
+    //    QUÉ falló y su desglose por tema; lo que no ve, mientras pueda volver
+    //    a presentar, es cuál era la buena.
     const base: RevisionPregunta = {
       pregunta_id: p.id,
       orden: p.orden,
@@ -237,7 +257,7 @@ export function calificar(
       es_correcta: correcta,
     }
     revision.push(
-      dada === null
+      dada === null || !revelarClaves
         ? base
         : { ...base, respuesta_correcta: p.respuesta_correcta, explicacion: p.explicacion }
     )

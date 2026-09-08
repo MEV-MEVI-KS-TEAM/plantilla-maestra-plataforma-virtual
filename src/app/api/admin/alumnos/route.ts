@@ -6,6 +6,7 @@ import { CONFIG } from '@/lib/config'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { nivelForzadoDeRegistro } from '@/lib/modo'
 import { getCarreras, getPlanNombre } from '@/lib/licenciatura-utils'
+import { nivelesPermitidos } from '@/lib/niveles'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 
@@ -303,8 +304,15 @@ export async function POST(request: NextRequest) {
     // Los valores deben coincidir EXACTAMENTE con alumnos_nivel_check
     // (supabase/schema.sql:30). Aceptar aquí un nivel que la BD rechaza hace
     // que el INSERT falle y que la ruta borre el usuario de Auth recién creado.
-    if (!nivelForzado && (!nivel || !['secundaria', 'preparatoria', 'licenciatura'].includes(nivel))) {
-      return NextResponse.json({ error: 'nivel es requerido (secundaria, preparatoria o licenciatura)' }, { status: 400 })
+    // La lista sale de los productos activos del cliente y ya no está escrita a
+    // mano aquí (TICKET-2026-09-07-52): con la whitelist fija, cualquier opción
+    // nueva del desplegable moría con un 400 en esta línea.
+    const nivelesOk = nivelesPermitidos(true)
+    if (!nivelForzado && (!nivel || !nivelesOk.includes(nivel))) {
+      return NextResponse.json(
+        { error: `nivel es requerido (${nivelesOk.join(', ')})` },
+        { status: 400 },
+      )
     }
 
     // La carrera decide QUÉ catálogo ve el alumno (lib/acceso-materias) y, como

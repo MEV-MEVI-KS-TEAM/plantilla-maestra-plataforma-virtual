@@ -101,8 +101,19 @@ export async function POST(
       )
     }
 
+    // La calificación mínima hace falta ANTES de calificar: decide si este
+    // envío ya no admite reintento y, por tanto, si se pueden revelar las
+    // claves sin regalar el examen siguiente (TICKET-2026-09-07-51).
+    const minima = await leerCalificacionMinima(admin, params.id)
+
+    // Primera pasada sin claves, solo para conocer el porcentaje.
+    const previo = calificar(preguntas, enviadas)
+    // Se revela si el alumno ya no puede volver a presentar: porque aprobó, o
+    // porque este era su último intento. En cualquier otro caso, no.
+    const revelarClaves = previo.porcentaje >= minima || usados + 1 >= permitidos
+
     const { aciertos, total, porcentaje, desglose, respuestas, revision, contestadas } =
-      calificar(preguntas, enviadas)
+      revelarClaves ? calificar(preguntas, enviadas, true) : previo
 
     // ── Candado 1: envío vacío ───────────────────────────────────────────────
     // Se valida DESPUÉS de calificar (para reutilizar el conteo contra el banco)
@@ -145,8 +156,6 @@ export async function POST(
     // afloja nada: solo mueve el gatillo.
     // La UI del alumno muestra "aprobado — constancia en emisión" mientras
     // tanto (motivo `aprobado_en_emision` del GET de constancia).
-    const minima = await leerCalificacionMinima(admin, params.id)
-
     return NextResponse.json({
       id: guardado.id,
       created_at: guardado.created_at,
