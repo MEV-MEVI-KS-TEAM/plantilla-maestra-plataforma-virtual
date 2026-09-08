@@ -20,9 +20,11 @@ Editar SOLO este archivo: src/lib/config.ts
 > El orden respeta dependencias de FK y de funciones. No lo alteres.
 > Correr por conexión **directa** (puerto 5432), nunca el pooler (6543).
 >
-> ✅ **LA CADENA COMPLETA ES RE-EJECUTABLE** (desde B8.1): las 19 migraciones se
-> pueden volver a correr desde el principio sin errores — replay verificado
-> 19/19, dos pasadas limpias contra un proyecto Supabase real. (Hubo una época
+> ✅ **LA CADENA COMPLETA ES RE-EJECUTABLE** (desde B8.1): la prueba original se
+> hizo con 19 migraciones y las 19 pasaron el replay — dos pasadas limpias
+> contra un proyecto Supabase real. `supabase/migrations/` ha crecido desde
+> entonces (28 archivos al momento de escribir esto; el número no es estático,
+> verificar con `ls supabase/migrations | wc -l`). (Hubo una época
 > en que no: B6 amplió dos funciones de ingresos y el replay moría en
 > `20260716150000` y `20260717120000` con `cannot change return type` — es el
 > Bug 80 del PLAYBOOK; B8.1 lo corrigió con `DROP FUNCTION IF EXISTS` en esas
@@ -72,8 +74,12 @@ Editar SOLO este archivo: src/lib/config.ts
    `distribuir-meses.sql`, que **ya no existen en el repo**.
    Ajustar nombres de materias según el cliente después de sembrar.
    Resultado esperado: 25 materias, 265 preguntas, 592 del quiz semanal.
-4. **Admin** → ejecutar `scripts/create-admin.sql`
-   (cambiar email y password; requiere el UUID real del usuario de Auth)
+4. **Admin** → `scripts/create-admin.sql` está **comentado entero** (líneas
+   17-31, bloque `/* … */`): es plantilla de referencia, no un script
+   ejecutable — correrlo es un no-op. El admin se crea así: Supabase
+   Dashboard → Authentication → Add user (con el correo del admin del
+   cliente) y luego `UPDATE public.usuarios SET rol = 'admin' WHERE email =
+   '…';` (como documenta `scripts/README.md:85-89`)
 5. **Módulo Cursos y Diplomados** → ejecutar `scripts/migracion-cursos-diplomados.sql`
    (crea 5 tablas `curso_*` + el bucket privado `cursos`). Corre DESPUÉS de schema.sql.
    Si las políticas de storage fallan por ownership, crearlas desde la UI
