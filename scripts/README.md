@@ -67,7 +67,23 @@ catch-up con cambios de la plantilla. Idempotentes, seguros de re-ejecutar.
 |-----------|----------|----------|
 | `2026-05-add-opcion-d-quiz-semana.sql` | Clientes pre-mayo 2026 | Habilita columna `opcion_d` en `quiz_semana` |
 | `2026-05-bug33-dedupe-preguntas.sql` | Clientes con duplicados de preguntas | DELETE duplicados + UNIQUE constraint (Bug 33) |
-| `2026-09-fix-lecciones-truncadas.sql` | Clientes sembrados antes de sep-2026 | Reescribe 52 lecciones que el seed dejaba cortadas en la primera comilla simple del texto |
+| `2026-09-fix-lecciones-truncadas.sql` | Clientes sembrados antes de sep-2026 | Reescribe **52** lecciones que el seed dejaba cortadas en la primera comilla simple del texto (PR #98) |
+| `2026-09-fix-lecciones-truncadas-2.sql` | Clientes sembrados antes de sep-2026 | Las **8** restantes del mismo defecto: el PR #95 las corrigió solo en el seed y se quedaron sin retrofit |
+
+### Lecciones truncadas: **las dos migrations van juntas**
+
+El defecto —el generador del seed no escapaba los apóstrofos, así que la primera
+comilla simple del texto cerraba el literal SQL y el resto se perdía— afectó a
+**60** lecciones, y se arregló en dos tiempos:
+
+| PR | Lecciones | Alcance |
+|----|-----------|---------|
+| #95 (`e553e48`) | 8 (las de <200 caracteres) | **solo el seed** |
+| #98 (`4740128`) | las 52 restantes | seed **y** retrofit (`…-truncadas.sql`) |
+
+Por eso hizo falta `…-truncadas-2.sql`: las 8 del PR #95 nunca tuvieron
+retrofit, y un cliente sembrado antes de ese PR las conserva cortadas. **Aplicar
+solo la primera deja la auditoría en 8, no en 0.**
 
 Auditoría rápida lecciones truncadas:
 ```sql
@@ -77,11 +93,18 @@ Auditoría rápida lecciones truncadas:
 SELECT COUNT(*) FROM public.semanas
 WHERE contenido LIKE '%'''
   AND substring(contenido FROM length(contenido) - 1 FOR 1) NOT IN ('.', '!', '?');
--- 0 = sano | >0 = ejecutar 2026-09-fix-lecciones-truncadas.sql
+-- 0  = sano
+-- 8  = falta 2026-09-fix-lecciones-truncadas-2.sql
+-- 60 = faltan las dos
 ```
 
 El seed ya no genera lecciones truncadas, así que un cliente **nuevo** no necesita
-esta migration: aplica solo a los que se sembraron con un seed anterior.
+ninguna de las dos: aplican solo a los que se sembraron con un seed anterior.
+
+Para la **flota** no hay `psql`: se aplican por PostgREST con
+`mev-tools/scripts/campanas/2026-09-08-lecciones-truncadas.py --todos`, que
+parsea las dos migrations y usa el mismo guardián. Ver
+`mev-tools/scripts/campanas/README.md`.
 
 Auditoría rápida Bug 33:
 ```sql
