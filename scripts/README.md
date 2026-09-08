@@ -14,10 +14,15 @@ Asume que ya tienes:
 export CLIENT_DB_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres"
 
 # 2. Ejecutar schema canónico (estructura de BD)
-psql "$CLIENT_DB_URL" -f scripts/schema.sql
+#    ⚠️ setup.sql (paso 3) usa `\i` con rutas relativas: hay que correr psql
+#    PARADO DENTRO de scripts/, nunca desde la raíz del repo — `psql ... -f
+#    scripts/setup.sql` desde la raíz falla con "No such file or directory"
+#    (ver SETUP.md:63-67).
+cd scripts
+psql "$CLIENT_DB_URL" -f schema.sql
 
 # 3. Ejecutar setup completo (seeds + constraints + tutorial demo)
-psql "$CLIENT_DB_URL" -f scripts/setup.sql
+psql "$CLIENT_DB_URL" -f setup.sql
 ```
 
 Tiempo total: ~30-60 segundos.
@@ -75,19 +80,35 @@ SELECT COUNT(*) FROM (
 ## Workflow de cliente nuevo (paso a paso)
 
 1. Crear proyecto Supabase desde dashboard
-2. Crear buckets de Storage: documentos (Public: OFF) + avatares (Public: OFF)
+2. Crear los 7 buckets de Storage que usa la plantilla — `scripts/schema.sql`
+   **no crea ninguno**, hay que crearlos a mano y verificar que existan:
+   `avatares` y `avatars` (ambos **públicos**: el código sube la foto de
+   perfil a `avatars`, ver `src/app/api/alumno/avatar/route.ts:28` y
+   `SETUP.md:137`), `documentos`, `constancias`, `recibos` y `materias`
+   (privados), `cursos` (privado, lo declara `migracion-cursos-diplomados.sql`
+   pero conviene tenerlo listo desde aquí)
 3. Ejecutar setup:
 ```bash
    export CLIENT_DB_URL="..."
-   psql "$CLIENT_DB_URL" -f scripts/schema.sql
-   psql "$CLIENT_DB_URL" -f scripts/setup.sql
+   # ⚠️ setup.sql usa `\i` con rutas relativas: parado DENTRO de scripts/
+   cd scripts
+   psql "$CLIENT_DB_URL" -f schema.sql
+   psql "$CLIENT_DB_URL" -f setup.sql
 ```
-4. Crear admin desde Supabase Dashboard → Authentication → Add user
-5. Marcar usuario como admin:
+4. Módulo Cursos y Diplomados (prerrequisito de varias migraciones de
+   `supabase/migrations/` — Bug 102):
+```bash
+   psql "$CLIENT_DB_URL" -f migracion-cursos-diplomados.sql
+```
+5. Aplicar `supabase/migrations/*.sql` en orden cronológico (desde la raíz del repo)
+6. Crear admin desde Supabase Dashboard → Authentication → Add user
+7. Marcar usuario como admin:
 ```sql
    UPDATE public.usuarios SET rol = 'admin' WHERE email = 'admin@cliente.com';
 ```
-6. Configurar Auth: desactivar "Confirm email" en Authentication → Providers → Email
+8. Configurar Auth: desactivar "Confirm email" en Authentication → Providers → Email
+9. Verificar con `scripts/post-setup-check.sql` (desde la raíz del repo; ver
+   `SETUP.md` paso 8) — reporta ✅/❌ por check
 
 ## Troubleshooting
 

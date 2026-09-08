@@ -19,7 +19,7 @@ export const CONFIG = {
   // === IDENTIDAD DEL CLIENTE ===
   nombre:          'MEV',                    // nombre corto: 'IVS', 'CJVB', 'ADE'
   nombreCompleto:  'Mi Escuela Virtual',     // nombre completo legal
-  prefijoMatricula:'MEV',                    // prefijo de matrícula: 'IVS-0001', 'CJVB-0001'
+  prefijoMatricula:'MEV',                    // prefijo de matrícula SIN guion; formato real PREFIJO-AAAA-0001 (el guion y el año los pone generar_matricula(); vive en public.ajustes)
   tagline:         'Tu certificación con apoyo desde casa',  // subtítulo hero
 
   // === ASSETS ===
