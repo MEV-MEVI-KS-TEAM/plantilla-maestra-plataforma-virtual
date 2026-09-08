@@ -12,9 +12,9 @@
 --
 -- ESTE ARCHIVO ES IDEMPOTENTE: puede re-ejecutarse sin romper.
 -- 
--- Tablas creadas: 18
+-- Tablas creadas: 19
 -- Constraints: 72
--- Políticas RLS: 46
+-- Políticas RLS: 47
 -- Triggers: 2
 -- ============================================================================
 
@@ -1055,6 +1055,54 @@ ALTER TABLE ONLY public.semanas
 
 ALTER TABLE ONLY public.usuarios
     ADD CONSTRAINT usuarios_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+--
+-- Name: site_config; Type: TABLE; Schema: public; Owner: -
+--
+-- Overrides del módulo "Personalizar mi página" (F1): lo que el ADMIN cambia
+-- desde su panel (logo, colores, textos, precios) sin redeploy. Se hace
+-- deep-merge sobre src/lib/config.ts en getSiteConfig(); con la tabla vacía
+-- la app es IDÉNTICA a la de antes (invariante de los ~144 clientes).
+-- Fila única (CHECK id = 1) y overrides PARCIALES en JSONB: una columna por
+-- campo sería un ALTER TABLE en 144 bases cada vez que cambie el config.
+--
+-- Va AQUÍ, después de las constraints, y no junto a ajustes: updated_by lleva
+-- FK a usuarios(id) y en este archivo (estilo pg_dump) usuarios_pkey se agrega
+-- por ALTER TABLE más arriba, no inline en el CREATE TABLE; una REFERENCES
+-- antes de ese punto truena con "no unique constraint matching given keys".
+-- Espejo de supabase/migrations/20260908120000_site_config.sql.
+--
+-- RLS con SELECT para anon y authenticated (la landing sin sesión lee logo y
+-- colores) y SIN política de escritura: solo el service role escribe desde la
+-- API del admin. USING (true) no consulta la propia tabla: sin recursión.
+-- El nombre de la política va SIN acentos a propósito (como todo identificador
+-- de este archivo): un desfase de encoding entre instalador y migración
+-- dejaría dos políticas en vez de una.
+--
+-- ⚠️ El bucket de storage `branding` (PÚBLICO, 2 MB, png/jpg/webp/svg; lectura
+-- pública, escritura solo service role) NO va aquí: este archivo no crea
+-- NINGÚN bucket; los crea A MANO el operador en el pre-vuelo (scripts/README.md,
+-- "Workflow de cliente nuevo", paso 2). No lleva ni una línea de storage a
+-- propósito: el DDL sobre storage.objects exige ser dueño de la tabla y con el
+-- rol del onboarding aborta el instalador ENTERO ("must be owner of table
+-- objects").
+--
+
+CREATE TABLE IF NOT EXISTS public.site_config (
+    id integer DEFAULT 1 NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid REFERENCES public.usuarios(id) ON DELETE SET NULL,
+    CONSTRAINT site_config_pkey PRIMARY KEY (id),
+    CONSTRAINT site_config_id_check CHECK ((id = 1))
+);
+
+ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "site_config: lectura abierta" ON public.site_config;
+CREATE POLICY "site_config: lectura abierta" ON public.site_config FOR SELECT TO anon, authenticated USING (true);
+
+GRANT SELECT ON public.site_config TO anon, authenticated;
 
 --
 -- Name: alumnos; Type: ROW SECURITY; Schema: public; Owner: -

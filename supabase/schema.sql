@@ -38,6 +38,24 @@ CREATE TABLE IF NOT EXISTS public.ajustes (
 );
 ALTER TABLE public.ajustes ENABLE ROW LEVEL SECURITY;
 
+-- ── SITE_CONFIG ─────────────────────────────────────────────
+-- Overrides del módulo "Personalizar mi página" (F1): lo que el ADMIN cambia
+-- desde su panel (logo, colores, textos, precios) sin redeploy. Se hace
+-- deep-merge sobre src/lib/config.ts en getSiteConfig(); con la tabla vacía
+-- la app es IDÉNTICA a la de antes (invariante de los ~144 clientes).
+-- Fila única (CHECK id = 1) y overrides PARCIALES en JSONB: una columna por
+-- campo sería un ALTER TABLE en 144 bases cada vez que cambie el config.
+-- RLS con SELECT público (la landing sin sesión lee logo y colores) y SIN
+-- política de escritura: solo el service role escribe desde la API del admin.
+-- Espejo de supabase/migrations/20260908120000_site_config.sql.
+CREATE TABLE IF NOT EXISTS public.site_config (
+  id          INTEGER     PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  data        JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by  UUID        REFERENCES public.usuarios(id) ON DELETE SET NULL
+);
+ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
+
 CREATE TABLE IF NOT EXISTS public.alumnos (
   id                   UUID        PRIMARY KEY REFERENCES public.usuarios(id) ON DELETE CASCADE,
   matricula            TEXT        UNIQUE,
@@ -732,6 +750,17 @@ CREATE POLICY "pagos: admin gestiona"
   USING (public.es_admin())
   WITH CHECK (public.es_admin());
 
+-- ── POLÍTICAS: SITE_CONFIG ───────────────────────────────────
+-- Lectura para anon y authenticated: la landing PÚBLICA (sin sesión) necesita
+-- logo, colores y textos, y nada de esto es secreto (ya va en el HTML).
+-- SIN política de escritura A PROPÓSITO: solo el service role, que salta la
+-- RLS, escribe desde la API del admin. USING (true) no consulta la propia
+-- tabla: no hay recursión posible.
+CREATE POLICY "site_config: lectura abierta"
+  ON public.site_config FOR SELECT TO anon, authenticated
+  USING (true);
+GRANT SELECT ON public.site_config TO anon, authenticated;
+
 
 -- ============================================================
 --  6. ÍNDICES (performance)
@@ -763,7 +792,7 @@ CREATE INDEX IF NOT EXISTS idx_pagos_created_at         ON public.pagos (created
 --  (Ejecutar en SQL Editor de Supabase o desde el Dashboard)
 -- ============================================================
 
--- NOTA CLIENTES NUEVOS: estos 5 buckets son necesarios desde el día 1.
+-- NOTA CLIENTES NUEVOS: estos 6 buckets son necesarios desde el día 1.
 -- ('cursos' NO está aquí a propósito: es del módulo opcional de Diplomados y
 --  vive en scripts/migracion-cursos-diplomados.sql, que solo se aplica a los
 --  clientes que lo contratan.)
@@ -777,7 +806,11 @@ VALUES
   ('recibos',     'recibos',     false, 2097152,   ARRAY['application/pdf']),
   -- F2: PDF de material por semana. Privado y SIN lectura para el alumno: se
   -- sirve por GET /api/material/[id], que comprueba el acceso en TypeScript.
-  ('materias',    'materias',    false, 10485760,  ARRAY['application/pdf'])
+  ('materias',    'materias',    false, 10485760,  ARRAY['application/pdf']),
+  -- F1 "Personalizar mi página": el logo que sube el admin. PÚBLICO porque la
+  -- landing lo pinta con <img src> sin sesión (como 'avatares'); 2 MB y solo
+  -- imágenes porque es un logo. Escritura solo service role, vía la API.
+  ('branding',    'branding',    true,  2097152,   ARRAY['image/png','image/jpeg','image/webp','image/svg+xml'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Políticas de Storage
@@ -858,6 +891,14 @@ CREATE POLICY "recibos: ver propio"
 CREATE POLICY "recibos: staff sube"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'recibos' AND public.es_staff());
+
+-- Branding (F1): lectura pública del logo; escritura SOLO service role. No hay
+-- política de INSERT/UPDATE/DELETE para anon ni authenticated a propósito:
+-- ni un admin con sesión sube directo desde el navegador, pasa por la API que
+-- valida tipo y tamaño antes de escribir.
+CREATE POLICY "branding: lectura abierta"
+  ON storage.objects FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'branding');
 
 
 -- ============================================================
