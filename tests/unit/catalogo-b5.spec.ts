@@ -26,10 +26,14 @@ const catalogoSrc = catalogoSrcCrudo
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/\/\/.*$/gm, '')
 
-test('el flag del catálogo viene APAGADO por default', () => {
-  // 144 clientes de secundaria/preparatoria comparten esta plantilla y su
-  // landing no debe cambiar. B7 lo enciende solo para Solo-Cursos.
-  expect(CONFIG.landing.mostrarCatalogoCursos).toBe(false)
+test('el catálogo viene ENCENDIDO por default: la sección se gatea por catalogo.length > 0', () => {
+  // PR #93 (feat/cursos-publicos-por-defecto) invirtió el default a `true` a
+  // propósito. El resguardo del `false` era innecesario —la sección ya está
+  // gateada por `catalogo.length > 0`, así que una escuela sin cursos
+  // publicados no ve ni un pixel de diferencia— y en cambio escondía cursos ya
+  // publicados desde el panel (SICOVIP y Luis Saenz Arroyo,
+  // TICKET-2026-09-04-38). Ver el comentario largo en `src/lib/config.ts`.
+  expect(CONFIG.landing.mostrarCatalogoCursos).toBe(true)
 })
 
 test('la capa de catálogo NUNCA selecciona con comodín', () => {
