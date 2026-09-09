@@ -1,18 +1,26 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
+import { getSiteConfig } from '@/lib/site-config'
 
-export const metadata: Metadata = {
-  title: `Términos y Condiciones | ${CONFIG.nombre}`,
-  description: `Términos y condiciones de uso de los servicios de ${CONFIG.nombreCompleto}.`,
+// Nombre y correo son editables desde "Personalizar mi página", así que se
+// leen de la config fusionada por petición. El dominio no es editable (cambia
+// con el deploy, no con el panel) y sigue saliendo de CONFIG.
+export async function generateMetadata(): Promise<Metadata> {
+  const cfg = await getSiteConfig()
+  return {
+    title: `Términos y Condiciones | ${cfg.nombre}`,
+    description: `Términos y condiciones de uso de los servicios de ${cfg.nombreCompleto}.`,
+  }
 }
 
 const FECHA_VIGENCIA = '11 de mayo de 2025'
-const RAZON_SOCIAL  = CONFIG.nombreCompleto
 const DOMINIO       = CONFIG.dominio
-const EMAIL         = CONFIG.contactoEmail
 
-export default function TerminosCondicionesPage() {
+export default async function TerminosCondicionesPage() {
+  const cfg = await getSiteConfig()
+  const RAZON_SOCIAL = cfg.nombreCompleto
+  const EMAIL        = cfg.contactoEmail
   return (
     <div style={{ minHeight: '100vh', background: '#0A0A0F', color: 'rgba(224,235,255,0.85)' }}>
       {/* Header */}

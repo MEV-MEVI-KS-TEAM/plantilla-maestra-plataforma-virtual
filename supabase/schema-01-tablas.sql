@@ -37,6 +37,44 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- ── SITE_CONFIG ─────────────────────────────────────────────
+-- Overrides del módulo "Personalizar mi página" (F1): lo que el ADMIN cambia
+-- desde su panel (logo, colores, textos, precios) sin redeploy. Se hace
+-- deep-merge sobre src/lib/config.ts en getSiteConfig(); con la tabla vacía
+-- la app es IDÉNTICA a la de antes (invariante de los ~144 clientes).
+-- Fila única (CHECK id = 1) y overrides PARCIALES en JSONB: una columna por
+-- campo sería un ALTER TABLE en 144 bases cada vez que cambie el config.
+-- Va DESPUÉS de usuarios (y no junto a ajustes) por la FK de updated_by.
+-- Espejo de supabase/migrations/20260908120000_site_config.sql.
+CREATE TABLE IF NOT EXISTS public.site_config (
+  id          INTEGER     PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  data        JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by  UUID        REFERENCES public.usuarios(id) ON DELETE SET NULL
+);
+ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
+
+-- La política va AQUÍ y no en un archivo aparte porque esta PARTE 1 es la
+-- única de la serie que declara RLS (schema-02 son solo funciones y triggers):
+-- separarla dejaría la tabla con RLS activa y sin lectura, y la landing
+-- pública cargaría sin logo ni colores. SELECT para anon y authenticated;
+-- SIN política de escritura: solo el service role escribe desde la API del
+-- admin. USING (true) no consulta la propia tabla, así que no hay recursión.
+-- DROP IF EXISTS para que este archivo siga siendo re-ejecutable (todas sus
+-- tablas son IF NOT EXISTS; sin esto, esta sería la única línea que revienta
+-- al segundo pase).
+DROP POLICY IF EXISTS "site_config: lectura abierta" ON public.site_config;
+CREATE POLICY "site_config: lectura abierta"
+  ON public.site_config FOR SELECT TO anon, authenticated
+  USING (true);
+-- GRANT por COLUMNAS: `updated_by` (el UUID del admin que guardó) no lo lee un
+-- visitante anónimo; `data` sí, que es lo que la landing necesita. El REVOKE va
+-- antes porque un privilegio de TABLA gana sobre el de columna, así que una
+-- base que ya tenga el grant amplio (versión anterior de la migración) se
+-- quedaría con él. Espejo de supabase/migrations/20260908120000_site_config.sql.
+REVOKE SELECT ON public.site_config FROM anon, authenticated;
+GRANT SELECT (id, data, updated_at) ON public.site_config TO anon, authenticated;
+
 -- ── ALUMNOS ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.alumnos (
   id                   UUID        PRIMARY KEY REFERENCES public.usuarios(id) ON DELETE CASCADE,

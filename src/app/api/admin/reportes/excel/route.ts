@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
-import { CONFIG } from '@/lib/config'
+import { getSiteConfig } from '@/lib/site-config'
 
 /**
  * GET /api/admin/reportes/excel
@@ -59,6 +59,8 @@ export async function GET() {
     if (denied) return denied
 
     const admin = createAdminClient()
+    // Nombre de la institución editable desde "Personalizar mi página".
+    const cfg = await getSiteConfig()
 
     const [
       { data: alumnosRaw }, { data: pagosRaw }, { data: califsRaw },
@@ -165,7 +167,7 @@ export async function GET() {
     const ingresosMes = hojaMes.length ? hojaMes[hojaMes.length - 1]['Total (MXN)'] : 0
     const hoy = new Date()
     const hojaResumen = [
-      { Concepto: 'Institución',             Valor: CONFIG.nombreCompleto },
+      { Concepto: 'Institución',             Valor: cfg.nombreCompleto },
       { Concepto: 'Generado',                Valor: hoy.toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' }) },
       { Concepto: 'Total de alumnos',        Valor: alumnos.length },
       { Concepto: 'Alumnos activos',         Valor: alumnos.filter(a => a.activo !== false).length },
@@ -194,7 +196,7 @@ export async function GET() {
     XLSX.utils.book_append_sheet(wb, hoja(hojaSemana,      ['Semana del', 'Programa (MXN)', 'Diplomados (MXN)', 'Total (MXN)']), 'Ingresos semanal')
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
-    const slug = CONFIG.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const slug = cfg.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     const fecha = new Date().toISOString().slice(0, 10)
 
     return new NextResponse(new Uint8Array(buffer), {

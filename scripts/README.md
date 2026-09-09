@@ -118,11 +118,17 @@ SELECT COUNT(*) FROM (
 ## Workflow de cliente nuevo (paso a paso)
 
 1. Crear proyecto Supabase desde dashboard
-2. Crear los 7 buckets de Storage que usa la plantilla — `scripts/schema.sql`
+2. Crear los 8 buckets de Storage que usa la plantilla — `scripts/schema.sql`
    **no crea ninguno**, hay que crearlos a mano y verificar que existan:
    `avatares` y `avatars` (ambos **públicos**: el código sube la foto de
    perfil a `avatars`, ver `src/app/api/alumno/avatar/route.ts:28` y
-   `SETUP.md:137`), `documentos`, `constancias`, `recibos` y `materias`
+   `SETUP.md:137`), `branding` (**público**, 2 MB, `image/png` + `image/jpeg` +
+   `image/webp`, **sin `image/svg+xml`**: el editor acepta también SVG a la
+   *entrada*, pero la API lo rasteriza a PNG antes de subir, así que en el
+   bucket no hay ni un SVG. El logo que sube el admin desde "Personalizar mi
+   página"; lectura pública, escritura solo service role — lo declara
+   `supabase/migrations/20260908120000_site_config.sql`),
+   `documentos`, `constancias`, `recibos` y `materias`
    (privados), `cursos` (privado, lo declara `migracion-cursos-diplomados.sql`
    pero conviene tenerlo listo desde aquí)
 3. Ejecutar setup:

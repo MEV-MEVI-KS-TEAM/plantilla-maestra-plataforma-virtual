@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types'
 import { CONFIG } from '@/lib/config'
 import { esSoloCursos } from '@/lib/modo'
+import { useSiteConfig } from '@/components/site-config-provider'
 
 interface NavItem {
   label: string
@@ -31,7 +32,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Gestionar Cursos', href: '/admin/cursos',        emoji: '🎓', icon: GraduationCap   },
     { label: 'Documentos',       href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
     { label: 'Usuarios',         href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
-    { label: 'Configuración',    href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
+    { label: 'Personalizar mi página', href: '/admin/configuracion', emoji: '⚙️', icon: Settings  },
   ],
   // Rol acotado: ve Alumnos (lectura + registrar pagos) y Estado de Cuenta.
   // Usuarios/Contenido/Documentos/Configuración/Reportes/Cursos quedan ocultos.
@@ -78,7 +79,7 @@ const NAV_ITEMS_SOLO_CURSOS: Record<UserRole, NavItem[]> = {
     { label: 'Reportes',       href: '/admin/reportes',      emoji: '📊', icon: BarChart3       },
     { label: 'Documentos',     href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
     { label: 'Usuarios',       href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
-    { label: 'Configuración',  href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
+    { label: 'Personalizar mi página', href: '/admin/configuracion', emoji: '⚙️', icon: Settings },
   ],
   // El secretario cobra. Estado de Cuenta es del programa y aquí no aplica, así
   // que se queda con Alumnos, desde donde registra los pagos del diplomado.
@@ -103,6 +104,9 @@ interface SidebarProps {
 export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
+  // Logo y nombre son editables desde "Personalizar mi página": salen del
+  // provider, no de CONFIG. `pagos` no es editable y sigue leyendo CONFIG.
+  const cfg      = useSiteConfig()
   const [pendientesCount, setPendientesCount] = useState(0)
   // El alumno solo ve "Cursos y Diplomados" si tiene ≥1 curso publicado asignado
   const [tieneCursos, setTieneCursos] = useState(false)
@@ -225,8 +229,8 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
         <div className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: `1px solid ${sidebarBorder}` }}>
           <Image
-            src={CONFIG.logoOscuro || CONFIG.logo}
-            alt={CONFIG.nombre}
+            src={cfg.logoOscuro || cfg.logo}
+            alt={cfg.nombre}
             width={180}
             height={56}
             style={{ height: 44, width: 'auto', objectFit: 'contain' }}

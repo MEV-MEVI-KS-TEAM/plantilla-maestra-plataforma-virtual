@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, Printer } from 'lucide-react'
 import { CONFIG } from '@/lib/config'
+import { useSiteConfig } from '@/components/site-config-provider'
 
 interface Constancia {
   folio: string
@@ -60,6 +61,9 @@ export default function ConstanciaCursoPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const cursoId = params.id
+  // Logo, nombre y CCT son editables desde "Personalizar mi página";
+  // `diploma.*` no lo es y sigue leyendo CONFIG.
+  const cfg = useSiteConfig()
 
   const [constancia, setConstancia] = useState<Constancia | null>(null)
   const [motivo, setMotivo] = useState<Motivo>(null)
@@ -139,15 +143,15 @@ export default function ConstanciaCursoPage() {
           style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 8 }}
         >
           <div className="text-center space-y-1">
-            {CONFIG.logo && (
+            {cfg.logo && (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={CONFIG.logo} alt="" style={{ height: 56, margin: '0 auto 10px' }} />
+              <img src={cfg.logo} alt="" style={{ height: 56, margin: '0 auto 10px' }} />
             )}
             <p className="text-lg font-bold tracking-wide" style={{ color: '#0F172A' }}>
-              {CONFIG.nombreCompleto}
+              {cfg.nombreCompleto}
             </p>
-            {CONFIG.cct?.trim() && (
-              <p className="text-[11px]" style={{ color: '#94A3B8' }}>CCT: {CONFIG.cct.trim()}</p>
+            {cfg.cct?.trim() && (
+              <p className="text-[11px]" style={{ color: '#94A3B8' }}>CCT: {cfg.cct.trim()}</p>
             )}
           </div>
 
@@ -199,9 +203,9 @@ export default function ConstanciaCursoPage() {
               {/* Consecutivo, de curso_folio_seq. Verificable contra la base. */}
               <p className="text-sm font-bold tabular-nums" style={{ color: '#0F172A' }}>{constancia.folio}</p>
             </div>
-            {CONFIG.logo && (
+            {cfg.logo && (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={CONFIG.logo} alt="" style={{ height: 26, opacity: 0.5 }} />
+              <img src={cfg.logo} alt="" style={{ height: 26, opacity: 0.5 }} />
             )}
           </div>
 
@@ -211,7 +215,7 @@ export default function ConstanciaCursoPage() {
             clientes algo que solo puede decir quien acredite su propio registro.
           */}
           <p className="text-[10px] text-center mt-4" style={{ color: '#94A3B8' }}>
-            Documento con folio {constancia.folio}, expedido digitalmente por {CONFIG.nombreCompleto}.
+            Documento con folio {constancia.folio}, expedido digitalmente por {cfg.nombreCompleto}.
             Para verificar su autenticidad, contacte a administración.
           </p>
         </div>

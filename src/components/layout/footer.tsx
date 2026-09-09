@@ -1,8 +1,9 @@
 'use client'
 
-import { CONFIG, ESCUELA_CONFIG } from '@/lib/config'
+import { CONFIG } from '@/lib/config'
 import { getNivelLabel } from '@/lib/modalidades'
 import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { useSiteConfig } from '@/components/site-config-provider'
 
 /**
  * Qué vende el cliente, leído de su config.
@@ -24,6 +25,9 @@ function ofertaDelCliente(): string {
 }
 
 export function Footer() {
+  // Nombre y contacto son editables desde "Personalizar mi página". `dominio`
+  // no lo es y sigue saliendo de CONFIG.
+  const cfg = useSiteConfig()
   return (
     <footer
       className="mt-auto px-4 py-6 text-center space-y-1.5"
@@ -33,7 +37,7 @@ export function Footer() {
       }}
     >
       <p className="text-xs font-semibold" style={{ color: '#475569' }}>
-        {ESCUELA_CONFIG.nombre}
+        {cfg.nombre}
       </p>
       <p className="text-xs" style={{ color: '#374151' }}>
         {ofertaDelCliente()}
@@ -52,31 +56,31 @@ export function Footer() {
         </a>
         <span style={{ color: '#2A2F3E' }}>·</span>
         <a
-          href={`mailto:${ESCUELA_CONFIG.contactoEmail}`}
+          href={`mailto:${cfg.contactoEmail}`}
           className="text-xs transition-colors"
           style={{ color: '#374151' }}
           onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
           onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
         >
-          {ESCUELA_CONFIG.contactoEmail}
+          {cfg.contactoEmail}
         </a>
-        {ESCUELA_CONFIG.contactoTelefono && (
+        {cfg.contactoTelefono && (
           <>
             <span style={{ color: '#2A2F3E' }}>·</span>
             <a
-              href={`https://wa.me/${ESCUELA_CONFIG.contactoTelefono}`}
+              href={`https://wa.me/${cfg.contactoTelefono}`}
               className="text-xs transition-colors"
               style={{ color: '#374151' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
               onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
             >
-              {ESCUELA_CONFIG.whatsappDisplay ?? ESCUELA_CONFIG.contactoTelefono}
+              {cfg.whatsappDisplay ?? cfg.contactoTelefono}
             </a>
           </>
         )}
       </div>
       <p className="text-xs" style={{ color: '#374151' }}>
-        © {new Date().getFullYear()} {ESCUELA_CONFIG.nombre}. Todos los derechos reservados.
+        © {new Date().getFullYear()} {cfg.nombre}. Todos los derechos reservados.
       </p>
     </footer>
   )

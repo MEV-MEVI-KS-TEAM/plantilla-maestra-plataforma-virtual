@@ -44,8 +44,9 @@ Editar SOLO este archivo: src/lib/config.ts
    >
    > **`supabase/schema.sql` es hoy un superconjunto estricto de
    > `scripts/schema.sql`**: mismas 22 tablas, mismas columnas, 13 funciones,
-   > 3 triggers y 22 RLS — más las **9 políticas de storage** de los buckets
-   > `avatares`, `documentos`, `constancias` y `recibos`, que solo él declara.
+   > 3 triggers y 22 RLS — más las **políticas de storage** de los buckets
+   > `avatares`, `documentos`, `constancias`, `recibos`, `materias` y `branding`,
+   > que solo él declara.
    > Por la ruta de este documento esas políticas se crean en el paso 9
    > (Buckets de Storage), así que tampoco falta nada aquí.
    >
@@ -138,6 +139,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | `documentos` | privado | 10 MB | idem | documentos del alumno + la constancia |
    | `constancias` | privado | 10 MB | idem | declarado pero **sin uso en la app** hoy |
    | `recibos` | privado | 2 MB | idem + `migrations/20260716140000` | recibos de pago |
+   | `branding` | **público** | 2 MB | idem + `migrations/20260908120000_site_config.sql` | logo que sube el admin desde "Personalizar mi página". El bucket solo guarda **png/jpeg/webp** (sin `image/svg+xml`): el editor acepta SVG a la *entrada*, pero la API lo rasteriza a PNG antes de subir. Escritura solo service role |
    | `cursos` | privado | 10 MB | `scripts/migracion-cursos-diplomados.sql:241` | portadas y PDF de Cursos y Diplomados |
 
    > ⚠️ **Discrepancia conocida `avatares` vs `avatars`.** El schema crea el bucket

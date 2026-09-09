@@ -15,16 +15,22 @@
  */
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { CONFIG } from '@/lib/config'
+import { getSiteConfig } from '@/lib/site-config'
 import { listarCatalogoPublico, precioMXN } from '@/lib/cursos/catalogo'
 
-export const metadata: Metadata = {
-  title: `${CONFIG.landing.catalogoTitulo} · ${CONFIG.nombre}`,
-  description: CONFIG.landing.catalogoSubtitulo,
+// Título, logo y WhatsApp son editables desde "Personalizar mi página": salen
+// de la config fusionada, no de CONFIG, para que un cambio del admin se vea
+// sin redeploy.
+export async function generateMetadata(): Promise<Metadata> {
+  const cfg = await getSiteConfig()
+  return {
+    title: `${cfg.landing.catalogoTitulo} · ${cfg.nombre}`,
+    description: cfg.landing.catalogoSubtitulo,
+  }
 }
 
 export default async function DiplomadosPage() {
-  const catalogo = await listarCatalogoPublico()
+  const [catalogo, cfg] = await Promise.all([listarCatalogoPublico(), getSiteConfig()])
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF7F0' }}>
@@ -33,16 +39,16 @@ export default async function DiplomadosPage() {
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <Link href="/" style={{ display: 'inline-block', marginBottom: 28 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={CONFIG.logo} alt={CONFIG.nombre} style={{ height: 52, width: 'auto', objectFit: 'contain' }} />
+            <img src={cfg.logo} alt={cfg.nombre} style={{ height: 52, width: 'auto', objectFit: 'contain' }} />
           </Link>
           <h1 style={{
             fontSize: 36, fontWeight: 700, margin: '0 0 12px',
             color: 'var(--color-primario)', lineHeight: 1.2,
           }}>
-            {CONFIG.landing.catalogoTitulo}
+            {cfg.landing.catalogoTitulo}
           </h1>
           <p style={{ fontSize: 16, color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
-            {CONFIG.landing.catalogoSubtitulo}
+            {cfg.landing.catalogoSubtitulo}
           </p>
         </div>
 
@@ -59,7 +65,7 @@ export default async function DiplomadosPage() {
             <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>
               Escríbenos y con gusto te contamos qué estamos preparando.
             </p>
-            <a href={CONFIG.whatsappUrl} target="_blank" rel="noopener noreferrer"
+            <a href={cfg.whatsappUrl} target="_blank" rel="noopener noreferrer"
               style={{
                 display: 'inline-block', marginTop: 22, padding: '12px 26px',
                 borderRadius: 999, background: '#25D366', color: '#fff',

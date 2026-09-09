@@ -82,8 +82,9 @@ Igual que `SETUP.md`, **más el módulo de Cursos, que aquí no es opcional**:
 
 > **El schema base de esta línea es `supabase/schema.sql`, a propósito** — no lo
 > cambies por `scripts/schema.sql` aunque `SETUP.md` use ese otro. Solo
-> `supabase/schema.sql` declara las 9 políticas de storage (`avatares`,
-> `documentos`, `constancias`, `recibos`), y repuntar aquí las perdería.
+> `supabase/schema.sql` declara las políticas de storage (`avatares`,
+> `documentos`, `constancias`, `recibos`, `materias`, `branding`), y repuntar
+> aquí las perdería.
 > Las tablas `cursos` y `curso_inscripciones` no salen de ningún schema base:
 > las crea `scripts/migracion-cursos-diplomados.sql`, el paso siguiente.
 >

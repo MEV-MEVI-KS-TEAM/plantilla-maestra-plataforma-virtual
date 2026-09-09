@@ -2,6 +2,13 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer'
 import { CONFIG } from '@/lib/config'
+import { getSiteConfig, type SiteConfig } from '@/lib/site-config'
+
+/**
+ * Lo que el recibo toma de la config fusionada (defaults + overrides del
+ * admin). `urlBase` NO está aquí: no es editable y sigue saliendo de CONFIG.
+ */
+type ReciboBranding = Pick<SiteConfig, 'nombreCompleto' | 'whatsappDisplay' | 'logo' | 'logoOscuro'>
 
 export interface ReciboData {
   folio: string
@@ -52,25 +59,45 @@ const styles = StyleSheet.create({
   footer:    { position: 'absolute', bottom: 36, left: 40, right: 40, fontSize: 8, color: '#9CA3AF', textAlign: 'center' },
 })
 
-function logoPath(): string | null {
+function logoSrc(cfg: ReciboBranding): string | null {
   // El recibo se imprime sobre papel BLANCO: va la variante para fondo claro.
   // Antes se prefería `logoOscuro`, lo cual daba igual mientras ambos campos
   // apuntaran al mismo archivo; con un logo oscuro real el recibo salía en blanco.
-  const logo = CONFIG.logo || CONFIG.logoOscuro
-  if (!logo || !/\.(png|jpe?g)$/i.test(logo)) return null
+  const logo = cfg.logo || cfg.logoOscuro
+  if (!logo) return null
+  // Logo subido desde "Personalizar mi página": URL http(s) al bucket público.
+  // No está en disco; react-pdf la descarga al renderizar.
+  //
+  // MISMO FILTRO DE EXTENSIÓN QUE PARA LAS RUTAS LOCALES. El `<Image>` de
+  // react-pdf solo rasteriza PNG y JPG: con un SVG o un WebP no pinta el logo
+  // — revienta el render, y con él la descarga del recibo. La ruta de subida
+  // ya solo deja PNG/JPEG en el bucket (rasteriza todo lo demás), así que esto
+  // es defensa en profundidad para una fila escrita antes de ese cambio o a
+  // mano. Ante la duda, recibo SIN logo: nunca un recibo que no sale.
+  if (/^https?:\/\//i.test(logo)) {
+    let ruta: string
+    try {
+      ruta = new URL(logo).pathname
+    } catch {
+      return null
+    }
+    return /\.(png|jpe?g)$/i.test(ruta) ? logo : null
+  }
+  // Ruta local de public/ (el default '/logo.png' de la plantilla).
+  if (!/\.(png|jpe?g)$/i.test(logo)) return null
   const abs = path.join(process.cwd(), 'public', logo)
   return existsSync(abs) ? abs : null
 }
 
-export function ReciboPagoPDF({ data }: { data: ReciboData }) {
-  const logo = logoPath()
+export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBranding }) {
+  const logo = logoSrc(cfg)
   return (
-    <Document title={`Recibo ${data.folio}`} author={CONFIG.nombreCompleto}>
+    <Document title={`Recibo ${data.folio}`} author={cfg.nombreCompleto}>
       <Page size="A5" orientation="landscape" style={styles.page}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.escuela}>{CONFIG.nombreCompleto}</Text>
-            <Text style={styles.tagline}>{CONFIG.urlBase} · WhatsApp {CONFIG.whatsappDisplay}</Text>
+            <Text style={styles.escuela}>{cfg.nombreCompleto}</Text>
+            <Text style={styles.tagline}>{CONFIG.urlBase} · WhatsApp {cfg.whatsappDisplay}</Text>
           </View>
           {/* Image de @react-pdf/renderer, no <img> de HTML: no acepta `alt`. */}
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -119,7 +146,7 @@ export function ReciboPagoPDF({ data }: { data: ReciboData }) {
         </View>
 
         <Text style={styles.footer}>
-          {CONFIG.nombreCompleto} — Comprobante interno de pago. Folio {data.folio}. Documento generado electrónicamente.
+          {cfg.nombreCompleto} — Comprobante interno de pago. Folio {data.folio}. Documento generado electrónicamente.
         </Text>
       </Page>
     </Document>
@@ -127,5 +154,8 @@ export function ReciboPagoPDF({ data }: { data: ReciboData }) {
 }
 
 export async function renderReciboPdf(data: ReciboData): Promise<Buffer> {
-  return renderToBuffer(<ReciboPagoPDF data={data} />)
+  // La config se resuelve aquí (y no dentro del componente) porque react-pdf
+  // no renderiza componentes async.
+  const cfg = await getSiteConfig()
+  return renderToBuffer(<ReciboPagoPDF data={data} cfg={cfg} />)
 }

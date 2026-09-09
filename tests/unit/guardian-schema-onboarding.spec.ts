@@ -75,6 +75,17 @@ const OBJETOS_EXENTOS = new Set<string>([
   'materias: solo admin escribe',
   'materias: solo admin actualiza',
   'materias: solo admin borra',
+
+  // Política del bucket `branding` (F1 "Personalizar mi página", logo que sube
+  // el admin: 20260908120000_site_config.sql). Mismo racional que `materias`:
+  // scripts/schema.sql no lleva storage porque el DDL sobre storage.objects
+  // aborta el instalador entero con "must be owner of table objects"; el
+  // bucket lo crea A MANO el operador en el pre-vuelo (scripts/README.md,
+  // "Workflow de cliente nuevo", paso 2) y la política la aplica la migración
+  // o el Dashboard. Lo que SÍ se exige y sí está reflejado: la tabla
+  // public.site_config y su política "site_config: lectura abierta". Lo exento
+  // es solo el storage.
+  'branding: lectura abierta',
 ])
 
 function sinComentarios(sql: string): string {

@@ -9,11 +9,11 @@ import { createClient } from '@/lib/supabase/client'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatura-utils'
 import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
-import { CONFIG } from '@/lib/config'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
-
-const WA_URL = `https://wa.me/${CONFIG.whatsapp}`
+// Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
+// provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
+import { useSiteConfig } from '@/components/site-config-provider'
 
 // La última viñeta enumera la oferta real de la escuela en vez de una frase
 // fija: si el cliente activa o retira un programa, el copy lo sigue solo.
@@ -136,6 +136,7 @@ function ProgressBar({ current }: { current: 1 | 2 | 3 }) {
 
 // ─── Left decorative panel ─────────────────────────────────────────────────────
 function LeftPanel() {
+  const cfg = useSiteConfig()
   return (
     <div
       className="hidden md:flex flex-col justify-between px-10 py-12"
@@ -157,11 +158,11 @@ function LeftPanel() {
           borderRadius: 16, padding: 4, display: 'inline-block',
           border: '1px solid rgba(255,255,255,0.25)',
         }}>
-          <Image src={CONFIG.logo} alt={CONFIG.nombre} width={68} height={68}
+          <Image src={cfg.logo} alt={cfg.nombre} width={68} height={68}
             style={{ borderRadius: 12, objectFit: 'contain', display: 'block' }} priority />
         </div>
         <p className="mt-4 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>
-          {CONFIG.nombreCompleto.toUpperCase()}
+          {cfg.nombreCompleto.toUpperCase()}
         </p>
       </div>
 
@@ -197,6 +198,7 @@ function LeftPanel() {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default function RegisterPage() {
   const router = useRouter()
+  const cfg = useSiteConfig()
 
   const [nombre,          setNombre]          = useState('')
   const [apellidoPat,     setApellidoPat]     = useState('')
@@ -375,10 +377,10 @@ export default function RegisterPage() {
       >
         {/* Mobile-only logo */}
         <div className="flex flex-col items-center mb-6 md:hidden">
-          <Image src={CONFIG.logo} alt={CONFIG.nombre} width={60} height={60}
+          <Image src={cfg.logo} alt={cfg.nombre} width={60} height={60}
             style={{ borderRadius: 12, objectFit: 'contain', border: '1px solid #E2E8F0' }} priority />
           <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)', letterSpacing: '0.05em' }}>
-            {CONFIG.nombreCompleto.toUpperCase()}
+            {cfg.nombreCompleto.toUpperCase()}
           </p>
         </div>
 
@@ -550,7 +552,11 @@ export default function RegisterPage() {
                     style={{ ...selectStyle, opacity: nivel ? 1 : 0.5 }}
                     onFocus={onFocus} onBlur={onBlur} disabled={!nivel}>
                     <option value="">{nivel ? 'Selecciona…' : 'Primero elige nivel'}</option>
-                    {(esLicenciatura ? getModalidadesLicenciatura() : getModalidadesActivas()).map(m => (
+                    {/* F3B: las modalidades del programa salen del config
+                        FUSIONADO — si el admin apaga un plan desde su panel,
+                        deja de ofrecerse aquí sin redeploy. Las de
+                        licenciatura no se editan y siguen en CONFIG. */}
+                    {(esLicenciatura ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
                       <option key={m.id} value={m.id}>{m.label}</option>
                     ))}
                   </select>
@@ -658,7 +664,7 @@ export default function RegisterPage() {
 
             {/* Legal */}
             <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--color-borde)' }}>
-              Al registrarte aceptas que {CONFIG.nombreCompleto} tratará tus datos
+              Al registrarte aceptas que {cfg.nombreCompleto} tratará tus datos
               conforme a su política de privacidad.
             </p>
 
@@ -677,7 +683,7 @@ export default function RegisterPage() {
         {/* Footer */}
         <div className="mt-8 flex flex-col items-center gap-3">
           <a
-            href={WA_URL} target="_blank" rel="noopener noreferrer"
+            href={cfg.whatsappUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm transition-colors"
             style={{ color: 'var(--color-texto-secundario)', textDecoration: 'none' }}
             onMouseEnter={e => { e.currentTarget.style.color = '#16A34A' }}
@@ -687,7 +693,7 @@ export default function RegisterPage() {
             ¿Necesitas ayuda? WhatsApp
           </a>
           <p className="text-xs" style={{ color: '#C8D8E4' }}>
-            © {new Date().getFullYear()} {CONFIG.nombreCompleto}
+            © {new Date().getFullYear()} {cfg.nombreCompleto}
           </p>
         </div>
       </div>

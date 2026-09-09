@@ -27,6 +27,11 @@
  * `purgarCatalogoPublico`). Eso purga la Full Route Cache de esta ruta y la
  * siguiente petición la regenera con datos frescos, sin volverla dinámica.
  *
+ * Desde F1 ("Personalizar mi página") la página depende TAMBIÉN de la fila
+ * `site_config` (textos, logo, colores y precios de la landing). Misma
+ * mecánica: `revalidateSiteConfig()` purga '/' vía `revalidatePath('/',
+ * 'layout')` al guardar desde el editor (ver src/lib/site-config.ts).
+ *
  * Dos remedios ANTERIORES se quitaron a propósito — no los restaures:
  *   - `export const revalidate = CONFIG…? 60 : false` — la config de segmento
  *     de Next se extrae ESTÁTICAMENTE en build; un export no-literal se ignora
@@ -36,13 +41,23 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import { CONFIG } from '@/lib/config'
+import { getSiteConfig, toLandingConfig } from '@/lib/site-config'
 import { listarCatalogoPublico } from '@/lib/cursos/catalogo'
 import { LandingClient } from '@/components/landing/LandingClient'
 
 export default async function LandingPage() {
+  // Config fusionada (config.ts + overrides del editor). Lo editable de la
+  // landing sale de aquí; `mostrarCatalogoCursos` NO es editable y se sigue
+  // leyendo de CONFIG.
+  //
+  // `toLandingConfig` = el recorte público + `landing`. Esta es la ÚNICA
+  // pantalla que pinta los 42 textos de `landing.*`, y por eso los recibe por
+  // props: el provider del layout ya no los lleva, así que no viajan en el HTML
+  // de las ~30 rutas que no los usan (ver CLAVES_PUBLICAS en site-config-core).
+  const config = await getSiteConfig()
   const catalogo = CONFIG.landing.mostrarCatalogoCursos
     ? await listarCatalogoPublico()
     : []
 
-  return <LandingClient catalogo={catalogo} />
+  return <LandingClient catalogo={catalogo} config={toLandingConfig(config)} />
 }

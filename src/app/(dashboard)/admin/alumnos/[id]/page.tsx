@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, FileDown, StickyNote, Save, LockOpen, Lock, CheckCircle2, CreditCard, DollarSign, Plus, Trash2, ChevronDown, ChevronRight, Pencil } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
-import { config } from '@/lib/config'
+// F3B: el precio de inscripción que se le enseña al admin sale del config
+// FUSIONADO (config.ts + lo que él mismo editó en "Personalizar mi página"),
+// no del literal de config.ts. Con site_config vacía es el mismo número.
+import { useSiteConfig } from '@/components/site-config-provider'
 // Mismos catálogos que el select de alta: el modal de corrección ofrece
 // exactamente lo que el alta ofrece, ni más ni menos.
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
@@ -170,6 +173,9 @@ export default function AlumnoDetallePage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
+
+  // Config fusionada (F1): precios y modalidades editables desde el panel.
+  const cfg = useSiteConfig()
 
   const { toasts, showToast, removeToast } = useToast()
 
@@ -1430,7 +1436,7 @@ export default function AlumnoDetallePage() {
                   style={{ ...INPUT_STYLE, opacity: corregirForm.nivel ? 1 : 0.5 }}
                 >
                   <option value="">{corregirForm.nivel ? 'Selecciona modalidad...' : 'Primero elige nivel'}</option>
-                  {(corregirForm.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas()).map(m => (
+                  {(corregirForm.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
@@ -1634,7 +1640,7 @@ export default function AlumnoDetallePage() {
               <p className="text-4xl mb-2">💳</p>
               <p className="text-sm font-medium text-gray-100">
                 ¿Confirmas que el alumno pagó su inscripción de{' '}
-                <span style={{ color: 'var(--color-acento)' }}>${config.precios.inscripcion}</span>?
+                <span style={{ color: 'var(--color-acento)' }}>${cfg.precios.inscripcion}</span>?
               </p>
               <p className="text-sm font-bold mt-0.5 text-gray-100">
                 {alumno.usuario.nombre_completo}

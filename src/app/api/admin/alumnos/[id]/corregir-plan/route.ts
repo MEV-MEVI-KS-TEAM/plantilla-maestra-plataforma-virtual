@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { validarCorreccionPlan, mensajeCandado } from '@/lib/corregir-plan'
+import { getSiteConfig } from '@/lib/site-config'
 
 // Corrige la CAPTURA del plan de estudio (nivel/carrera/modalidad) de un
 // alumno que aún no comienza. La UI esconde el botón cuando algún candado
@@ -23,7 +24,11 @@ export async function POST(
     if (denied) return denied
 
     const body = await request.json().catch(() => null)
-    const validacion = validarCorreccionPlan(body)
+    // F3B: se valida contra las mismas modalidades que arma el selector del
+    // panel (config.ts fusionado con "Personalizar mi página"), no contra el
+    // literal de config.ts.
+    const cfg = await getSiteConfig()
+    const validacion = validarCorreccionPlan(body, cfg.modalidades)
     if (!validacion.ok) {
       return NextResponse.json({ error: validacion.error }, { status: 400 })
     }

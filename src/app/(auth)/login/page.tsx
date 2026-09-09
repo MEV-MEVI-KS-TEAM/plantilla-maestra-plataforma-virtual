@@ -7,10 +7,9 @@ import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ROLE_REDIRECTS } from '@/lib/constants'
-
-import { CONFIG } from '@/lib/config'
-
-const WA_URL = `https://wa.me/${CONFIG.whatsapp}`
+// Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
+// provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
+import { useSiteConfig } from '@/components/site-config-provider'
 
 const BENEFITS = [
   'Acompañamiento para tu certificado SEP',
@@ -41,6 +40,7 @@ function WaSvg({ size = 18 }: { size?: number }) {
 
 // ─── Left decorative panel ─────────────────────────────────────────────────────
 function LeftPanel() {
+  const cfg = useSiteConfig()
   return (
     <div
       className="hidden md:flex flex-col justify-between px-10 py-12"
@@ -75,8 +75,8 @@ function LeftPanel() {
           border: '1px solid rgba(255,255,255,0.25)',
         }}>
           <Image
-            src={CONFIG.logo}
-            alt={CONFIG.nombre}
+            src={cfg.logo}
+            alt={cfg.nombre}
             width={72}
             height={72}
             style={{ borderRadius: 12, objectFit: 'contain', display: 'block' }}
@@ -84,7 +84,7 @@ function LeftPanel() {
           />
         </div>
         <p className="mt-4 text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.05em' }}>
-          {CONFIG.nombreCompleto.toUpperCase()}
+          {cfg.nombreCompleto.toUpperCase()}
         </p>
       </div>
 
@@ -131,6 +131,7 @@ function LeftPanel() {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   const router = useRouter()
+  const cfg = useSiteConfig()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -188,10 +189,10 @@ export default function LoginPage() {
       >
         {/* Mobile-only logo */}
         <div className="flex flex-col items-center mb-8 md:hidden">
-          <Image src={CONFIG.logo} alt={CONFIG.nombre} width={64} height={64}
+          <Image src={cfg.logo} alt={cfg.nombre} width={64} height={64}
             style={{ borderRadius: 12, objectFit: 'contain', border: '1px solid #E2E8F0' }} priority />
           <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)', letterSpacing: '0.05em' }}>
-            {CONFIG.nombreCompleto.toUpperCase()}
+            {cfg.nombreCompleto.toUpperCase()}
           </p>
         </div>
 
@@ -213,7 +214,7 @@ export default function LoginPage() {
               Bienvenido de vuelta
             </h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
-              Ingresa a tu plataforma {CONFIG.nombre}
+              Ingresa a tu plataforma {cfg.nombre}
             </p>
           </div>
 
@@ -314,7 +315,7 @@ export default function LoginPage() {
 
           {/* WhatsApp button */}
           <a
-            href={WA_URL} target="_blank" rel="noopener noreferrer"
+            href={cfg.whatsappUrl} target="_blank" rel="noopener noreferrer"
             className="w-full flex items-center justify-center gap-2.5 font-semibold text-sm transition-all"
             style={{
               display: 'flex',
@@ -352,7 +353,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="mt-8 text-xs" style={{ color: 'var(--color-borde)' }}>
-          © {new Date().getFullYear()} {CONFIG.nombreCompleto}
+          © {new Date().getFullYear()} {cfg.nombreCompleto}
         </p>
       </div>
     </div>
