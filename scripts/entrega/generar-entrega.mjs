@@ -213,7 +213,22 @@ const porNivel = (v, nivel) => {
   const vals = Object.values(v).filter(x => typeof x === 'number')
   return vals.length ? Math.max(...vals) : 0
 }
-const insc = (nivel) => porNivel(CONFIG.precios?.inscripcion, nivel)
+/**
+ * Inscripción de un nivel. Tres formas, en este orden:
+ *
+ *   1. `precios.inscripcionSecundaria` / `inscripcionPreparatoria` — la clave
+ *      por nivel, igual que `certificacion${Nivel}` justo abajo. Es lo que lee
+ *      la landing y por tanto lo que el cliente ve publicado.
+ *   2. `precios.inscripcion` como objeto `{secundaria, preparatoria}`.
+ *   3. `precios.inscripcion` como número plano — la escuela de tarifa única.
+ *
+ * Sin el paso 1, un cliente con inscripción diferenciada recibía un PDF que
+ * decía la cifra de secundaria para los dos niveles: el documento de entrega
+ * contradecía a su propia plataforma, que es justo lo que este generador
+ * existe para evitar.
+ */
+const insc = (nivel) => CONFIG.precios?.[`inscripcion${cap(nivel)}`]
+  ?? porNivel(CONFIG.precios?.inscripcion, nivel)
 const cert = (nivel) => CONFIG.precios?.[`certificacion${cap(nivel)}`]
   ?? CONFIG.precios?.[`certificacion_${nivel}`] ?? 0
 /**
