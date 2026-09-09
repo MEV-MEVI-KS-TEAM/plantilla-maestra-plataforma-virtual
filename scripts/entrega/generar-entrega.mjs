@@ -477,7 +477,14 @@ log(`✓ PDF   → entrega/${path.basename(pdfPath)}`)
 /* ── 7. Mensaje de WhatsApp ──────────────────────────────────────────────── */
 if (!flag('solo-pdf')) {
   const L = []
-  L.push(`¡Hola ${D.adminNombre.split(' ')[0]}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
+  // El saludo es lo PRIMERO que el cliente lee. Tomar el primer token sirve para
+  // «Nombre Apellido», pero cuando la cuenta la comparten dos personas —hay un
+  // solo correo— «Edna y Efraín».split(' ')[0] deja fuera a Efraín. Con la
+  // cuenta compartida el nombre completo ES el saludo.
+  const nombreSaludo = D.adminGenero === 'p' || /\s+y\s+/i.test(D.adminNombre)
+    ? D.adminNombre
+    : D.adminNombre.split(' ')[0]
+  L.push(`¡Hola ${nombreSaludo}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
   L.push('🌐 TU PLATAFORMA', URL_BASE, '')
   L.push('👤 ACCESO ADMINISTRADOR', `Usuario: ${D.adminEmail}`, `Contraseña: ${D.adminPassword}`, `Panel: ${URL_BASE}/admin`, '')
   if (D.alumnoEmail) L.push('🎓 ACCESO ALUMNO DE PRUEBA',
