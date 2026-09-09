@@ -260,10 +260,20 @@ function validarHex(valor: unknown, etiqueta: string): Limpio<string> | Fallo {
 const TELEFONO = /^\d{10,13}$/
 
 function validarTelefono(valor: unknown, etiqueta: string): Limpio<string> | Fallo {
-  if (typeof valor !== 'string' || !TELEFONO.test(valor.trim())) {
+  if (typeof valor !== 'string') {
     return fallo(`El campo ${etiqueta} debe tener entre 10 y 13 dígitos, sin espacios ni signos`)
   }
-  return { ok: true, valor: valor.trim() }
+  // Vacío = la escuela no tiene ese número. Sin esto, una escuela que entrega
+  // sin WhatsApp (Moreta IED, #196) no podía guardar NADA desde "Personalizar
+  // mi página": el editor manda el formulario entero, y el `whatsapp: ''` de su
+  // config.ts tumbaba la petición con un error de un campo que ella no estaba
+  // editando. La landing ya gatea por vacío y deja de ofrecer el canal.
+  const v = valor.trim()
+  if (v === '') return { ok: true, valor: '' }
+  if (!TELEFONO.test(v)) {
+    return fallo(`El campo ${etiqueta} debe tener entre 10 y 13 dígitos, sin espacios ni signos`)
+  }
+  return { ok: true, valor: v }
 }
 
 const esquemaEmail = z.email()
@@ -676,7 +686,9 @@ export function validarOverrides(
   // cuerpo trae un `whatsappUrl` propio, se ignora y se sobreescribe; si lo
   // trae SIN número, es un error (no hay de dónde derivarlo).
   if (typeof salida.whatsapp === 'string') {
-    salida.whatsappUrl = `https://wa.me/${salida.whatsapp}`
+    // Sin número no hay enlace: `https://wa.me/` a secas lleva a la portada de
+    // WhatsApp, no a la escuela. Vacío, para que la landing lo gatee.
+    salida.whatsappUrl = salida.whatsapp === '' ? '' : `https://wa.me/${salida.whatsapp}`
   } else if (body.whatsappUrl !== undefined && body.whatsappUrl !== null) {
     return { ok: false, error: 'whatsappUrl se deriva de whatsapp', clave: 'whatsappUrl' }
   }

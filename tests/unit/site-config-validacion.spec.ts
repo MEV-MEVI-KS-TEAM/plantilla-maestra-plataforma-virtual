@@ -342,6 +342,16 @@ test('23. whatsapp: dígitos 10-13; whatsappUrl SIEMPRE derivado', () => {
   error(v({ whatsappUrl: 'https://wa.me/5212345678901' }), 'whatsappUrl', 'whatsappUrl se deriva de whatsapp')
   // whatsappUrl null sin whatsapp = "quitar override": ok
   expect(ok(v({ whatsappUrl: null }))).toEqual({})
+
+  // VACÍO = la escuela no tiene WhatsApp (Moreta IED, #196). Se acepta y el
+  // enlace queda vacío, no 'https://wa.me/' —que lleva a la portada de
+  // WhatsApp, no a la escuela—. Sin esto, esa escuela no podía guardar NADA
+  // desde el editor: el formulario viaja entero y su `whatsapp: ''` tumbaba la
+  // petición por un campo que el admin ni siquiera estaba tocando.
+  expect(ok(v({ whatsapp: '' }))).toEqual({ whatsapp: '', whatsappUrl: '' })
+  expect(ok(v({ whatsapp: '   ' }))).toEqual({ whatsapp: '', whatsappUrl: '' })
+  // Lo mismo para el teléfono de contacto.
+  expect(ok(v({ contactoTelefono: '' })).contactoTelefono).toBe('')
 })
 
 test('24. contactoTelefono, whatsappDisplay, email y contactoEmail', () => {
