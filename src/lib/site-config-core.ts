@@ -602,6 +602,8 @@ function esUrlDeLogo(v: unknown): v is string {
  * hace `logoOscuro || logo` por su cuenta — leen los dos valores ya resueltos
  * de `getSiteConfig()` / `useSiteConfig()`.
  *
+ * La regla es ASIMÉTRICA a propósito (decisión de Kevin, PR #110):
+ *
  *   1. Override de `logo` y NO de `logoOscuro` → `logoOscuro` efectivo = `logo`.
  *      El admin subió SOLO su logo claro desde "Personalizar mi página"; ese
  *      logo sirve en ambos fondos hasta que suba uno oscuro. Sin esta regla,
@@ -610,14 +612,18 @@ function esUrlDeLogo(v: unknown): v is string {
  *      pintan la variante oscura— seguían enseñando el placeholder con el logo
  *      nuevo ya subido. Un `logoOscuro` de fábrica distinto también se deja de
  *      usar: es el logo VIEJO, y mezclarlo con el nuevo sería peor.
- *   2. Override de `logoOscuro` y NO de `logo` → `logo` efectivo = `logoOscuro`.
- *      Simétrico: el único logo que el admin subió manda en los dos fondos.
+ *   2. Override de `logoOscuro` y NO de `logo` → `logo` NO CAMBIA: se queda con
+ *      el de config.ts. En la flota `public/logo.png` no es un placeholder, es
+ *      el logo REAL del cliente (el onboarding lo copia ahí), y la variante
+ *      oscura suele ser un lockup blanco: si se propagara al login, a la
+ *      constancia y al recibo PDF sobre papel blanco, desaparecería.
  *   3. Sin overrides de logo, todo queda EXACTAMENTE como en config.ts (el
  *      invariante de la BD vacía). Solo si config.ts trae `logoOscuro` vacío o
  *      `null` —o `''` llegó como override, que significa "sin variante oscura"—
  *      se rellena con `logo`, que es lo que los consumidores pintaban de todos
  *      modos con su antiguo `||`: el HTML no cambia, pero ya no hay un `''`
- *      suelto que acabe en `<img src="">`.
+ *      suelto que acabe en `<img src="">`. (Y el espejo, un config.ts roto con
+ *      `logo` vacío, se rellena con `logoOscuro`: es lo que hacía el recibo.)
  *   4. Override de los dos → cada uno el suyo (un `''` en `logoOscuro` sigue
  *      siendo "usa el claro").
  *
@@ -629,12 +635,9 @@ export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteC
     cfg.logoOscuro = cfg.logo
     return cfg
   }
-  if (aplicados.logoOscuro && !aplicados.logo && esUrlDeLogo(cfg.logoOscuro)) {
-    cfg.logo = cfg.logoOscuro
-    return cfg
-  }
-  // Ninguno, los dos, o solo un `logoOscuro: ''` ("sin variante oscura"):
-  // se rellena el hueco que haya con el otro, y si no hay hueco no se toca.
+  // Solo `logoOscuro`, ninguno, los dos, o un `logoOscuro: ''` ("sin variante
+  // oscura"): `logo` conserva lo que trae, y solo se rellena el hueco que haya
+  // (valor vacío o no-cadena) con el otro. Sin hueco no se toca nada.
   if (!esUrlDeLogo(cfg.logoOscuro) && esUrlDeLogo(cfg.logo)) cfg.logoOscuro = cfg.logo
   else if (!esUrlDeLogo(cfg.logo) && esUrlDeLogo(cfg.logoOscuro)) cfg.logo = cfg.logoOscuro
   return cfg
@@ -652,8 +655,9 @@ export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteC
  *    (`normalizarArreglo`); si uno falla, se ignora el arreglo entero. El
  *    editor no edita "un badge": manda la lista entera.
  *  - `''` se ignora en las claves de `SIN_VACIO` (logo, whatsappUrl).
- *  - `logo` / `logoOscuro` se RESUELVEN entre sí al final (`resolverLogos`):
- *    con un solo logo subido, ese logo vale para los dos fondos.
+ *  - `logo` / `logoOscuro` se RESUELVEN al final (`resolverLogos`): con solo el
+ *    claro subido, ese logo vale para los dos fondos; con solo el oscuro, el
+ *    claro de config.ts se conserva.
  *  - `modalidades` y los alias de precios tienen su semántica aparte
  *    (`aplicarModalidades`, `derivarAliasPrecios`).
  *  - `overrides` que no sea un objeto plano (null, string, número, arreglo…)

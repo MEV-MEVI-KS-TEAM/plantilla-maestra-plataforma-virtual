@@ -52,12 +52,13 @@ test('2. solo `logo` → logoOscuro efectivo = logo (el claro sirve en ambos fon
   expect(r).toEqual(e)
 })
 
-test('3. solo `logoOscuro` → logo efectivo = logoOscuro', () => {
+test('3. solo `logoOscuro` → logo NO cambia (regla asimétrica: se queda el de config.ts)', () => {
+  // En la flota `/logo.png` es el logo REAL del cliente y la variante oscura
+  // suele ser un lockup blanco: no puede propagarse al login ni al recibo.
   const r = mergeSiteConfig(CONFIG, { logoOscuro: OSCURO })
   expect(r.logoOscuro).toBe(OSCURO)
-  expect(r.logo, 'login, recibo y vista previa pintan logo: es el único que hay').toBe(OSCURO)
+  expect(r.logo, 'login, recibo y vista previa siguen con el claro de config.ts').toBe(CONFIG.logo)
   const e = esperado()
-  e.logo = OSCURO
   e.logoOscuro = OSCURO
   expect(r).toEqual(e)
 })
@@ -81,10 +82,11 @@ test('`logoOscuro: ""` ("sin variante oscura") se resuelve al claro, con y sin l
 
 test('un override de logo RECHAZADO cuenta como ausente', () => {
   // `logo: ''` lo rechaza SIN_VACIO; `logo: 123` no es compatible con string.
-  // En ninguno de los dos hay "override de logo", así que no se toca el oscuro.
+  // En ninguno de los dos hay "override de logo", así que no se toca el oscuro
+  // y el claro se queda con el de config.ts (regla asimétrica).
   const vacio = mergeSiteConfig(CONFIG, { logo: '', logoOscuro: OSCURO })
   expect(vacio.logoOscuro).toBe(OSCURO)
-  expect(vacio.logo, 'sin logo claro válido, el claro toma el oscuro (regla 3)').toBe(OSCURO)
+  expect(vacio.logo, 'el claro de config.ts se conserva').toBe(CONFIG.logo)
 
   const numero = mergeSiteConfig(CONFIG, { logo: 123 as unknown as string })
   expect(numero.logo).toBe(CONFIG.logo)
@@ -131,6 +133,14 @@ test('resolverLogos por sí solo: no toca nada cuando los dos valores existen y 
   expect(r).toBe(cfg) // muta y devuelve el mismo objeto (es el clon del merge)
   expect(r.logo).toBe('/a.png')
   expect(r.logoOscuro).toBe('/b.png')
+  // Solo el oscuro aplicado: el claro se queda (asimetría).
+  resolverLogos(cfg, { logo: false, logoOscuro: true })
+  expect(cfg.logo).toBe('/a.png')
+  expect(cfg.logoOscuro).toBe('/b.png')
+  // Solo un config.ts ROTO (logo vacío) toma el oscuro: es lo que hacía el recibo.
+  cfg.logo = ''
+  resolverLogos(cfg, { logo: false, logoOscuro: false })
+  expect(cfg.logo).toBe('/b.png')
   // Con los dos vacíos no inventa nada.
   cfg.logo = ''
   cfg.logoOscuro = ''

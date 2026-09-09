@@ -182,7 +182,7 @@ export function PestanaIdentidad({
           />
           <SubidaLogo
             variante="oscuro" etiqueta="Logo para fondo oscuro"
-            ayuda="Opcional. Sin él, el logo principal se usa también sobre fondos oscuros (en el pie de página se fuerza a blanco)."
+            ayuda="Opcional. Si solo subes tu logo principal, se usará también en fondos oscuros."
             url={merged.logoOscuro} urlDefault={defaults.logoOscuro}
             personalizado={estaSobrescrito(overrides, 'logoOscuro') && String(overrides.logoOscuro ?? '').trim() !== ''}
             urlLogoClaro={merged.logo}

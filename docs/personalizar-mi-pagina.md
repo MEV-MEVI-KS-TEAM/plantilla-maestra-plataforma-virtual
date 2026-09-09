@@ -57,13 +57,16 @@ los dos valores ya resueltos — **ningún componente hace `logoOscuro || logo` 
 |---|---|---|
 | ninguno | el de `config.ts` | el de `config.ts` (idéntico a hoy) |
 | solo `logo` | el subido | **el subido** — el claro sirve en ambos fondos hasta que suban uno oscuro |
-| solo `logoOscuro` | **el subido** | el subido |
+| solo `logoOscuro` | **el de `config.ts`, no cambia** | el subido |
 | los dos | cada uno el suyo | cada uno el suyo |
 
-Sin esta regla, subir solo el logo claro dejaba `logoOscuro` en el default de `config.ts`
-(`/logo.png`, el placeholder) y la portada seguía enseñando el placeholder con el logo ya subido.
-Un `logoOscuro: ''` en la fila ("sin variante oscura") o un `logoOscuro` vacío/`null` en el
-`config.ts` de un cliente se rellenan con `logo`: nunca viaja un `<img src="">`. El pie de la
+La regla es **asimétrica a propósito**: en la flota `public/logo.png` no es un placeholder sino el
+logo real del cliente, y la variante oscura suele ser un lockup blanco que desaparecería en el
+login, la constancia y el recibo PDF sobre papel blanco. Sin la regla del claro, subir solo el logo
+claro dejaba `logoOscuro` en el default de `config.ts` (`/logo.png`, el placeholder) y la portada
+seguía enseñando el placeholder con el logo ya subido. Un `logoOscuro: ''` en la fila ("sin
+variante oscura") o un `logoOscuro` vacío/`null` en el `config.ts` de un cliente se rellenan con
+`logo` (y un `config.ts` roto con `logo` vacío toma `logoOscuro`): nunca viaja un `<img src="">`. El pie de la
 landing sigue forzando el logo a blanco (`brightness-0 invert`) cuando las dos variantes coinciden
 (Bug 97). En el editor, el badge "Personalizado" y el botón "Quitar" de cada tarjeta se deciden con
 la **fila** (`overrides`), no con la URL resuelta — por eso `POST`/`DELETE` del logo devuelven
@@ -152,10 +155,11 @@ purga la caché de Next; eso solo lo hace la API).
 - **`logo` / `logoOscuro` son exclusivos de la ruta de subida**: el `PUT` de `/configuracion` los
   ignora y repone los de la fila, para que el editor no pise con su estado viejo un logo subido en
   otra pestaña.
-- **Un solo logo subido vale para los dos fondos** (regla de §2): con el claro subido y sin oscuro,
-  la landing pinta el claro también en cabecera, hero y pie. Un `logoOscuro` de fábrica distinto en
-  `config.ts` deja de usarse en cuanto el admin sube su logo: es el logo viejo, y mezclarlos sería
-  peor. Vuelve solo si el admin quita el logo subido.
+- **El logo claro subido vale para los dos fondos; el oscuro solo para el suyo** (regla de §2): con
+  el claro subido y sin oscuro, la landing pinta el claro también en cabecera, hero y pie. Un
+  `logoOscuro` de fábrica distinto en `config.ts` deja de usarse en cuanto el admin sube su logo
+  claro: es el logo viejo, y mezclarlos sería peor; vuelve solo si el admin quita el subido. Al
+  revés no: subir solo el oscuro nunca cambia el claro de `config.ts`.
 - **`public/logo.png` es un placeholder real**: PNG 512×512 con alfa y un símbolo neutro (marco +
   pictograma de imagen), sin texto ni marca. El anterior era un PNG de 1×1 **corrupto** (libpng no
   lo decodificaba) y la portada de la plantilla mostraba un halo gris con el texto alternativo
