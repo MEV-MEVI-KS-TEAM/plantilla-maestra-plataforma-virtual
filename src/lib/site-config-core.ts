@@ -543,17 +543,39 @@ export function derivarAliasPrecios(cfg: SiteConfig, aplicados: PreciosAplicados
     cfg.precios.certificacion_preparatoria = aplicados.certificacionPreparatoria
     cfg.landing.certificacion_preparatoria = aplicados.certificacionPreparatoria
   }
+  // ⚠️ SI LA ESCUELA COBRA DISTINTO POR NIVEL, NO SE UNIFICA.
+  //
+  // `modalidades[].mensualidad` es UNA cifra por plan, pero los alias son POR
+  // NIVEL, y hay escuelas que los tienen divergentes a propósito: Moreta IED
+  // (#196) cobra $1,500 la secundaria de 3 meses y $4,900 la preparatoria.
+  //
+  // Sin esta comprobación, el admin entraba a "Personalizar mi página", guardaba
+  // CUALQUIER cosa —un color, un texto— y la mensualidad del plan (que es la de
+  // preparatoria) se copiaba encima de la de secundaria: $900 → $2,900 y
+  // $1,500 → $4,900 en la landing, sin tocar un solo campo de precios y sin
+  // aviso. Los precios de secundaria se triplicaban solos.
+  //
+  // Se mide ANTES de escribir nada, porque el bucle de abajo pisa justo estas
+  // claves. Divergentes = la escuela ya declaró dos tarifas y manda su config;
+  // iguales = una sola tarifa y el alias sigue a la mensualidad, como siempre.
+  const divergen3 = cfg.precios.secundaria_3meses_normal !== cfg.precios.preparatoria_3meses_normal
+  const divergen6 = cfg.precios.secundaria_6meses_normal !== cfg.precios.preparatoria_6meses_normal
+
   for (const { meses, mensualidad } of aplicados.mensualidades ?? []) {
     if (meses === 3) {
       cfg.precios.plan3mMensualidad = mensualidad
-      cfg.precios.secundaria_3meses_normal = mensualidad
-      cfg.precios.secundaria_3meses_sindicalizado = mensualidad
+      if (!divergen3) {
+        cfg.precios.secundaria_3meses_normal = mensualidad
+        cfg.precios.secundaria_3meses_sindicalizado = mensualidad
+      }
       cfg.precios.preparatoria_3meses_normal = mensualidad
       cfg.precios.preparatoria_3meses_sindicalizado = mensualidad
     } else if (meses === 6) {
       cfg.precios.plan6mMensualidad = mensualidad
-      cfg.precios.secundaria_6meses_normal = mensualidad
-      cfg.precios.secundaria_6meses_sindicalizado = mensualidad
+      if (!divergen6) {
+        cfg.precios.secundaria_6meses_normal = mensualidad
+        cfg.precios.secundaria_6meses_sindicalizado = mensualidad
+      }
       cfg.precios.preparatoria_6meses_normal = mensualidad
       cfg.precios.preparatoria_6meses_sindicalizado = mensualidad
     }
