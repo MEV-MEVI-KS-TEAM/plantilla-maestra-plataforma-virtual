@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Users, Search, Plus, X, Loader2, Eye, MessageSquare, CheckCheck, Clock, AlertCircle } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { useSiteConfig } from '@/components/site-config-provider'
 // El nombre del programa lo arma la API (plan_nombre); aquí solo hacen falta
 // el catálogo de carreras y el switch del add-on.
 import { getCarreras } from '@/lib/licenciatura-utils'
@@ -66,6 +67,9 @@ function tiempoRelativo(dateStr: string) {
 
 export default function AlumnosPage() {
   const router = useRouter()
+  // F3B: el selector de modalidad del alta se arma con el config FUSIONADO
+  // (defaults + lo que el admin editó en "Personalizar mi página").
+  const cfg = useSiteConfig()
   const { toasts, showToast, removeToast } = useToast()
   const [alumnos, setAlumnos] = useState<Alumno[]>([])
   const [loading, setLoading] = useState(true)
@@ -726,7 +730,7 @@ export default function AlumnosPage() {
                   style={{ ...INPUT_STYLE, opacity: form.nivel ? 1 : 0.5 }}
                 >
                   <option value="">{form.nivel ? 'Selecciona modalidad...' : 'Primero elige nivel'}</option>
-                  {(form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas()).map(m => (
+                  {(form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>

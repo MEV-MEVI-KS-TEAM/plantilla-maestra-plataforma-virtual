@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
+import { getModalidadesActivas, getDuracionLabel, getPlanLabel } from '@/lib/modalidades'
 import { interpolar, type PublicSiteConfig } from '@/lib/site-config-core'
 import { aclarar, oscurecer, hexToRgb } from '@/lib/contraste'
 import { precioMXN } from '@/lib/cursos/catalogo'
@@ -170,34 +171,14 @@ function variablesLanding(C: Paleta): CSSProperties {
 
 /* ─── Modalidades ─────────────────────────────────────────────────────── */
 
-type ModalidadesPublicas = PublicSiteConfig['modalidades']
-
-// TODO(3B): usar helper con parámetro. getModalidadesActivas() /
-// getDuracionLabel() / getPlanLabel() de src/lib/modalidades.ts leen CONFIG sin
-// parámetros, y la landing necesita las modalidades del config FUSIONADO
-// (mensualidad y activa son editables). Misma lógica, sobre `mods`.
-function modalidadesActivas(mods: ModalidadesPublicas) {
-  return mods.filter(m => m.activa)
-}
-
-function duracionLabel(mods: ModalidadesPublicas): string {
-  const activas = modalidadesActivas(mods)
-  if (activas.length === 0) return ''
-  if (activas.length === 1) return `${activas[0].meses} meses`
-
-  const numeros = activas.map(m => m.meses).sort((a, b) => a - b)
-  if (numeros.length === 2) return `${numeros[0]} o ${numeros[1]} meses`
-
-  const ultimo = numeros.pop()
-  return `${numeros.join(', ')} o ${ultimo} meses`
-}
-
-function planLabel(mods: ModalidadesPublicas, modalidad: ModalidadesPublicas[number]): string {
-  if (modalidadesActivas(mods).length <= 1) {
-    return modalidad.label.split(' — ')[0].trim()
-  }
-  return modalidad.label
-}
+/**
+ * F3B — aquí vivían copias locales de `modalidadesActivas` / `duracionLabel` /
+ * `planLabel`, porque los helpers de '@/lib/modalidades' leían `CONFIG` sin
+ * parámetros y la landing necesita las modalidades del config FUSIONADO
+ * (`mensualidad` y `activa` los edita el admin desde su panel). Ya no: los
+ * helpers aceptan la tabla como parámetro y se les pasa `config.modalidades`
+ * en cada llamada. Misma lógica, una sola fuente.
+ */
 
 const fmt = (n: number) =>
   n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
@@ -388,7 +369,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   const L = config.landing
   const testimonios = L.testimonios
   const mods = config.modalidades
-  const activas = modalidadesActivas(mods)
+  const activas = getModalidadesActivas(mods)
   const C = paletaLanding(config.colores)
   // Con la paleta personalizada el div raíz reparte los tonos a las clases de
   // globals.css (ver variablesLanding). Sin ella no se inyecta ninguna
@@ -399,7 +380,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // traen: el editor los ofrece en cualquier campo. Un texto sin llaves sale
   // intacto.
   const vars = {
-    duracion: duracionLabel(mods),
+    duracion: getDuracionLabel(mods),
     nombre: config.nombre,
     nombreCompleto: config.nombreCompleto,
     whatsapp: config.whatsapp,
@@ -589,7 +570,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <p className="text-xs font-semibold mb-6" style={{ color: C.azure }}>Inscripción: {fmt(p.inscripcion)}</p>
                   <div className="space-y-3 flex-1">
                     {[
-                      ...activas.map(m => ({ label: `Plan ${planLabel(mods, m)}`, price: m.mensualidad, unit: '/mes' })),
+                      ...activas.map(m => ({ label: `Plan ${getPlanLabel(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
                       { label: 'Certificación', price: p.certificacionPreparatoria, unit: ' único' },
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
@@ -619,7 +600,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.
-                      ...activas.map(m => ({ label: `Plan ${planLabel(mods, m)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
+                      ...activas.map(m => ({ label: `Plan ${getPlanLabel(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
                       { label: 'Certificación', price: p.certificacionSecundaria, unit: ' único' },
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"

@@ -158,6 +158,10 @@ export default async function AdminDashboardPage() {
     alumnosConNombre.push({ ...a, nombre, email })
   }
 
+  // F3B: SIN `cfg.modalidades` a propósito. Esto es la duración ACADÉMICA del
+  // alumno ya inscrito, no un precio ni un catálogo comercial: apagar un plan
+  // desde "Personalizar mi página" no debe reescribir cuántos meses cursa
+  // quien ya lo compró. Ver la regla de alcance en src/lib/modalidades.ts.
   const duracion = (a: AlumnoRow) => getMesesByModalidad(a.modalidad)
 
   return (

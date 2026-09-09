@@ -5,7 +5,11 @@
 // candados, que revalida el servidor SQL en la misma transacción del UPDATE).
 
 import { getCarreras } from '@/lib/licenciatura-utils'
-import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import {
+  getModalidadesActivas,
+  getModalidadesLicenciatura,
+  type ModalidadPrograma,
+} from '@/lib/modalidades'
 
 export const CAMPOS_PERMITIDOS = ['nivel', 'carrera', 'modalidad'] as const
 
@@ -30,8 +34,24 @@ export type ResultadoValidacion =
  * fuera de nivel/carrera/modalidad rechaza la petición entera — el patrón del
  * PATCH de alumnos, endurecido: aquí una clave desconocida es señal de un
  * llamador que espera escribir algo que este endpoint jamás va a escribir.
+ *
+ * F3B — `mods`: las modalidades del programa YA FUSIONADAS con los overrides
+ * del panel. La función sigue siendo SÍNCRONA y pura (la importan las pruebas
+ * unitarias y no puede arrastrar `server-only`), así que la ruta es la que
+ * resuelve `getSiteConfig()` y se las pasa. Sin el parámetro cae a
+ * `CONFIG.modalidades`, como siempre.
+ *
+ * POR QUÉ IMPORTA: el select del panel se arma con el config fusionado. Si un
+ * cliente trae un plan `activa: false` en su config.ts y el admin lo enciende
+ * desde "Personalizar mi página", el selector lo ofrecería y esta validación
+ * lo rechazaría — el admin vería "modalidad es requerida" sobre una opción que
+ * la propia pantalla acaba de mostrarle. Validar contra la misma tabla que
+ * arma el selector cierra ese hueco.
  */
-export function validarCorreccionPlan(body: unknown): ResultadoValidacion {
+export function validarCorreccionPlan(
+  body: unknown,
+  mods?: readonly ModalidadPrograma[],
+): ResultadoValidacion {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return { ok: false, error: 'El cuerpo de la petición debe ser un objeto con nivel, carrera y modalidad.' }
   }
@@ -66,7 +86,7 @@ export function validarCorreccionPlan(body: unknown): ResultadoValidacion {
   // Mismas funciones que el select de alta: el catálogo de modalidades depende
   // del nivel elegido.
   const modalidadesValidas = (
-    nivelValido === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas()
+    nivelValido === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(mods)
   ).map(m => m.id)
   if (typeof modalidad !== 'string' || !modalidadesValidas.includes(modalidad)) {
     return { ok: false, error: `modalidad es requerida (${modalidadesValidas.join(', ')})` }

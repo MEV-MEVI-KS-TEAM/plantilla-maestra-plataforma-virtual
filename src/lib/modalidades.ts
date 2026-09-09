@@ -13,11 +13,68 @@ import { CONFIG } from './config'
  *   const meses = getMesesByModalidad(alumno.modalidad)
  *   const mensualidad = getMensualidadByModalidad(alumno.modalidad)
  *   const opciones = getModalidadesActivas()
+ *
+ * ─── F3B: "precios con fuente única" ────────────────────────────────────────
+ *
+ * Desde "Personalizar mi página" el admin puede cambiar `mensualidad` y
+ * `activa` de cada modalidad sin redeploy (ver src/lib/site-config-core.ts).
+ * Esos cambios viven en la BD, NO en config.ts, así que los helpers de abajo
+ * aceptan un parámetro opcional FINAL `mods` con la tabla de modalidades ya
+ * fusionada:
+ *
+ *   getModalidadesActivas(cfg.modalidades)   ← selector del panel / landing
+ *   getModalidadesActivas()                  ← igual que siempre (CONFIG)
+ *
+ * El parámetro va al final y con default `CONFIG.modalidades` para que los
+ * llamadores de siempre compilen y se comporten EXACTAMENTE igual.
+ *
+ * ─── REGLA DE ALCANCE (decisión del coordinador, no la cambies sin él) ──────
+ *
+ * Apagar una modalidad desde el panel (`activa: false`) la OCULTA en:
+ *   - la landing pública (LandingClient),
+ *   - el registro público (/register),
+ *   - las altas nuevas del panel (admin/alumnos) y la corrección de plan.
+ *
+ * Pero NO altera la ventana académica de un alumno YA INSCRITO. Un alumno de
+ * '6_meses' sigue estudiando 6 meses a 2 materias por mes aunque el admin
+ * retire ese plan del catálogo comercial; lo contrario le cerraría materias
+ * que ya pagó, a mitad del programa y sin aviso.
+ *
+ * Por eso los helpers que consume la LÓGICA ACADÉMICA de las APIs
+ * (getMesesByModalidad, getMateriasPorMesByModalidad, getDefaultModalidadId y
+ * el buscarModalidad interno, usados por acceso/cerrar-mes/desbloquear-mes/
+ * constancia/perfil/meses y src/lib/acceso-materias.ts) se llaman SIN el
+ * parámetro: leen `CONFIG.modalidades`, que es la definición del PRODUCTO
+ * (id, meses, materiasPorMes) y no se edita desde el panel.
  */
 
 export type ModalidadId = typeof CONFIG.modalidades[number]['id']
 
 export type Modalidad = typeof CONFIG.modalidades[number]
+
+/**
+ * Forma ESTRUCTURAL de una modalidad del programa (Sec/Prepa). Es el tipo del
+ * parámetro `mods` de los helpers de abajo.
+ *
+ * Deliberadamente más ANCHO que `Modalidad` (que son los literales de
+ * `CONFIG.modalidades` bajo `as const`): tiene que aceptar tanto
+ * `CONFIG.modalidades` como `PublicSiteConfig['modalidades']` — la tabla ya
+ * fusionada con los overrides del admin, cuyos valores son `string`/`number`/
+ * `boolean` cualesquiera y llegan `readonly` en profundidad. El `readonly` de
+ * las propiedades no afecta la asignabilidad, así que las dos entran sin cast.
+ *
+ * `activa` es OBLIGATORIA aquí (a diferencia de `ModalidadBase`, la forma
+ * laxa que comparten programa y licenciatura): en la tabla del programa
+ * siempre está declarada.
+ */
+export type ModalidadPrograma = {
+  id: string
+  label: string
+  meses: number
+  mensualidad: number
+  materiasPorMes: number
+  activa: boolean
+}
 
 /**
  * Forma mínima que comparten las modalidades del programa (Sec/Prepa) y las de
@@ -74,20 +131,29 @@ export function getMateriasPorMesLicenciatura(id: string | null | undefined): nu
  * Busca una modalidad en el plan del programa y, si no está, en el de
  * licenciatura. Este es el único punto que conoce las dos tablas.
  */
-function buscarModalidad(id: string | null | undefined): ModalidadBase | undefined {
+function buscarModalidad(
+  id: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): ModalidadBase | undefined {
   if (!id) return undefined
-  const base = CONFIG.modalidades.find(m => m.id === id && m.activa)
-  if (base) return base as unknown as ModalidadBase
+  const base = mods.find(m => m.id === id && m.activa)
+  if (base) return base
   return modalidadesLic().find(m => m.id === id && m.activa !== false)
 }
 
 /**
  * Obtiene la modalidad por ID. Solo devuelve modalidades ACTIVAS.
  * Si el ID no existe o está desactivado, devuelve undefined.
+ *
+ * Devuelve `ModalidadPrograma` (estructural) y no `Modalidad` (los literales
+ * de CONFIG): con `mods` la modalidad puede venir del config fusionado.
  */
-export function getModalidad(id: string | null | undefined): Modalidad | undefined {
+export function getModalidad(
+  id: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): ModalidadPrograma | undefined {
   if (!id) return undefined
-  return CONFIG.modalidades.find(m => m.id === id && m.activa)
+  return mods.find(m => m.id === id && m.activa)
 }
 
 /**
@@ -95,72 +161,107 @@ export function getModalidad(id: string | null | undefined): Modalidad | undefin
  * Fallback inteligente: si el ID no existe o está desactivado,
  * devuelve los meses de la primera modalidad activa configurada.
  * Si no hay modalidades activas (config rota), devuelve 3 como último recurso.
+ *
+ * ⚠️ LÓGICA ACADÉMICA: los llamadores (APIs de acceso, cerrar-mes,
+ * desbloquear-mes, constancia, perfil, meses) lo llaman SIN `mods` a
+ * propósito. Ver la regla de alcance en la cabecera del archivo.
  */
-export function getMesesByModalidad(id: string | null | undefined): number {
-  const found = buscarModalidad(id)
+export function getMesesByModalidad(
+  id: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): number {
+  const found = buscarModalidad(id, mods)
   if (found) return found.meses
 
-  const firstActive = CONFIG.modalidades.find(m => m.activa)
+  const firstActive = mods.find(m => m.activa)
   return firstActive?.meses ?? 3
 }
 
 /**
  * Obtiene la mensualidad por ID de modalidad. Mismo fallback que getMesesByModalidad.
+ *
+ * Es un PRECIO: quien lo muestre debe pasarle las modalidades del config
+ * fusionado (`getMensualidadByModalidad(id, cfg.modalidades)`), o enseñará el
+ * precio de config.ts en lugar del que el admin puso en su panel.
  */
-export function getMensualidadByModalidad(id: string | null | undefined): number {
-  const found = getModalidad(id)
+export function getMensualidadByModalidad(
+  id: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): number {
+  const found = getModalidad(id, mods)
   if (found) return found.mensualidad
 
-  const firstActive = CONFIG.modalidades.find(m => m.activa)
+  const firstActive = mods.find(m => m.activa)
   return firstActive?.mensualidad ?? 0
 }
 
 /**
- * Devuelve solo las modalidades activas, en el orden que están definidas en CONFIG.
+ * Devuelve solo las modalidades activas, en el orden en que están definidas.
  * Para usar en <select>, <option> y mapeos de UI.
+ *
+ * Todo selector o listado que VEA el usuario debe pasarle las modalidades del
+ * config fusionado: apagar un plan desde el panel tiene que quitarlo del
+ * catálogo comercial.
  */
-export function getModalidadesActivas(): readonly Modalidad[] {
-  return CONFIG.modalidades.filter(m => m.activa)
+export function getModalidadesActivas(
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): readonly ModalidadPrograma[] {
+  return mods.filter(m => m.activa)
 }
 
 /**
  * Verifica si un ID de modalidad está activo.
  */
-export function isModalidadActiva(id: string | null | undefined): boolean {
+export function isModalidadActiva(
+  id: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): boolean {
   if (!id) return false
-  return CONFIG.modalidades.some(m => m.id === id && m.activa)
+  return mods.some(m => m.id === id && m.activa)
 }
 
 /**
  * Devuelve el label legible de una modalidad por ID.
  * Si no existe, devuelve el ID tal cual (para no romper UI).
  */
-export function getLabelByModalidad(id: string | null | undefined): string {
+export function getLabelByModalidad(
+  id: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
   if (!id) return ''
-  const found = CONFIG.modalidades.find(m => m.id === id)
+  const found = mods.find(m => m.id === id)
   return found?.label ?? id
 }
 
 /**
  * Obtiene materias por mes de una modalidad. Crítico para calcular
  * la densidad académica del alumno (cuántas materias ve cada mes).
+ *
+ * ⚠️ LÓGICA ACADÉMICA: se llama SIN `mods` (ver regla de alcance arriba).
  */
-export function getMateriasPorMesByModalidad(id: string | null | undefined): number {
+export function getMateriasPorMesByModalidad(
+  id: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): number {
   // Resuelve también las modalidades de licenciatura: sin esto, un alumno en
   // '9_meses' caía al fallback y desbloqueaba materias al ritmo de otro plan.
-  const found = buscarModalidad(id)
+  const found = buscarModalidad(id, mods)
   if (found) return found.materiasPorMes
 
-  const firstActive = CONFIG.modalidades.find(m => m.activa)
+  const firstActive = mods.find(m => m.activa)
   return firstActive?.materiasPorMes ?? 2
 }
 
 /**
  * Devuelve el ID de la modalidad por defecto (primera activa).
  * Para usar como fallback cuando BD devuelve null en columnas modalidad.
+ *
+ * ⚠️ LÓGICA ACADÉMICA: se llama SIN `mods` (ver regla de alcance arriba).
  */
-export function getDefaultModalidadId(): string {
-  const firstActive = CONFIG.modalidades.find(m => m.activa)
+export function getDefaultModalidadId(
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
+  const firstActive = mods.find(m => m.activa)
   return firstActive?.id ?? '6_meses'
 }
 
@@ -174,8 +275,10 @@ export function getDefaultModalidadId(): string {
  *   modalidades activas [3, 6, 12 meses] → "3, 6 o 12 meses"
  *   modalidades vacías → ""
  */
-export function getDuracionLabel(): string {
-  const activas = CONFIG.modalidades.filter(m => m.activa)
+export function getDuracionLabel(
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
+  const activas = mods.filter(m => m.activa)
   if (activas.length === 0) return ''
   if (activas.length === 1) return `${activas[0].meses} meses`
 
@@ -231,8 +334,11 @@ export function getNivelLabel(): string {
  *   2 modalidades activas:
  *     → "3 meses — Express" / "6 meses — Estándar"  (label completo)
  */
-export function getPlanLabel(modalidad: Modalidad): string {
-  const activas = CONFIG.modalidades.filter(m => m.activa)
+export function getPlanLabel(
+  modalidad: ModalidadPrograma,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
+  const activas = mods.filter(m => m.activa)
   if (activas.length <= 1) {
     return modalidad.label.split(' — ')[0].trim()
   }

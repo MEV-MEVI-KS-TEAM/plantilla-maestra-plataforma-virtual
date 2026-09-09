@@ -552,7 +552,11 @@ export default function RegisterPage() {
                     style={{ ...selectStyle, opacity: nivel ? 1 : 0.5 }}
                     onFocus={onFocus} onBlur={onBlur} disabled={!nivel}>
                     <option value="">{nivel ? 'Selecciona…' : 'Primero elige nivel'}</option>
-                    {(esLicenciatura ? getModalidadesLicenciatura() : getModalidadesActivas()).map(m => (
+                    {/* F3B: las modalidades del programa salen del config
+                        FUSIONADO — si el admin apaga un plan desde su panel,
+                        deja de ofrecerse aquí sin redeploy. Las de
+                        licenciatura no se editan y siguen en CONFIG. */}
+                    {(esLicenciatura ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
                       <option key={m.id} value={m.id}>{m.label}</option>
                     ))}
                   </select>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { getSiteConfig } from '@/lib/site-config'
 import { CONFIG } from '@/lib/config'
 
 /**
@@ -16,6 +17,12 @@ import { CONFIG } from '@/lib/config'
  * La fuente de verdad de los planes es `CONFIG.modalidades` (Sec/Prepa) más
  * `CONFIG.licenciaturas.modalidades` — las mismas que consume el registro
  * público y `src/lib/modalidades.ts`. No hay tabla que consultar.
+ *
+ * F3B: el programa se lee del config FUSIONADO (`getSiteConfig()`), no del
+ * literal de config.ts. Este endpoint publica un PRECIO (`precio_mensual`) y
+ * el catálogo comercial de planes activos, y las dos cosas se editan desde
+ * "Personalizar mi página". Las de licenciatura no son editables y siguen en
+ * CONFIG.
  */
 export async function GET() {
   try {
@@ -27,9 +34,11 @@ export async function GET() {
     const denied = await verifyAdmin(supabase, user.id)
     if (denied) return denied
 
-    const programa = getModalidadesActivas().map(m => ({
+    const cfg = await getSiteConfig()
+    const programa = getModalidadesActivas(cfg.modalidades).map(m => ({
       id: m.id,
-      nombre: `${CONFIG.nombre} — ${m.label}`,
+      // `nombre` es clave editable: sale del config fusionado, como el precio.
+      nombre: `${cfg.nombre} — ${m.label}`,
       duracion_meses: m.meses,
       precio_mensual: m.mensualidad,
     }))
