@@ -11,17 +11,39 @@ import {
 } from '@/lib/boletin'
 
 /**
- * Prefijo del código de cada materia en la constancia. En licenciatura son las
- * siglas del slug de la carrera: 'GEN' no distinguía entre dos programas del
- * mismo cliente.
+ * Prefijo del código de cada materia en la constancia. En licenciatura sale del
+ * slug de la carrera: 'GEN' no distinguía entre dos programas del mismo cliente.
+ *
+ * ⚠️ LAS INICIALES SOLO SIRVEN SI EL SLUG TIENE VARIAS PALABRAS. Tomar la
+ * inicial de cada una deja los slugs de UNA palabra en una sola letra, que no
+ * distingue nada — y encima colisiona:
+ *
+ *   ingenieria-industrial → 'II'    (bien: dos palabras)
+ *   administracion        → 'A'     (una letra)
+ *   contaduria            → 'C'  ┐  la misma para las dos
+ *   criminologia          → 'C'  ┘
+ *
+ * Dos carreras del mismo cliente con la misma inicial producían códigos
+ * idénticos, que es justo lo que este prefijo existe para evitar. Con una sola
+ * palabra se toman sus primeras 4 letras.
+ *
+ * 🛑 CAMBIA EL CÓDIGO DE CONSTANCIAS YA EMITIDAS en clientes cuyas carreras
+ * sean de una sola palabra ('A-M1-01' pasa a 'ADMI-M1-01'): el código se
+ * calcula al vuelo, no se guarda. En un cliente con constancias ya entregadas,
+ * verificar antes de desplegar.
  */
 function prefijoCodigo(nivel: string | null, carrera: string | null): string {
   if (nivel === 'preparatoria') return 'PREP'
   if (nivel === 'secundaria')   return 'SECU'
   if (nivel === 'demo')         return 'TUT'
-  return carrera
-    ? carrera.split('-').map(x => x[0]).join('').toUpperCase().slice(0, 4)
-    : 'GEN'
+  if (!carrera) return 'GEN'
+
+  const palabras = carrera.split('-').filter(Boolean)
+  if (palabras.length === 0) return 'GEN'
+  const prefijo = palabras.length > 1
+    ? palabras.map(p => p[0]).join('')
+    : palabras[0].slice(0, 4)
+  return prefijo.toUpperCase().slice(0, 4)
 }
 
 export async function GET() {
