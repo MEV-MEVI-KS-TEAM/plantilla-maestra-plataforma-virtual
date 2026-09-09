@@ -475,11 +475,21 @@ await pag.waitForTimeout(2000)
 // licenciatura perdía el segundo plan de su tabla y el documento oficial salía
 // incompleto sin que nadie se enterara.
 // Se mide después de cargar las fuentes, que es cuando el alto es el real.
+//
+// ⚠️ NO sirve `scrollHeight > clientHeight`: `.page` es `display:flex` y sus
+// hijos se COMPRIMEN (flex-shrink por defecto) en vez de desbordar, así que el
+// scrollHeight nunca excede aunque el texto se salga. Hay que comparar el borde
+// inferior REAL de cada descendiente contra el de la página.
 const desbordadas = await pag.evaluate(() => {
   const out = []
-  document.querySelectorAll('.page').forEach((el, i) => {
-    const sobra = el.scrollHeight - el.clientHeight
-    if (sobra > 2) out.push({ pagina: i + 1, sobra })
+  document.querySelectorAll('.page').forEach((page, i) => {
+    const limite = page.getBoundingClientRect().bottom
+    let sobra = 0
+    page.querySelectorAll('*').forEach(hijo => {
+      const r = hijo.getBoundingClientRect()
+      if (r.height > 0) sobra = Math.max(sobra, r.bottom - limite)
+    })
+    if (sobra > 2) out.push({ pagina: i + 1, sobra: Math.round(sobra) })
   })
   return out
 })
