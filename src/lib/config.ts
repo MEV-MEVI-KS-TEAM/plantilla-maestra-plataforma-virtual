@@ -251,7 +251,8 @@ export const CONFIG = {
     beneficios_subtitulo:       'Diseñado para quien trabaja, tiene familia y quiere superarse.',
     beneficios_items: [
       { titulo: 'Gestión de tu certificado SEP', desc: 'Validez nacional reconocida por el sistema educativo mexicano.' },
-      { titulo: '100% en línea',                 desc: 'Estudia desde Puebla u otro punto del país sin trasladarte.' },
+      // Bug 105: el default nombraba la ciudad de UN cliente (dato colado en la plantilla); neutro y alineado con el hero ('desde donde estés').
+      { titulo: '100% en línea',                 desc: 'Estudia desde donde estés, sin trasladarte.' },
       { titulo: 'Materias estructuradas',        desc: 'Contenidos organizados por meses con progresión clara y alcanzable.' },
       { titulo: 'Acompañamiento directo',        desc: 'Seguimiento personalizado y canal de atención por WhatsApp.' },
       { titulo: 'Planes flexibles',              desc: 'Elige entre planes de {duracion} según tu disponibilidad.' },
