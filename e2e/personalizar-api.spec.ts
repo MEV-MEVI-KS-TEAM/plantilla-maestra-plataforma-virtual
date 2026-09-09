@@ -508,20 +508,37 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     ).toContain(post.status())
     expect(errPost.code, 'Postgres debe rechazarlo por RLS/permisos (42501)').toBe('42501')
 
-    // ── UPDATE: hay privilegio de tabla pero NINGUNA política → 0 filas ──
+    // ── UPDATE: dos desenlaces válidos, ninguno escribe ──
+    // Con el GRANT POR COLUMNAS (hardening: SELECT solo sobre id, data,
+    // updated_at) PostgREST rechaza el PATCH con `return=representation` antes
+    // de tocar la fila: el RETURNING * pide leer `updated_by` y anon no puede
+    // → 42501 "permission denied for table site_config". En una base que aún
+    // tenga el GRANT de tabla entera (versión anterior de la migración) el
+    // PATCH pasa pero la RLS sin política de UPDATE deja 0 filas. Se aceptan
+    // los dos; lo que NUNCA puede pasar es que la fila cambie.
     const patch = await anonSupabase.fetch(`${tabla}?id=eq.1`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', Prefer: 'return=representation' },
       data: { data: { hackeado: true } },
     })
+    const textoPatch = await patch.text()
     expect(
-      [200, 204],
-      `El UPDATE anónimo no debe dar error, debe no afectar filas (llegó ${patch.status()}: ${(await patch.text()).slice(0, 300)})`,
+      [200, 204, 401, 403],
+      `El UPDATE anónimo debe rechazarse (42501) o no afectar filas (llegó ${patch.status()}: ${textoPatch.slice(0, 300)})`,
     ).toContain(patch.status())
     if (patch.status() === 200) {
-      expect(await json<unknown[]>(patch), 'El UPDATE anónimo debe afectar 0 filas').toEqual([])
+      expect(JSON.parse(textoPatch) as unknown[], 'El UPDATE anónimo debe afectar 0 filas').toEqual([])
+    } else if (patch.status() !== 204) {
+      expect((JSON.parse(textoPatch) as ErrorPostgrest).code, 'Rechazo por permisos (42501)').toBe('42501')
     }
     expect(await dataEnBD(), 'La fila NO puede haber cambiado').toEqual(antes)
+
+    // ── SELECT de la columna reservada: `updated_by` no es legible por anon ──
+    const getPrivado = await anonSupabase.get(`${tabla}?select=updated_by`)
+    expect(
+      [401, 403],
+      `updated_by no debe ser legible con la anon key (llegó ${getPrivado.status()})`,
+    ).toContain(getPrivado.status())
 
     // ── Storage: subir al bucket público sin política de INSERT ──
     const nombre = `hack-${Date.now()}.png`
