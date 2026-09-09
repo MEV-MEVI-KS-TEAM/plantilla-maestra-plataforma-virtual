@@ -48,6 +48,30 @@ prerenderizada se queda con el logo viejo hasta el próximo deploy.
    PUT /api/admin/configuracion ─► upsert id=1 ─► revalidateTag + revalidatePath('/','layout')
 ```
 
+**Regla de los logos (`resolverLogos`, `src/lib/site-config-core.ts`).** La plantilla tiene dos:
+`logo` (fondo claro: login, registro, recibo, vista previa) y `logoOscuro` (fondo oscuro: cabecera,
+hero y pie de la landing, menú lateral). El merge los **resuelve entre sí** y los componentes leen
+los dos valores ya resueltos — **ningún componente hace `logoOscuro || logo` por su cuenta**:
+
+| Override en la fila | `logo` efectivo | `logoOscuro` efectivo |
+|---|---|---|
+| ninguno | el de `config.ts` | el de `config.ts` (idéntico a hoy) |
+| solo `logo` | el subido | **el subido** — el claro sirve en ambos fondos hasta que suban uno oscuro |
+| solo `logoOscuro` | **el de `config.ts`, no cambia** | el subido |
+| los dos | cada uno el suyo | cada uno el suyo |
+
+La regla es **asimétrica a propósito**: en la flota `public/logo.png` no es un placeholder sino el
+logo real del cliente, y la variante oscura suele ser un lockup blanco que desaparecería en el
+login, la constancia y el recibo PDF sobre papel blanco. Sin la regla del claro, subir solo el logo
+claro dejaba `logoOscuro` en el default de `config.ts` (`/logo.png`, el placeholder) y la portada
+seguía enseñando el placeholder con el logo ya subido. Un `logoOscuro: ''` en la fila ("sin
+variante oscura") o un `logoOscuro` vacío/`null` en el `config.ts` de un cliente se rellenan con
+`logo` (y un `config.ts` roto con `logo` vacío toma `logoOscuro`): nunca viaja un `<img src="">`. El pie de la
+landing sigue forzando el logo a blanco (`brightness-0 invert`) cuando las dos variantes coinciden
+(Bug 97). En el editor, el badge "Personalizado" y el botón "Quitar" de cada tarjeta se deciden con
+la **fila** (`overrides`), no con la URL resuelta — por eso `POST`/`DELETE` del logo devuelven
+también `overrides`.
+
 **Editable**: identidad (nombre, nombreCompleto, tagline, CCT), logos, los 12 tokens de color,
 contacto, redes, los textos de la landing, los tres precios canónicos y `modalidades`. La lista
 exacta es `CLAVES_EDITABLES` en `src/lib/site-config-core.ts` — única fuente, no la copies a mano.
@@ -131,6 +155,15 @@ purga la caché de Next; eso solo lo hace la API).
 - **`logo` / `logoOscuro` son exclusivos de la ruta de subida**: el `PUT` de `/configuracion` los
   ignora y repone los de la fila, para que el editor no pise con su estado viejo un logo subido en
   otra pestaña.
+- **El logo claro subido vale para los dos fondos; el oscuro solo para el suyo** (regla de §2): con
+  el claro subido y sin oscuro, la landing pinta el claro también en cabecera, hero y pie. Un
+  `logoOscuro` de fábrica distinto en `config.ts` deja de usarse en cuanto el admin sube su logo
+  claro: es el logo viejo, y mezclarlos sería peor; vuelve solo si el admin quita el subido. Al
+  revés no: subir solo el oscuro nunca cambia el claro de `config.ts`.
+- **`public/logo.png` es un placeholder real**: PNG 512×512 con alfa y un símbolo neutro (marco +
+  pictograma de imagen), sin texto ni marca. El anterior era un PNG de 1×1 **corrupto** (libpng no
+  lo decodificaba) y la portada de la plantilla mostraba un halo gris con el texto alternativo
+  donde iría el logo. El onboarding lo sustituye por el del cliente con el mismo nombre y ruta.
 - **SVG y WebP se rasterizan a PNG**: un SVG es código y el bucket es público (abrir la URL directa
   lo ejecutaría en ese origen), y el `<Image>` de react-pdf del recibo solo lee PNG y JPEG. Por eso
   el bucket declara `allowed_mime_types = {image/png,image/jpeg,image/webp}` **sin** `image/svg+xml`:

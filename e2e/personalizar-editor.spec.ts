@@ -36,6 +36,7 @@ import {
 } from '@playwright/test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import sharp from 'sharp'
 import { svc, mintSession, storageStateFromSession, ALUMNO_EMAIL, ALUMNO_PASSWORD } from './_helpers'
 import { PALETAS } from '@/lib/site-config-paletas'
 import { campoPorClave } from '@/lib/site-config-campos'
@@ -97,6 +98,7 @@ interface ModalidadEditable {
 
 interface ConfigEditable {
   nombre: string
+  nombreCompleto: string
   logo: string
   logoOscuro: string
   colores: Record<string, string>
@@ -559,9 +561,87 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
   })
 
   // ══════════════════════════════════════════════════════════════════════════
+  // c8 — Subir SOLO el logo claro cambia la portada
+  // ══════════════════════════════════════════════════════════════════════════
+  test('c8 — subir solo el logo claro lo pone en la cabecera, el hero y el pie de la landing', async ({
+    browser,
+  }) => {
+    // El bug del tutorial 10: la landing pinta la variante OSCURA (cabecera,
+    // hero y footer van sobre fondo oscuro) y, con solo el claro subido,
+    // `logoOscuro` se quedaba en el placeholder de config.ts. La regla del
+    // merge (`resolverLogos`) hace que el único logo subido valga para los dos
+    // fondos. Se ejerce como lo hace el admin: desde la tarjeta "Logo claro".
+    await editor.goto('/admin/configuracion')
+    await expect(editor.getByRole('heading', { name: 'Personalizar mi página' })).toBeVisible()
+    await editor.getByRole('tab', { name: 'Identidad' }).click()
+
+    // Antes de subir nada, ninguna tarjeta está personalizada.
+    await expect(editor.getByText('Personalizado', { exact: true })).toHaveCount(0)
+
+    // Un PNG real (64×64, verde, con alfa): el servidor comprueba la firma de
+    // bytes y lo re-codifica con sharp, igual que un logo de verdad.
+    const png = await sharp({
+      create: { width: 64, height: 64, channels: 4, background: { r: 4, g: 120, b: 87, alpha: 1 } },
+    })
+      .png()
+      .toBuffer()
+    // El <input type="file"> va oculto (el botón "Subir" lo dispara): a
+    // Playwright no le importa, setInputFiles trabaja sobre el input.
+    await editor
+      .getByLabel('Subir logo claro')
+      .setInputFiles({ name: 'logo-qa.png', mimeType: 'image/png', buffer: png })
+    await expect(editor.getByText('Logo actualizado y publicado')).toBeVisible()
+
+    // ── El editor: solo la tarjeta CLARA queda "Personalizado" ──
+    // La oscura pinta el mismo logo (lo resuelto) pero NO tiene override propio:
+    // sin badge, con su aviso y con "Quitar" apagado.
+    await expect(editor.getByText('Personalizado', { exact: true })).toHaveCount(1)
+    await expect(editor.getByText('Ahora mismo se usa el logo principal.')).toBeVisible()
+    const quitar = editor.getByRole('button', { name: 'Quitar' })
+    await expect(quitar).toHaveCount(2)
+    await expect(quitar.nth(0), '"Quitar" del logo claro').toBeEnabled()
+    await expect(quitar.nth(1), '"Quitar" del logo oscuro (sin override propio)').toBeDisabled()
+    // Cada tarjeta pinta su logo DOS veces (sobre fondo claro y sobre fondo
+    // oscuro) con el mismo alt: se recorren las dos, no se asume una.
+    for (const patron of [/^Logo logo claro de /, /^Logo logo para fondo oscuro de /]) {
+      const previas = editor.getByAltText(patron)
+      await expect(previas).toHaveCount(2)
+      for (const img of await previas.all()) {
+        await expect(img, `${patron}: la previsualización pinta el logo subido`).toHaveAttribute('src', /logo-claro-/)
+      }
+    }
+    await editor.screenshot({ path: SHOT('personalizar-08-logo-claro-editor'), fullPage: true })
+
+    // ── El API: merged resuelto, fila sin logoOscuro ──
+    const g = await json<RespuestaGet>(await adminApi.get('/api/admin/configuracion'))
+    expect(g.merged.logo).toContain('/logo-claro-')
+    expect(g.merged.logoOscuro, 'logoOscuro efectivo = el claro subido').toBe(g.merged.logo)
+    expect(g.overrides.logo).toBe(g.merged.logo)
+    expect(g.overrides.logoOscuro, 'La fila no tiene override de logoOscuro').toBeUndefined()
+
+    // ── La landing, como visitante: las TRES imágenes del logo son el subido ──
+    await esperarHtml(anonApi, '/', 'logo-claro-', true)
+    const ctxAnon = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT, storageState: SIN_SESION })
+    const anon = await ctxAnon.newPage()
+    try {
+      await anon.goto('/')
+      // Cabecera, hero y footer pintan el logo con `nombreCompleto` como alt.
+      const logos = anon.getByRole('img', { name: g.merged.nombreCompleto })
+      await expect(logos).toHaveCount(3)
+      for (const img of await logos.all()) {
+        await expect(img).toHaveAttribute('src', /logo-claro-/)
+      }
+      expect(await anon.locator('img[src*="logo.png"]').count(), 'Ni un placeholder en la portada').toBe(0)
+      await anon.screenshot({ path: SHOT('personalizar-09-logo-claro-landing') })
+    } finally {
+      await ctxAnon.close()
+    }
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
   // d-ui — Restaurar el diseño original desde el editor
   // ══════════════════════════════════════════════════════════════════════════
-  test('d-ui — "Restaurar diseño original" devuelve paleta, textos y landing a fábrica', async ({
+  test('d-ui — "Restaurar diseño original" devuelve paleta, textos, logo y landing a fábrica', async ({
     browser,
   }) => {
     // Se recarga para partir de lo PUBLICADO, no del estado en memoria de c5.
@@ -587,9 +667,19 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await editor.getByRole('tab', { name: 'Textos de mi página' }).click()
     await expect(editor.getByLabel('Título del hero', { exact: true })).toHaveValue(HERO_DEFAULT)
 
+    // El logo de c8 también se fue: la tarjeta vuelve a fábrica y el bucket queda vacío.
+    await editor.getByRole('tab', { name: 'Identidad' }).click()
+    await expect(editor.getByText('Personalizado', { exact: true })).toHaveCount(0)
+    await expect.poll(async () => await objetosBranding('logo-'), {
+      message: 'Restaurar debe vaciar el bucket branding',
+      timeout: 15_000,
+      intervals: [500],
+    }).toEqual([])
+
     // ── La página pública también, sin redeploy ──
     await esperarHtml(anonApi, '/', TEXTO_HERO_QA, false)
     await esperarHtml(anonApi, '/', HERO_DEFAULT, true)
+    await esperarHtml(anonApi, '/', 'logo-claro-', false)
 
     const ctxAnon = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT, storageState: SIN_SESION })
     const anon = await ctxAnon.newPage()
@@ -599,7 +689,10 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
       const verde = paleta('verde-esmeralda').colores.acento.toUpperCase()
       expect(estilo).not.toContain(`--COLOR-ACENTO:${verde}`)
       expect(estilo).toContain(`--COLOR-ACENTO:${DEFAULTS.colores.acento.toUpperCase()}`)
-      await anon.screenshot({ path: SHOT('personalizar-08-restaurado'), fullPage: true })
+      // El logo vuelve al de fábrica (`/logo.png` en la plantilla; el del cliente en la suya).
+      expect(await anon.locator('img[src*="logo-claro-"]').count(), 'El logo subido ya no está en la portada').toBe(0)
+      // Numeración por orden de ejecución: c8 escribe 08 y 09, esto corre después.
+      await anon.screenshot({ path: SHOT('personalizar-10-restaurado'), fullPage: true })
     } finally {
       await ctxAnon.close()
     }

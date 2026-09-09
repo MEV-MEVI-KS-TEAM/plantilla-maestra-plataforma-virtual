@@ -26,7 +26,7 @@ import {
   valorEfectivo,
 } from '@/lib/site-config-editor'
 import { CampoTexto } from './CampoTexto'
-import { SubidaLogo } from './SubidaLogo'
+import { SubidaLogo, type RespuestaLogo } from './SubidaLogo'
 import { Ayuda, Tarjeta, TXT_SUAVE, type PropsPestana } from './Comunes'
 
 const ICONO = { className: 'w-4 h-4', style: { color: 'var(--color-acento)' } }
@@ -34,12 +34,13 @@ const ICONO = { className: 'w-4 h-4', style: { color: 'var(--color-acento)' } }
 export interface PropsIdentidad extends PropsPestana {
   /** Config publicada. De aquí salen los logos, que el PUT no toca. */
   merged: ConfigEditable
-  onMerged: (merged: ConfigEditable) => void
+  /** Subir o quitar un logo escribió la fila: `merged` y la fila nuevos. */
+  onLogo: (respuesta: RespuestaLogo) => void
   onMensaje: (texto: string, tipo: 'success' | 'error') => void
 }
 
 export function PestanaIdentidad({
-  defaults, overrides, actualizar, puedeEditar, claveConError, merged, onMerged, onMensaje,
+  defaults, overrides, actualizar, puedeEditar, claveConError, merged, onLogo, onMensaje,
 }: PropsIdentidad) {
   const txt = (ruta: string) => String(valorEfectivo(defaults, overrides, ruta) ?? '')
 
@@ -165,20 +166,28 @@ export function PestanaIdentidad({
         icono={<ImageIcon {...ICONO} aria-hidden="true" />}
         descripcion="PNG, JPG, WebP o SVG de hasta 2 MB. Se recorta a 512 px y se guarda como imagen."
       >
+        {/* `merged.logo` / `merged.logoOscuro` llegan RESUELTOS por el merge:
+            con solo el claro subido, el oscuro es ese mismo logo. Por eso el
+            badge "Personalizado" se decide con la FILA (`overrides`), no con
+            la URL. Un `logoOscuro: ''` en la fila ("sin variante oscura", solo
+            datos viejos: la API ya no lo escribe) NO cuenta como propio. */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <SubidaLogo
             variante="claro" etiqueta="Logo claro"
-            ayuda="El principal. Se usa en la cabecera, los recibos y las constancias."
+            ayuda="El principal. Se usa en la cabecera, los recibos y las constancias. Mientras no subas uno para fondo oscuro, también se usa ahí."
             url={merged.logo} urlDefault={defaults.logo}
+            personalizado={estaSobrescrito(overrides, 'logo')}
             nombre={txt('nombre')} puedeEditar={puedeEditar}
-            onMerged={onMerged} onMensaje={onMensaje}
+            onLogo={onLogo} onMensaje={onMensaje}
           />
           <SubidaLogo
             variante="oscuro" etiqueta="Logo para fondo oscuro"
-            ayuda="Opcional. Sin él, el logo principal se fuerza a blanco sobre fondos oscuros."
-            url={merged.logoOscuro} urlDefault={defaults.logoOscuro} urlFallback={merged.logo}
+            ayuda="Opcional. Si solo subes tu logo principal, se usará también en fondos oscuros."
+            url={merged.logoOscuro} urlDefault={defaults.logoOscuro}
+            personalizado={estaSobrescrito(overrides, 'logoOscuro') && String(overrides.logoOscuro ?? '').trim() !== ''}
+            urlLogoClaro={merged.logo}
             nombre={txt('nombre')} puedeEditar={puedeEditar}
-            onMerged={onMerged} onMensaje={onMensaje}
+            onLogo={onLogo} onMensaje={onMensaje}
           />
         </div>
         <Ayuda>

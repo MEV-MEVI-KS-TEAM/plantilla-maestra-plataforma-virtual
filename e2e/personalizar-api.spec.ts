@@ -115,6 +115,8 @@ interface RespuestaLogo {
   url: string
   variante: string
   merged: ConfigEditable
+  /** La fila tal cual queda (de aquí sale el badge "Personalizado" del editor). */
+  overrides: Record<string, unknown>
 }
 
 interface RespuestaError {
@@ -575,6 +577,13 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
 
     const getTrasSubida = await json<RespuestaGet>(await admin.get('/api/admin/configuracion'))
     expect(getTrasSubida.merged.logo, 'El merge ya apunta al logo subido').toBe(logo1.url)
+    // Regla de resolución (resolverLogos): con SOLO el claro subido, la variante
+    // oscura efectiva es ese mismo logo — es lo que pintan cabecera, hero y
+    // footer de la landing. La FILA, en cambio, no tiene override de logoOscuro.
+    expect(getTrasSubida.merged.logoOscuro, 'Solo el claro subido → logoOscuro efectivo = logo').toBe(logo1.url)
+    expect(getTrasSubida.overrides.logoOscuro, 'La resolución es del merge, no de la fila').toBeUndefined()
+    expect(logo1.overrides.logo, 'La respuesta del POST trae la fila tal cual queda').toBe(logo1.url)
+    expect(logo1.overrides.logoOscuro).toBeUndefined()
 
     // ── Reemplazo: el objeto anterior se borra ──
     const res2 = await admin.post(ruta, {
@@ -597,6 +606,8 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     const del = await json<RespuestaLogo>(resDel)
     expect(resDel.status(), `DELETE del logo → 200 (${JSON.stringify(del)})`).toBe(200)
     expect(del.merged.logo, 'Sin override, el merge cae al default de config.ts').toBe(DEFAULTS.logo)
+    expect(del.merged.logoOscuro, 'Y el oscuro vuelve a su default: ya no sigue al claro borrado').toBe(DEFAULTS.logoOscuro)
+    expect(del.overrides.logo, 'La fila que devuelve el DELETE ya no trae logo').toBeUndefined()
     await expect
       .poll(async () => await objetosBranding('logo-claro-'), {
         message: 'El DELETE debe dejar el bucket sin objetos logo-claro-*',

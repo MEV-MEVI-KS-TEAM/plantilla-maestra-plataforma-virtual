@@ -63,7 +63,9 @@ function logoSrc(cfg: ReciboBranding): string | null {
   // El recibo se imprime sobre papel BLANCO: va la variante para fondo claro.
   // Antes se prefería `logoOscuro`, lo cual daba igual mientras ambos campos
   // apuntaran al mismo archivo; con un logo oscuro real el recibo salía en blanco.
-  const logo = cfg.logo || cfg.logoOscuro
+  // `logo` llega ya resuelto por el merge (`resolverLogos`): si el admin solo
+  // subió la variante oscura, `logo` es esa. Aquí no se hace fallback.
+  const logo = cfg.logo
   if (!logo) return null
   // Logo subido desde "Personalizar mi página": URL http(s) al bucket público.
   // No está en disco; react-pdf la descarga al renderizar.

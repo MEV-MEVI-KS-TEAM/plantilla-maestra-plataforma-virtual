@@ -18,6 +18,7 @@
 import { useRef, useState } from 'react'
 import { Loader2, Trash2, Upload } from 'lucide-react'
 import type { ConfigEditable } from '@/lib/site-config-validacion'
+import type { SiteConfigOverrides } from '@/lib/site-config-core'
 import { BORDE, FIELD_BG, ROJO, TXT, TXT_SUAVE, TXT_TENUE } from './Comunes'
 
 /** Lo que la ruta de subida acepta a la entrada (después lo rasteriza). */
@@ -52,34 +53,55 @@ function motivoRechazo(archivo: File): string | null {
   return null
 }
 
+/** Lo que devuelven POST y DELETE de /api/admin/configuracion/logo. */
+export interface RespuestaLogo {
+  merged: ConfigEditable
+  /** La fila tal cual queda: de aquí sale si cada variante tiene override propio. */
+  overrides: SiteConfigOverrides
+}
+
 export interface SubidaLogoProps {
   variante: 'claro' | 'oscuro'
   etiqueta: string
   ayuda: string
-  /** URL efectiva de esta variante (de `merged`, no del borrador). */
+  /**
+   * URL efectiva de esta variante (de `merged`, no del borrador). Llega YA
+   * RESUELTA por el merge (`resolverLogos`): con solo el logo claro subido, la
+   * variante oscura trae ese mismo logo. Es lo que se pinta, sin fallback.
+   */
   url: string
-  /** URL de fábrica. Si coincide con `url`, no hay nada que quitar. */
+  /** URL de fábrica: lo que se ve si no hay nada subido. */
   urlDefault: string
-  /** Solo para la variante oscura: qué se ve realmente cuando está vacía. */
-  urlFallback?: string
+  /**
+   * Si ESTA variante tiene override propio en la fila. No se deduce de `url`
+   * (resuelta, coincidiría con la otra variante); lo decide el padre con
+   * `estaSobrescrito(overrides, 'logo' | 'logoOscuro')`.
+   */
+  personalizado: boolean
+  /**
+   * Solo para la variante oscura: el logo claro resuelto (`merged.logo`). El
+   * aviso "Ahora mismo se usa el logo principal." se muestra cuando la oscura
+   * ES el claro de verdad — no basta con que no tenga override: un config.ts
+   * de cliente puede traer su propia variante oscura de fábrica.
+   */
+  urlLogoClaro?: string
   nombre: string
   puedeEditar: boolean
-  onMerged: (merged: ConfigEditable) => void
+  onLogo: (respuesta: RespuestaLogo) => void
   onMensaje: (texto: string, tipo: 'success' | 'error') => void
 }
 
 export function SubidaLogo({
-  variante, etiqueta, ayuda, url, urlDefault, urlFallback, nombre,
-  puedeEditar, onMerged, onMensaje,
+  variante, etiqueta, ayuda, url, urlDefault, personalizado, urlLogoClaro, nombre,
+  puedeEditar, onLogo, onMensaje,
 }: SubidaLogoProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [ocupado, setOcupado] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
 
-  // Lo que se PINTA: si la variante oscura está vacía, la landing cae al logo
-  // claro; la vista previa tiene que enseñar eso mismo.
-  const mostrada = url || urlFallback || urlDefault
-  const personalizado = url !== '' && url !== urlDefault
+  // Lo que se PINTA es lo resuelto; el default solo por si la fila trae algo
+  // que el merge no pudo resolver (nunca debería).
+  const mostrada = url || urlDefault
 
   async function subir(archivo: File) {
     const rechazo = motivoRechazo(archivo)
@@ -103,7 +125,7 @@ export function SubidaLogo({
         onMensaje(data.error ?? 'No se pudo subir el logo', 'error')
         return
       }
-      onMerged(data.merged as ConfigEditable)
+      onLogo({ merged: data.merged as ConfigEditable, overrides: (data.overrides ?? {}) as SiteConfigOverrides })
       onMensaje('Logo actualizado y publicado', 'success')
     } catch {
       onMensaje('No se pudo subir el logo', 'error')
@@ -123,7 +145,7 @@ export function SubidaLogo({
         onMensaje(data.error ?? 'No se pudo quitar el logo', 'error')
         return
       }
-      onMerged(data.merged as ConfigEditable)
+      onLogo({ merged: data.merged as ConfigEditable, overrides: (data.overrides ?? {}) as SiteConfigOverrides })
       onMensaje('Logo restaurado al original', 'success')
     } catch {
       onMensaje('No se pudo quitar el logo', 'error')
@@ -167,7 +189,7 @@ export function SubidaLogo({
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: TXT_TENUE }}>{ayuda}</p>
-      {variante === 'oscuro' && url === '' && (
+      {variante === 'oscuro' && !personalizado && urlLogoClaro !== undefined && url === urlLogoClaro && (
         <p className="text-xs" style={{ color: TXT_TENUE }}>
           Ahora mismo se usa el logo principal.
         </p>

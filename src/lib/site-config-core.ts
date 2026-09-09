@@ -382,8 +382,10 @@ function compatible(base: unknown, valor: unknown): boolean {
  * consigue NO mandando la clave (la API de Fase 4 la omite o manda `null`).
  *
  * `logoOscuro` NO está aquí a propósito: `''` significa "no hay variante para
- * fondo oscuro" y `LandingClient` cae a `logo` con un filtro de inversión.
- * Tampoco `landing.ciudad` ni `cct`: vacío = se omite el segmento en la UI.
+ * fondo oscuro". Se acepta en el merge y después `resolverLogos` lo sustituye
+ * por `logo`, así que ningún consumidor ve nunca un `logoOscuro` vacío (ni
+ * pinta `<img src="">`). Tampoco `landing.ciudad` ni `cct`: vacío = se omite
+ * el segmento en la UI.
  */
 const SIN_VACIO: ReadonlySet<ClaveEditable> = new Set<ClaveEditable>(['logo', 'whatsappUrl'])
 
@@ -580,6 +582,68 @@ function aplicarModalidades(
 }
 
 /**
+ * Qué overrides de logo se APLICARON de verdad en el merge (presentes,
+ * compatibles y no rechazados por `SIN_VACIO`). Es lo que `resolverLogos`
+ * necesita para decidir; un `logo: ''` o un `logo: 123` cuentan como ausentes.
+ */
+export interface LogosAplicados {
+  logo: boolean
+  logoOscuro: boolean
+}
+
+/** `true` si `v` es una cadena con algo dentro: lo único que sirve de `<img src>`. */
+function esUrlDeLogo(v: unknown): v is string {
+  return typeof v === 'string' && v.trim() !== ''
+}
+
+/**
+ * Regla de resolución de los dos logos. MUTA `cfg` (siempre el clon fresco del
+ * merge) y lo devuelve. Es la ÚNICA fuente de esta decisión: ningún componente
+ * hace `logoOscuro || logo` por su cuenta — leen los dos valores ya resueltos
+ * de `getSiteConfig()` / `useSiteConfig()`.
+ *
+ * La regla es ASIMÉTRICA a propósito (decisión de Kevin, PR #110):
+ *
+ *   1. Override de `logo` y NO de `logoOscuro` → `logoOscuro` efectivo = `logo`.
+ *      El admin subió SOLO su logo claro desde "Personalizar mi página"; ese
+ *      logo sirve en ambos fondos hasta que suba uno oscuro. Sin esta regla,
+ *      `logoOscuro` se quedaba en el default de config.ts (`/logo.png`, un
+ *      placeholder) y la cabecera, el hero y el footer de la landing —que
+ *      pintan la variante oscura— seguían enseñando el placeholder con el logo
+ *      nuevo ya subido. Un `logoOscuro` de fábrica distinto también se deja de
+ *      usar: es el logo VIEJO, y mezclarlo con el nuevo sería peor.
+ *   2. Override de `logoOscuro` y NO de `logo` → `logo` NO CAMBIA: se queda con
+ *      el de config.ts. En la flota `public/logo.png` no es un placeholder, es
+ *      el logo REAL del cliente (el onboarding lo copia ahí), y la variante
+ *      oscura suele ser un lockup blanco: si se propagara al login, a la
+ *      constancia y al recibo PDF sobre papel blanco, desaparecería.
+ *   3. Sin overrides de logo, todo queda EXACTAMENTE como en config.ts (el
+ *      invariante de la BD vacía). Solo si config.ts trae `logoOscuro` vacío o
+ *      `null` —o `''` llegó como override, que significa "sin variante oscura"—
+ *      se rellena con `logo`, que es lo que los consumidores pintaban de todos
+ *      modos con su antiguo `||`: el HTML no cambia, pero ya no hay un `''`
+ *      suelto que acabe en `<img src="">`. (Y el espejo, un config.ts roto con
+ *      `logo` vacío, se rellena con `logoOscuro`: es lo que hacía el recibo.)
+ *   4. Override de los dos → cada uno el suyo (un `''` en `logoOscuro` sigue
+ *      siendo "usa el claro").
+ *
+ * Con CONFIG de plantilla (`logo` y `logoOscuro` en `/logo.png`) y sin
+ * overrides no toca nada: `mergeSiteConfig(CONFIG, {})` sigue deep-equal.
+ */
+export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteConfig {
+  if (aplicados.logo && !aplicados.logoOscuro) {
+    cfg.logoOscuro = cfg.logo
+    return cfg
+  }
+  // Solo `logoOscuro`, ninguno, los dos, o un `logoOscuro: ''` ("sin variante
+  // oscura"): `logo` conserva lo que trae, y solo se rellena el hueco que haya
+  // (valor vacío o no-cadena) con el otro. Sin hueco no se toca nada.
+  if (!esUrlDeLogo(cfg.logoOscuro) && esUrlDeLogo(cfg.logo)) cfg.logoOscuro = cfg.logo
+  else if (!esUrlDeLogo(cfg.logo) && esUrlDeLogo(cfg.logoOscuro)) cfg.logo = cfg.logoOscuro
+  return cfg
+}
+
+/**
  * Fusiona los defaults de config.ts con los overrides de la BD.
  *
  *  - NUNCA muta `base`: devuelve un clon profundo nuevo.
@@ -591,6 +655,9 @@ function aplicarModalidades(
  *    (`normalizarArreglo`); si uno falla, se ignora el arreglo entero. El
  *    editor no edita "un badge": manda la lista entera.
  *  - `''` se ignora en las claves de `SIN_VACIO` (logo, whatsappUrl).
+ *  - `logo` / `logoOscuro` se RESUELVEN al final (`resolverLogos`): con solo el
+ *    claro subido, ese logo vale para los dos fondos; con solo el oscuro, el
+ *    claro de config.ts se conserva.
  *  - `modalidades` y los alias de precios tienen su semántica aparte
  *    (`aplicarModalidades`, `derivarAliasPrecios`).
  *  - `overrides` que no sea un objeto plano (null, string, número, arreglo…)
@@ -607,9 +674,10 @@ function aplicarModalidades(
  */
 export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteConfig {
   const resultado = clonar(base) as SiteConfig
-  if (!esObjetoPlano(overrides)) return resultado
+  if (!esObjetoPlano(overrides)) return resolverLogos(resultado, { logo: false, logoOscuro: false })
 
   const aplicados: PreciosAplicados = {}
+  const logos: LogosAplicados = { logo: false, logoOscuro: false }
 
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta === 'modalidades') continue // semántica aparte, abajo
@@ -625,10 +693,13 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
     if (final === undefined) continue
     escribirRuta(resultado as unknown as ObjetoPlano, ruta, final)
 
+    if (ruta === 'logo') logos.logo = true
+    if (ruta === 'logoOscuro') logos.logoOscuro = true
     if (ruta === 'precios.certificacionSecundaria') aplicados.certificacionSecundaria = valor as number
     if (ruta === 'precios.certificacionPreparatoria') aplicados.certificacionPreparatoria = valor as number
   }
 
+  resolverLogos(resultado, logos)
   aplicados.mensualidades = aplicarModalidades(resultado, overrides.modalidades)
 
   return derivarAliasPrecios(resultado, aplicados)
