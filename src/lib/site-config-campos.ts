@@ -370,7 +370,14 @@ export const CAMPOS: ReadonlyArray<Campo> = [
 
   // ── Precios (canónicos; los alias legacy se derivan en el merge) ──
   { clave: 'precios.inscripcion', seccion: 'precios', etiqueta: 'Inscripción', tipo: 'entero',
-    min: LIMITES.precioMin, max: LIMITES.precioMax, ayuda: 'MXN, sin centavos.' },
+    min: LIMITES.precioMin, max: LIMITES.precioMax,
+    ayuda: 'MXN, sin centavos. Es la cifra que usa el texto {inscripcion} y la que se cobra en el nivel que no tenga la suya.' },
+  { clave: 'precios.inscripcionSecundaria', seccion: 'precios', etiqueta: 'Inscripción de Secundaria', tipo: 'entero',
+    min: LIMITES.precioMin, max: LIMITES.precioMax,
+    ayuda: 'Solo si la secundaria se inscribe con otra cifra. Igual a la de arriba = se cobra lo mismo.' },
+  { clave: 'precios.inscripcionPreparatoria', seccion: 'precios', etiqueta: 'Inscripción de Preparatoria', tipo: 'entero',
+    min: LIMITES.precioMin, max: LIMITES.precioMax,
+    ayuda: 'Solo si la preparatoria se inscribe con otra cifra. Igual a la de arriba = se cobra lo mismo.' },
   { clave: 'precios.certificacionSecundaria', seccion: 'precios', etiqueta: 'Certificación de Secundaria', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax },
   { clave: 'precios.certificacionPreparatoria', seccion: 'precios', etiqueta: 'Certificación de Preparatoria', tipo: 'entero',

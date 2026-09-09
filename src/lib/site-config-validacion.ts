@@ -71,7 +71,14 @@ export interface ConfigEditable {
   contactoEmail: string
   redes: SiteConfig['redes']
   landing: Pick<SiteConfig['landing'], ClaveLandingEditable>
-  precios: Pick<SiteConfig['precios'], 'inscripcion' | 'certificacionSecundaria' | 'certificacionPreparatoria'>
+  precios: Pick<
+    SiteConfig['precios'],
+    | 'inscripcion'
+    | 'inscripcionSecundaria'
+    | 'inscripcionPreparatoria'
+    | 'certificacionSecundaria'
+    | 'certificacionPreparatoria'
+  >
   modalidades: SiteConfig['modalidades']
 }
 

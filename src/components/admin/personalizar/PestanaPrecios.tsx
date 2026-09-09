@@ -89,6 +89,15 @@ export function PestanaPrecios({
 }: PropsPestana) {
   const mods = modalidadesEfectivas(defaults.modalidades, overrides.modalidades)
 
+  // Escuela con DOS tarifas: los alias por nivel del config no coinciden. El
+  // campo "mensualidad" del plan es entonces solo el de preparatoria (ver
+  // derivarAliasPrecios en site-config-core.ts), y hay que decírselo al admin
+  // en vez de dejarle creer que edita las dos.
+  const p = defaults.precios as unknown as Record<string, number | undefined>
+  const tarifaPorNivel =
+    p.secundaria_3meses_normal !== p.preparatoria_3meses_normal ||
+    p.secundaria_6meses_normal !== p.preparatoria_6meses_normal
+
   function campoPrecio(clave: string) {
     const campo = campoPorClave(clave)
     const valor = valorEfectivo(defaults, overrides, clave)
@@ -115,6 +124,12 @@ export function PestanaPrecios({
     <div className="space-y-5">
       <Tarjeta titulo="Inscripción" icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
         {campoPrecio('precios.inscripcion')}
+        {campoPrecio('precios.inscripcionSecundaria')}
+        {campoPrecio('precios.inscripcionPreparatoria')}
+        <Ayuda>
+          Si tu escuela cobra la misma inscripción en los dos niveles, deja los
+          tres campos iguales y tu página seguirá mostrando una sola cifra.
+        </Ayuda>
       </Tarjeta>
 
       <Tarjeta
@@ -193,6 +208,14 @@ export function PestanaPrecios({
           <Ayuda>
             Solo queda un plan activo, por eso no se puede apagar. Enciende otro
             primero si necesitas cambiarlo.
+          </Ayuda>
+        )}
+        {tarifaPorNivel && (
+          <Ayuda>
+            Tu escuela cobra distinto en secundaria y en preparatoria. La
+            mensualidad de aquí arriba es la de <strong>preparatoria</strong>,
+            que es la que aparece en su tarjeta de precios. La de secundaria no
+            se toca desde este panel: pídesela a quien te lleva la plataforma.
           </Ayuda>
         )}
       </Tarjeta>

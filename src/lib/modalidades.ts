@@ -344,3 +344,74 @@ export function getPlanLabel(
   }
   return modalidad.label
 }
+
+// ─── Desglose de precio por nivel ────────────────────────────────────────────
+
+/** Los dos niveles del programa que tienen tabla de precios propia. */
+export type NivelPrograma = 'secundaria' | 'preparatoria'
+
+/**
+ * Forma mínima de `CONFIG.precios` que necesita `desglosePlan`. Laxa a
+ * propósito: acepta tanto `CONFIG.precios` (literales bajo `as const`) como el
+ * objeto ya fusionado con los overrides del admin.
+ */
+export type PreciosPrograma = {
+  inscripcion: number
+  inscripcionSecundaria?: number
+  inscripcionPreparatoria?: number
+  secundaria_3meses_normal?: number
+  secundaria_6meses_normal?: number
+}
+
+export interface DesglosePlan {
+  inscripcion: number
+  mensualidad: number
+  meses: number
+  /** inscripción + meses × mensualidad. Sin la certificación, que es aparte. */
+  total: number
+}
+
+/**
+ * Lo que le cuesta a un aspirante un plan concreto, por NIVEL.
+ *
+ * DE DÓNDE SALE CADA CIFRA. La plantilla resuelve el precio por nivel en dos
+ * sitios distintos, y esta función es la única definición de esa mezcla:
+ *
+ *   inscripción   `inscripcionSecundaria` / `inscripcionPreparatoria`, con
+ *                 fallback a `inscripcion` para la escuela de tarifa única.
+ *   mensualidad   preparatoria toma `modalidad.mensualidad` —es la que pinta su
+ *                 tarjeta en la landing—; secundaria toma los alias
+ *                 `secundaria_Nmeses_normal`, que es donde vive su tarifa
+ *                 cuando difiere. Sin alias declarado cae a la mensualidad.
+ *
+ * El TOTAL importa: en una escuela donde la preparatoria cuesta 3.3× la
+ * secundaria (Moreta IED, #196), el aspirante tiene que ver la cifra completa
+ * ANTES de inscribirse y no descubrirla en el primer recibo.
+ */
+export function desglosePlan(
+  nivel: NivelPrograma,
+  modalidad: Pick<ModalidadPrograma, 'id' | 'meses' | 'mensualidad'>,
+  precios: PreciosPrograma,
+): DesglosePlan {
+  const porNivel = nivel === 'secundaria'
+    ? precios.inscripcionSecundaria
+    : precios.inscripcionPreparatoria
+  const inscripcion = typeof porNivel === 'number' ? porNivel : precios.inscripcion
+
+  let mensualidad = modalidad.mensualidad
+  if (nivel === 'secundaria') {
+    const alias = modalidad.meses === 3
+      ? precios.secundaria_3meses_normal
+      : modalidad.meses === 6
+        ? precios.secundaria_6meses_normal
+        : undefined
+    if (typeof alias === 'number') mensualidad = alias
+  }
+
+  return {
+    inscripcion,
+    mensualidad,
+    meses: modalidad.meses,
+    total: inscripcion + modalidad.meses * mensualidad,
+  }
+}

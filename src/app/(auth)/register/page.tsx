@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, Phone, User, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { getModalidadesActivas, getModalidadesLicenciatura, desglosePlan } from '@/lib/modalidades'
 import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatura-utils'
 import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
@@ -31,6 +31,10 @@ const BENEFITS = [
   'Centro de Apoyo para la Acreditación de Conocimientos',
   ofertaTexto(),
 ]
+
+/** Pesos sin centavos, igual que la landing. */
+const fmtMXN = (n: number) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
 
 // ─── Input helpers ─────────────────────────────────────────────────────────────
 function onFocus(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -255,6 +259,23 @@ export default function RegisterPage() {
   useEffect(() => { setModalidad(''); setCarrera('') }, [nivel])
 
   const esLicenciatura = nivel === 'licenciatura' || esDiplomadoLic
+
+  // Desglose del plan elegido: inscripción, mensualidad y TOTAL, con la tarifa
+  // del nivel. Solo aplica a Sec/Prepa — licenciatura, diplomados y cursos de
+  // ingreso tienen su propia tabla de precios — y solo cuando ya se eligieron
+  // las dos cosas; antes no hay nada que sumar.
+  //
+  // POR QUÉ EL TOTAL Y NO SOLO LA MENSUALIDAD: donde la preparatoria cuesta
+  // 3.3x la secundaria, la mensualidad sola no deja ver la diferencia real. El
+  // aspirante tiene que verla ANTES de inscribirse, no en el primer recibo.
+  const desglose = (() => {
+    if (esLicenciatura || soloCursos || !modalidad) return null
+    const n = nivelDeOpcion(nivel)
+    if (n !== 'secundaria' && n !== 'preparatoria') return null
+    const m = getModalidadesActivas(cfg.modalidades).find(x => x.id === modalidad)
+    if (!m) return null
+    return desglosePlan(n, m, cfg.precios)
+  })()
 
   // Las carreras ofrecidas dependen de la opción: quien eligió «Diplomados» no
   // debe ver las licenciaturas, ni al revés.
@@ -578,6 +599,31 @@ export default function RegisterPage() {
                   </div>
                 )}
               </div>
+
+              {/* Lo que va a pagar, antes de crear la cuenta. Solo para
+                  Sec/Prepa: licenciatura y cursos tienen su propia tabla. */}
+              {desglose && (
+                <div className="mt-4 rounded-xl p-4" style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
+                  <p className="text-xs font-bold uppercase mb-3" style={{ color: 'var(--color-acento)', letterSpacing: '0.07em' }}>
+                    Lo que vas a pagar
+                  </p>
+                  <div className="flex justify-between text-sm mb-1.5" style={{ color: 'var(--color-texto-secundario)' }}>
+                    <span>Inscripción única</span>
+                    <span className="font-semibold tabular-nums" style={{ color: 'var(--color-primario)' }}>{fmtMXN(desglose.inscripcion)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
+                    <span>Mensualidad × {desglose.meses}</span>
+                    <span className="font-semibold tabular-nums" style={{ color: 'var(--color-primario)' }}>{fmtMXN(desglose.mensualidad)}</span>
+                  </div>
+                  <div className="mt-3 pt-3 flex justify-between items-baseline" style={{ borderTop: '1px solid var(--color-borde)' }}>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--color-primario)' }}>Total del plan</span>
+                    <span className="text-lg font-bold tabular-nums" style={{ color: 'var(--color-acento)' }}>{fmtMXN(desglose.total)}</span>
+                  </div>
+                  <p className="text-xs mt-2.5" style={{ color: 'var(--color-texto-secundario)' }}>
+                    La certificación se paga aparte, al concluir.
+                  </p>
+                </div>
+              )}
 
               {/* ─── Curso de ingreso (opcional) ──────────────────────────
                   Producto de pago único, aparte del plan. Se puede llevar solo,

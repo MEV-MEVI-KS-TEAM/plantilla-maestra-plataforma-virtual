@@ -1,6 +1,7 @@
 {
   "_comentario": "Copia este archivo a la RAÍZ del repo como entrega.local.json y llénalo. Git lo ignora: trae contraseñas.",
   "adminNombre": "Nombre Apellido",
+  "_adminGenero": "f = Bienvenida · o = Bienvenido · p = Bienvenidos, cuando la cuenta la comparten dos personas",
   "adminGenero": "f",
   "adminEmail": "admin@cliente.com",
   "adminPassword": "••••••••",

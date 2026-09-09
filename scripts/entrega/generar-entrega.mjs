@@ -213,7 +213,22 @@ const porNivel = (v, nivel) => {
   const vals = Object.values(v).filter(x => typeof x === 'number')
   return vals.length ? Math.max(...vals) : 0
 }
-const insc = (nivel) => porNivel(CONFIG.precios?.inscripcion, nivel)
+/**
+ * Inscripción de un nivel. Tres formas, en este orden:
+ *
+ *   1. `precios.inscripcionSecundaria` / `inscripcionPreparatoria` — la clave
+ *      por nivel, igual que `certificacion${Nivel}` justo abajo. Es lo que lee
+ *      la landing y por tanto lo que el cliente ve publicado.
+ *   2. `precios.inscripcion` como objeto `{secundaria, preparatoria}`.
+ *   3. `precios.inscripcion` como número plano — la escuela de tarifa única.
+ *
+ * Sin el paso 1, un cliente con inscripción diferenciada recibía un PDF que
+ * decía la cifra de secundaria para los dos niveles: el documento de entrega
+ * contradecía a su propia plataforma, que es justo lo que este generador
+ * existe para evitar.
+ */
+const insc = (nivel) => CONFIG.precios?.[`inscripcion${cap(nivel)}`]
+  ?? porNivel(CONFIG.precios?.inscripcion, nivel)
 const cert = (nivel) => CONFIG.precios?.[`certificacion${cap(nivel)}`]
   ?? CONFIG.precios?.[`certificacion_${nivel}`] ?? 0
 /**
@@ -453,6 +468,48 @@ const pag = await nav.newPage()
 await pag.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle' })
 await pag.evaluate(() => document.fonts.ready)
 await pag.waitForTimeout(2000)
+
+// ── Guardia de desbordamiento ────────────────────────────────────────────
+// `.page` es un alto FIJO con `overflow:hidden`: lo que no cabe no salta a la
+// página siguiente, se RECORTA sin decir nada. Un cliente con dos programas de
+// licenciatura perdía el segundo plan de su tabla y el documento oficial salía
+// incompleto sin que nadie se enterara.
+// Se mide después de cargar las fuentes, que es cuando el alto es el real.
+//
+// ⚠️ NO sirve `scrollHeight > clientHeight`: `.page` es `display:flex` y sus
+// hijos se COMPRIMEN (flex-shrink por defecto) en vez de desbordar, así que el
+// scrollHeight nunca excede aunque el texto se salga. Hay que comparar el borde
+// inferior REAL de cada descendiente contra el de la página.
+const desbordadas = await pag.evaluate(() => {
+  const out = []
+  document.querySelectorAll('.page').forEach((page, i) => {
+    const limite = page.getBoundingClientRect().bottom
+    let sobra = 0
+    page.querySelectorAll('*').forEach(hijo => {
+      const r = hijo.getBoundingClientRect()
+      if (r.height > 0) sobra = Math.max(sobra, r.bottom - limite)
+    })
+    if (sobra > 2) out.push({ pagina: i + 1, sobra: Math.round(sobra) })
+  })
+  return out
+})
+if (desbordadas.length) {
+  await nav.close()
+  abortar(
+    `El contenido no cabe en ${desbordadas.length} página(s) y se recortaría en silencio.`,
+    [
+      desbordadas.map(d => `  · Página ${d.pagina}: sobran ${d.sobra}px`).join('\n'),
+      '',
+      '`.page` tiene alto fijo y `overflow:hidden`: lo que desborda NO salta a la',
+      'página siguiente, desaparece. Un documento de entrega incompleto es peor',
+      'que uno feo, así que esto para en vez de emitirlo.',
+      '',
+      'Reparte el contenido de esa página en documento.mjs (por ejemplo, mueve una',
+      'sección a una página nueva) y vuelve a correr `pnpm entrega`.',
+    ].join('\n'),
+  )
+}
+
 await pag.pdf({ path: pdfPath, format: 'Letter', printBackground: true,
   margin: { top: '0', right: '0', bottom: '0', left: '0' } })
 await nav.close()
@@ -462,7 +519,14 @@ log(`✓ PDF   → entrega/${path.basename(pdfPath)}`)
 /* ── 7. Mensaje de WhatsApp ──────────────────────────────────────────────── */
 if (!flag('solo-pdf')) {
   const L = []
-  L.push(`¡Hola ${D.adminNombre.split(' ')[0]}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
+  // El saludo es lo PRIMERO que el cliente lee. Tomar el primer token sirve para
+  // «Nombre Apellido», pero cuando la cuenta la comparten dos personas —hay un
+  // solo correo— «Edna y Efraín».split(' ')[0] deja fuera a Efraín. Con la
+  // cuenta compartida el nombre completo ES el saludo.
+  const nombreSaludo = D.adminGenero === 'p' || /\s+y\s+/i.test(D.adminNombre)
+    ? D.adminNombre
+    : D.adminNombre.split(' ')[0]
+  L.push(`¡Hola ${nombreSaludo}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
   L.push('🌐 TU PLATAFORMA', URL_BASE, '')
   L.push('👤 ACCESO ADMINISTRADOR', `Usuario: ${D.adminEmail}`, `Contraseña: ${D.adminPassword}`, `Panel: ${URL_BASE}/admin`, '')
   if (D.alumnoEmail) L.push('🎓 ACCESO ALUMNO DE PRUEBA',

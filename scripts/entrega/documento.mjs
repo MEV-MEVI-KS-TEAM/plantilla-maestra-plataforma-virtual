@@ -143,7 +143,7 @@ ${marca(d)}
 <div class="sub">Documento de entrega oficial de tu plataforma educativa</div>
 <div class="quote mt">"${esc(d.tagline)}"</div>
 <div class="hr"></div>
-<h2>Bienvenid${d.adminGenero === 'f' ? 'a' : 'o'} a la familia MEV, ${esc(d.adminNombre)}.</h2>
+<h2>Bienvenid${d.adminGenero === 'f' ? 'a' : d.adminGenero === 'p' ? 'os' : 'o'} a la familia MEV, ${esc(d.adminNombre)}.</h2>
 <div class="rule"></div>
 <p>Lo que tienes en tus manos no es solo un sitio web: es la infraestructura
 digital completa para operar ${esc(d.frasePrograma)}, con tu propio panel de
@@ -297,13 +297,27 @@ ${kv([
     L.certificacion ? ['Certificación profesional', mxn(L.certificacion)] : null,
   ])}
 ${L.carreras.length ? `<h3>Catálogo</h3>${dt(cols, filas)}` : ''}
+${/* Los PRECIOS van antes que las descripciones a propósito. `.page` tiene alto
+      fijo y lo que queda al final se pierde al paginar a PDF: con dos programas
+      y dos planes, la última fila de esta tabla caía justo en el corte y el
+      cliente recibía su documento sin el segundo plan. Lo que puede quedar
+      colgando debe ser el texto descriptivo, nunca una cifra. */''}
+${L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Colegiatura', 'Costo total'],
+      // «Total del plan» decía mensualidad × meses, o sea SOLO la colegiatura:
+      // en un programa de $3,500 a 18 meses imprimía $63,000 mientras la landing
+      // y el mensaje de entrega decían $102,000. El cliente comparaba y veía dos
+      // cifras distintas para lo mismo. Ahora la columna se llama por su nombre
+      // y el costo total suma lo que de verdad paga el alumno, igual que la
+      // tabla de Secundaria/Preparatoria de la página anterior.
+      L.modalidades.map(m => {
+        const colegiatura = (m.mensualidad || 0) * (m.meses || 0)
+        return [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
+          mxn(colegiatura), mxn((L.inscripcion || 0) + colegiatura + (L.certificacion || 0))]
+      }))}` : ''}
 ${L.carreras.some(c => c.desc) ? L.carreras.filter(c => c.desc).map(c => `
 <div class="note"><b>${esc(c.nombre)}</b><p>${esc(c.desc)}</p>${
   (c.incluye || []).length ? ul(c.incluye.map(esc)) : ''
-}</div>`).join('') : ''}
-${L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
-      L.modalidades.map(m => [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
-        mxn((m.mensualidad || 0) * (m.meses || 0))]))}` : ''}`
+}</div>`).join('') : ''}`
 }
 
 function soporte(d) {

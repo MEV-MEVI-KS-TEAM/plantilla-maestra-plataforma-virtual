@@ -106,6 +106,48 @@ test('4. modalidades[3_meses].mensualidad deriva los alias de 3 meses y deja los
   expect(r.modalidades.map((m) => m.id)).toEqual(base.modalidades.map((m) => m.id))
 })
 
+test('4b. si la escuela cobra distinto por nivel, guardar NO copia el precio de prepa sobre secundaria', () => {
+  // El caso de Moreta IED (#196): $1,500 la secundaria de 3 meses, $4,900 la
+  // preparatoria. `modalidades[].mensualidad` es la de prepa (es la que pinta
+  // su tarjeta) y la de secundaria vive en los alias.
+  const base = JSON.parse(JSON.stringify(CONFIG)) as SiteConfig
+  base.precios.secundaria_3meses_normal = 1500
+  base.precios.secundaria_3meses_sindicalizado = 1500
+  base.precios.secundaria_6meses_normal = 900
+  base.precios.secundaria_6meses_sindicalizado = 900
+  base.precios.preparatoria_3meses_normal = 4900
+  base.precios.preparatoria_3meses_sindicalizado = 4900
+  base.precios.preparatoria_6meses_normal = 2900
+  base.precios.preparatoria_6meses_sindicalizado = 2900
+  base.modalidades = base.modalidades.map((m) =>
+    m.id === '3_meses' ? { ...m, mensualidad: 4900 } : { ...m, mensualidad: 2900 },
+  ) as SiteConfig['modalidades']
+
+  // El admin guarda el formulario entero sin tocar los precios: el editor manda
+  // la mensualidad de cada plan tal cual estaba.
+  const r = mergeSiteConfig(base, {
+    modalidades: { '3_meses': { mensualidad: 4900 }, '6_meses': { mensualidad: 2900 } },
+  })
+
+  // Secundaria intacta. Antes del fix quedaba en 4900 / 2900.
+  expect(r.precios.secundaria_3meses_normal).toBe(1500)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(1500)
+  expect(r.precios.secundaria_6meses_normal).toBe(900)
+  expect(r.precios.secundaria_6meses_sindicalizado).toBe(900)
+  // Preparatoria sigue el plan, como siempre.
+  expect(r.precios.preparatoria_3meses_normal).toBe(4900)
+  expect(r.precios.preparatoria_6meses_normal).toBe(2900)
+  expect(r.precios.plan3mMensualidad).toBe(4900)
+})
+
+test('4c. con una sola tarifa el alias SÍ sigue a la mensualidad (comportamiento de siempre)', () => {
+  // CONFIG trae sec y prepa iguales: no hay divergencia que preservar.
+  expect(CONFIG.precios.secundaria_3meses_normal).toBe(CONFIG.precios.preparatoria_3meses_normal)
+  const r = mergeSiteConfig(CONFIG, { modalidades: { '3_meses': { mensualidad: 2500 } } })
+  expect(r.precios.secundaria_3meses_normal).toBe(2500)
+  expect(r.precios.preparatoria_3meses_normal).toBe(2500)
+})
+
 test('5. modalidades[6_meses].activa=false solo apaga esa modalidad, sin derivar precios', () => {
   const r = mergeSiteConfig(CONFIG, { modalidades: { '6_meses': { activa: false } } })
   const e = esperado()
@@ -137,6 +179,26 @@ test('7. precios.certificacionSecundaria sincroniza sus dos alias y no toca prep
   base.precios.certificacionSecundaria = 5555
   base.precios.certificacion_secundaria = 5555
   base.landing.certificacion_secundaria = 5555
+  expect(r).toEqual(base)
+})
+
+test('7b. la inscripción por nivel nace igual a la general: sin overrides nadie ve un cambio', () => {
+  // El invariante que protege a las 144 escuelas que cobran una sola cifra.
+  expect(CONFIG.precios.inscripcionSecundaria).toBe(CONFIG.precios.inscripcion)
+  expect(CONFIG.precios.inscripcionPreparatoria).toBe(CONFIG.precios.inscripcion)
+})
+
+test('7c. precios.inscripcionPreparatoria se sobrescribe sola, sin tocar secundaria ni la general', () => {
+  const r = mergeSiteConfig(CONFIG, { precios: { inscripcionPreparatoria: 1500 } })
+  expect(r.precios.inscripcionPreparatoria).toBe(1500)
+
+  const base = esperado()
+  // La general sigue siendo la del config: es la que alimenta {inscripcion}.
+  expect(r.precios.inscripcion).toBe(base.precios.inscripcion)
+  expect(r.precios.inscripcionSecundaria).toBe(base.precios.inscripcionSecundaria)
+
+  // La inscripción NO tiene alias legacy: no debe derivar nada más.
+  base.precios.inscripcionPreparatoria = 1500
   expect(r).toEqual(base)
 })
 

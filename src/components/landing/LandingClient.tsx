@@ -377,6 +377,14 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // globals.css (ver variablesLanding). Sin ella no se inyecta ninguna
   // variable: el style queda idéntico al de siempre y el CSS usa sus fallbacks.
   const varsPaleta = esPaletaPersonalizada(config.colores) ? variablesLanding(C) : undefined
+  // Inscripción por nivel. Cae a `p.inscripcion` cuando el nivel no declara la
+  // suya, que es el caso de toda escuela que cobre una sola cifra y el de
+  // cualquier config.ts anterior a este campo: ahí las dos tarjetas siguen
+  // pintando exactamente el mismo número que antes.
+  const inscripcionDe = (nivel: 'secundaria' | 'preparatoria') => {
+    const porNivel = nivel === 'secundaria' ? p.inscripcionSecundaria : p.inscripcionPreparatoria
+    return typeof porNivel === 'number' ? porNivel : p.inscripcion
+  }
   // Placeholders de los textos editables ({duracion}, {nombre}, {inscripcion}…).
   // Se sustituyen en TODOS los textos de landing.*, no solo en los que hoy los
   // traen: el editor los ofrece en cualquier campo. Un texto sin llaves sale
@@ -573,7 +581,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     <span className="text-xs font-semibold px-3 py-1 rounded-full"
                       style={{ background: `${C.bright}22`, color: C.azure, border: `1px solid ${C.azure}30` }}>{texto(L.programas_popular)}</span>
                   </div>
-                  <p className="text-xs font-semibold mb-6" style={{ color: C.azure }}>Inscripción: {fmt(p.inscripcion)}</p>
+                  <p className="text-xs font-semibold mb-6" style={{ color: C.azure }}>Inscripción: {fmt(inscripcionDe('preparatoria'))}</p>
                   <div className="space-y-3 flex-1">
                     {[
                       ...activas.map(m => ({ label: `Plan ${getPlanLabel(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
@@ -602,7 +610,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="mb-5">
                     <h3 className={`text-2xl font-bold ${playfair.className}`} style={{ color: C.navy }}>Secundaria</h3>
                   </div>
-                  <p className="text-xs font-semibold mb-6" style={{ color: C.royal }}>Inscripción: {fmt(p.inscripcion)}</p>
+                  <p className="text-xs font-semibold mb-6" style={{ color: C.royal }}>Inscripción: {fmt(inscripcionDe('secundaria'))}</p>
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.

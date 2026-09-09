@@ -13,6 +13,7 @@ import {
   getDuracionLabel,
   getPlanLabel,
   type ModalidadPrograma,
+  desglosePlan,
 } from '@/lib/modalidades'
 
 /**
@@ -179,4 +180,36 @@ test('5. PublicSiteConfig["modalidades"] es asignable a ModalidadPrograma[]', ()
     expect(typeof m.materiasPorMes).toBe('number')
     expect(typeof m.activa).toBe('boolean')
   }
+})
+
+// ─── desglosePlan: lo que ve el aspirante antes de inscribirse ───────────────
+
+test('6. desglosePlan suma inscripción + meses × mensualidad', () => {
+  const m3 = { id: '3_meses', meses: 3, mensualidad: 2000 }
+  const d = desglosePlan('preparatoria', m3, { inscripcion: 599 })
+  expect(d).toEqual({ inscripcion: 599, mensualidad: 2000, meses: 3, total: 599 + 3 * 2000 })
+})
+
+test('6b. con tarifa por nivel, cada nivel ve la suya (el caso Moreta IED)', () => {
+  const precios = {
+    inscripcion: 1000,
+    inscripcionSecundaria: 1000,
+    inscripcionPreparatoria: 1500,
+    secundaria_3meses_normal: 1500,
+    secundaria_6meses_normal: 900,
+  }
+  const m3 = { id: '3_meses', meses: 3, mensualidad: 4900 }  // mensualidad = prepa
+  const m6 = { id: '6_meses', meses: 6, mensualidad: 2900 }
+
+  expect(desglosePlan('secundaria',   m3, precios)).toEqual({ inscripcion: 1000, mensualidad: 1500, meses: 3, total: 5500 })
+  expect(desglosePlan('secundaria',   m6, precios)).toEqual({ inscripcion: 1000, mensualidad:  900, meses: 6, total: 6400 })
+  expect(desglosePlan('preparatoria', m3, precios)).toEqual({ inscripcion: 1500, mensualidad: 4900, meses: 3, total: 16200 })
+  expect(desglosePlan('preparatoria', m6, precios)).toEqual({ inscripcion: 1500, mensualidad: 2900, meses: 6, total: 18900 })
+})
+
+test('6c. sin claves por nivel cae a la tarifa única: las escuelas de siempre no cambian', () => {
+  const m6 = { id: '6_meses', meses: 6, mensualidad: 1000 }
+  const soloUna = { inscripcion: 599 }
+  expect(desglosePlan('secundaria', m6, soloUna)).toEqual(desglosePlan('preparatoria', m6, soloUna))
+  expect(desglosePlan('secundaria', m6, soloUna).total).toBe(599 + 6 * 1000)
 })
