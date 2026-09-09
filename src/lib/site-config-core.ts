@@ -384,8 +384,14 @@ function compatible(base: unknown, valor: unknown): boolean {
  * `logoOscuro` NO está aquí a propósito: `''` significa "no hay variante para
  * fondo oscuro" y `LandingClient` cae a `logo` con un filtro de inversión.
  * Tampoco `landing.ciudad` ni `cct`: vacío = se omite el segmento en la UI.
+ *
+ * `whatsappUrl` SALIÓ de esta lista. Estaba por el `<a href="">` que recargaba
+ * la página, pero ese enlace ya no se pinta sin número: la landing gatea los
+ * tres CTA y el botón flotante. Ahora `''` significa lo mismo que en
+ * `logoOscuro` — la escuela no tiene ese canal — y tenerlo aquí impedía
+ * guardarlo, que es justo lo que necesita una escuela sin WhatsApp.
  */
-const SIN_VACIO: ReadonlySet<ClaveEditable> = new Set<ClaveEditable>(['logo', 'whatsappUrl'])
+const SIN_VACIO: ReadonlySet<ClaveEditable> = new Set<ClaveEditable>(['logo'])
 
 // ─── Elementos de los arreglos editables ─────────────────────────────────────
 

@@ -370,21 +370,27 @@ test('toda ruta editable que sea arreglo en CONFIG tiene normalizador (fail-clos
   expect(normalizarArreglo('landing.hero_badges', ['a', 2])).toBeUndefined()
 })
 
-test("'' se rechaza en logo y whatsappUrl, pero se acepta donde vacío significa algo", () => {
+test("'' se rechaza en logo, pero se acepta donde vacío significa algo", () => {
   const r = mergeSiteConfig(CONFIG, {
     logo: '',
-    whatsappUrl: '   ',
     logoOscuro: '',          // "sin variante oscura": LandingClient cae a `logo` + invert
     cct: '',
     landing: { ciudad: '', cct: '' },
   })
   const base = esperado()
   expect(r.logo).toBe(base.logo)
-  expect(r.whatsappUrl).toBe(base.whatsappUrl)
   expect(r.logoOscuro).toBe('')
   expect(r.cct).toBe('')
   expect(r.landing.ciudad).toBe('')
   expect(r.landing.cct).toBe('')
+})
+
+test("whatsappUrl '' SÍ se guarda: es una escuela sin ese canal, no un borrado accidental", () => {
+  // Salió de SIN_VACIO junto con el gate de la landing: sin número no se pinta
+  // ni un CTA de WhatsApp, así que ya no hay `<a href="">` que recargue nada.
+  const r = mergeSiteConfig(CONFIG, { whatsapp: '', whatsappUrl: '' })
+  expect(r.whatsapp).toBe('')
+  expect(r.whatsappUrl).toBe('')
 })
 
 test('base con hoja ausente o null acepta un override primitivo pero no un objeto', () => {

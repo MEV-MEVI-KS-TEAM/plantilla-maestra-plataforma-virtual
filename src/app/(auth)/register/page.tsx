@@ -158,7 +158,12 @@ function LeftPanel() {
           borderRadius: 16, padding: 4, display: 'inline-block',
           border: '1px solid rgba(255,255,255,0.25)',
         }}>
-          <Image src={cfg.logo} alt={cfg.nombre} width={68} height={68}
+          {/* Este panel es AZUL OSCURO: va la variante para fondo oscuro, como
+              el nav, el hero, el footer y el sidebar. Con `cfg.logo` a secas,
+              una escuela cuyo logo claro sea oscuro (Moreta IED lo tiene azul
+              marino) lo pinta casi invisible sobre su propio fondo. El logo
+              móvil de más abajo sí va sobre blanco y se queda con `cfg.logo`. */}
+          <Image src={cfg.logoOscuro || cfg.logo} alt={cfg.nombre} width={68} height={68}
             style={{ borderRadius: 12, objectFit: 'contain', display: 'block' }} priority />
         </div>
         <p className="mt-4 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>
@@ -219,6 +224,16 @@ export default function RegisterPage() {
   // B7 — en modo solo_cursos no hay nivel ni modalidad que elegir: el alumno se
   // inscribe a diplomados, y el servidor le pone nivel='diplomado'.
   const soloCursos = esSoloCursos()
+
+  // Por dónde se le pide ayuda a la escuela cuando el alta falla. Los mensajes
+  // decían "escríbenos por WhatsApp" en duro: una escuela sin WhatsApp mandaba
+  // al prospecto a un canal que no existe, justo en el momento en que se le
+  // acaba de romper el registro. Se nombra el canal que la escuela SÍ tiene.
+  const canalAyuda = cfg.whatsappUrl?.trim()
+    ? 'escríbenos por WhatsApp'
+    : cfg.contactoEmail?.trim()
+      ? `escríbenos a ${cfg.contactoEmail}`
+      : 'ponte en contacto con nosotros'
 
   // Cursos de ingreso: producto de pago único, aparte del plan de Sec/Prepa/Lic.
   // Vacío si el cliente no los vende, y entonces el bloque ni se dibuja. Antes
@@ -312,13 +327,13 @@ export default function RegisterPage() {
         if (msg.includes('already')) {
           setError('Ya existe una cuenta con ese correo. Inicia sesión.')
         } else if (msg.includes('rate limit') || msg.includes('too many')) {
-          setError('Hemos enviado demasiados correos en la última hora. Espera unos minutos y vuelve a intentarlo, o escríbenos por WhatsApp y te damos de alta nosotros.')
+          setError(`Hemos enviado demasiados correos en la última hora. Espera unos minutos y vuelve a intentarlo, o ${canalAyuda} y te damos de alta nosotros.`)
         } else if (msg.includes('password')) {
           setError('La contraseña no cumple los requisitos mínimos. Usa al menos 8 caracteres.')
         } else if (msg.includes('invalid') && msg.includes('email')) {
           setError('El correo electrónico no parece válido. Revísalo e intenta de nuevo.')
         } else {
-          setError('No pudimos crear tu cuenta en este momento. Vuelve a intentarlo o escríbenos por WhatsApp.')
+          setError(`No pudimos crear tu cuenta en este momento. Vuelve a intentarlo o ${canalAyuda}.`)
         }
         return
       }
@@ -329,7 +344,7 @@ export default function RegisterPage() {
       // ⚠️ Esto NO desbloquea el registro: para eso hay que apagar "Confirm
       // email" y poner el Site URL real en el panel de Supabase.
       if (!signUpData?.session) {
-        setError('Te enviamos un correo de confirmación a ' + email.trim() + '. Revísalo (y la carpeta de spam) para activar tu cuenta. Si no te llega en unos minutos, escríbenos por WhatsApp y te damos de alta nosotros.')
+        setError(`Te enviamos un correo de confirmación a ${email.trim()}. Revísalo (y la carpeta de spam) para activar tu cuenta. Si no te llega en unos minutos, ${canalAyuda} y te damos de alta nosotros.`)
         return
       }
 
@@ -682,6 +697,10 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <div className="mt-8 flex flex-col items-center gap-3">
+          {/* Mismo gate que la landing: sin número, `href=""` y el clic recarga
+              el formulario a medio llenar. Una escuela sin WhatsApp no ofrece
+              ese canal aquí tampoco. */}
+          {cfg.whatsappUrl?.trim() && (
           <a
             href={cfg.whatsappUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm transition-colors"
@@ -692,6 +711,7 @@ export default function RegisterPage() {
             <span style={{ color: '#22C55E' }}><WaSvg size={16} /></span>
             ¿Necesitas ayuda? WhatsApp
           </a>
+          )}
           <p className="text-xs" style={{ color: '#C8D8E4' }}>
             © {new Date().getFullYear()} {cfg.nombreCompleto}
           </p>

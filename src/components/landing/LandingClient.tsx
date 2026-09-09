@@ -363,7 +363,13 @@ export interface CursoCatalogo {
  */
 export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[]; config: LandingConfig }) {
   const p = config.precios
-  const wa = config.whatsappUrl
+  // Una escuela puede no tener WhatsApp (Moreta IED entrega con el número sin
+  // definir y atiende por correo). Sin este gate los tres CTA y el botón
+  // flotante se pintaban igual, con `href=""`: un clic recargaba la página en
+  // vez de abrir nada. Y peor si el config.ts se quedó con el número de
+  // ejemplo de la plantilla — el alumno escribía a un número que no es de su
+  // escuela. Vacío = la escuela no tiene ese canal, así que no se ofrece.
+  const wa = config.whatsappUrl?.trim() ? config.whatsappUrl : null
   // Los textos pasan por `resolverLanding`: rellena desde CONFIG.landing lo que
   // el config.ts del cliente no traiga y garantiza que toda lista sea arreglo.
   // Sin esto, un cliente legacy sin las 35 claves de F3 se queda sin landing
@@ -398,7 +404,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   return (
     <div className={dmSans.className} style={{ background: C.white, color: C.navy, minHeight: '100vh', ...varsPaleta }}>
       <ScrollProgress />
-      <FloatingWA href={wa} />
+      {wa && <FloatingWA href={wa} />}
 
       {/* ── NAV ──────────────────────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-10 h-[68px]"
@@ -494,9 +500,11 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
               <Link href="/register" className="cjvb-btn-white w-full sm:w-auto">{texto(L.hero_cta_primario)}</Link>
-              <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-outline w-full sm:w-auto">
-                <WaIcon />{` ${texto(L.hero_cta_whatsapp)}`}
-              </a>
+              {wa && (
+                <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-outline w-full sm:w-auto">
+                  <WaIcon />{` ${texto(L.hero_cta_whatsapp)}`}
+                </a>
+              )}
             </div>
 
             {/* Counters */}
@@ -880,9 +888,11 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/register" className="cjvb-btn-white w-full sm:w-auto">{texto(L.cta_boton)}</Link>
-                <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-wa w-full sm:w-auto">
-                  <WaIcon />{` ${texto(L.cta_whatsapp)}`}
-                </a>
+                {wa && (
+                  <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-wa w-full sm:w-auto">
+                    <WaIcon />{` ${texto(L.cta_whatsapp)}`}
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -906,8 +916,12 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           <p className="text-xs mt-1.5">{CONFIG.dominio}</p>
           <div className="flex items-center justify-center gap-3 mt-4 flex-wrap text-xs" style={{ color: 'rgba(224,235,255,0.4)' }}>
             <a href={`mailto:${config.contactoEmail}`} className="hover:text-white transition-colors">{config.contactoEmail}</a>
-            <span>·</span>
-            <a href={config.whatsappUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a>
+            {wa && (
+              <>
+                <span>·</span>
+                <a href={wa} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a>
+              </>
+            )}
           </div>
           {/* Redes sociales */}
           <div className="flex items-center justify-center gap-5 mt-5">
