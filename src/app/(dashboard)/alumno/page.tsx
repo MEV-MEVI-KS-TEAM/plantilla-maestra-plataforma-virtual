@@ -105,6 +105,12 @@ export default function AlumnoDashboard() {
   // `materias`; ahora hace falta el detalle para saber si un mes esta terminado.
   const [acreditadasIds, setAcreditadasIds] = useState<Set<string>>(new Set())
   const [logros,             setLogros]             = useState<Array<{ tipo_logro: string; fecha_obtenido: string }>>([])
+  // El saludo y la fecha dependen de la hora de quien mira, no de la del
+  // servidor. Calcularlos durante el render hacía que el HTML del servidor
+  // (UTC) y el del navegador no coincidieran pasada cierta hora, y React
+  // descartaba la página entera para rehacerla.
+  const [ahora,              setAhora]             = useState<Date | null>(null)
+  useEffect(() => { setAhora(new Date()) }, [])
   const [diasRacha,          setDiasRacha]          = useState(0)
   const [loading,            setLoading]            = useState(true)
   /** Primera materia del plan (orden) con acceso; IVS entra directo a materia, no a /mes/[n] */
@@ -221,8 +227,8 @@ export default function AlumnoDashboard() {
   const porcentaje    = perfil.duracion_meses > 0
     ? Math.round((perfil.meses_desbloqueados / perfil.duracion_meses) * 100)
     : 0
-  const hora          = new Date().getHours()
-  const saludo        = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
+  const hora          = ahora?.getHours() ?? 12
+  const saludo        = !ahora ? '' : hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
   const primerNombre  = perfil?.nombre_completo?.split(' ')?.[0] ?? 'Alumno'
   const mesActivo     = perfil.meses_desbloqueados
   const logrosCount   = logros.length
@@ -320,7 +326,7 @@ export default function AlumnoDashboard() {
 
         <div className="relative z-10">
           <p className="text-xs font-medium mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            {getFechaLarga()}
+            {ahora ? getFechaLarga() : ''}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: '#fff', fontFamily: 'Syne, sans-serif' }}>
             {saludo}, {primerNombre} 👋
