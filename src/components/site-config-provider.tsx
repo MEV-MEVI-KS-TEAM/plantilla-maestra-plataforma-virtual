@@ -17,6 +17,13 @@
  * `useSiteConfig()` devuelve los defaults de config.ts — el mismo objeto que
  * la app usaba antes de F1 —, así que un componente que migre a
  * `useSiteConfig()` no cambia de comportamiento donde el provider no llega.
+ *
+ * ⚠️ AQUÍ NO VIAJA `landing`. El valor se serializa en el HTML de CADA página,
+ * y los 42 textos de la landing (más testimonios, FAQ y beneficios) son varios
+ * kB que ninguna pantalla con provider lee. La landing pública los recibe por
+ * PROPS desde su Server Component (`toLandingConfig`, src/app/page.tsx). Si un
+ * componente cliente llegara a necesitar uno, que se lo pasen por props: no
+ * devuelvas `landing` a `CLAVES_PUBLICAS`.
  */
 import { createContext, useContext, type ReactNode } from 'react'
 import { CONFIG } from '@/lib/config'

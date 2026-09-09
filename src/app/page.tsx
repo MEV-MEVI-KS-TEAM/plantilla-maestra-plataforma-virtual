@@ -41,7 +41,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import { CONFIG } from '@/lib/config'
-import { getSiteConfig, toPublicSiteConfig } from '@/lib/site-config'
+import { getSiteConfig, toLandingConfig } from '@/lib/site-config'
 import { listarCatalogoPublico } from '@/lib/cursos/catalogo'
 import { LandingClient } from '@/components/landing/LandingClient'
 
@@ -49,10 +49,15 @@ export default async function LandingPage() {
   // Config fusionada (config.ts + overrides del editor). Lo editable de la
   // landing sale de aquí; `mostrarCatalogoCursos` NO es editable y se sigue
   // leyendo de CONFIG.
+  //
+  // `toLandingConfig` = el recorte público + `landing`. Esta es la ÚNICA
+  // pantalla que pinta los 42 textos de `landing.*`, y por eso los recibe por
+  // props: el provider del layout ya no los lleva, así que no viajan en el HTML
+  // de las ~30 rutas que no los usan (ver CLAVES_PUBLICAS en site-config-core).
   const config = await getSiteConfig()
   const catalogo = CONFIG.landing.mostrarCatalogoCursos
     ? await listarCatalogoPublico()
     : []
 
-  return <LandingClient catalogo={catalogo} config={toPublicSiteConfig(config)} />
+  return <LandingClient catalogo={catalogo} config={toLandingConfig(config)} />
 }

@@ -7,7 +7,8 @@ import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
 import { getModalidadesActivas, getDuracionLabel, getPlanLabel } from '@/lib/modalidades'
-import { interpolar, type PublicSiteConfig } from '@/lib/site-config-core'
+import { interpolar, type LandingConfig } from '@/lib/site-config-core'
+import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { aclarar, oscurecer, hexToRgb } from '@/lib/contraste'
 import { precioMXN } from '@/lib/cursos/catalogo'
 
@@ -58,9 +59,6 @@ const PALETA_ORIGINAL: Paleta = {
   footer: '#050a14',
 }
 
-/** Claves de `colores` que, si difieren del config.ts del cliente, encienden la paleta personalizada. */
-const CLAVES_PALETA = ['primario', 'secundario', 'acento', 'acentoHover', 'acentoClaro', 'textoSobreAcento'] as const
-
 /**
  * Paleta que pinta la landing para una config dada.
  *
@@ -90,17 +88,14 @@ const CLAVES_PALETA = ['primario', 'secundario', 'acento', 'acentoHover', 'acent
  * (8,15,30,…)) van por `conAlpha` sobre royal / azure / ice / hero.
  * Los alfas por concatenación (`${C.royal}55`) siguen valiendo: aclarar /
  * oscurecer devuelven siempre #RRGGBB.
+ *
+ * El interruptor —`esPaletaPersonalizada`— vive en src/lib/landing-textos.ts:
+ * es lógica pura, compara los hex NORMALIZADOS (trim + mayúsculas, para que
+ * `#3b82f6` y `#3B82F6` cuenten como el mismo color) y así se prueba sin montar
+ * el componente. Es el mismo interruptor que decide si se inyectan las
+ * variables CSS de `variablesLanding`: uno solo, para que no puedan discrepar.
  */
-/**
- * ¿El admin tocó algún color desde el editor? Es el interruptor de TODO lo
- * personalizado —la paleta de esta landing y las variables CSS que se inyectan
- * para globals.css—, así que vive en un solo sitio y no pueden discrepar.
- */
-function esPaletaPersonalizada(colores: PublicSiteConfig['colores']): boolean {
-  return CLAVES_PALETA.some(k => colores[k] !== CONFIG.colores[k])
-}
-
-function paletaLanding(colores: PublicSiteConfig['colores']): Paleta {
+function paletaLanding(colores: LandingConfig['colores']): Paleta {
   if (!esPaletaPersonalizada(colores)) return PALETA_ORIGINAL
   const navy = colores.secundario
   const royal = colores.acento
@@ -357,16 +352,23 @@ export interface CursoCatalogo {
  * la consulta a mano. Aquí solo se pinta lo que el servidor ya decidió mostrar.
  *
  * `config` ("Personalizar mi página", F1) llega también desde page.tsx: es
- * config.ts fusionado con los overrides de site_config, recortado a lo
- * público. Todo lo EDITABLE (logo, nombre, contacto, redes, colores, textos de
- * landing.*, precios, modalidades) se lee de ahí; CONFIG queda solo para lo
- * que no se edita (niveles, dominio). Con site_config vacía `config` es
- * config.ts tal cual y la página no cambia ni un byte.
+ * config.ts fusionado con los overrides de site_config, recortado a lo público
+ * MÁS `landing` (`toLandingConfig`). Esta es la única pantalla que pinta los
+ * textos de landing.*, y por eso los recibe por props en vez de por el
+ * provider: así no viajan en el HTML de las demás rutas. Todo lo EDITABLE
+ * (logo, nombre, contacto, redes, colores, textos, precios, modalidades) se lee
+ * de ahí; CONFIG queda solo para lo que no se edita (niveles, dominio). Con
+ * site_config vacía `config` es config.ts tal cual y la página no cambia ni un
+ * byte.
  */
-export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[]; config: PublicSiteConfig }) {
+export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[]; config: LandingConfig }) {
   const p = config.precios
   const wa = config.whatsappUrl
-  const L = config.landing
+  // Los textos pasan por `resolverLanding`: rellena desde CONFIG.landing lo que
+  // el config.ts del cliente no traiga y garantiza que toda lista sea arreglo.
+  // Sin esto, un cliente legacy sin las 35 claves de F3 se queda sin landing
+  // (`L.contadores.map` sobre undefined es un TypeError que tira la página).
+  const L = resolverLanding(config.landing)
   const testimonios = L.testimonios
   const mods = config.modalidades
   const activas = getModalidadesActivas(mods)
@@ -386,7 +388,11 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
     whatsapp: config.whatsapp,
     inscripcion: fmt(p.inscripcion),
   }
-  const texto = (s: string) => interpolar(s, vars)
+  // `s?: string` a propósito: `resolverLanding` ya garantiza las 42 claves,
+  // pero DENTRO de las listas (`contadores[i].etiqueta`, `faq_items[i].a`…) los
+  // campos siguen viniendo del config.ts del cliente. Un campo que falte pinta
+  // vacío en lugar de escribir "undefined" en la página.
+  const texto = (s?: string) => interpolar(s ?? '', vars)
   useScrollReveal()
 
   return (

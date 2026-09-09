@@ -139,7 +139,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | `documentos` | privado | 10 MB | idem | documentos del alumno + la constancia |
    | `constancias` | privado | 10 MB | idem | declarado pero **sin uso en la app** hoy |
    | `recibos` | privado | 2 MB | idem + `migrations/20260716140000` | recibos de pago |
-   | `branding` | **público** | 2 MB | idem + `migrations/20260908120000_site_config.sql` | logo que sube el admin desde "Personalizar mi página" (png/jpg/webp/svg; escritura solo service role) |
+   | `branding` | **público** | 2 MB | idem + `migrations/20260908120000_site_config.sql` | logo que sube el admin desde "Personalizar mi página". El bucket solo guarda **png/jpeg/webp** (sin `image/svg+xml`): el editor acepta SVG a la *entrada*, pero la API lo rasteriza a PNG antes de subir. Escritura solo service role |
    | `cursos` | privado | 10 MB | `scripts/migracion-cursos-diplomados.sql:241` | portadas y PDF de Cursos y Diplomados |
 
    > ⚠️ **Discrepancia conocida `avatares` vs `avatars`.** El schema crea el bucket

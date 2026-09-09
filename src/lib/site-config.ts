@@ -41,11 +41,13 @@ export {
   mergeSiteConfig,
   normalizarArreglo,
   toPublicSiteConfig,
+  toLandingConfig,
   derivarAliasPrecios,
 } from '@/lib/site-config-core'
 export type {
   SiteConfig,
   PublicSiteConfig,
+  LandingConfig,
   SiteConfigOverrides,
   OverrideModalidad,
   ClaveEditable,

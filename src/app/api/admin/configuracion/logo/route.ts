@@ -47,6 +47,11 @@ import { mergeSiteConfig, revalidateSiteConfig } from '@/lib/site-config'
 import { recortarAEditables } from '@/lib/site-config-validacion'
 import { svgEsSeguro } from '@/lib/svg-seguro'
 import { BUCKET_BRANDING, borrarLogoSiEsDelBucket, urlPublicaBranding } from '@/lib/site-config-storage'
+import {
+  MENSAJE_SITE_CONFIG_SIN_MIGRAR,
+  SITE_CONFIG_SIN_MIGRAR,
+  esErrorTablaInexistente,
+} from '@/lib/site-config-errores'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -56,10 +61,18 @@ const LOGO_MAX_BYTES = 2 * 1024 * 1024
 /** Lado máximo del logo rasterizado. Cabe en cualquier cabecera y en retina. */
 const LOGO_LADO_MAX = 512
 /**
- * Tope de píxeles de ENTRADA. Un PNG de 40 kB puede declarar 30000×30000 y
- * tumbar el proceso al descomprimirlo; con esto sharp falla y se responde 400.
+ * Tope de píxeles de ENTRADA (`limitInputPixels` de sharp). Un PNG de 40 kB
+ * puede declarar 30000×30000 y tumbar el proceso al descomprimirlo; con esto
+ * sharp falla y se responde 400.
+ *
+ * 16 MP y no 30: es una BOMBA DE DESCOMPRESIÓN, y el número tiene que ser el
+ * techo de lo razonable para un LOGO, no el de sharp. 30 MP en RGBA son ~120 MB
+ * de mapa de bits en memoria por petición — suficiente para tumbar una lambda
+ * de 1 GB con dos subidas simultáneas, y todo eso para acabar encajando la
+ * imagen en 512 px. 16 MP (~64 MB) siguen sobrando: un logo de 4000×4000 px
+ * pasa de largo, y quien tenga algo mayor tiene un póster, no un logo.
  */
-const MAX_PIXELES_ENTRADA = 30_000_000
+const MAX_PIXELES_ENTRADA = 16_000_000
 /** DPI con el que se rasteriza el SVG antes de encajarlo en 512 px. */
 const DENSIDAD_SVG = 300
 
@@ -87,9 +100,32 @@ const ERR_SVG = 'El SVG contiene contenido no permitido'
 const ERR_SVG_INICIO = 'El SVG debe empezar por <svg o <?xml'
 const ERR_PROCESO = 'La imagen está dañada o no se pudo procesar'
 
+/**
+ * MIMEs que NO dicen NADA del contenido y por tanto no se contrastan con la
+ * firma: manda lo que digan los bytes.
+ *
+ *   ''                        el navegador no supo tipar el archivo, o el
+ *                             cliente no mandó `type=` (curl, un fetch a mano).
+ *   application/octet-stream  el genérico de "aquí van bytes". Lo ponen varios
+ *                             clientes HTTP y algunos gestores de archivos
+ *                             cuando la extensión no les suena; rechazarlo
+ *                             obligaba al admin a renombrar un PNG perfecto.
+ *
+ * No se ablanda nada: la firma de bytes ya decidió qué es el archivo antes de
+ * mirar el MIME, y un SVG sigue pasando además por `svgEsSeguro` y por el
+ * rasterizado. Lo que este conjunto evita es rechazar archivos VÁLIDOS por lo
+ * que el cliente no supo declarar.
+ */
+const MIME_SIN_INFORMACION: ReadonlySet<string> = new Set(['', 'application/octet-stream'])
+
+/** El MIME tal como llega, normalizado: sin parámetros, sin espacios, en minúsculas. */
+function normalizarMime(mime: string): string {
+  return mime.toLowerCase().split(';')[0].trim()
+}
+
 /** El MIME que declara el navegador, normalizado. `image/jpg` es un alias frecuente. */
 function formatoDeclarado(mime: string): FormatoEntrada | null {
-  switch (mime.toLowerCase().split(';')[0].trim()) {
+  switch (normalizarMime(mime)) {
     case 'image/png': return 'png'
     case 'image/jpeg':
     case 'image/jpg': return 'jpeg'
@@ -227,6 +263,22 @@ async function aplicarLogo(
   return nueva
 }
 
+/**
+ * Traduce lo que se escapó del `try` a una respuesta. Mismo criterio que
+ * ../route.ts: si lo que falta es la tabla `site_config` (cliente de la flota
+ * sin la migración de F1) se responde 503 diciendo qué correr, no un 500 opaco
+ * que manda al admin a abrir un ticket.
+ */
+function respuestaDeError(e: unknown): NextResponse {
+  if (esErrorTablaInexistente(e)) {
+    return NextResponse.json(
+      { error: MENSAJE_SITE_CONFIG_SIN_MIGRAR, codigo: SITE_CONFIG_SIN_MIGRAR },
+      { status: 503 },
+    )
+  }
+  return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+}
+
 // ─── POST /api/admin/configuracion/logo ──────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
@@ -255,9 +307,10 @@ export async function POST(request: NextRequest) {
     if (original.length === 0) return NextResponse.json({ error: 'El archivo está vacío' }, { status: 400 })
     if (original.length > LOGO_MAX_BYTES) return NextResponse.json({ error: ERR_PESO }, { status: 400 })
 
-    // Manda la FIRMA de bytes. El MIME solo tiene que no contradecirla; algunos
-    // navegadores y clientes (curl sin `type=`) lo mandan vacío, y ahí no hay
-    // nada que contrastar: se acepta lo que digan los bytes.
+    // Manda la FIRMA de bytes. El MIME solo tiene que no contradecirla, y
+    // cuando no aporta nada (vacío o `application/octet-stream`, ver
+    // MIME_SIN_INFORMACION) no hay qué contrastar: se acepta lo que digan los
+    // bytes.
     const real = formatoPorFirma(original)
     if (!real) {
       const cabecera = cabeceraTexto(original)
@@ -266,8 +319,8 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ error: ERR_FORMATO }, { status: 400 })
     }
-    const mime = (file.type ?? '').trim()
-    if (mime !== '') {
+    const mime = normalizarMime(file.type ?? '')
+    if (!MIME_SIN_INFORMACION.has(mime)) {
       const declarado = formatoDeclarado(mime)
       if (!declarado || declarado !== real) {
         return NextResponse.json({ error: ERR_FORMATO }, { status: 400 })
@@ -329,7 +382,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (e) {
     console.error('[configuracion/logo]', e)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    return respuestaDeError(e)
   }
 }
 
@@ -364,6 +417,6 @@ export async function DELETE(request: NextRequest) {
     })
   } catch (e) {
     console.error('[configuracion/logo]', e)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    return respuestaDeError(e)
   }
 }

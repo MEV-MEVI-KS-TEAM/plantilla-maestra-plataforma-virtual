@@ -641,6 +641,16 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
  * Nada más: lo no editable (niveles, dominio, modo, pagos, licenciaturas…) los
  * componentes lo siguen leyendo de CONFIG como hoy, y así el provider no
  * duplica en el HTML cosas que ya vienen en el bundle.
+ *
+ * `landing` NO está aquí A PROPÓSITO (hardening). El provider serializa este
+ * objeto en el HTML de CADA página de la app —dashboard del alumno, panel de
+ * admin, login…— y `landing` es con diferencia la clave más pesada (42 textos,
+ * testimonios, FAQ, beneficios: varios kB por página). Ningún consumidor de
+ * `useSiteConfig()` la lee: la ÚNICA pantalla que pinta `landing` es la landing
+ * pública, y la recibe por PROPS desde su Server Component (ver
+ * `toLandingConfig` y src/app/page.tsx). Si algún día un componente cliente
+ * necesitara un texto de `landing`, que se lo pasen por props igual — volver a
+ * meterla aquí es pagar el peso en las ~30 rutas que no la usan.
  */
 export const CLAVES_PUBLICAS = [
   'nombre',
@@ -657,7 +667,6 @@ export const CLAVES_PUBLICAS = [
   'contactoEmail',
   'contactoTelefono',
   'redes',
-  'landing',
   'precios',
   'modalidades',
 ] as const
@@ -695,10 +704,27 @@ export function toPublicSiteConfig(cfg: SiteConfig): PublicSiteConfig {
     contactoEmail: cfg.contactoEmail,
     contactoTelefono: cfg.contactoTelefono,
     redes: cfg.redes,
-    landing: cfg.landing,
     precios: cfg.precios,
     modalidades: cfg.modalidades,
   }
+}
+
+/**
+ * Lo que recibe la LANDING pública: el recorte público + `landing`.
+ *
+ * Es la única pantalla que pinta los textos de `landing.*`, y los recibe por
+ * PROPS desde su Server Component (src/app/page.tsx) en vez de por el contexto
+ * — así el peso de esos 42 textos se paga en la ruta que los usa y en ninguna
+ * otra (ver `CLAVES_PUBLICAS`).
+ */
+export type LandingConfig = PublicSiteConfig & { landing: DeepReadonly<SiteConfig['landing']> }
+
+/**
+ * `toPublicSiteConfig` + `landing`. Mismas reglas que aquél: no clona, comparte
+ * referencias con `cfg` (que es siempre un clon fresco del merge).
+ */
+export function toLandingConfig(cfg: SiteConfig): LandingConfig {
+  return { ...toPublicSiteConfig(cfg), landing: cfg.landing }
 }
 
 // ─── Placeholders de los textos de la landing ────────────────────────────────

@@ -759,7 +759,13 @@ CREATE POLICY "pagos: admin gestiona"
 CREATE POLICY "site_config: lectura abierta"
   ON public.site_config FOR SELECT TO anon, authenticated
   USING (true);
-GRANT SELECT ON public.site_config TO anon, authenticated;
+-- GRANT por COLUMNAS: `updated_by` (el UUID del admin que guardó) no lo lee un
+-- visitante anónimo; `data` sí, que es lo que la landing necesita. El REVOKE va
+-- antes porque un privilegio de TABLA gana sobre el de columna, así que una
+-- base que ya tenga el grant amplio (versión anterior de la migración) se
+-- quedaría con él. Espejo de supabase/migrations/20260908120000_site_config.sql.
+REVOKE SELECT ON public.site_config FROM anon, authenticated;
+GRANT SELECT (id, data, updated_at) ON public.site_config TO anon, authenticated;
 
 
 -- ============================================================
@@ -810,7 +816,11 @@ VALUES
   -- F1 "Personalizar mi página": el logo que sube el admin. PÚBLICO porque la
   -- landing lo pinta con <img src> sin sesión (como 'avatares'); 2 MB y solo
   -- imágenes porque es un logo. Escritura solo service role, vía la API.
-  ('branding',    'branding',    true,  2097152,   ARRAY['image/png','image/jpeg','image/webp','image/svg+xml'])
+  -- SIN 'image/svg+xml' aunque el editor acepte SVG a la ENTRADA: la API lo
+  -- rasteriza a PNG antes de subir (FORMATO_SALIDA en
+  -- src/app/api/admin/configuracion/logo/route.ts), así que en el bucket no hay
+  -- ni puede haber un SVG — y este bucket es público, donde un SVG es código.
+  ('branding',    'branding',    true,  2097152,   ARRAY['image/png','image/jpeg','image/webp'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Políticas de Storage

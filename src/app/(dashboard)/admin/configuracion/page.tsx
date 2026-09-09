@@ -38,6 +38,7 @@ import { useToast, ToastContainer } from '@/components/ui/toast'
 import type { SiteConfig, SiteConfigOverrides } from '@/lib/site-config-core'
 import type { ConfigEditable } from '@/lib/site-config-validacion'
 import { validarOverrides } from '@/lib/site-config-validacion'
+import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
 import { campoPorClave } from '@/lib/site-config-campos'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
@@ -105,6 +106,14 @@ export default function PersonalizarPage() {
 
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
+  /**
+   * `codigo` del cuerpo de error, cuando la API lo manda. Hoy solo existe uno,
+   * `SITE_CONFIG_SIN_MIGRAR` (503): el cliente todavía no corrió la migración
+   * de F1. Se guarda aparte del mensaje para poder dar la instrucción exacta en
+   * vez del "avisa a soporte" genérico — que en este caso es un rodeo, porque
+   * lo que hay que hacer cabe en una línea.
+   */
+  const [codigoError, setCodigoError] = useState<string | null>(null)
   const [defaults, setDefaults] = useState<ConfigEditable | null>(null)
   const [merged, setMerged] = useState<ConfigEditable | null>(null)
   const [overrides, setOverrides] = useState<SiteConfigOverrides>({})
@@ -136,9 +145,15 @@ export default function PersonalizarPage() {
   const cargar = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/configuracion')
-      const data = await res.json()
+      // El cuerpo manda: la API explica QUÉ falla (p. ej. el 503 de la tabla
+      // sin migrar). `catch` por si la respuesta ni siquiera es JSON — un 502
+      // del borde no lo es — para no perder el motivo real en un TypeError.
+      const data = await res.json().catch(() => ({} as Record<string, unknown>))
       if (!res.ok) {
-        setErrorCarga(data.error ?? 'No se pudo cargar la configuración')
+        setErrorCarga(
+          typeof data.error === 'string' ? data.error : 'No se pudo cargar la configuración',
+        )
+        setCodigoError(typeof data.codigo === 'string' ? data.codigo : null)
         return
       }
       setDefaults(data.defaults as ConfigEditable)
@@ -225,9 +240,16 @@ export default function PersonalizarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cuerpo),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({} as Record<string, unknown>))
       if (!res.ok) {
-        showToast(data.error ?? 'No se pudieron publicar los cambios', 'error', 6000)
+        // El `error` del cuerpo, tal cual: es el que dice si falló un campo, si
+        // el cuerpo era enorme o si a este cliente le falta la migración (503).
+        // Un texto genérico aquí obliga a mirar los logs para saberlo.
+        showToast(
+          typeof data.error === 'string' ? data.error : 'No se pudieron publicar los cambios',
+          'error',
+          6000,
+        )
         if (data.clave) irAlCampo(String(data.clave))
         return
       }
@@ -284,9 +306,12 @@ export default function PersonalizarPage() {
     setRestaurando(true)
     try {
       const res = await fetch('/api/admin/configuracion', { method: 'DELETE' })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({} as Record<string, unknown>))
       if (!res.ok) {
-        showToast(data.error ?? 'No se pudo restaurar el diseño', 'error')
+        showToast(
+          typeof data.error === 'string' ? data.error : 'No se pudo restaurar el diseño',
+          'error',
+        )
         return
       }
       setMerged(data.merged as ConfigEditable)
@@ -341,8 +366,9 @@ export default function PersonalizarPage() {
       <div className="flex flex-col items-center justify-center gap-2 min-h-[400px] text-center px-4">
         <p className="text-sm" style={{ color: '#EF4444' }}>{errorCarga ?? 'Error al cargar'}</p>
         <p className="text-xs text-gray-500">
-          Si el problema sigue, avisa a soporte: la personalización necesita la
-          última versión de la base de datos.
+          {codigoError === SITE_CONFIG_SIN_MIGRAR
+            ? 'Es un paso pendiente del despliegue, no una falla: hay que correr esa migración en la base de datos de esta escuela (conexión directa, puerto 5432) y volver a entrar.'
+            : 'Si el problema sigue, avisa a soporte: la personalización necesita la última versión de la base de datos.'}
         </p>
       </div>
     )

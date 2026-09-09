@@ -1079,8 +1079,10 @@ ALTER TABLE ONLY public.usuarios
 -- de este archivo): un desfase de encoding entre instalador y migración
 -- dejaría dos políticas en vez de una.
 --
--- ⚠️ El bucket de storage `branding` (PÚBLICO, 2 MB, png/jpg/webp/svg; lectura
--- pública, escritura solo service role) NO va aquí: este archivo no crea
+-- ⚠️ El bucket de storage `branding` (PÚBLICO, 2 MB, guarda png/jpeg —el
+-- editor acepta también webp y svg a la ENTRADA, pero la API los rasteriza a
+-- PNG antes de subir—; lectura pública, escritura solo service role) NO va
+-- aquí: este archivo no crea
 -- NINGÚN bucket; los crea A MANO el operador en el pre-vuelo (scripts/README.md,
 -- "Workflow de cliente nuevo", paso 2). No lleva ni una línea de storage a
 -- propósito: el DDL sobre storage.objects exige ser dueño de la tabla y con el
@@ -1102,7 +1104,13 @@ ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "site_config: lectura abierta" ON public.site_config;
 CREATE POLICY "site_config: lectura abierta" ON public.site_config FOR SELECT TO anon, authenticated USING (true);
 
-GRANT SELECT ON public.site_config TO anon, authenticated;
+-- GRANT por COLUMNAS: updated_by (el UUID del admin que guardo) no lo lee un
+-- visitante anonimo; data si, que es lo que la landing necesita. El REVOKE va
+-- antes porque un privilegio de TABLA gana sobre el de columna, asi que una
+-- base que ya tenga el grant amplio (version anterior de la migracion) se
+-- quedaria con el. Espejo de supabase/migrations/20260908120000_site_config.sql.
+REVOKE SELECT ON public.site_config FROM anon, authenticated;
+GRANT SELECT (id, data, updated_at) ON public.site_config TO anon, authenticated;
 
 --
 -- Name: alumnos; Type: ROW SECURITY; Schema: public; Owner: -

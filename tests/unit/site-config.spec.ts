@@ -8,6 +8,7 @@ import {
   mergeSiteConfig,
   derivarAliasPrecios,
   toPublicSiteConfig,
+  toLandingConfig,
   normalizarArreglo,
   congelarProfundo,
   interpolar,
@@ -158,22 +159,43 @@ test('9. overrides que no son objeto plano → defaults, sin lanzar', () => {
   }
 })
 
-test('10. toPublicSiteConfig expone exactamente las 17 claves públicas', () => {
+test('10. toPublicSiteConfig expone exactamente las 16 claves públicas (sin landing)', () => {
   const pub = toPublicSiteConfig(mergeSiteConfig(CONFIG, {}))
   const claves = Object.keys(pub).sort()
 
   const esperadas = [
     'nombre', 'nombreCompleto', 'tagline', 'cct', 'logo', 'logoOscuro', 'colores',
     'whatsapp', 'whatsappUrl', 'whatsappDisplay', 'email', 'contactoEmail',
-    'contactoTelefono', 'redes', 'landing', 'precios', 'modalidades',
+    'contactoTelefono', 'redes', 'precios', 'modalidades',
   ]
-  expect(esperadas.length).toBe(17)
+  expect(esperadas.length).toBe(16)
   expect(claves).toEqual([...esperadas].sort())
   expect([...CLAVES_PUBLICAS].sort()).toEqual([...esperadas].sort())
+
+  // `landing` NO viaja en el provider: son 42 textos que se serializarían en el
+  // HTML de cada ruta y solo los pinta la landing pública, que los recibe por
+  // props (`toLandingConfig`). Si esto empieza a fallar, alguien la devolvió a
+  // CLAVES_PUBLICAS — lee el comentario de esa constante antes de "arreglarlo".
+  expect(pub).not.toHaveProperty('landing')
 
   // Nada sensible ni no editable sale al navegador por aquí.
   for (const prohibida of ['pagos', 'licenciaturas', 'prefijoMatricula', 'dominio', 'urlBase', 'modo', 'niveles', 'cursosIngreso', 'diploma', 'documentosRequeridos']) {
     expect(pub).not.toHaveProperty(prohibida)
+  }
+})
+
+test('10b. toLandingConfig = el recorte público + landing, y nada más', () => {
+  const cfg = mergeSiteConfig(CONFIG, {})
+  const landingCfg = toLandingConfig(cfg)
+
+  expect(Object.keys(landingCfg).sort()).toEqual([...CLAVES_PUBLICAS, 'landing'].sort())
+  // Mismas reglas que toPublicSiteConfig: no clona, comparte referencias con el
+  // clon fresco del merge.
+  expect(landingCfg.landing).toBe(cfg.landing)
+  expect(landingCfg.colores).toBe(cfg.colores)
+  // Y sigue sin llevar lo no editable.
+  for (const prohibida of ['pagos', 'licenciaturas', 'dominio', 'modo', 'niveles']) {
+    expect(landingCfg).not.toHaveProperty(prohibida)
   }
 })
 
@@ -419,8 +441,10 @@ test('las dos modalidades a la vez derivan cada una sus alias', () => {
   expect(r.modalidades.map((m) => m.id)).toEqual(esperado().modalidades.map((m) => m.id))
 })
 
-test('toPublicSiteConfig transporta los VALORES sobreescritos, no solo las claves', () => {
-  const pub = toPublicSiteConfig(
+test('toLandingConfig transporta los VALORES sobreescritos, no solo las claves', () => {
+  // Se usa `toLandingConfig` y no `toPublicSiteConfig` porque `landing` ya solo
+  // viaja por esa vía (ver la prueba 10).
+  const pub = toLandingConfig(
     mergeSiteConfig(CONFIG, {
       nombre: 'Escuela X',
       colores: { acento: '#123456' },
@@ -444,7 +468,7 @@ test('toPublicSiteConfig transporta los VALORES sobreescritos, no solo las clave
 })
 
 test('congelarProfundo congela recursivamente objetos y arreglos', () => {
-  const obj = congelarProfundo(toPublicSiteConfig(mergeSiteConfig(CONFIG, {})))
+  const obj = congelarProfundo(toLandingConfig(mergeSiteConfig(CONFIG, {})))
   expect(Object.isFrozen(obj)).toBe(true)
   expect(Object.isFrozen(obj.colores)).toBe(true)
   expect(Object.isFrozen(obj.landing)).toBe(true)

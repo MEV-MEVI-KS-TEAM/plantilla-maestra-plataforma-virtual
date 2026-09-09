@@ -35,6 +35,11 @@ import { CONFIG } from '@/lib/config'
 import { mergeSiteConfig, revalidateSiteConfig } from '@/lib/site-config'
 import { recortarAEditables, recortarOverrides, validarOverrides } from '@/lib/site-config-validacion'
 import { limpiarBucketBranding } from '@/lib/site-config-storage'
+import {
+  MENSAJE_SITE_CONFIG_SIN_MIGRAR,
+  SITE_CONFIG_SIN_MIGRAR,
+  esErrorTablaInexistente,
+} from '@/lib/site-config-errores'
 
 // La fila se lee y escribe en cada petición: nada de esto se puede prerender.
 export const dynamic = 'force-dynamic'
@@ -117,6 +122,26 @@ async function guardarFila(
 
 const DEFAULTS = () => mergeSiteConfig(CONFIG, {})
 
+/**
+ * Traduce lo que se escapó del `try` a una respuesta.
+ *
+ * El fallo ESPERADO en la flota es que `public.site_config` no exista todavía
+ * (~144 clientes ya desplegados que aún no corrieron la migración de F1). Eso
+ * no es un error de la plataforma: es un paso del despliegue que falta, y
+ * responder 500 "Error interno del servidor" mandaba al admin a abrir un ticket
+ * en vez de decirle qué correr. 503 + el nombre del archivo lo resuelve solo.
+ * Cualquier otra cosa sigue siendo un 500 opaco a propósito.
+ */
+function respuestaDeError(e: unknown): NextResponse {
+  if (esErrorTablaInexistente(e)) {
+    return NextResponse.json(
+      { error: MENSAJE_SITE_CONFIG_SIN_MIGRAR, codigo: SITE_CONFIG_SIN_MIGRAR },
+      { status: 503 },
+    )
+  }
+  return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+}
+
 // ─── GET /api/admin/configuracion ────────────────────────────────────────────
 export async function GET() {
   try {
@@ -141,7 +166,7 @@ export async function GET() {
     })
   } catch (e) {
     console.error('[configuracion]', e)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    return respuestaDeError(e)
   }
 }
 
@@ -209,7 +234,7 @@ export async function PUT(request: NextRequest) {
     })
   } catch (e) {
     console.error('[configuracion]', e)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    return respuestaDeError(e)
   }
 }
 
@@ -234,6 +259,6 @@ export async function DELETE() {
     })
   } catch (e) {
     console.error('[configuracion]', e)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    return respuestaDeError(e)
   }
 }

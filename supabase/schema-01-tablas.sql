@@ -67,7 +67,13 @@ DROP POLICY IF EXISTS "site_config: lectura abierta" ON public.site_config;
 CREATE POLICY "site_config: lectura abierta"
   ON public.site_config FOR SELECT TO anon, authenticated
   USING (true);
-GRANT SELECT ON public.site_config TO anon, authenticated;
+-- GRANT por COLUMNAS: `updated_by` (el UUID del admin que guardó) no lo lee un
+-- visitante anónimo; `data` sí, que es lo que la landing necesita. El REVOKE va
+-- antes porque un privilegio de TABLA gana sobre el de columna, así que una
+-- base que ya tenga el grant amplio (versión anterior de la migración) se
+-- quedaría con él. Espejo de supabase/migrations/20260908120000_site_config.sql.
+REVOKE SELECT ON public.site_config FROM anon, authenticated;
+GRANT SELECT (id, data, updated_at) ON public.site_config TO anon, authenticated;
 
 -- ── ALUMNOS ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.alumnos (
