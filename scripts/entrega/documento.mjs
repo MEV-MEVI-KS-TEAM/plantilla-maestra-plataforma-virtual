@@ -143,7 +143,7 @@ ${marca(d)}
 <div class="sub">Documento de entrega oficial de tu plataforma educativa</div>
 <div class="quote mt">"${esc(d.tagline)}"</div>
 <div class="hr"></div>
-<h2>Bienvenid${d.adminGenero === 'f' ? 'a' : 'o'} a la familia MEV, ${esc(d.adminNombre)}.</h2>
+<h2>Bienvenid${d.adminGenero === 'f' ? 'a' : d.adminGenero === 'p' ? 'os' : 'o'} a la familia MEV, ${esc(d.adminNombre)}.</h2>
 <div class="rule"></div>
 <p>Lo que tienes en tus manos no es solo un sitio web: es la infraestructura
 digital completa para operar ${esc(d.frasePrograma)}, con tu propio panel de
