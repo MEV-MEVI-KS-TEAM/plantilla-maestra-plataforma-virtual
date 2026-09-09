@@ -32,7 +32,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Gestionar Cursos', href: '/admin/cursos',        emoji: '🎓', icon: GraduationCap   },
     { label: 'Documentos',       href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
     { label: 'Usuarios',         href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
-    { label: 'Configuración',    href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
+    { label: 'Personalizar mi página', href: '/admin/configuracion', emoji: '⚙️', icon: Settings  },
   ],
   // Rol acotado: ve Alumnos (lectura + registrar pagos) y Estado de Cuenta.
   // Usuarios/Contenido/Documentos/Configuración/Reportes/Cursos quedan ocultos.
@@ -79,7 +79,7 @@ const NAV_ITEMS_SOLO_CURSOS: Record<UserRole, NavItem[]> = {
     { label: 'Reportes',       href: '/admin/reportes',      emoji: '📊', icon: BarChart3       },
     { label: 'Documentos',     href: '/admin/documentos',    emoji: '📄', icon: FolderOpen      },
     { label: 'Usuarios',       href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
-    { label: 'Configuración',  href: '/admin/configuracion', emoji: '⚙️', icon: Settings        },
+    { label: 'Personalizar mi página', href: '/admin/configuracion', emoji: '⚙️', icon: Settings },
   ],
   // El secretario cobra. Estado de Cuenta es del programa y aquí no aplica, así
   // que se queda con Alumnos, desde donde registra los pagos del diplomado.
