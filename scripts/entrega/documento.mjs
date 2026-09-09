@@ -301,9 +301,18 @@ ${L.carreras.some(c => c.desc) ? L.carreras.filter(c => c.desc).map(c => `
 <div class="note"><b>${esc(c.nombre)}</b><p>${esc(c.desc)}</p>${
   (c.incluye || []).length ? ul(c.incluye.map(esc)) : ''
 }</div>`).join('') : ''}
-${L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
-      L.modalidades.map(m => [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
-        mxn((m.mensualidad || 0) * (m.meses || 0))]))}` : ''}`
+${L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Colegiatura', 'Costo total'],
+      // «Total del plan» decía mensualidad × meses, o sea SOLO la colegiatura:
+      // en un programa de $3,500 a 18 meses imprimía $63,000 mientras la landing
+      // y el mensaje de entrega decían $102,000. El cliente comparaba y veía dos
+      // cifras distintas para lo mismo. Ahora la columna se llama por su nombre
+      // y el costo total suma lo que de verdad paga el alumno, igual que la
+      // tabla de Secundaria/Preparatoria de la página anterior.
+      L.modalidades.map(m => {
+        const colegiatura = (m.mensualidad || 0) * (m.meses || 0)
+        return [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
+          mxn(colegiatura), mxn((L.inscripcion || 0) + colegiatura + (L.certificacion || 0))]
+      }))}` : ''}`
 }
 
 function soporte(d) {

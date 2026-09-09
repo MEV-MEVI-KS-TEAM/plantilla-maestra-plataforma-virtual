@@ -468,6 +468,38 @@ const pag = await nav.newPage()
 await pag.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle' })
 await pag.evaluate(() => document.fonts.ready)
 await pag.waitForTimeout(2000)
+
+// ── Guardia de desbordamiento ────────────────────────────────────────────
+// `.page` es un alto FIJO con `overflow:hidden`: lo que no cabe no salta a la
+// página siguiente, se RECORTA sin decir nada. Un cliente con dos programas de
+// licenciatura perdía el segundo plan de su tabla y el documento oficial salía
+// incompleto sin que nadie se enterara.
+// Se mide después de cargar las fuentes, que es cuando el alto es el real.
+const desbordadas = await pag.evaluate(() => {
+  const out = []
+  document.querySelectorAll('.page').forEach((el, i) => {
+    const sobra = el.scrollHeight - el.clientHeight
+    if (sobra > 2) out.push({ pagina: i + 1, sobra })
+  })
+  return out
+})
+if (desbordadas.length) {
+  await nav.close()
+  abortar(
+    `El contenido no cabe en ${desbordadas.length} página(s) y se recortaría en silencio.`,
+    [
+      desbordadas.map(d => `  · Página ${d.pagina}: sobran ${d.sobra}px`).join('\n'),
+      '',
+      '`.page` tiene alto fijo y `overflow:hidden`: lo que desborda NO salta a la',
+      'página siguiente, desaparece. Un documento de entrega incompleto es peor',
+      'que uno feo, así que esto para en vez de emitirlo.',
+      '',
+      'Reparte el contenido de esa página en documento.mjs (por ejemplo, mueve una',
+      'sección a una página nueva) y vuelve a correr `pnpm entrega`.',
+    ].join('\n'),
+  )
+}
+
 await pag.pdf({ path: pdfPath, format: 'Letter', printBackground: true,
   margin: { top: '0', right: '0', bottom: '0', left: '0' } })
 await nav.close()
