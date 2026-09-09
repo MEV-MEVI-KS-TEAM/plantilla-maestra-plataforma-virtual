@@ -272,7 +272,9 @@ test('21. los defaults de CONFIG (recortados) pasan la validación sin cambios',
   const r = ok(v(cuerpo, ORIGEN))
   expect(r.nombre).toBe(CONFIG.nombre)
   expect(r.logo).toBe(CONFIG.logo)
-  expect(r.whatsappUrl).toBe(`https://wa.me/${CONFIG.whatsapp}`)
+  // Escrito contra la REGLA, no contra el config de la plantilla: una escuela
+  // sin WhatsApp deriva '' y este test corre también en el clon del cliente.
+  expect(r.whatsappUrl).toBe(CONFIG.whatsapp ? `https://wa.me/${CONFIG.whatsapp}` : '')
   expect((r.landing as Record<string, unknown>).faq_items).toEqual(CONFIG.landing.faq_items)
   expect((r.landing as Record<string, unknown>).hero_subtitulo).toBe(CONFIG.landing.hero_subtitulo)
   // Y el merge de lo devuelto es deep-equal a CONFIG: guardar los defaults no cambia nada.
