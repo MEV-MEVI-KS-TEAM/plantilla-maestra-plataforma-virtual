@@ -230,6 +230,12 @@ const MAX_HERO = campoPorClave('landing.hero_titulo')?.max ?? 60
 // comparten borrador (c6) entra ya como administrador.
 test.use({ storageState: ADMIN_STATE })
 
+// ⚠️ Con `test.use({ storageState })` a nivel de archivo, `browser.newContext()`
+// dentro de un test HEREDA esa sesión de admin (Playwright aplica las opciones
+// de contexto por defecto). Un contexto "anónimo" o "del alumno" debe pasar un
+// storageState vacío explícito o /login lo redirige al panel del admin.
+const SIN_SESION = { cookies: [], origins: [] }
+
 test.describe.serial('Personalizar mi página — editor (F5)', () => {
   test.beforeAll(async ({ browser }) => {
     adminApi = await apiRequest.newContext({ baseURL: BASE_URL, storageState: ADMIN_STATE })
@@ -468,7 +474,7 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await esperarHtml(anonApi, '/', TEXTO_HERO_QA, true)
     await esperarHtml(anonApi, '/', fmt(MENSUALIDAD_QA), true)
 
-    const ctxAnon = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT })
+    const ctxAnon = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT, storageState: SIN_SESION })
     const anon = await ctxAnon.newPage()
     try {
       await anon.goto('/')
@@ -533,7 +539,7 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
   // c7 — Control: cambiar la piel no rompe el acceso del alumno
   // ══════════════════════════════════════════════════════════════════════════
   test('c7 — el alumno sigue entrando por el formulario y ve su panel', async ({ browser }) => {
-    const ctxAlumno = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT })
+    const ctxAlumno = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT, storageState: SIN_SESION })
     const alumno = await ctxAlumno.newPage()
     try {
       // Mismo flujo que e2e/cursos-diplomados.spec.ts (`loginAlumno`).
@@ -585,7 +591,7 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await esperarHtml(anonApi, '/', TEXTO_HERO_QA, false)
     await esperarHtml(anonApi, '/', HERO_DEFAULT, true)
 
-    const ctxAnon = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT })
+    const ctxAnon = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT, storageState: SIN_SESION })
     const anon = await ctxAnon.newPage()
     try {
       await anon.goto('/')
