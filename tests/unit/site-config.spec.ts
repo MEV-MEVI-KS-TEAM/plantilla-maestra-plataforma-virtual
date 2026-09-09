@@ -10,6 +10,8 @@ import {
   toPublicSiteConfig,
   normalizarArreglo,
   congelarProfundo,
+  interpolar,
+  PLACEHOLDERS,
   type SiteConfig,
 } from '@/lib/site-config-core'
 
@@ -325,7 +327,18 @@ test('toda ruta editable que sea arreglo en CONFIG tiene normalizador (fail-clos
     for (const seg of ruta.split('.')) actual = (actual as Record<string, unknown>)[seg]
     return Array.isArray(actual)
   })
-  expect(rutasArreglo.sort()).toEqual(['landing.hero_badges', 'landing.respaldo_badges', 'landing.testimonios'])
+  expect(rutasArreglo.sort()).toEqual([
+    'landing.beneficios_items',
+    'landing.contadores',
+    'landing.dolor_items',
+    'landing.faq_items',
+    'landing.hero_badges',
+    'landing.proceso_pasos',
+    'landing.respaldo_badges',
+    'landing.testimonios',
+    'landing.transformacion_con',
+    'landing.transformacion_sin',
+  ])
   for (const ruta of rutasArreglo) {
     expect(normalizarArreglo(ruta, []), `'${ruta}' sin normalizador`).toEqual([])
   }
@@ -448,4 +461,111 @@ test('congelarProfundo congela recursivamente objetos y arreglos', () => {
   // Los primitivos pasan tal cual.
   expect(congelarProfundo(5)).toBe(5)
   expect(congelarProfundo('a')).toBe('a')
+})
+
+// ─── F3: textos de la landing (arreglos nuevos e interpolación) ──────────────
+
+test('F3: un override válido de landing.faq_items se aplica completo y proyectado a q/a', () => {
+  const faq = [
+    { q: '¿Uno?', a: 'Sí.' },
+    { q: '¿Dos?', a: 'También, al {whatsapp}.', extra: 'no viaja' },
+  ]
+  const r = mergeSiteConfig(CONFIG, { landing: { faq_items: faq } })
+  expect(r.landing.faq_items).toEqual([
+    { q: '¿Uno?', a: 'Sí.' },
+    { q: '¿Dos?', a: 'También, al {whatsapp}.' },
+  ])
+  expect(r.landing.faq_items[0]).not.toBe(faq[0])
+  // Solo esa clave cambió.
+  const e = esperado()
+  e.landing.faq_items = [{ q: '¿Uno?', a: 'Sí.' }, { q: '¿Dos?', a: 'También, al {whatsapp}.' }]
+  expect(r).toEqual(e)
+})
+
+test('F3: un item malformado rechaza el arreglo ENTERO de cada lista nueva', () => {
+  const casos: Array<Record<string, unknown>> = [
+    { faq_items: [{ q: '¿Uno?', a: 'Sí.' }, { q: '¿Sin respuesta?' }] },
+    { faq_items: [{ q: '¿Uno?', a: 42 }] },
+    { faq_items: [null] },
+    { faq_items: ['texto'] },
+    { contadores: [{ valor: 2, sufijo: '', etiqueta: 'N', sub: 's' }, { valor: '100', sufijo: '%', etiqueta: 'x', sub: 'y' }] },
+    { contadores: [{ valor: -1, sufijo: '', etiqueta: 'N', sub: 's' }] },
+    { contadores: [{ valor: Number.NaN, sufijo: '', etiqueta: 'N', sub: 's' }] },
+    { contadores: [{ valor: 2, sufijo: '', etiqueta: 'N' }] },
+    { dolor_items: [{ icono: '⏰', titulo: 'T', desc: 'D' }, { icono: 1, titulo: 'T', desc: 'D' }] },
+    { proceso_pasos: [{ titulo: 'T' }] },
+    { beneficios_items: [{ titulo: 'T', desc: null }] },
+    { transformacion_sin: ['ok', 2] },
+    { transformacion_con: ['ok', { texto: 'no' }] },
+  ]
+  for (const landing of casos) {
+    expect(mergeSiteConfig(CONFIG, { landing }), JSON.stringify(landing)).toEqual(esperado())
+  }
+})
+
+test('F3: cada lista nueva acepta su forma y proyecta a sus campos', () => {
+  const r = mergeSiteConfig(CONFIG, {
+    landing: {
+      contadores: [{ valor: 0, sufijo: '+', etiqueta: 'Alumnos', sub: 'y contando', color: 'rojo' }],
+      dolor_items: [{ icono: '🎓', titulo: 'T', desc: 'D', id: 9 }],
+      transformacion_sin: ['a'],
+      transformacion_con: ['b', 'En {duracion} listo.'],
+      proceso_pasos: [{ titulo: 'P1', desc: 'D1', n: '01' }],
+      beneficios_items: [{ titulo: 'B', desc: 'D', icono: 'x' }],
+    },
+  })
+  expect(r.landing.contadores).toEqual([{ valor: 0, sufijo: '+', etiqueta: 'Alumnos', sub: 'y contando' }])
+  expect(r.landing.dolor_items).toEqual([{ icono: '🎓', titulo: 'T', desc: 'D' }])
+  expect(r.landing.transformacion_sin).toEqual(['a'])
+  expect(r.landing.transformacion_con).toEqual(['b', 'En {duracion} listo.'])
+  expect(r.landing.proceso_pasos).toEqual([{ titulo: 'P1', desc: 'D1' }])
+  expect(r.landing.beneficios_items).toEqual([{ titulo: 'B', desc: 'D' }])
+  // Las hojas de texto nuevas también entran, y con '' (vacío no está prohibido aquí).
+  const t = mergeSiteConfig(CONFIG, { landing: { hero_badge_superior: 'Centro X', cta_boton: '', dolor_kicker: 7 } })
+  expect(t.landing.hero_badge_superior).toBe('Centro X')
+  expect(t.landing.cta_boton).toBe('')
+  expect(t.landing.dolor_kicker).toBe(CONFIG.landing.dolor_kicker)
+})
+
+test('F3: interpolar sustituye {duracion} y {nombre} y deja {desconocido} tal cual', () => {
+  const vars = { duracion: '3 o 6 meses', nombre: 'MEV', inscripcion: '$599', valor: 24 }
+  expect(interpolar('En {duracion} terminas.', vars)).toBe('En 3 o 6 meses terminas.')
+  expect(interpolar('Sin {nombre} / Con {nombre}', vars)).toBe('Sin MEV / Con MEV')
+  expect(interpolar('Inscripción única {inscripcion} · {desconocido}', vars)).toBe('Inscripción única $599 · {desconocido}')
+  // Números se convierten; llaves que no son identificador no se tocan.
+  expect(interpolar('{valor}h {} {1 mes} {a-b}', vars)).toBe('24h {} {1 mes} {a-b}')
+  // Sin vars, el texto vuelve intacto.
+  expect(interpolar('Hola {nombre}', {})).toBe('Hola {nombre}')
+  // No pesca nada del prototipo.
+  expect(interpolar('{constructor} {toString}', vars)).toBe('{constructor} {toString}')
+  // Los defaults de la landing se resuelven con los placeholders del contrato.
+  const cfg = mergeSiteConfig(CONFIG, {})
+  const todas = { duracion: '3 o 6 meses', nombre: cfg.nombre, nombreCompleto: cfg.nombreCompleto, whatsapp: cfg.whatsapp, inscripcion: '$599' }
+  expect(interpolar(cfg.landing.faq_items[4].a, todas)).toContain(`al ${cfg.whatsapp}.`)
+  expect(interpolar(cfg.landing.programas_subtitulo, todas)).toBe('Inscripción única $599 · Elige tu nivel y plan')
+  expect([...PLACEHOLDERS].sort()).toEqual(['duracion', 'inscripcion', 'nombre', 'nombreCompleto', 'whatsapp'])
+})
+
+test('F3: los defaults nuevos son los literales de la landing (invariante) y hero_* dejaron de ser letra muerta', () => {
+  const l = esperado().landing
+  expect(l.hero_titulo).toBe('Tu Secundaria o Preparatoria')
+  expect(l.hero_highlight).toBe('desde donde estés')
+  expect(l.hero_subtitulo).toBe('Sin ir a la escuela. Sin perder tu trabajo.\nCon apoyo en tu certificado SEP.')
+  expect(l.hero_badge_superior).toBe('Centro de Apoyo para la Acreditación de Conocimientos')
+  expect(l.contadores).toEqual([
+    { valor: 2, sufijo: '', etiqueta: 'Niveles', sub: 'Sec · Prepa' },
+    { valor: 100, sufijo: '%', etiqueta: 'En línea', sub: 'A tu ritmo' },
+    { valor: 24, sufijo: 'h', etiqueta: 'Acceso', sub: 'Plataforma' },
+  ])
+  expect(l.dolor_items.map((d) => d.icono)).toEqual(['⏰', '💼', '📅'])
+  expect(l.transformacion_sin).toHaveLength(4)
+  expect(l.transformacion_con[2]).toBe('En {duracion} terminas lo que llevas años posponiendo.')
+  expect(l.proceso_pasos.map((p) => p.titulo)).toEqual(['Registro', 'Inscripción', 'Acceso a la plataforma', 'Certificación oficial SEP'])
+  expect(l.beneficios_items).toHaveLength(6)
+  expect(l.beneficios_items[4].desc).toBe('Elige entre planes de {duracion} según tu disponibilidad.')
+  expect(l.faq_items).toHaveLength(5)
+  expect(l.faq_items[0].a).toContain('({duracion})')
+  expect(l.cta_titulo).toBe('Tu futuro empieza')
+  expect(l.cta_highlight).toBe('hoy mismo')
+  expect(l.cta_boton).toBe('Crear cuenta gratis →')
 })

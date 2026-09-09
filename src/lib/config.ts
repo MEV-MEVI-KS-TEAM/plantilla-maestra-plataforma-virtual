@@ -104,9 +104,23 @@ export const CONFIG = {
 
   // === LANDING ===
   landing: {
-    hero_titulo:                'Obtén tu certificación con apoyo',
-    hero_highlight:             'desde casa',
-    hero_subtitulo:             'Estudia Secundaria o Preparatoria en línea con acompañamiento certificado. Avanza a tu ritmo.',
+    // ⚠️ hero_titulo / hero_highlight / hero_subtitulo existían pero la landing
+    // NO las leía: eran letra muerta y el hero pintaba sus propios literales.
+    // Desde F3 (Personalizar mi página) la landing SÍ las lee, así que el
+    // default pasa a ser el texto que siempre se vio en producción. Con la BD
+    // vacía la página sigue pixel-idéntica; cambiar estos valores aquí es lo
+    // mismo que cambiar el JSX de antes.
+    //
+    // El '\n' de hero_subtitulo marca el <br className="hidden sm:block" /> que
+    // hoy parte el párrafo en dos líneas. Al pintar hay que partir por '\n' y
+    // meter ese mismo <br> ENTRE líneas; en el JSX original la segunda línea
+    // llevaba un espacio delante del texto (`<br /> Con apoyo…`), que en
+    // móvil (br oculto) separa "trabajo." de "Con": ese espacio debe conservarse.
+    hero_titulo:                'Tu Secundaria o Preparatoria',
+    hero_highlight:             'desde donde estés',
+    hero_subtitulo:             'Sin ir a la escuela. Sin perder tu trabajo.\nCon apoyo en tu certificado SEP.',
+    // Sigue existiendo pero la landing NO la pinta (no hay sección de badges
+    // bajo el hero). Editable, para no romper overrides ya guardados.
     hero_badges:                ['Acompañamiento Certificado', 'Sin salir de casa', '100% en línea'],
     // Ciudad que se muestra en el badge del hero. VACÍO = se omite el segmento
     // por completo (correcto para un instituto 100% en línea sin domicilio).
@@ -114,6 +128,9 @@ export const CONFIG = {
     // así, entre corchetes, a producción: no rompía el build ni el smoke test
     // por HTTP, solo se veía abriendo la página.
     ciudad:                     '',
+    // convenios / respaldo_titulo / respaldo_badges: siguen existiendo pero la
+    // landing NO los pinta (no hay sección "Respaldo"). No se inventa una
+    // sección nueva por F3; se documenta y ya. `convenios` no es editable.
     convenios:                  [],
     respaldo_titulo:            'Respaldados por instituciones educativas de confianza',
     respaldo_badges:            [],
@@ -143,6 +160,122 @@ export const CONFIG = {
     // Texto NEUTRO: igual que en el diploma (B4), el default NO dice "validez
     // oficial", "SEP" ni "RVOE". Eso solo lo agrega quien acredite su registro.
     catalogoSubtitulo:          'Programas especializados, con acompañamiento y material descargable.',
+
+    // === TEXTOS DE LA LANDING (F3, "Personalizar mi página") ===
+    // Cada default es el literal EXACTO que LandingClient.tsx tenía escrito en
+    // el JSX antes de F3: con la BD vacía la página no cambia ni una letra.
+    //
+    // PLACEHOLDERS: {duracion} → getDuracionLabel() con las modalidades del
+    // config fusionado; {nombre}, {nombreCompleto}, {whatsapp} → esas claves;
+    // {inscripcion} → precio de inscripción formateado como hoy (fmt). Se
+    // sustituyen al pintar con `interpolar()` (site-config-core.ts); un
+    // placeholder desconocido se deja tal cual.
+    //
+    // Lo que NO está aquí se queda literal en la landing a propósito (etiquetas
+    // de interfaz: nav, 'Preparatoria'/'Secundaria', 'Inscripción:', '/mes',
+    // 'Ver temario →', footer legal, aria-labels…).
+    //
+    // Los arreglos de objetos van con `as Array<…>` para que `as const` no
+    // estreche cada campo a su literal (mismo truco que `testimonios`).
+
+    // — Hero —
+    // Badge superior. El sufijo ' · {ciudad}' sigue siendo dinámico con
+    // `landing.ciudad`; no forma parte de este texto.
+    hero_badge_superior:        'Centro de Apoyo para la Acreditación de Conocimientos',
+    hero_cta_primario:          'Comenzar ahora →',
+    hero_cta_whatsapp:          'WhatsApp',
+    // Contadores animados bajo el hero. `valor` es el número al que sube el
+    // contador; `sufijo` se pega sin espacio ('%', 'h').
+    contadores: [
+      { valor: 2,   sufijo: '',  etiqueta: 'Niveles',  sub: 'Sec · Prepa' },
+      { valor: 100, sufijo: '%', etiqueta: 'En línea', sub: 'A tu ritmo' },
+      { valor: 24,  sufijo: 'h', etiqueta: 'Acceso',   sub: 'Plataforma' },
+    ] as Array<{ valor: number; sufijo: string; etiqueta: string; sub: string }>,
+
+    // — Dolor / PAS —
+    dolor_kicker:               'Sabemos lo que sientes',
+    dolor_titulo:               '¿Te identificas con alguna de estas situaciones?',
+    dolor_items: [
+      { icono: '⏰', titulo: 'Sin tiempo para asistir',      desc: 'Tu trabajo o familia no te dejan ir a la escuela en horario normal.' },
+      { icono: '💼', titulo: 'No puedes dejar de trabajar',  desc: 'Necesitas el certificado, pero no puedes darte el lujo de dejar de ingresar.' },
+      { icono: '📅', titulo: 'Crees que ya es tarde',        desc: 'Llevas años pensando en terminar pero nunca encontraste la forma.' },
+    ] as Array<{ icono: string; titulo: string; desc: string }>,
+    // Va seguido de ' ' + nombreCompleto con gradiente (misma estructura que hoy).
+    dolor_cierre:               'Para eso existe',
+    dolor_cierre_sub:           'Estudia a tu ritmo, desde tu celular, sin horarios fijos. Con certificado oficial.',
+
+    // — Programas (precios) —
+    programas_kicker:           'Programas',
+    programas_titulo:           'Secundaria y Preparatoria',
+    programas_subtitulo:        'Inscripción única {inscripcion} · Elige tu nivel y plan',
+    programas_popular:          '★ Popular',
+    programas_cta:              'Inscribirme →',
+
+    // — Transformación (antes / después) —
+    // Las cabeceras 'Sin {nombre}' / 'Con {nombre}' de cada columna siguen
+    // siendo literales de interfaz con CONFIG.nombre; no se editan.
+    transformacion_kicker:      'Transformación',
+    transformacion_titulo:      'Tu vida, antes y después',
+    transformacion_sin: [
+      'Sin acceso a tu certificado para avanzar profesionalmente.',
+      'Bloqueado por horarios que no se adaptan a tu vida.',
+      'Años postergando tu sueño de terminar tus estudios.',
+      'Oportunidades de trabajo que se te escapan sin el papel.',
+    ],
+    transformacion_con: [
+      'Te apoyamos en la gestión de tu certificado oficial SEP.',
+      'Estudias a tu ritmo, desde tu celular, sin salir de casa.',
+      'En {duracion} terminas lo que llevas años posponiendo.',
+      'Abre puertas: trabajo, universidad, trámites oficiales.',
+    ],
+
+    // — Proceso (cómo funciona) —
+    // El número 01..04 se deriva del índice, no se guarda.
+    proceso_kicker:             'Proceso',
+    proceso_titulo:             'Cómo funciona',
+    proceso_pasos: [
+      { titulo: 'Registro',                  desc: 'Crea tu cuenta y elige tu nivel: Secundaria o Preparatoria.' },
+      { titulo: 'Inscripción',               desc: 'Realiza el pago de inscripción y sube los documentos requeridos.' },
+      { titulo: 'Acceso a la plataforma',    desc: 'Obtén acceso inmediato a tus materias según el plan contratado.' },
+      { titulo: 'Certificación oficial SEP', desc: 'Concluye tu nivel y recibe el certificado con validez nacional.' },
+    ] as Array<{ titulo: string; desc: string }>,
+
+    // — Testimonios (la sección solo se pinta si `testimonios` no está vacío) —
+    testimonios_kicker:         'Testimonios',
+    testimonios_titulo:         'Personas reales, resultados reales',
+    testimonios_subtitulo:      'Miles de alumnos ya obtuvieron su certificado con nosotros.',
+
+    // — Beneficios —
+    // Sin campo `icono`: hoy todas las tarjetas llevan el mismo CheckIcon.
+    beneficios_titulo:          'Todo lo que necesitas',
+    beneficios_subtitulo:       'Diseñado para quien trabaja, tiene familia y quiere superarse.',
+    beneficios_items: [
+      { titulo: 'Gestión de tu certificado SEP', desc: 'Validez nacional reconocida por el sistema educativo mexicano.' },
+      { titulo: '100% en línea',                 desc: 'Estudia desde Puebla u otro punto del país sin trasladarte.' },
+      { titulo: 'Materias estructuradas',        desc: 'Contenidos organizados por meses con progresión clara y alcanzable.' },
+      { titulo: 'Acompañamiento directo',        desc: 'Seguimiento personalizado y canal de atención por WhatsApp.' },
+      { titulo: 'Planes flexibles',              desc: 'Elige entre planes de {duracion} según tu disponibilidad.' },
+      { titulo: 'Plataforma moderna',            desc: 'Accede a tu constancia y avance desde cualquier dispositivo, 24 h.' },
+    ] as Array<{ titulo: string; desc: string }>,
+
+    // — FAQ —
+    faq_kicker:                 'FAQ',
+    faq_titulo:                 'Preguntas frecuentes',
+    faq_items: [
+      { q: '¿Cuánto tiempo tengo para terminar?',                    a: 'Depende del plan elegido: tienes acceso a tus materias durante el período contratado ({duracion}) y puedes estudiar a tu ritmo, sin horarios fijos.' },
+      { q: '¿El certificado tiene validez oficial en todo México?',  a: 'Te acompañamos en el proceso para obtener tu certificado oficial SEP, el cual es reconocido a nivel nacional para trámites laborales, universitarios y gubernamentales. Fungimos como Centro de Apoyo para la Acreditación de Conocimientos: facilitamos el camino, mientras la validez oficial corresponde a la SEP.' },
+      { q: '¿Qué documentos necesito para inscribirme?',             a: 'Secundaria: Certificado de Primaria, CURP, Acta de Nacimiento, Identificación Oficial y foto de perfil fondo blanco. Preparatoria: los mismos más Certificado de Secundaria.' },
+      { q: '¿Puedo estudiar desde mi celular?',                      a: 'Sí, la plataforma está optimizada para móvil. Puedes acceder desde cualquier dispositivo con conexión a internet, en cualquier momento del día o de la noche.' },
+      { q: '¿Qué pasa si tengo dudas durante el curso?',             a: 'Contamos con canal directo de atención por WhatsApp al {whatsapp}. Nuestro equipo te responde para orientarte en cualquier momento del proceso.' },
+    ] as Array<{ q: string; a: string }>,
+
+    // — CTA final —
+    // cta_titulo va seguido de <br /> + cta_highlight con gradiente.
+    cta_titulo:                 'Tu futuro empieza',
+    cta_highlight:              'hoy mismo',
+    cta_subtitulo:              'Registro en minutos. Equipo listo para orientarte.',
+    cta_boton:                  'Crear cuenta gratis →',
+    cta_whatsapp:               'WhatsApp',
   },
 
   cct: '',

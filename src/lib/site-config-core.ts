@@ -120,10 +120,13 @@ type RutasHoja<T, Prefijo extends string = ''> = {
  * `modalidades` tiene semántica ESPECIAL (ver `SiteConfigOverrides`): en la BD
  * es un objeto por id, y solo se admiten `mensualidad` y `activa`.
  *
- * La Fase 3 añadirá más claves `landing.*` conforme convierta en configurables
- * los textos que hoy están como literales en la landing. Si alguna es un
- * ARREGLO, hay que darle normalizador en `ELEMENTOS_ARREGLO` o el merge la
- * rechazará siempre (fail-closed; lo vigila una prueba unitaria).
+ * F3 convirtió en configurables los textos que estaban como literales en la
+ * landing (`landing.hero_badge_superior` … `landing.cta_whatsapp`). Los
+ * límites de longitud y la forma para el editor viven en
+ * `site-config-campos.ts`; aquí solo la lista blanca y la forma que exige el
+ * merge. Si se añade un ARREGLO, hay que darle normalizador en
+ * `ELEMENTOS_ARREGLO` o el merge lo rechazará siempre (fail-closed; lo vigila
+ * una prueba unitaria) y darle descriptor en el catálogo (otra prueba).
  */
 export const CLAVES_EDITABLES = [
   // identidad
@@ -158,7 +161,7 @@ export const CLAVES_EDITABLES = [
   // redes
   'redes.facebook',
   'redes.instagram',
-  // textos de la landing
+  // textos de la landing (F2)
   'landing.hero_titulo',
   'landing.hero_highlight',
   'landing.hero_subtitulo',
@@ -169,6 +172,42 @@ export const CLAVES_EDITABLES = [
   'landing.testimonios',
   'landing.catalogoTitulo',
   'landing.catalogoSubtitulo',
+  // textos de la landing (F3): una clave por literal que antes vivía en el JSX
+  'landing.hero_badge_superior',
+  'landing.hero_cta_primario',
+  'landing.hero_cta_whatsapp',
+  'landing.contadores',
+  'landing.dolor_kicker',
+  'landing.dolor_titulo',
+  'landing.dolor_items',
+  'landing.dolor_cierre',
+  'landing.dolor_cierre_sub',
+  'landing.programas_kicker',
+  'landing.programas_titulo',
+  'landing.programas_subtitulo',
+  'landing.programas_popular',
+  'landing.programas_cta',
+  'landing.transformacion_kicker',
+  'landing.transformacion_titulo',
+  'landing.transformacion_sin',
+  'landing.transformacion_con',
+  'landing.proceso_kicker',
+  'landing.proceso_titulo',
+  'landing.proceso_pasos',
+  'landing.testimonios_kicker',
+  'landing.testimonios_titulo',
+  'landing.testimonios_subtitulo',
+  'landing.beneficios_titulo',
+  'landing.beneficios_subtitulo',
+  'landing.beneficios_items',
+  'landing.faq_kicker',
+  'landing.faq_titulo',
+  'landing.faq_items',
+  'landing.cta_titulo',
+  'landing.cta_highlight',
+  'landing.cta_subtitulo',
+  'landing.cta_boton',
+  'landing.cta_whatsapp',
   // precios canónicos (los alias legacy se derivan de estos, ver derivarAliasPrecios)
   'precios.inscripcion',
   'precios.certificacionSecundaria',
@@ -178,6 +217,15 @@ export const CLAVES_EDITABLES = [
 ] as const satisfies ReadonlyArray<RutasHoja<SiteConfig>>
 
 export type ClaveEditable = (typeof CLAVES_EDITABLES)[number]
+
+/**
+ * Subclaves de `landing` que están en la lista blanca (`'hero_titulo'`,
+ * `'faq_items'`…). Se DERIVA de `CLAVES_EDITABLES` para que
+ * `SiteConfigOverrides` no arrastre una segunda lista que haya que mantener a
+ * mano: añadir la ruta arriba ya la mete aquí.
+ */
+type SubclaveLanding<C> = C extends `landing.${infer K}` ? K : never
+export type ClaveLandingEditable = SubclaveLanding<ClaveEditable>
 
 /** Etiqueta de caché de Next para la fila de overrides. La usa site-config.ts. */
 export const SITE_CONFIG_TAG = 'site-config'
@@ -224,22 +272,7 @@ export interface SiteConfigOverrides {
   email?: string
   contactoEmail?: string
   redes?: Partial<SiteConfig['redes']>
-  landing?: Partial<
-    Pick<
-      SiteConfig['landing'],
-      | 'cct'
-      | 'hero_titulo'
-      | 'hero_highlight'
-      | 'hero_subtitulo'
-      | 'hero_badges'
-      | 'ciudad'
-      | 'respaldo_titulo'
-      | 'respaldo_badges'
-      | 'testimonios'
-      | 'catalogoTitulo'
-      | 'catalogoSubtitulo'
-    >
-  >
+  landing?: Partial<Pick<SiteConfig['landing'], ClaveLandingEditable>>
   precios?: Partial<
     Pick<SiteConfig['precios'], 'inscripcion' | 'certificacionSecundaria' | 'certificacionPreparatoria'>
   >
@@ -357,18 +390,6 @@ const SIN_VACIO: ReadonlySet<ClaveEditable> = new Set<ClaveEditable>(['logo', 'w
 // ─── Elementos de los arreglos editables ─────────────────────────────────────
 
 /**
- * Los cinco campos de un testimonio. `satisfies` comprueba que cada uno exista
- * en el tipo; `_camposTestimonioCompletos` comprueba lo contrario: que no falte
- * ninguno si alguien amplía el tipo en config.ts.
- */
-const CAMPOS_TESTIMONIO = ['name', 'age', 'nivel', 'initials', 'quote'] as const satisfies ReadonlyArray<
-  keyof Testimonio
->
-type CampoTestimonio = (typeof CAMPOS_TESTIMONIO)[number]
-const _camposTestimonioCompletos: Exclude<keyof Testimonio, CampoTestimonio> extends never ? true : false = true
-void _camposTestimonioCompletos
-
-/**
  * Normalizador de UN elemento: devuelve el elemento limpio, o `undefined` si
  * no tiene la forma que el consumidor espera.
  */
@@ -376,21 +397,58 @@ type NormalizadorElemento = (el: unknown) => unknown
 
 const normalizarEtiqueta: NormalizadorElemento = (el) => (typeof el === 'string' ? el : undefined)
 
+/** Forma de un campo de un elemento-objeto: cadena, o número finito >= 0. */
+type FormaCampo = 'texto' | 'numero'
+
 /**
- * Un testimonio válido es un objeto plano con los cinco campos como string.
- * Se PROYECTA a esos cinco: una clave extra en la fila no viaja al navegador
- * (el provider serializa `landing` entero en el HTML de cada página).
+ * Fabrica el normalizador de un objeto con campos fijos. Un elemento válido es
+ * un objeto plano con TODOS los campos y del tipo indicado; se PROYECTA a esos
+ * campos, así que una clave extra en la fila no viaja al navegador (el
+ * provider serializa `landing` entero en el HTML de cada página).
+ *
+ * Cada uso lleva `satisfies Record<keyof Elemento, FormaCampo>`: comprueba en
+ * compilación las dos direcciones — que cada campo exista en el tipo y que no
+ * falte ninguno si alguien amplía el tipo en config.ts.
  */
-const normalizarTestimonio: NormalizadorElemento = (el) => {
-  if (!esObjetoPlano(el)) return undefined
-  const limpio: Partial<Record<CampoTestimonio, string>> = {}
-  for (const campo of CAMPOS_TESTIMONIO) {
-    const v = el[campo]
-    if (typeof v !== 'string') return undefined
-    limpio[campo] = v
+function normalizadorObjeto(forma: Record<string, FormaCampo>): NormalizadorElemento {
+  const campos = Object.keys(forma)
+  return (el) => {
+    if (!esObjetoPlano(el)) return undefined
+    const limpio: Record<string, string | number> = {}
+    for (const campo of campos) {
+      const v = el[campo]
+      if (forma[campo] === 'texto' ? typeof v !== 'string' : !esPrecio(v)) return undefined
+      limpio[campo] = v as string | number
+    }
+    return limpio
   }
-  return limpio as Testimonio
 }
+
+type Landing = SiteConfig['landing']
+
+const normalizarTestimonio = normalizadorObjeto({
+  name: 'texto', age: 'texto', nivel: 'texto', initials: 'texto', quote: 'texto',
+} satisfies Record<keyof Testimonio, FormaCampo>)
+
+const normalizarContador = normalizadorObjeto({
+  valor: 'numero', sufijo: 'texto', etiqueta: 'texto', sub: 'texto',
+} satisfies Record<keyof Landing['contadores'][number], FormaCampo>)
+
+const normalizarDolorItem = normalizadorObjeto({
+  icono: 'texto', titulo: 'texto', desc: 'texto',
+} satisfies Record<keyof Landing['dolor_items'][number], FormaCampo>)
+
+const normalizarPaso = normalizadorObjeto({
+  titulo: 'texto', desc: 'texto',
+} satisfies Record<keyof Landing['proceso_pasos'][number], FormaCampo>)
+
+const normalizarBeneficio = normalizadorObjeto({
+  titulo: 'texto', desc: 'texto',
+} satisfies Record<keyof Landing['beneficios_items'][number], FormaCampo>)
+
+const normalizarFaq = normalizadorObjeto({
+  q: 'texto', a: 'texto',
+} satisfies Record<keyof Landing['faq_items'][number], FormaCampo>)
 
 /**
  * Forma exigida a CADA elemento de los arreglos editables, por ruta.
@@ -406,6 +464,13 @@ const ELEMENTOS_ARREGLO: Partial<Record<ClaveEditable, NormalizadorElemento>> = 
   'landing.hero_badges': normalizarEtiqueta,
   'landing.respaldo_badges': normalizarEtiqueta,
   'landing.testimonios': normalizarTestimonio,
+  'landing.contadores': normalizarContador,
+  'landing.dolor_items': normalizarDolorItem,
+  'landing.transformacion_sin': normalizarEtiqueta,
+  'landing.transformacion_con': normalizarEtiqueta,
+  'landing.proceso_pasos': normalizarPaso,
+  'landing.beneficios_items': normalizarBeneficio,
+  'landing.faq_items': normalizarFaq,
 }
 
 /**
@@ -521,7 +586,7 @@ function aplicarModalidades(
  *  - Solo aplica claves de `CLAVES_EDITABLES`; el resto se ignora en silencio.
  *  - `undefined` / `null` en un override = "sin override" para esa clave.
  *  - Un override de tipo distinto al default se ignora (ver `compatible`).
- *  - Los arreglos (hero_badges, respaldo_badges, testimonios) se reemplazan
+ *  - Los arreglos (hero_badges, testimonios, faq_items…) se reemplazan
  *    completos y cada elemento debe tener la forma esperada
  *    (`normalizarArreglo`); si uno falla, se ignora el arreglo entero. El
  *    editor no edita "un badge": manda la lista entera.
@@ -634,4 +699,38 @@ export function toPublicSiteConfig(cfg: SiteConfig): PublicSiteConfig {
     precios: cfg.precios,
     modalidades: cfg.modalidades,
   }
+}
+
+// ─── Placeholders de los textos de la landing ────────────────────────────────
+
+/**
+ * Los `{x}` que la landing sustituye al pintar. Qué vale cada uno:
+ *   duracion       → getDuracionLabel() con las modalidades del config FUSIONADO
+ *   nombre         → cfg.nombre
+ *   nombreCompleto → cfg.nombreCompleto
+ *   whatsapp       → cfg.whatsapp
+ *   inscripcion    → cfg.precios.inscripcion formateado como hoy (fmt de la landing)
+ * La lista es cerrada: el editor la muestra como ayuda y el catálogo
+ * (`site-config-campos.ts`) la referencia por tipo.
+ */
+export const PLACEHOLDERS = ['duracion', 'nombre', 'nombreCompleto', 'whatsapp', 'inscripcion'] as const
+
+export type Placeholder = (typeof PLACEHOLDERS)[number]
+
+/**
+ * Sustituye cada `{clave}` de `texto` por `vars[clave]`. Un placeholder que no
+ * esté en `vars` se deja TAL CUAL: es más honesto que un hueco, y así un texto
+ * escrito por el admin con llaves "de verdad" no desaparece. Isomorfo a
+ * propósito: lo usa LandingClient (cliente) y cualquier Server Component.
+ *
+ * Solo cuenta como placeholder un identificador (`{duracion}`, `{nombre}`):
+ * `{}` o `{1 mes}` no se tocan. Se consulta con `hasOwnProperty` para que un
+ * `{constructor}` no pesque algo del prototipo del objeto de vars.
+ */
+export function interpolar(texto: string, vars: Record<string, string | number>): string {
+  return texto.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (todo, clave: string) => {
+    if (!Object.prototype.hasOwnProperty.call(vars, clave)) return todo
+    const v = vars[clave]
+    return v === undefined || v === null ? todo : String(v)
+  })
 }
