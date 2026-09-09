@@ -447,7 +447,9 @@ test('28 bis. logoOscuro admite \'\' (= sin variante oscura); logo no', () => {
   // el claro (por eso logoOscuro no está en SIN_VACIO, ver site-config-core).
   expect(ok(v({ logoOscuro: '' }, ORIGEN))).toEqual({ logoOscuro: '' })
   expect(ok(v({ logoOscuro: '   ' }, ORIGEN))).toEqual({ logoOscuro: '' })
-  expect(mergeSiteConfig(CONFIG, { logoOscuro: '' }).logoOscuro).toBe('')
+  // El merge lo acepta y lo RESUELVE al claro (resolverLogos): el consumidor
+  // nunca ve un `logoOscuro` vacío.
+  expect(mergeSiteConfig(CONFIG, { logoOscuro: '' }).logoOscuro).toBe(CONFIG.logo)
   // En logo, '' sería un <img src=""> (el navegador vuelve a pedir la página).
   error(v({ logo: '' }, ORIGEN), 'logo', /vacío/)
   error(v({ logo: '   ' }, ORIGEN), 'logo', /vacío/)

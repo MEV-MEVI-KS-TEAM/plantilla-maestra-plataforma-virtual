@@ -379,6 +379,10 @@ export async function POST(request: NextRequest) {
       url,
       variante,
       merged: recortarAEditables(mergeSiteConfig(CONFIG, nueva)),
+      // La fila tal cual queda. El editor la necesita para saber qué variante
+      // tiene override PROPIO: `merged` ya viene resuelto (`resolverLogos`) y
+      // con un solo logo subido las dos variantes coinciden.
+      overrides: nueva,
     })
   } catch (e) {
     console.error('[configuracion/logo]', e)
@@ -414,6 +418,7 @@ export async function DELETE(request: NextRequest) {
       ok: true,
       variante,
       merged: recortarAEditables(mergeSiteConfig(CONFIG, nueva)),
+      overrides: nueva,
     })
   } catch (e) {
     console.error('[configuracion/logo]', e)

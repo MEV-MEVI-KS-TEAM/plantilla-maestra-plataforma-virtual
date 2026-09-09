@@ -18,6 +18,7 @@ import {
   prepararParaPublicar,
   puedeDesactivar,
   quitarRuta,
+  sincronizarLogos,
   valorEfectivo,
   type ModalidadEditable,
 } from '@/lib/site-config-editor'
@@ -304,6 +305,24 @@ test('prepararParaPublicar quita logo, logoOscuro y whatsappUrl', () => {
   expect(cuerpo).toEqual({ nombre: 'MEV', whatsapp: '5219991234567' })
   // No muta el estado del formulario: el logo se sigue viendo en pantalla.
   expect((ov as Record<string, unknown>).logo).toBeTruthy()
+})
+
+test('sincronizarLogos copia solo logo/logoOscuro de la fila al borrador, sin tocar el resto', () => {
+  const CLARO = 'https://x.supabase.co/storage/v1/object/public/branding/logo-claro-1.png'
+  const borrador: SiteConfigOverrides = { nombre: 'Borrador', logoOscuro: '/viejo.png' }
+
+  // Subió solo el claro: aparece `logo`, y `logoOscuro` (que la fila ya no
+  // trae) se quita del borrador — es lo que decide el badge "Personalizado".
+  const tras = sincronizarLogos(borrador, { logo: CLARO, nombre: 'Fila' })
+  expect(tras).toEqual({ nombre: 'Borrador', logo: CLARO })
+  expect(estaSobrescrito(tras, 'logo')).toBe(true)
+  expect(estaSobrescrito(tras, 'logoOscuro')).toBe(false)
+
+  // Quitó el claro: la fila viene sin logos y el borrador se queda sin ellos.
+  expect(sincronizarLogos(tras, {})).toEqual({ nombre: 'Borrador' })
+
+  // No muta la entrada.
+  expect(borrador).toEqual({ nombre: 'Borrador', logoOscuro: '/viejo.png' })
 })
 
 test('mismoContenido ignora el orden de las claves', () => {

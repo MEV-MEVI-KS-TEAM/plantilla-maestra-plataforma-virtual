@@ -228,8 +228,10 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: `1px solid ${sidebarBorder}` }}>
+          {/* Fondo oscuro → variante oscura, que el merge ya resolvió
+              (`resolverLogos`): con un solo logo subido, es ese. */}
           <Image
-            src={cfg.logoOscuro || cfg.logo}
+            src={cfg.logoOscuro}
             alt={cfg.nombre}
             width={180}
             height={56}

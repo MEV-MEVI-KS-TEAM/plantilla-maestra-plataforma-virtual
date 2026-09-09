@@ -374,14 +374,16 @@ test("'' se rechaza en logo y whatsappUrl, pero se acepta donde vacío significa
   const r = mergeSiteConfig(CONFIG, {
     logo: '',
     whatsappUrl: '   ',
-    logoOscuro: '',          // "sin variante oscura": LandingClient cae a `logo` + invert
+    logoOscuro: '',          // "sin variante oscura": resolverLogos lo rellena con `logo`
     cct: '',
     landing: { ciudad: '', cct: '' },
   })
   const base = esperado()
   expect(r.logo).toBe(base.logo)
   expect(r.whatsappUrl).toBe(base.whatsappUrl)
-  expect(r.logoOscuro).toBe('')
+  // Se ACEPTA (no lo rechaza SIN_VACIO) pero nunca llega vacío al consumidor:
+  // el merge lo resuelve al logo claro (ver tests/unit/site-config-logos.spec.ts).
+  expect(r.logoOscuro).toBe(base.logo)
   expect(r.cct).toBe('')
   expect(r.landing.ciudad).toBe('')
   expect(r.landing.cct).toBe('')

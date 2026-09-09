@@ -520,3 +520,29 @@ export function prepararParaPublicar(overrides: SiteConfigOverrides): SiteConfig
   podarVacios(salida)
   return salida as SiteConfigOverrides
 }
+
+/**
+ * Copia `logo` / `logoOscuro` de la FILA (lo que devuelve la ruta del logo en
+ * `overrides`) al borrador, sin tocar nada más del borrador. Devuelve un
+ * objeto nuevo.
+ *
+ * POR QUÉ. Subir o quitar un logo escribe la fila al instante y devuelve
+ * `merged` + `overrides`. `merged` viene RESUELTO (`resolverLogos`): con solo
+ * el logo claro subido, `merged.logoOscuro` es ese mismo logo, así que por
+ * `merged` no se puede saber si la variante oscura tiene override propio — y
+ * eso es lo que decide el badge "Personalizado" y el botón "Quitar" de su
+ * tarjeta. Se aplica a `overrides` Y a `overridesBase` por igual, para que la
+ * comparación "cambios sin publicar" no cambie (el logo no es parte del
+ * borrador: `prepararParaPublicar` lo quita del cuerpo).
+ */
+export function sincronizarLogos(
+  borrador: SiteConfigOverrides,
+  fila: SiteConfigOverrides,
+): SiteConfigOverrides {
+  const salida = clonar(borrador) as ObjetoPlano
+  for (const clave of ['logo', 'logoOscuro'] as const) {
+    if (typeof fila[clave] === 'string') salida[clave] = fila[clave]
+    else delete salida[clave]
+  }
+  return salida as SiteConfigOverrides
+}

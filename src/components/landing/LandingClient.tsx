@@ -404,7 +404,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-10 h-[68px]"
         style={{ background: conAlpha(C.hero, 0.85), backdropFilter: 'blur(20px)', borderBottom: `1px solid ${conAlpha(C.azure, 0.1)}` }}>
         <Link href="/" className="flex items-center gap-3 min-w-0">
-          <Image src={config.logoOscuro || config.logo} alt={config.nombreCompleto} width={180} height={60} className="h-12 md:h-14 w-auto object-contain flex-shrink-0" priority />
+          {/* `logoOscuro` llega YA RESUELTO por el merge (`resolverLogos`): si el
+              admin subió solo el logo claro, aquí viene ese logo. Nada de
+              `logoOscuro || logo` en los componentes. */}
+          <Image src={config.logoOscuro} alt={config.nombreCompleto} width={180} height={60} className="h-12 md:h-14 w-auto object-contain flex-shrink-0" priority />
           <span className={`hidden sm:inline font-semibold text-[15px] ${playfair.className}`} style={{ color: C.white, letterSpacing: '.02em' }}>
             {config.nombreCompleto}
           </span>
@@ -455,7 +458,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               <div className="relative inline-block">
                 <div className="absolute inset-0 blur-3xl bg-white/30 rounded-full scale-90" />
                 <Image
-                  src={config.logoOscuro || config.logo}
+                  src={config.logoOscuro}
                   alt={config.nombreCompleto}
                   width={500} height={500} priority
                   className="relative w-[260px] md:w-[380px] lg:w-[480px] h-auto drop-shadow-[0_0_40px_rgba(255,255,255,0.4)]"
@@ -897,10 +900,13 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                 invisible sobre este footer). Pero si el cliente SÍ entregó su
                 variante clara, el filtro le borra los colores de marca y la
                 deja toda blanca — por eso solo se aplica en el caso de
-                fallback. Ver Bug 97 del playbook. */}
-            <Image src={config.logoOscuro || config.logo} alt={config.nombreCompleto} width={200} height={80}
+                fallback. Ver Bug 97 del playbook.
+                El merge (`resolverLogos`) ya dejó `logoOscuro` = `logo` cuando
+                no hay variante oscura propia, así que "fallback" aquí es
+                simplemente que los dos coincidan. */}
+            <Image src={config.logoOscuro} alt={config.nombreCompleto} width={200} height={80}
               className={`h-16 md:h-20 w-auto drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] object-contain${
-                config.logoOscuro && config.logoOscuro !== config.logo ? '' : ' brightness-0 invert'}`} />
+                config.logoOscuro !== config.logo ? '' : ' brightness-0 invert'}`} />
           </div>
           <p className="text-sm font-semibold" style={{ color: C.ice }}>{config.nombreCompleto}</p>
           <p className="text-xs mt-1.5">{CONFIG.dominio}</p>

@@ -47,8 +47,10 @@ import {
   mismoContenido,
   modalidadesEfectivas,
   prepararParaPublicar,
+  sincronizarLogos,
   valorEfectivo,
 } from '@/lib/site-config-editor'
+import type { RespuestaLogo } from '@/components/admin/personalizar/SubidaLogo'
 import { BarraPublicar } from '@/components/admin/personalizar/BarraPublicar'
 import { ModalConfirmar } from '@/components/admin/personalizar/ModalConfirmar'
 import { PestanaColores } from '@/components/admin/personalizar/PestanaColores'
@@ -193,6 +195,18 @@ export default function PersonalizarPage() {
   const actualizar = useCallback<Actualizar>((fn) => {
     setOverrides(fn)
     setClaveConError((actual) => (actual === null ? actual : null))
+  }, [])
+
+  /**
+   * Subir o quitar un logo ya escribió la fila (no pasa por "Publicar"). Se
+   * toma el `merged` nuevo y se copian `logo` / `logoOscuro` de la fila al
+   * borrador Y a su base, para que la tarjeta de cada variante sepa si tiene
+   * override propio sin que cambie "cambios sin publicar".
+   */
+  const alCambiarLogo = useCallback(({ merged: m, overrides: fila }: RespuestaLogo) => {
+    setMerged(m)
+    setOverrides((prev) => sincronizarLogos(prev, fila))
+    setOverridesBase((prev) => sincronizarLogos(prev, fila))
   }, [])
 
   // ─── Errores del servidor ──────────────────────────────────────────────────
@@ -460,7 +474,7 @@ export default function PersonalizarPage() {
             <PestanaIdentidad
               {...propsPestana}
               merged={merged}
-              onMerged={setMerged}
+              onLogo={alCambiarLogo}
               onMensaje={showToast}
             />
           )}
