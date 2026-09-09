@@ -97,7 +97,11 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
         <View style={styles.header}>
           <View>
             <Text style={styles.escuela}>{cfg.nombreCompleto}</Text>
-            <Text style={styles.tagline}>{CONFIG.urlBase} · WhatsApp {cfg.whatsappDisplay}</Text>
+            {/* Sin número no se escribe la etiqueta: el recibo del alumno
+                decía "…online · WhatsApp " con la palabra colgando. */}
+            <Text style={styles.tagline}>
+              {CONFIG.urlBase}{cfg.whatsappDisplay ? ` · WhatsApp ${cfg.whatsappDisplay}` : ''}
+            </Text>
           </View>
           {/* Image de @react-pdf/renderer, no <img> de HTML: no acepta `alt`. */}
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
