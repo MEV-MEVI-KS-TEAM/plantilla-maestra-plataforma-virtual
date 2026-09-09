@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { CONFIG } from '@/lib/config'
+import { getSiteConfig } from '@/lib/site-config'
 import { getMesesByModalidad } from '@/lib/modalidades'
 import { esSoloCursos } from '@/lib/modo'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
@@ -69,6 +69,8 @@ function NivelBadge({ nivel }: { nivel?: string | null }) {
 // ─── page ─────────────────────────────────────────────────────────────────────
 export default async function AdminDashboardPage() {
   const supabase = getServiceClient()
+  // Nombre editable desde "Personalizar mi página": defaults + overrides.
+  const cfg = await getSiteConfig()
 
   // Conteo total de alumnos
   const { count: totalAlumnos } = await supabase
@@ -166,7 +168,7 @@ export default async function AdminDashboardPage() {
           Bienvenido, Administrador 👋
         </h2>
         <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
-          Resumen general de {CONFIG.nombre}
+          Resumen general de {cfg.nombre}
         </p>
       </div>
 

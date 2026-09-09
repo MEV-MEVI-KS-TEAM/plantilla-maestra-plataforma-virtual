@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, Eye, EyeOff, User, Lock, GraduationCap, Mail, Phone, Camera } from 'lucide-react'
 import Image from 'next/image'
-import { ESCUELA_CONFIG } from '@/lib/config'
 import { useToast, ToastContainer } from '@/components/ui/toast'
+import { useSiteConfig } from '@/components/site-config-provider'
 
 interface Perfil {
   id: string
@@ -27,6 +27,8 @@ const INPUT_STYLE = {
 
 export default function PerfilPage() {
   const { toasts, showToast, removeToast } = useToast()
+  // Datos de la escuela editables desde "Personalizar mi página".
+  const cfg = useSiteConfig()
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -297,7 +299,7 @@ export default function PerfilPage() {
             <GraduationCap className="w-4 h-4 flex-shrink-0" style={{ color: '#94A3B8' }} />
             <div>
               <p className="text-xs" style={{ color: '#64748B' }}>Institución</p>
-              <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>{ESCUELA_CONFIG.nombre}</p>
+              <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>{cfg.nombre}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -305,27 +307,27 @@ export default function PerfilPage() {
             <div>
               <p className="text-xs" style={{ color: '#64748B' }}>Contacto</p>
               <a
-                href={`mailto:${ESCUELA_CONFIG.contactoEmail}`}
+                href={`mailto:${cfg.contactoEmail}`}
                 className="text-sm transition-colors"
                 style={{ color: 'var(--color-acento)' }}
                 onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
                 onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
               >
-                {ESCUELA_CONFIG.contactoEmail}
+                {cfg.contactoEmail}
               </a>
             </div>
           </div>
-          {ESCUELA_CONFIG.contactoTelefono && (
+          {cfg.contactoTelefono && (
             <div className="flex items-center gap-3">
               <Phone className="w-4 h-4 flex-shrink-0" style={{ color: '#94A3B8' }} />
               <div>
                 <p className="text-xs" style={{ color: '#64748B' }}>Teléfono / WhatsApp</p>
                 <a
-                  href={`https://wa.me/${ESCUELA_CONFIG.contactoTelefono}`}
+                  href={`https://wa.me/${cfg.contactoTelefono}`}
                   className="text-sm transition-colors"
                   style={{ color: 'var(--color-acento)' }}
                 >
-                  {ESCUELA_CONFIG.contactoTelefono}
+                  {cfg.contactoTelefono}
                 </a>
               </div>
             </div>

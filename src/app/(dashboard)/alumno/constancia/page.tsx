@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, Printer, Download } from 'lucide-react'
-import { CONFIG } from '@/lib/config'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
-
-const C = CONFIG.colores
+import { useSiteConfig } from '@/components/site-config-provider'
 
 type Estado = 'Acreditada' | 'No acreditada' | 'Pendiente'
 
@@ -51,6 +49,11 @@ const estadoLabel: Record<Estado, string> = {
 }
 
 export default function ConstanciaPage() {
+  // Identidad, logo y colores son editables desde "Personalizar mi página":
+  // salen del provider. `C` vivía a nivel de módulo sobre los colores de
+  // config.ts; ahora va aquí para leer los colores fusionados.
+  const cfg = useSiteConfig()
+  const C = cfg.colores
   const [datos, setDatos] = useState<DatosConstancia | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,7 +79,7 @@ export default function ConstanciaPage() {
     ? Math.round((datos.meses_desbloqueados / datos.duracion_meses) * 100)
     : 0
 
-  const disclaimerParts = `Este documento es un comprobante académico interno con folio {folio} generado digitalmente por ${CONFIG.nombre}. Para verificar su autenticidad, contacte a administración.`.split('{folio}')
+  const disclaimerParts = `Este documento es un comprobante académico interno con folio {folio} generado digitalmente por ${cfg.nombre}. Para verificar su autenticidad, contacte a administración.`.split('{folio}')
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
@@ -148,17 +151,17 @@ export default function ConstanciaPage() {
             {/* Logo */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={CONFIG.logo} alt={CONFIG.nombre} style={{ height: 60, width: 'auto', objectFit: 'contain' }} />
+              <img src={cfg.logo} alt={cfg.nombre} style={{ height: 60, width: 'auto', objectFit: 'contain' }} />
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{
                   fontWeight: 800, fontSize: 16, letterSpacing: '0.04em',
                   background: `linear-gradient(135deg, ${C.primario}, ${C.secundario}, ${C.acento})`,
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text', lineHeight: 1.2,
-                }}>{CONFIG.nombreCompleto}</span>
+                }}>{cfg.nombreCompleto}</span>
                 <span style={{ fontSize: 9, letterSpacing: '0.2em', color: '#64748b', fontWeight: 500, textTransform: 'uppercase', marginTop: 4 }}>
-                  {CONFIG.cct?.trim()
-                    ? <>Centro de Apoyo para la Acreditación de Conocimientos &nbsp;·&nbsp; CCT: {CONFIG.cct.trim()}</>
+                  {cfg.cct?.trim()
+                    ? <>Centro de Apoyo para la Acreditación de Conocimientos &nbsp;·&nbsp; CCT: {cfg.cct.trim()}</>
                     : <>Centro de Apoyo para la Acreditación de Conocimientos</>}
                 </span>
                 <span style={{
@@ -245,7 +248,7 @@ export default function ConstanciaPage() {
               <strong style={{ color: '#0f172a', fontWeight: 600 }}>
                 {datos.plan_nombre}
               </strong>{' '}
-              {` de ${CONFIG.nombre}.`}
+              {` de ${cfg.nombre}.`}
             </p>
 
             {/* Párrafo 2 */}
@@ -263,9 +266,9 @@ export default function ConstanciaPage() {
               display: 'flex', flexWrap: 'wrap', gap: '6px 24px',
             }}>
               {[
-                { label: 'Institución', value: CONFIG.nombreCompleto },
-                ...(CONFIG.cct?.trim()
-                  ? [{ label: 'CCT' as const, value: CONFIG.cct.trim() }]
+                { label: 'Institución', value: cfg.nombreCompleto },
+                ...(cfg.cct?.trim()
+                  ? [{ label: 'CCT' as const, value: cfg.cct.trim() }]
                   : []),
                 { label: 'Tipo de documento', value: 'Constancia de progreso académico (uso informativo)' },
               ].map(item => (
@@ -375,9 +378,9 @@ export default function ConstanciaPage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 4 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={CONFIG.logo} alt={CONFIG.nombre} style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
+                <img src={cfg.logo} alt={cfg.nombre} style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', letterSpacing: '0.04em' }}>
-                  {CONFIG.nombre}
+                  {cfg.nombre}
                 </span>
               </div>
             </div>

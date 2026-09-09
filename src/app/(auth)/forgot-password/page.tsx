@@ -6,10 +6,13 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Mail, Loader2, ArrowLeft, CheckCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { CONFIG } from '@/lib/config'
+// Logo y nombre son editables desde el panel (F1): se leen del provider, no
+// de CONFIG, para que el cambio del admin llegue sin redeploy.
+import { useSiteConfig } from '@/components/site-config-provider'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
+  const cfg = useSiteConfig()
   const [email,   setEmail]   = useState('')
   const [loading, setLoading] = useState(false)
   const [sent,    setSent]    = useState(false)
@@ -40,7 +43,7 @@ export default function ForgotPasswordPage() {
 
         {/* Header */}
         <div className="flex flex-col items-center mb-7">
-          <Image src={CONFIG.logo} alt={CONFIG.nombre} width={60} height={60}
+          <Image src={cfg.logo} alt={cfg.nombre} width={60} height={60}
             style={{ borderRadius: 10, objectFit: 'contain', marginBottom: 14 }} />
           <h1 className="text-xl font-bold text-center" style={{ color: 'var(--color-primario)', fontFamily: 'Syne, sans-serif' }}>
             Recuperar contraseña
@@ -124,7 +127,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
-        © {new Date().getFullYear()} {CONFIG.nombreCompleto}
+        © {new Date().getFullYear()} {cfg.nombreCompleto}
       </p>
     </div>
   )

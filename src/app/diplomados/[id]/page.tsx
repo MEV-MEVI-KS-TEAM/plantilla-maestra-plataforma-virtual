@@ -14,7 +14,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { CONFIG } from '@/lib/config'
+import { getSiteConfig } from '@/lib/site-config'
 import { detallePublico, precioMXN, waUrlDiplomado } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
@@ -28,14 +28,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const curso = await detallePublico(params.id)
   if (!curso) return { title: 'Diplomado no disponible' }
 
+  // nombreCompleto es editable desde "Personalizar mi página": config fusionada.
+  const cfg = await getSiteConfig()
   const desc = curso.descripcion?.slice(0, 155)
-    ?? `${curso.nombre}${curso.horas ? ` · ${curso.horas} horas` : ''} en ${CONFIG.nombreCompleto}.`
+    ?? `${curso.nombre}${curso.horas ? ` · ${curso.horas} horas` : ''} en ${cfg.nombreCompleto}.`
 
   return {
-    title: `${curso.nombre} — ${CONFIG.nombreCompleto}`,
+    title: `${curso.nombre} — ${cfg.nombreCompleto}`,
     description: desc,
     openGraph: {
-      title: `${curso.nombre} — ${CONFIG.nombreCompleto}`,
+      title: `${curso.nombre} — ${cfg.nombreCompleto}`,
       description: desc,
       type: 'website',
     },
@@ -49,7 +51,8 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
   // está publicado" ya sería filtrar información.
   if (!curso) notFound()
 
-  const wa = waUrlDiplomado(CONFIG.whatsappUrl, curso.nombre)
+  const cfg = await getSiteConfig()
+  const wa = waUrlDiplomado(cfg.whatsappUrl, curso.nombre)
   const etiqueta = curso.tipo === 'diplomado' ? 'Diplomado' : 'Curso'
 
   return (

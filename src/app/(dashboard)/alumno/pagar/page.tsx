@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { CONFIG } from '@/lib/config'
+import { useSiteConfig } from '@/components/site-config-provider'
 
 /**
  * Pagos del alumno.
@@ -26,6 +27,9 @@ const fmt = (n: number) =>
 export default function PagarPage() {
   const [nivel, setNivel]       = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
+  // Nombre y WhatsApp son editables desde "Personalizar mi página"; `pagos`
+  // (enlaces de cobro) no lo es y sigue leyendo CONFIG.
+  const cfg = useSiteConfig()
 
   useEffect(() => {
     fetch('/api/alumno/perfil')
@@ -42,7 +46,7 @@ export default function PagarPage() {
     e.niveles.length > 0 && (nivel === null ? true : e.niveles.includes(nivel)),
   )
 
-  const wa = CONFIG.whatsappUrl || (CONFIG.whatsapp ? `https://wa.me/${CONFIG.whatsapp}` : '')
+  const wa = cfg.whatsappUrl || (cfg.whatsapp ? `https://wa.me/${cfg.whatsapp}` : '')
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -111,7 +115,7 @@ export default function PagarPage() {
             {cfgPagos.emisor && (
               <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
                 Al abrir el enlace verás el cobro a nombre de <strong>{cfgPagos.emisor}</strong>,
-                que es quien procesa los pagos de {CONFIG.nombre}.
+                que es quien procesa los pagos de {cfg.nombre}.
               </p>
             )}
             {wa && (

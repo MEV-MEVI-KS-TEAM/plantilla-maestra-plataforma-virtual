@@ -61,6 +61,17 @@ body {
 
 /* ── Landing CJVB ──────────────────────────────────────────────────────── */
 
+/* Colores de marca de la landing → var(--landing-*, <literal de siempre>).
+   Las variables las inyecta LandingClient en el div raíz de la landing y SOLO
+   cuando el admin personalizó la paleta desde "Personalizar mi página"; el
+   fallback es el literal exacto que estas reglas tenían desde siempre, así que
+   sin variables (los ~144 clientes que no tocan colores, y cualquier otra
+   página que reutilice estas clases) el render no cambia ni un byte.
+   Sufijo numérico = el alpha del rgba (--landing-azure-22 → alpha .22).
+   Los colores NO de marca se quedan literales a propósito: el verde de
+   WhatsApp (#25D366) y su texto, los velos rgba(255,255,255,…) de .pain-card
+   y .benefit-card, y las sombras rgba(0,0,0,…). */
+
 /* Aurora blobs */
 @keyframes aurora-float {
   0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.38; }
@@ -76,10 +87,10 @@ body {
 /* Scroll progress */
 .scroll-progress {
   position: fixed; top: 0; left: 0; height: 3px; z-index: 100;
-  background: linear-gradient(90deg, #1565C0, #42A5F5);
+  background: linear-gradient(90deg, var(--landing-royal, #1565C0), var(--landing-azure, #42A5F5));
   transition: width .1s linear;
   border-radius: 0 2px 2px 0;
-  box-shadow: 0 0 10px rgba(66,165,245,0.6);
+  box-shadow: 0 0 10px var(--landing-azure-60, rgba(66,165,245,0.6));
 }
 
 /* Floating WA */
@@ -100,41 +111,41 @@ body {
 .float-wa { animation: float-pulse 2.8s ease-in-out infinite; }
 
 /* FAQ accordion */
-.faq-item { border-bottom: 1px solid rgba(21,101,192,0.12); }
+.faq-item { border-bottom: 1px solid var(--landing-royal-12, rgba(21,101,192,0.12)); }
 .faq-btn {
   width: 100%; display: flex; align-items: center; justify-content: space-between;
   padding: 20px 0; text-align: left; background: transparent; cursor: pointer;
-  font-weight: 600; font-size: 15px; color: #0D1B3E;
+  font-weight: 600; font-size: 15px; color: var(--landing-navy, #0D1B3E);
   transition: color .18s ease;
   border: none;
 }
-.faq-btn:hover { color: #1565C0; }
+.faq-btn:hover { color: var(--landing-royal, #1565C0); }
 .faq-icon {
   flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: #EEF2FF; color: #1565C0;
+  background: var(--landing-ice, #EEF2FF); color: var(--landing-royal, #1565C0);
   transition: transform .25s cubic-bezier(.4,0,.2,1), background .18s ease;
   font-size: 16px; line-height: 1;
 }
-.faq-icon.open { transform: rotate(45deg); background: #1565C0; color: #fff; }
+.faq-icon.open { transform: rotate(45deg); background: var(--landing-royal, #1565C0); color: var(--landing-white, #fff); }
 .faq-body {
   overflow: hidden; max-height: 0;
   transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease;
   opacity: 0;
 }
 .faq-body.open { opacity: 1; }
-.faq-body-inner { padding-bottom: 18px; font-size: 14px; line-height: 1.7; color: rgba(13,27,62,.68); }
+.faq-body-inner { padding-bottom: 18px; font-size: 14px; line-height: 1.7; color: var(--landing-navy-68, rgba(13,27,62,.68)); }
 
 /* Testimonial card */
 .testi-card {
   border-radius: 20px; padding: 28px;
-  background: #fff;
-  border: 1px solid rgba(21,101,192,0.1);
-  box-shadow: 0 20px 50px rgba(13,27,62,0.08);
+  background: var(--landing-white, #fff);
+  border: 1px solid var(--landing-royal-10, rgba(21,101,192,0.1));
+  box-shadow: 0 20px 50px var(--landing-navy-08, rgba(13,27,62,0.08));
   transition: transform .2s ease, box-shadow .2s ease;
   display: flex; flex-direction: column; gap: 16px;
 }
-.testi-card:hover { transform: translateY(-4px); box-shadow: 0 28px 64px rgba(13,27,62,0.13); }
+.testi-card:hover { transform: translateY(-4px); box-shadow: 0 28px 64px var(--landing-navy-13, rgba(13,27,62,0.13)); }
 
 /* Pain card */
 .pain-card {
@@ -163,7 +174,7 @@ body {
 .cjvb-btn-white {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px 32px; border-radius: 12px;
-  background: #ffffff; color: #0D1B3E;
+  background: var(--landing-white, #ffffff); color: var(--landing-navy, #0D1B3E);
   font-weight: 700; font-size: 15px;
   box-shadow: 0 4px 24px rgba(0,0,0,.25);
   transition: transform .18s ease, box-shadow .18s ease;
@@ -173,12 +184,12 @@ body {
 .cjvb-btn-outline {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px 32px; border-radius: 12px;
-  background: transparent; color: #E3F2FD;
+  background: transparent; color: var(--landing-ice, #E3F2FD);
   font-weight: 600; font-size: 15px;
-  border: 1.5px solid rgba(66,165,245,.45);
+  border: 1.5px solid var(--landing-azure-45, rgba(66,165,245,.45));
   transition: background .18s ease, border-color .18s ease;
 }
-.cjvb-btn-outline:hover { background: rgba(66,165,245,.1); border-color: #42A5F5; }
+.cjvb-btn-outline:hover { background: var(--landing-azure-10, rgba(66,165,245,.1)); border-color: var(--landing-azure, #42A5F5); }
 
 .cjvb-btn-wa {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -194,20 +205,20 @@ body {
   flex-shrink: 0; width: 56px; height: 56px; border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 13px;
-  background: linear-gradient(135deg, #0D1B3E, #1565C0);
-  color: #ffffff;
-  box-shadow: 0 8px 24px rgba(13,27,62,.35);
+  background: linear-gradient(135deg, var(--landing-navy, #0D1B3E), var(--landing-royal, #1565C0));
+  color: var(--landing-white, #ffffff);
+  box-shadow: 0 8px 24px var(--landing-navy-35, rgba(13,27,62,.35));
 }
 
 .benefit-card {
   border-radius: 16px; padding: 24px;
   background: rgba(255,255,255,.04);
-  border: 1px solid rgba(66,165,245,.1);
+  border: 1px solid var(--landing-azure-10, rgba(66,165,245,.1));
   transition: background .2s ease, border-color .2s ease, transform .2s ease;
 }
 .benefit-card:hover {
   background: rgba(255,255,255,.07);
-  border-color: rgba(66,165,245,.22);
+  border-color: var(--landing-azure-22, rgba(66,165,245,.22));
   transform: translateY(-3px);
 }
 
