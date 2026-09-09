@@ -32,6 +32,14 @@ function paleta(colores = {}) {
     linea: mezclar(acento, '#FFFFFF', 0.72),
     // Sobre el color primario el texto va claro; sobre el acento, se calcula.
     sobreBanda: contraste(primario) === 'claro' ? '#FFFFFF' : '#111111',
+    // 🐞 La fila de totales pintaba el acento sobre la banda. Con una paleta
+    // cuyo acento y primario son dos tonos del mismo color —el ciruela y el
+    // ciruela profunda de SÉNDERI— eso da 1.2 de contraste: la fila del COSTO
+    // TOTAL, que es la cifra que el cliente más mira, salía ilegible en el
+    // documento de entrega. Se usa el acento solo si de verdad se lee encima.
+    sobreTotal: razon(acento, primario) >= 4.5
+      ? acento
+      : (contraste(primario) === 'claro' ? '#FFFFFF' : '#111111'),
     sobreAcento: contraste(acento) === 'claro' ? '#FFFFFF' : '#0A0A0A',
     texto: '#1A1712',
     suave: '#6B5F52',
@@ -44,9 +52,17 @@ function mezclar(a, b, t) {
   return '#' + [m(r1, r2), m(g1, g2), m(b1, b2)].map(v => v.toString(16).padStart(2, '0')).join('')
 }
 /** Luminancia relativa → si el fondo es oscuro, encima va texto claro. */
+function luminancia(color) {
+  const [r, g, b] = hex(color).map(v => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4) })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
 function contraste(bg) {
-  const [r, g, b] = hex(bg).map(v => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4) })
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 0.35 ? 'claro' : 'oscuro'
+  return luminancia(bg) < 0.35 ? 'claro' : 'oscuro'
+}
+/** Razón de contraste WCAG entre dos colores. 1 es invisible, 21 es el máximo. */
+function razon(a, b) {
+  const [x, y] = [luminancia(a), luminancia(b)]
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
 
 const css = (P, fuentes) => `
@@ -68,6 +84,8 @@ body{ font-family:${fuentes.cuerpoCSS}; color:${P.texto};
 h1{ font-family:${fuentes.tituloCSS}; font-size:25pt; font-weight:800; text-align:center; }
 h2{ font-family:${fuentes.tituloCSS}; font-size:17pt; font-weight:700; margin-bottom:.06in; }
 h2 .num{ color:${P.acento}; }
+.cont{ font-size:8.5pt; letter-spacing:.06em; text-transform:uppercase;
+       color:${P.suave}; margin-bottom:.16in; }
 .rule{ width:.55in; height:3px; background:${P.acento}; margin:.05in 0 .17in; border-radius:2px; }
 h3{ font-size:11pt; font-weight:700; color:${P.acento2}; margin:.2in 0 .08in; }
 p{ font-size:9.8pt; line-height:1.62; }
@@ -95,7 +113,7 @@ table{ width:100%; border-collapse:collapse; font-size:9.4pt; }
 .dt th.c,.dt td.c{ text-align:center; }
 .dt td{ padding:.075in .12in; border-bottom:1px solid ${P.linea}; }
 .dt tr:nth-child(even) td{ background:${P.tinte2}; }
-.dt tr.total td{ background:${P.banda}!important; color:${P.acento}; font-weight:700; }
+.dt tr.total td{ background:${P.banda}!important; color:${P.sobreTotal}; font-weight:700; }
 ul{ list-style:none; margin-top:.04in; }
 li{ font-size:9.5pt; line-height:1.5; padding-left:.22in; position:relative; margin-bottom:.075in; }
 li::before{ content:''; position:absolute; left:.02in; top:.075in; width:6px; height:6px;
@@ -143,7 +161,11 @@ ${marca(d)}
 <div class="sub">Documento de entrega oficial de tu plataforma educativa</div>
 <div class="quote mt">"${esc(d.tagline)}"</div>
 <div class="hr"></div>
-<h2>Bienvenid${d.adminGenero === 'f' ? 'a' : 'o'} a la familia MEV, ${esc(d.adminNombre)}.</h2>
+<!-- Fórmula neutra: el saludo dependía de un campo de género que se rellena a
+     mano en cada entrega y que nadie confirma con la persona. Equivocarlo en la
+     primera línea de un documento oficial es un mal comienzo, y acertarlo por
+     casualidad tampoco es un sistema. Así funciona siempre. -->
+<h2>Te damos la bienvenida a la familia MEV, ${esc(d.adminNombre)}.</h2>
 <div class="rule"></div>
 <p>Lo que tienes en tus manos no es solo un sitio web: es la infraestructura
 digital completa para operar ${esc(d.frasePrograma)}, con tu propio panel de
@@ -276,11 +298,31 @@ function licenciaturas(d) {
   const totalR  = L.carreras.reduce((a, c) => a + react(c), 0)
 
   const cols = ['Programa', bloque, 'Materias', ...(conInv ? ['Reactivos'] : [])]
-  const filas = L.carreras.map(c => [
+  const tabla = (cs) => dt(cols, cs.map(c => [
     c.nombre, c.cuatrimestres, mats(c), ...(conInv ? [react(c) || '—'] : []),
-  ]).concat([{ celdas: ['Total', '', totalM, ...(conInv ? [totalR] : [])], total: true }])
+  ]).concat(cs.length > 1
+    ? [{ celdas: ['Total', '', cs.reduce((a, c) => a + mats(c), 0),
+        ...(conInv ? [cs.reduce((a, c) => a + react(c), 0)] : [])], total: true }]
+    : []))
 
-  return `
+  // Licenciaturas y diplomados se cuentan aparte: no son el mismo producto y
+  // el documento no puede sugerir que sí. Un diplomado prepara para una
+  // evaluación que hace un tercero; una licenciatura titula.
+  const grupos = [
+    ['licenciatura', 'Licenciaturas'],
+    ['diplomado', 'Diplomados'],
+    ['curso', 'Cursos de preparación'],
+  ].map(([tipo, rotulo]) => [rotulo, L.carreras.filter(c => (c.tipo || 'licenciatura') === tipo)])
+    .filter(([, cs]) => cs.length)
+
+  const RUTAS = (L.rutas || []).filter(r => r.activa !== false)
+  const hayDip = grupos.some(([r]) => r === 'Diplomados')
+
+  // Devuelve UNA o DOS páginas. `.page` recorta en silencio lo que no cabe en
+  // once pulgadas, así que una sección que crece —rutas de titulación, marco
+  // legal de los diplomados— tiene que partirse a propósito y no confiar en que
+  // quepa.
+  return [`
 <h2><span class="num">Programa ·</span> ${titulo}</h2>
 <div class="rule"></div>
 <p class="lead">${L.carreras.length === 1 ? 'Vive' : 'Viven'} dentro de la misma
@@ -294,16 +336,64 @@ ${kv([
     // Un cliente cuyo programa no lleva inscripción aparte no debe ver una
     // fila que diga "$0.00": se omite.
     L.inscripcion ? ['Inscripción', mxn(L.inscripcion)] : ['Inscripción', 'Sin inscripción adicional'],
-    L.certificacion ? ['Certificación profesional', mxn(L.certificacion)] : null,
+    // La certificación suelta solo se anuncia si NO hay rutas: con varias,
+    // cada una tiene la suya y ponerla aquí arriba induce a error.
+    (!RUTAS.length && L.certificacion) ? ['Certificación profesional', mxn(L.certificacion)] : null,
   ])}
-${L.carreras.length ? `<h3>Catálogo</h3>${dt(cols, filas)}` : ''}
-${L.carreras.some(c => c.desc) ? L.carreras.filter(c => c.desc).map(c => `
-<div class="note"><b>${esc(c.nombre)}</b><p>${esc(c.desc)}</p>${
-  (c.incluye || []).length ? ul(c.incluye.map(esc)) : ''
-}</div>`).join('') : ''}
-${L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
+${grupos.map(([rotulo, cs]) =>
+    `<h3>${grupos.length > 1 ? rotulo : 'Catálogo'}</h3>${tabla(cs)}`).join('')}
+${!RUTAS.length && L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
       L.modalidades.map(m => [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
-        mxn((m.mensualidad || 0) * (m.meses || 0))]))}` : ''}`
+        mxn((m.mensualidad || 0) * (m.meses || 0))]))}` : ''}
+${L.carreras.some(c => c.desc) && !RUTAS.length ? descripciones(L) : ''}
+`,
+// ── Segunda página: cómo se titula y qué se vende ──────────────────────
+(RUTAS.length > 1 || hayDip) ? `
+<h2><span class="num">Programa ·</span> ${titulo}</h2>
+<div class="rule"></div>
+${RUTAS.length > 1 ? `
+<h3>Rutas de titulación</h3>
+<p class="small">El mismo programa se puede concluir por caminos distintos, y no
+cambian solo de precio: cambian en quién otorga el documento. Es la diferencia
+que hay que poder explicarle a cada prospecto.</p>
+${RUTAS.map(r => `
+<div class="note"><b>${esc(r.nombre)}</b>
+<p><b>El documento lo otorga:</b> ${esc(r.titulaQuien || 'la institución')}</p>
+${r.paraQuien ? `<p>${esc(r.paraQuien)}</p>` : ''}
+${(r.modalidades || []).filter(m => m.activa !== false).length
+    ? dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
+        (r.modalidades || []).filter(m => m.activa !== false).map(m => [
+          m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
+          mxn((m.mensualidad || 0) * (m.meses || 0))]))
+    : ''}
+${r.certificacion ? `<p><b>Titulación:</b> ${mxn(r.certificacion)}${
+      r.aportaciones && r.montoAportacion
+        ? ` — ${r.aportaciones} aportaciones de ${mxn(r.montoAportacion)}` : ''}</p>` : ''}
+${r.disclaimer ? `<p class="small"><b>Lo que hay que decirle al alumno:</b> ${esc(r.disclaimer)}</p>` : ''}
+</div>`).join('')}` : ''}
+
+${hayDip && (L.avisoCostoDiplomado || L.disclaimerDiplomado) ? `
+<h3>Lo que se vende en un diplomado, con todas sus letras</h3>
+${L.avisoCostoDiplomado ? `<div class="note"><b>El costo total para el alumno</b><p>${esc(L.avisoCostoDiplomado)}</p></div>` : ''}
+${L.disclaimerDiplomado ? `<div class="note"><b>Texto legal obligatorio</b><p>${esc(L.disclaimerDiplomado)}</p></div>` : ''}` : ''}
+${L.carreras.some(c => c.desc) ? descripciones(L) : ''}
+` : null,
+  ].filter(Boolean)
+}
+
+/** Ficha de cada programa: precio si lo tiene, descripción y qué incluye. */
+function descripciones(L) {
+  return L.carreras.filter(c => c.desc).map(c => `
+<div class="note"><b>${esc(c.nombre)}</b>${
+  c.precio ? `<p><b>Precio:</b> ${mxn(c.precio.publico)}${
+    c.precio.mensual ? ` — ${mxn(c.precio.mensual)}/mes` : ''}${
+    c.precio.exhibiciones && c.precio.montoExhibicion
+      ? `, o ${c.precio.exhibiciones} pagos de ${mxn(c.precio.montoExhibicion)}` : ''}${
+    (c.precio.alumnoActivo ?? c.precio.alumnoSenderi)
+      ? `. ${mxn(c.precio.alumnoActivo ?? c.precio.alumnoSenderi)} para quien ya cursa otro programa` : ''}</p>` : ''
+}<p>${esc(c.desc)}</p>${
+  (c.incluye || []).length ? ul(c.incluye.map(esc)) : ''
+}</div>`).join('')
 }
 
 function soporte(d) {
@@ -366,7 +456,10 @@ export function construirHTML(d) {
   const secciones = [portada(d), accesos(d)]
   if (d.infra) secciones.push(infraestructura(d))
   secciones.push(precios(d))
-  if (d.licenciaturas?.activas) secciones.push(licenciaturas(d))
+  // Una sección puede devolver varias páginas: `.page` recorta lo que no cabe,
+  // así que la de programas se parte a propósito cuando trae rutas de
+  // titulación o el marco legal de los diplomados.
+  if (d.licenciaturas?.activas) secciones.push(...[licenciaturas(d)].flat())
   secciones.push(cursos(d))
   secciones.push(soporte(d), cierre(d))
 

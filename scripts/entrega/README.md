@@ -51,6 +51,7 @@ que no tenerlo.
 |---|---|
 | Nombre, dominio, colores, logo | `src/lib/config.ts` |
 | Niveles, modalidades, precios | `src/lib/config.ts` |
+| Inscripción y mensualidad **por nivel** | `precios.inscripcion<Nivel>` y `precios.<nivel>_<n>meses_normal`, las mismas claves que usa el registro. Un cliente con precios diferenciados los cobra bien en la plataforma; sin consultarlas, el documento anunciaba otra cosa |
 | Licenciaturas, cursos de ingreso | `src/lib/config.ts` |
 | Materias, semanas, preguntas, matrícula | consulta real a Supabase vía `.env.local` |
 | Nombre del admin y contraseñas | `entrega.local.json` (ignorado por git) |
@@ -63,6 +64,27 @@ resto del documento se genera igual. La página de Infraestructura avisa en
 consola si no encontró la URL de Supabase, y se puede omitir por completo con
 `"infraestructura": false` en `entrega.local.json`.
 
+## El documento se pagina solo
+
+Cada página mide once pulgadas y **recortaba en silencio** lo que no cabía: una
+sección que crecía se llevaba por delante lo último escrito y el PDF salía con
+una frase cortada a media línea, sin que nadie se enterara hasta que lo leía el
+cliente.
+
+Ahora lo que no cabe pasa a una página nueva con su misma cabecera y su mismo
+pie, los números se renumeran al final, un encabezado nunca se queda solo al pie
+de una página, y una página de continuación que no empiece por título se rotula.
+
+Si algo sigue sin caber —un bloque que no entra ni en una página vacía— el
+generador lo dice en consola con la página y los píxeles que sobran:
+
+```
+🛑 SIGUE SIN CABER, y el PDF lo recorta:
+   Pág. 7 «Catálogo» — sobran 210 px
+```
+
+Eso es una tabla o una nota demasiado larga: hay que acortarla o partirla a mano.
+
 ## Se adapta a lo contratado
 
 El documento **no es una plantilla fija**: cambia según lo que el cliente compró.
@@ -72,6 +94,20 @@ El documento **no es una plantilla fija**: cambia según lo que el cliente compr
 - **Inscripción por nivel** (`inscripcion: {secundaria, preparatoria}`) → una
   columna por nivel. También acepta el número plano de siempre.
 - **Licenciaturas activas** → se añade una página con carreras y planes.
+- **Varias rutas de titulación** (`licenciaturas.rutas`) → cada una con su
+  bloque: quién otorga el documento, para quién es, sus planes con el total, su
+  titulación y su aviso legal. Cuando hay rutas, la certificación NO se anuncia
+  suelta arriba: cada ruta tiene la suya.
+- **Licenciaturas y diplomados a la vez** → se cuentan y se listan por separado.
+  No son el mismo producto: uno titula y el otro prepara para una evaluación que
+  hace un tercero.
+- **Textos legales de los diplomados** (`avisoCostoDiplomado` y
+  `disclaimerDiplomado` en `CONFIG.licenciaturas`) → van al PDF y al mensaje. Es
+  la fuente única: la landing los lee de ahí, así que el papel y la web dicen lo
+  mismo palabra por palabra.
+- **Lo hecho a medida** → se detecta mirando el repo, no con una lista escrita a
+  mano: comunidad con inscripción $0, formulario de diagnóstico, páginas legales
+  y página institucional con demostración embebida.
 - **Cursos y Diplomados** → siempre presente; dice si va vacío o con contenido.
 
 ## La regla del dominio
