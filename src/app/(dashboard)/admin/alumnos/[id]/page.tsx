@@ -648,7 +648,16 @@ export default function AlumnoDetallePage() {
           </button>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl font-bold text-gray-100">{alumno.usuario.nombre_completo}</h1>
+              {/* ⚠️ Estaba en `text-gray-100` (#F3F4F6). Esta cabecera NO va
+                  dentro de la card oscura —esa empieza más abajo—: cae sobre el
+                  fondo claro del layout de admin (#F8FAFB, porque
+                  admin/layout.tsx pasa theme="light"). Contraste 1.05:1, ni
+                  siquiera pasa el umbral de texto grande.
+                  Una clienta lo reportó así: «tengo que seleccionarla para
+                  poder visualizar el nombre del alumno» — literalmente tenía
+                  que arrastrar el cursor para leerlo (TICKET-2026-09-08-61).
+                  Con gray-900 el ratio es 16.94:1. */}
+              <h1 className="text-xl font-bold text-gray-900">{alumno.usuario.nombre_completo}</h1>
               <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(21,101,192,0.15)', color: 'var(--color-acento)' }}>
                 {alumno.matricula}
               </span>
