@@ -115,6 +115,12 @@ export function PestanaPrecios({
     <div className="space-y-5">
       <Tarjeta titulo="Inscripción" icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
         {campoPrecio('precios.inscripcion')}
+        {campoPrecio('precios.inscripcionSecundaria')}
+        {campoPrecio('precios.inscripcionPreparatoria')}
+        <Ayuda>
+          Si tu escuela cobra la misma inscripción en los dos niveles, deja los
+          tres campos iguales y tu página seguirá mostrando una sola cifra.
+        </Ayuda>
       </Tarjeta>
 
       <Tarjeta

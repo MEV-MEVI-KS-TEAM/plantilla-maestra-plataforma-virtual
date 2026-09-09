@@ -140,6 +140,26 @@ test('7. precios.certificacionSecundaria sincroniza sus dos alias y no toca prep
   expect(r).toEqual(base)
 })
 
+test('7b. la inscripción por nivel nace igual a la general: sin overrides nadie ve un cambio', () => {
+  // El invariante que protege a las 144 escuelas que cobran una sola cifra.
+  expect(CONFIG.precios.inscripcionSecundaria).toBe(CONFIG.precios.inscripcion)
+  expect(CONFIG.precios.inscripcionPreparatoria).toBe(CONFIG.precios.inscripcion)
+})
+
+test('7c. precios.inscripcionPreparatoria se sobrescribe sola, sin tocar secundaria ni la general', () => {
+  const r = mergeSiteConfig(CONFIG, { precios: { inscripcionPreparatoria: 1500 } })
+  expect(r.precios.inscripcionPreparatoria).toBe(1500)
+
+  const base = esperado()
+  // La general sigue siendo la del config: es la que alimenta {inscripcion}.
+  expect(r.precios.inscripcion).toBe(base.precios.inscripcion)
+  expect(r.precios.inscripcionSecundaria).toBe(base.precios.inscripcionSecundaria)
+
+  // La inscripción NO tiene alias legacy: no debe derivar nada más.
+  base.precios.inscripcionPreparatoria = 1500
+  expect(r).toEqual(base)
+})
+
 test('8. claves fuera de la lista blanca se ignoran en silencio', () => {
   const r = mergeSiteConfig(CONFIG, {
     modo: 'solo_cursos',

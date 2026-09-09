@@ -80,6 +80,20 @@ export const CONFIG = {
   // === PRECIOS ===
   precios: {
     inscripcion:                       599,
+    // Inscripción POR NIVEL. La mensualidad y la certificación ya se cobraban
+    // distinto en secundaria y en preparatoria (`secundaria_3meses_normal`,
+    // `certificacionSecundaria`…); la inscripción era el único precio que la
+    // landing pintaba idéntico en las dos tarjetas aunque la escuela cobrara
+    // dos cifras. Moreta IED (#196) es el caso: $1,000 secundaria, $1,500
+    // preparatoria.
+    //
+    // ⚠️ DEFAULT IGUAL A `inscripcion` A PROPÓSITO: con estos valores la
+    // landing pinta exactamente lo mismo que antes en las 144 escuelas, y
+    // quien cobre una sola cifra no tiene que tocar nada. `inscripcion` sigue
+    // siendo el canónico: es el que alimenta el placeholder {inscripcion} de
+    // los textos editables y el que se usa cuando un nivel no declara el suyo.
+    inscripcionSecundaria:             599,
+    inscripcionPreparatoria:           599,
     plan6mMensualidad:                 1000, // @deprecated — usar modalidad.mensualidad via getModalidadesActivas()
     plan3mMensualidad:                 2000, // @deprecated — usar modalidad.mensualidad via getModalidadesActivas()
     certificacionSecundaria:           4900,

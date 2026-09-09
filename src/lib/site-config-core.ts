@@ -210,6 +210,8 @@ export const CLAVES_EDITABLES = [
   'landing.cta_whatsapp',
   // precios canónicos (los alias legacy se derivan de estos, ver derivarAliasPrecios)
   'precios.inscripcion',
+  'precios.inscripcionSecundaria',
+  'precios.inscripcionPreparatoria',
   'precios.certificacionSecundaria',
   'precios.certificacionPreparatoria',
   // modalidades (semántica especial)
@@ -274,7 +276,14 @@ export interface SiteConfigOverrides {
   redes?: Partial<SiteConfig['redes']>
   landing?: Partial<Pick<SiteConfig['landing'], ClaveLandingEditable>>
   precios?: Partial<
-    Pick<SiteConfig['precios'], 'inscripcion' | 'certificacionSecundaria' | 'certificacionPreparatoria'>
+    Pick<
+      SiteConfig['precios'],
+      | 'inscripcion'
+      | 'inscripcionSecundaria'
+      | 'inscripcionPreparatoria'
+      | 'certificacionSecundaria'
+      | 'certificacionPreparatoria'
+    >
   >
   modalidades?: { [id: string]: OverrideModalidad }
 }

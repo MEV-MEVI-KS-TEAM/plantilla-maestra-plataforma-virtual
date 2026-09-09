@@ -541,6 +541,8 @@ test('31. recortarAEditables: solo claves editables, modalidades completas, sin 
   expect(r.landing).not.toHaveProperty('certificacion_secundaria')
   expect(r.precios).toEqual({
     inscripcion: CONFIG.precios.inscripcion,
+    inscripcionSecundaria: CONFIG.precios.inscripcionSecundaria,
+    inscripcionPreparatoria: CONFIG.precios.inscripcionPreparatoria,
     certificacionSecundaria: CONFIG.precios.certificacionSecundaria,
     certificacionPreparatoria: CONFIG.precios.certificacionPreparatoria,
   })
