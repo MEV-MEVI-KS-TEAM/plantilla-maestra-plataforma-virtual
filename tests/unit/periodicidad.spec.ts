@@ -16,6 +16,7 @@ import { subtotalCuotas, getTotalPlan, type ModalidadPrograma } from '@/lib/moda
 import { formatoMXN, formatoPrecio, formatoMonto } from '@/lib/formato'
 import { validarOverrides, recortarAEditables, recortarOverrides } from '@/lib/site-config-validacion'
 import { mergeSiteConfig } from '@/lib/site-config-core'
+import { ES_PLANTILLA } from './es-plantilla'
 
 /**
  * PERIODICIDAD DE COBRO — semanal / mensual.
@@ -55,12 +56,21 @@ const SEMANAL: ModalidadPrograma = {
 // ─── 1. El default no mueve nada ─────────────────────────────────────────────
 
 test('1. la periodicidad viene en mensual por default', () => {
-  // Si esto cambia en la PLANTILLA, se les mueve el módulo de pagos a ~144
-  // escuelas al actualizar. En un clon semanal falla legítimamente: las pruebas
-  // que protegen el invariante de verdad son las de abajo, que usan datos.
-  expect(['mensual', 'semanal']).toContain(CONFIG.periodicidad)
+  // GUARDIÁN del config de FÁBRICA (ver tests/unit/es-plantilla.ts): si esto
+  // cambiara en la plantilla, se les movería el módulo de pagos a ~144 escuelas
+  // al actualizar. En el clon de una escuela semanal no significa nada — su
+  // config dice 'semanal' con toda la razón — así que ahí no corre.
+  //
+  // ⚠️ Aceptar los dos valores, que era la versión anterior, no protegía NADA:
+  // la aserción pasaba con cualquier config posible.
+  if (!ES_PLANTILLA) test.skip()
+  expect(CONFIG.periodicidad).toBe('mensual')
 })
 
+// Las tres de abajo describen la conducta de una escuela MENSUAL y se saltan
+// en un clon semanal: no es un guardián de fábrica, es que ahí la premisa no
+// existe. Lo que vale en los dos escenarios son las pruebas 2-8, que pasan los
+// datos como parámetro en vez de leerlos de CONFIG.
 test('1b. con periodicidad mensual, esSemanal() es falso', () => {
   if (CONFIG.periodicidad !== 'mensual') test.skip()
   expect(esSemanal()).toBe(false)
