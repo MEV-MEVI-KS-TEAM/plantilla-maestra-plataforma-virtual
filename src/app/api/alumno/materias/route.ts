@@ -55,8 +55,21 @@ export async function GET() {
       `)
       .eq('activa', true)
 
+    // ⚠️ La demo se muestra SOLO mientras el alumno no ha pagado: es la vista
+    // previa que engancha al prospecto. Una vez inscrito, deja de ser suya.
+    //
+    // Este listado la incluía SIEMPRE, mientras `calificaciones` y `constancia`
+    // sí la excluyen tras el pago (canon del Bug 54). El resultado es el que
+    // reportó CEyCL como «la misma materia tres veces»: el alumno ve la demo
+    // junto a la materia real, la cursa, la acredita — y esa acreditación no
+    // aparece luego ni en su boletín ni en su constancia, porque esos dos ya no
+    // la cuentan. Alinear el listado con ellos cierra las dos quejas de golpe
+    // (TICKET-2026-09-08-57).
+    const incluirDemo = !alumno.inscripcion_pagada
     materiasQuery = nivel
-      ? materiasQuery.or(`nivel.eq.${nivel},nivel.eq.demo`)
+      ? (incluirDemo
+          ? materiasQuery.or(`nivel.eq.${nivel},nivel.eq.demo`)
+          : materiasQuery.eq('nivel', nivel))
       : materiasQuery.eq('nivel', 'demo')
 
     // Scope SOLO por carrera, NUNCA por modalidad — debe ser IDÉNTICO al de
@@ -64,7 +77,9 @@ export async function GET() {
     // modalidad define el ritmo de desbloqueo, no el catálogo: filtrar por ella
     // dejaba en cero al alumno cuyo plan no fuera el de referencia.
     if (nivel === 'licenciatura' && alumno.carrera) {
-      materiasQuery = materiasQuery.or(`carrera.eq.${alumno.carrera},nivel.eq.demo`)
+      materiasQuery = incluirDemo
+        ? materiasQuery.or(`carrera.eq.${alumno.carrera},nivel.eq.demo`)
+        : materiasQuery.eq('carrera', alumno.carrera)
     }
 
     const { data: materias, error } = await materiasQuery.order('orden')
