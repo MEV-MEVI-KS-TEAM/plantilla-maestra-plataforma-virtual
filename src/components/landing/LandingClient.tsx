@@ -8,7 +8,9 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
-import { planesPorNivel, getDuracionLabel, getPlanLabelConDuracion, getTotalPlan } from '@/lib/modalidades'
+import { planesPorNivel, getDuracionLabel, getPlanLabelConDuracion, getTotalPlan,
+  type ModalidadPrograma } from '@/lib/modalidades'
+import { esSemanal, unidadCuota } from '@/lib/periodicidad'
 import { interpolar, type LandingConfig } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { aclarar, oscurecer, hexToRgb, ratioContraste, luminanciaRelativa, colorLegibleSobre, colorLegibleConAlpha, oscurecerHasta } from '@/lib/contraste'
@@ -525,6 +527,15 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // `nivel`, las dos listas son idénticas a `activas` y la página no cambia.
   const planesPrepa = planesPorNivel('preparatoria', mods)
   const planesSec   = planesPorNivel('secundaria', mods)
+  // 🛑 La cuota que se ANUNCIA y su unidad tienen que ser las de la escuela.
+  // Sin esto, una escuela de cobro semanal publicaba la mensualidad —o un 0, si
+  // no la declara— con la etiqueta "/mes": el visitante calcula el costo del
+  // programa con una cifra que no existe, y al inscribirse le cobran cada siete
+  // días. En una escuela mensual esto devuelve exactamente lo de siempre.
+  const semanalUI = esSemanal()
+  const unidad = unidadCuota()
+  const cuotaDe = (m: ModalidadPrograma, mensualLegacy?: number) =>
+    semanalUI ? Number(m.cuotaSemanal ?? 0) : Number(mensualLegacy ?? m.mensualidad)
   const C = paletaLanding(config.colores)
   // La acreditación NO es branding: sale de `CONFIG`, no de la config editable.
   // Nadie debe poder encender desde un panel una validez oficial que la escuela
@@ -738,7 +749,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     {[
                       // Rótulo PÚBLICO: la escuela puede vender "Express" lo que por
                       // dentro es "3 Meses". El registro y la constancia siguen con el interno.
-                      ...planesPrepa.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
+                      ...planesPrepa.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: cuotaDe(m), unit: unidad })),
                       // Total del plan: apagado por defecto en toda la flota (ver
                       // landing.mostrarTotalPlan). Encendido, es lo que deja ver que dos
                       // planes de ritmos distintos pueden costar exactamente lo mismo.
@@ -775,11 +786,16 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.
-                      ...planesSec.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
+                      // 🛑 Los alias SON mensualidades: en una escuela semanal no
+                      // aplican y `cuotaDe` los ignora en favor de la cuota real.
+                      ...planesSec.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: cuotaDe(m, m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal), unit: unidad })),
                       ...(CONFIG.landing.mostrarTotalPlan
                         ? planesSec.map(m => ({
                             label: `Total ${getPlanLabelConDuracion(m, mods)}`,
                             price: getTotalPlan(
+                              // En semanal el total lo da `semanas × cuotaSemanal`, así que
+                              // pisar la mensualidad con el alias no altera nada; en mensual
+                              // es el precio de secundaria de siempre.
                               { ...m, mensualidad: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal },
                               p.inscripcion,
                             ),

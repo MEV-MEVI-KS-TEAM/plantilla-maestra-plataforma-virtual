@@ -34,6 +34,13 @@ const raiz = process.cwd()
 const leer = (p: string) => readFileSync(join(raiz, p), 'utf8').replace(/\r\n/g, '\n')
 const MIGRACION = 'supabase/migrations/20260910130000_periodicidad_semanal.sql'
 
+/**
+ * La config ENSANCHADA, que es lo que espera el validador. `CONFIG` lleva
+ * `as const` y sus arreglos son `readonly`: pasarlo tal cual no compila.
+ * Mismo recurso que `BASE()` en site-config-validacion.spec.ts.
+ */
+const BASE = () => mergeSiteConfig(CONFIG, {})
+
 /** Un plan MENSUAL: la forma de las ~144 escuelas. */
 const MENSUAL: ModalidadPrograma = {
   id: '6_meses', label: '6 Meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true,
@@ -157,7 +164,7 @@ test('4. en una escuela mensual el vocabulario es el de siempre', () => {
 test('5. la validación acepta una cuota semanal válida', () => {
   const r = validarOverrides(
     { modalidades: { [CONFIG.modalidades[0].id]: { cuotaSemanal: 350 } } },
-    CONFIG,
+    BASE(),
   )
   expect(r.ok).toBeTruthy()
 })
@@ -168,7 +175,7 @@ test('5b. rechaza una cuota semanal fuera de rango, con su propio tope', () => {
   // 24 semanas antes de que nadie lo note.
   const r = validarOverrides(
     { modalidades: { [CONFIG.modalidades[0].id]: { cuotaSemanal: 40000 } } },
-    CONFIG,
+    BASE(),
   )
   expect(r.ok).toBeFalsy()
 })
@@ -178,7 +185,7 @@ test('5c. `semanas` NO es editable desde el panel', () => {
   // calendarios ya generados sin que el admin lo pida.
   const r = validarOverrides(
     { modalidades: { [CONFIG.modalidades[0].id]: { semanas: 30 } } },
-    CONFIG,
+    BASE(),
   )
   expect(r.ok).toBeFalsy()
 })
@@ -241,4 +248,26 @@ test('6e. el calendario NO se escribe desde una sesión de usuario', () => {
   const sql = leer(MIGRACION)
   expect(sql).toContain('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.calendario_pagos FROM authenticated')
   expect(sql).toContain('GRANT  SELECT ON public.calendario_pagos TO authenticated')
+})
+
+// ─── 7. La landing no puede anunciar la unidad equivocada ────────────────────
+
+test('7. la landing no lleva "/mes" escrito a mano en las tarjetas de plan', () => {
+  // 🛑 Este era el hueco: las tarjetas pintaban `m.mensualidad` con la etiqueta
+  // "/mes" pasara lo que pasara. En una escuela semanal eso publica una cifra
+  // que no existe —o un 0, si no declara mensualidad— y el visitante calcula el
+  // costo del programa con ella. La unidad tiene que salir de `unidadCuota()`.
+  const landing = leer('src/components/landing/LandingClient.tsx')
+  const tarjetas = landing
+    .split('\n')
+    .filter(l => l.includes('planesPrepa.map') || l.includes('planesSec.map'))
+  expect(tarjetas.length).toBeGreaterThan(0)
+  for (const linea of tarjetas) {
+    expect(linea, 'unidad escrita a mano en una tarjeta de plan').not.toContain("'/mes'")
+  }
+})
+
+test('7b. la unidad del precio sale de la periodicidad', () => {
+  const landing = leer('src/components/landing/LandingClient.tsx')
+  expect(landing).toContain("unidadCuota")
 })
