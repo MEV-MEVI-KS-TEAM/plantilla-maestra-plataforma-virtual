@@ -14,7 +14,7 @@ import {
 } from '@/lib/periodicidad'
 import { subtotalCuotas, getTotalPlan, type ModalidadPrograma } from '@/lib/modalidades'
 import { formatoMXN, formatoPrecio, formatoMonto } from '@/lib/formato'
-import { validarOverrides, recortarAEditables } from '@/lib/site-config-validacion'
+import { validarOverrides, recortarAEditables, recortarOverrides } from '@/lib/site-config-validacion'
 import { mergeSiteConfig } from '@/lib/site-config-core'
 
 /**
@@ -315,4 +315,16 @@ test('8b. el editor no gana ni pierde claves respecto del plan de origen', () =>
     expect(Object.keys(planes[i]).sort()).toEqual(esperadas)
     for (const v of Object.values(planes[i])) expect(v).not.toBeUndefined()
   })
+})
+
+test('8c. el GET del panel no pierde la cuota que el admin publicó', () => {
+  // El override se guardaba en la fila pero `recortarOverrides` lo descartaba
+  // al leerla: el admin publicaba su cuota, recargaba y volvía a ver la vieja.
+  const id = CONFIG.modalidades[0].id
+  const leido = recortarOverrides({
+    modalidades: { [id]: { cuotaSemanal: 350, activa: true } },
+  }) as { modalidades?: Record<string, Record<string, unknown>> }
+
+  expect(leido.modalidades?.[id]?.cuotaSemanal).toBe(350)
+  expect(leido.modalidades?.[id]?.activa).toBe(true)
 })

@@ -825,8 +825,13 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
       if (ids && !ids.has(id)) continue
       const ov = mods[id]
       if (!esObjetoPlano(ov)) continue
-      const limpio: { mensualidad?: number; activa?: boolean } = {}
+      const limpio: { mensualidad?: number; cuotaSemanal?: number; activa?: boolean } = {}
       if (typeof ov.mensualidad === 'number') limpio.mensualidad = ov.mensualidad
+      // Sin esta línea el override se GUARDA pero el GET lo descarta: el admin
+      // publica su cuota nueva, recarga la pantalla y vuelve a ver la vieja,
+      // aunque en la fila esté la suya. Es el mismo recorte por lista blanca
+      // que protege el resto, y la clave se le había quedado fuera.
+      if (typeof ov.cuotaSemanal === 'number') limpio.cuotaSemanal = ov.cuotaSemanal
       if (typeof ov.activa === 'boolean') limpio.activa = ov.activa
       if (Object.keys(limpio).length > 0) limpias[id] = limpio
     }
