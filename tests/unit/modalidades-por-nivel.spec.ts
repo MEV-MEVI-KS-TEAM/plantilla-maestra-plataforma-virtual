@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { CONFIG } from '@/lib/config'
+import { ES_PLANTILLA } from './es-plantilla'
 import {
   getModalidadesActivas,
   getDuracionLabel,
@@ -49,12 +50,15 @@ const NIVELES = ['secundaria', 'preparatoria', 'licenciatura']
 // ─── 1. El invariante: sin `nivel`, nada cambia ──────────────────────────────
 
 test('1. ninguna modalidad de esta plantilla declara nivel', () => {
-  // Si esta prueba se pone roja en la PLANTILLA, alguien declaró un nivel en el
-  // config de fábrica y se lo llevará a las ~144 escuelas al clonar.
-  // En un CLONE de cliente puede fallar legítimamente: ver la prueba 1b, que es
-  // la que protege el invariante de verdad.
-  const declaran = BASE.filter(m => m.nivel)
-  expect(declaran.length === 0 || declaran.length === BASE.length).toBeTruthy()
+  // GUARDIÁN del config de FÁBRICA (ver tests/unit/es-plantilla.ts): si alguien
+  // declarara un nivel aquí, se lo llevarían las ~144 escuelas al clonar y su
+  // landing empezaría a esconder planes que sí venden.
+  //
+  // En el clon de una escuela asimétrica —EDUHCO, CAU— no significa nada: ahí
+  // TODAS lo declaran, y con razón. La versión anterior aceptaba "ninguna o
+  // todas", que pasaba en cualquier repo y por tanto no protegía nada.
+  if (!ES_PLANTILLA) test.skip()
+  expect(BASE.filter(m => m.nivel)).toEqual([])
 })
 
 test('1b. sin nivel declarado, planesPorNivel es getModalidadesActivas para todo nivel', () => {
