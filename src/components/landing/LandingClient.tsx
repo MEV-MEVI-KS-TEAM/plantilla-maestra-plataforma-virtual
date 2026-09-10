@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
-import { getModalidadesActivas, getDuracionLabel, getPlanLabelConDuracion, getTotalPlan } from '@/lib/modalidades'
+import { planesPorNivel, getDuracionLabel, getPlanLabelConDuracion, getTotalPlan } from '@/lib/modalidades'
 import { interpolar, type LandingConfig } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { aclarar, oscurecer, hexToRgb, ratioContraste, luminanciaRelativa, colorLegibleSobre, colorLegibleConAlpha, oscurecerHasta } from '@/lib/contraste'
@@ -515,7 +515,16 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   const L = resolverLanding(config.landing)
   const testimonios = L.testimonios
   const mods = config.modalidades
-  const activas = getModalidadesActivas(mods)
+  // Los planes de CADA tarjeta salen de su nivel, no de la lista entera.
+  //
+  // Con `getModalidadesActivas(mods)` las dos tarjetas pintaban los mismos
+  // planes, que es correcto mientras la escuela venda todo a todos. En una
+  // oferta asimétrica —EDUHCO #197: Secundaria solo 3 meses, Preparatoria solo
+  // 6— eso anuncia dos planes que no existen, y el aspirante que hace clic
+  // aterriza en un registro donde no están. Mientras ninguna modalidad declare
+  // `nivel`, las dos listas son idénticas a `activas` y la página no cambia.
+  const planesPrepa = planesPorNivel('preparatoria', mods)
+  const planesSec   = planesPorNivel('secundaria', mods)
   const C = paletaLanding(config.colores)
   // La acreditación NO es branding: sale de `CONFIG`, no de la config editable.
   // Nadie debe poder encender desde un panel una validez oficial que la escuela
@@ -729,12 +738,12 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     {[
                       // Rótulo PÚBLICO: la escuela puede vender "Express" lo que por
                       // dentro es "3 Meses". El registro y la constancia siguen con el interno.
-                      ...activas.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
+                      ...planesPrepa.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
                       // Total del plan: apagado por defecto en toda la flota (ver
                       // landing.mostrarTotalPlan). Encendido, es lo que deja ver que dos
                       // planes de ritmos distintos pueden costar exactamente lo mismo.
                       ...(CONFIG.landing.mostrarTotalPlan
-                        ? activas.map(m => ({ label: `Total ${getPlanLabelConDuracion(m, mods)}`, price: getTotalPlan(m, p.inscripcion), unit: '' }))
+                        ? planesPrepa.map(m => ({ label: `Total ${getPlanLabelConDuracion(m, mods)}`, price: getTotalPlan(m, p.inscripcion), unit: '' }))
                         : []),
                       { label: 'Certificación', price: p.certificacionPreparatoria, unit: ' único' },
                     ].map(row => (
@@ -766,9 +775,9 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.
-                      ...activas.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
+                      ...planesSec.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
                       ...(CONFIG.landing.mostrarTotalPlan
-                        ? activas.map(m => ({
+                        ? planesSec.map(m => ({
                             label: `Total ${getPlanLabelConDuracion(m, mods)}`,
                             price: getTotalPlan(
                               { ...m, mensualidad: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal },
