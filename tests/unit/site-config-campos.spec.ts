@@ -27,7 +27,7 @@ import {
  */
 
 const TIPOS: ReadonlyArray<TipoCampo> = [
-  'texto', 'textarea', 'hex', 'url', 'telefono', 'email', 'entero', 'lista-texto', 'lista-objetos', 'modalidades',
+  'texto', 'textarea', 'hex', 'url', 'telefono', 'email', 'entero', 'decimal', 'lista-texto', 'lista-objetos', 'modalidades',
 ]
 const TIPOS_SUB: ReadonlyArray<TipoSubcampo> = ['texto', 'textarea', 'entero']
 const SECCIONES_VALIDAS: ReadonlyArray<SeccionCampo> = [
@@ -121,7 +121,7 @@ test('3. tipos y secciones válidos; toda lista tiene maxItems; lista-objetos ti
     }
 
     if (c.tipo === 'lista-texto') expect(c.max, `${c.clave}: lista-texto sin max por elemento`).toBeGreaterThan(0)
-    if (c.tipo === 'entero' || c.tipo === 'modalidades') {
+    if (c.tipo === 'entero' || c.tipo === 'decimal' || c.tipo === 'modalidades') {
       expect(c.min, `${c.clave}: sin min`).toBeDefined()
       expect(c.max, `${c.clave}: sin max`).toBeDefined()
       expect(c.min!).toBeLessThanOrEqual(c.max!)
@@ -139,6 +139,7 @@ test('4. el tipo del descriptor coincide con el tipo del default en CONFIG', () 
     const v = leer(c.clave)
     switch (c.tipo) {
       case 'entero':
+      case 'decimal':
         expect(typeof v, c.clave).toBe('number')
         break
       case 'lista-texto':
@@ -179,6 +180,7 @@ test('6. los defaults de config.ts caben en los límites del catálogo', () => {
     const v = leer(c.clave)
     switch (c.tipo) {
       case 'entero':
+      case 'decimal':
         expect(v as number, c.clave).toBeGreaterThanOrEqual(c.min!)
         expect(v as number, c.clave).toBeLessThanOrEqual(c.max!)
         break

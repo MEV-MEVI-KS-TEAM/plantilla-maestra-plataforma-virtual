@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { precioMXN, waUrlDiplomado } from '@/lib/cursos/catalogo'
+import { precioPublico, waUrlDiplomado } from '@/lib/cursos/catalogo'
 import { CONFIG } from '@/lib/config'
 
 /**
@@ -94,11 +94,11 @@ test('el detalle no distingue borrador de inexistente', () => {
   expect(catalogoSrc).toContain('return null')
 })
 
-test('precioMXN formatea en pesos sin decimales', () => {
-  const p = precioMXN(1500)
+test('precioPublico formatea en pesos sin decimales', () => {
+  const p = precioPublico(1500)
   expect(p).toContain('1,500')
   expect(p).not.toContain('.00')
-  expect(precioMXN(0)).toContain('0')
+  expect(precioPublico(0)).toContain('0')
 })
 
 test('el CTA de WhatsApp precarga el nombre del diplomado', () => {

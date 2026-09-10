@@ -32,6 +32,7 @@
  * publicar. La seguridad la impone el servidor; esto solo evita que descubra
  * que no puede después de escribir media página.
  */
+import { CONFIG } from '@/lib/config'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, Lock } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
@@ -362,6 +363,8 @@ export default function PersonalizarPage() {
       heroCtaPrimario: txt('landing.hero_cta_primario'),
       inscripcion: typeof inscripcion === 'number' ? inscripcion : 0,
       modalidades: modalidadesEfectivas(defaults.modalidades, overrides.modalidades),
+      // La moneda no se edita ni viaja en la config editable: sale del config.ts.
+      moneda: CONFIG.moneda,
     }
   }, [defaults, merged, overrides])
 

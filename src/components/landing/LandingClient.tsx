@@ -1,5 +1,7 @@
 'use client'
 
+import { AvisoMoneda, Equivalencia } from '@/components/moneda-equivalencia'
+import { formatearMoneda } from '@/lib/moneda'
 import { Fragment, useEffect, useRef, useState, useCallback, type CSSProperties } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -10,7 +12,7 @@ import { getModalidadesActivas, getDuracionLabel, getPlanLabel } from '@/lib/mod
 import { interpolar, type LandingConfig } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { aclarar, oscurecer, hexToRgb } from '@/lib/contraste'
-import { precioMXN } from '@/lib/cursos/catalogo'
+import { precioPublico } from '@/lib/cursos/catalogo'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
 const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
@@ -175,8 +177,7 @@ function variablesLanding(C: Paleta): CSSProperties {
  * en cada llamada. Misma lógica, una sola fuente.
  */
 
-const fmt = (n: number) =>
-  n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
+const fmt = (n: number) => formatearMoneda(n, CONFIG, { conCodigo: true })
 
 /* ─── Scroll Progress ─────────────────────────────────────────────────── */
 function ScrollProgress() {
@@ -587,6 +588,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                         <span className="text-sm" style={{ color: conAlpha(C.ice, 0.7) }}>{row.label}</span>
                         <span className={`text-base font-bold ${playfair.className}`} style={{ color: C.azure }}>
                           {fmt(row.price)}<span className="text-xs font-normal opacity-70">{row.unit}</span>
+                          <Equivalencia monto={row.price} style={{ color: conAlpha(C.ice, 0.55) }} />
                         </span>
                       </div>
                     ))}
@@ -617,6 +619,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                         <span className="text-sm" style={{ color: `${C.navy}88` }}>{row.label}</span>
                         <span className={`text-base font-bold ${playfair.className}`} style={{ color: C.royal }}>
                           {fmt(row.price)}<span className="text-xs font-normal opacity-60">{row.unit}</span>
+                          <Equivalencia monto={row.price} style={{ color: conAlpha(C.ice, 0.55) }} />
                         </span>
                       </div>
                     ))}
@@ -629,6 +632,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               </div>
               )}
             </div>
+            {/* Solo se pinta si la escuela NO cobra en pesos (ver AvisoMoneda). */}
+            <AvisoMoneda className="mt-8 text-center text-xs" style={{ color: conAlpha(C.ice, 0.6) }} />
           </div>
         </section>
 
@@ -829,19 +834,19 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                       {c.precio_mensualidad > 0 ? (
                         <>
                           <p className="text-sm font-bold" style={{ color: C.navy }}>
-                            {precioMXN(c.precio_mensualidad)}
+                            {precioPublico(c.precio_mensualidad)}
                             <span className="font-normal text-xs" style={{ color: '#94A3B8' }}> / mes</span>
                           </p>
                           {c.precio_inscripcion > 0 && (
                             <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>
-                              Inscripción {precioMXN(c.precio_inscripcion)}
+                              Inscripción {precioPublico(c.precio_inscripcion)}
                             </p>
                           )}
                         </>
                       ) : c.precio_inscripcion > 0 ? (
                         <>
                           <p className="text-sm font-bold" style={{ color: C.navy }}>
-                            {precioMXN(c.precio_inscripcion)}
+                            {precioPublico(c.precio_inscripcion)}
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>Pago único</p>
                         </>

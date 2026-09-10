@@ -1,3 +1,5 @@
+import type { Moneda } from './moneda'
+
 export const CONFIG = {
   // === MODO DE PRODUCTO (línea Solo-Cursos, B7) ===
   // 'tradicional' → secundaria/preparatoria con materias, meses y evaluaciones.
@@ -76,6 +78,33 @@ export const CONFIG = {
     { id: '3_meses', label: '3 meses — Express',  meses: 3, mensualidad: 2000, materiasPorMes: 4, activa: true  },
     { id: '6_meses', label: '6 meses — Estándar', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true  },
   ] as const,
+
+  // === MONEDA DE COBRO ===
+  // ⚠️ DEFAULT 'MXN' A PROPÓSITO: con este valor toda la app formatea el dinero
+  // EXACTAMENTE igual que antes de #198, no se pinta ninguna equivalencia y no
+  // aparece ningún aviso. La personalización es aditiva o no es.
+  //
+  // 'USD' → los importes SON dólares: la landing, el registro, el estado de
+  // cuenta, el recibo y los reportes los formatean como tales y, si hay tipo de
+  // cambio, muestran debajo la equivalencia aproximada en pesos.
+  //
+  // ⚠️ EL `as Moneda` NO SOBRA, por lo mismo que el `as ModoPlataforma` de
+  // arriba: sin él, el `as const` del objeto estrecha esta clave al literal
+  // 'MXN' y `CONFIG.moneda === 'USD'` deja de compilar (TS2367).
+  //
+  // 🛑 La moneda NO se edita desde el panel: cambiarla no es cambiar la marca,
+  // es cambiar lo que se le cobra al alumno. Vive aquí y la fija el operador.
+  moneda:          'MXN' as Moneda,
+
+  // Pesos por unidad de `moneda`. Solo se usa para MOSTRAR equivalencias; el
+  // cargo real siempre es en `moneda`. `0` = no mostrar ninguna equivalencia,
+  // que es lo correcto para una escuela que ya cobra en pesos.
+  //
+  // Este SÍ es editable desde el panel (se mueve a diario): el admin lo cambia
+  // en Personalizar mi página → Precios. Cada pago guarda además el tipo de
+  // cambio que estaba vigente ese día en `pagos.tipo_cambio_aplicado`, para que
+  // actualizarlo no reescriba los recibos ya emitidos.
+  tipoCambioMXN:   0 as number,
 
   // === PRECIOS ===
   precios: {

@@ -7,7 +7,7 @@ import {
   escribirModalidad,
   escribirRuta,
   estaSobrescrito,
-  formatoMXN,
+  formatoDinero,
   hayCambiosDePrecio,
   leerRuta,
   mismoContenido,
@@ -259,12 +259,26 @@ test('las 11 paletas nuevas no producen ni una advertencia; la original se calla
 
 // ─── Números ─────────────────────────────────────────────────────────────────
 
-test('formatoMXN pinta pesos sin centavos y aguanta un valor inválido', () => {
-  expect(formatoMXN(2000)).toBe('$2,000')
-  expect(formatoMXN(599)).toBe('$599')
-  expect(formatoMXN(0)).toBe('$0')
-  expect(formatoMXN(50000)).toBe('$50,000')
-  expect(formatoMXN(Number.NaN)).toBe('$0')
+test('formatoDinero pinta pesos sin centavos y aguanta un valor inválido', () => {
+  expect(formatoDinero(2000)).toBe('$2,000')
+  expect(formatoDinero(599)).toBe('$599')
+  expect(formatoDinero(0)).toBe('$0')
+  expect(formatoDinero(50000)).toBe('$50,000')
+  expect(formatoDinero(Number.NaN)).toBe('$0')
+})
+
+test('formatoDinero sin moneda explícita es idéntico a pasarle MXN (invariante de la flota)', () => {
+  for (const n of [0, 1, 599, 2000, 12345, 50000]) {
+    expect(formatoDinero(n)).toBe(formatoDinero(n, 'MXN'))
+  }
+})
+
+test('formatoDinero marca la moneda cuando la escuela NO cobra en pesos', () => {
+  // Sin el código, un plan de 300 dólares se lee como 300 pesos: 17 veces
+  // más barato de lo que el alumno va a pagar. Es el fallo que este PR cierra.
+  expect(formatoDinero(300, 'USD')).toBe('$300 USD')
+  expect(formatoDinero(1400, 'USD')).toBe('$1,400 USD')
+  expect(formatoDinero(Number.NaN, 'USD')).toBe('$0 USD')
 })
 
 test('parseEntero acepta lo que el admin ve en pantalla y rechaza lo demás', () => {
