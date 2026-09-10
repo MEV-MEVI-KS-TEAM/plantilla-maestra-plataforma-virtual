@@ -294,13 +294,25 @@ test('8. recortarAEditables conserva nivel, semanas y cuotaSemanal', () => {
   expect(plan.cuotaSemanal).toBe(250)
 })
 
-test('8b. sin esas claves, el objeto del editor es el de siempre', () => {
-  // El invariante de las ~144 escuelas mensuales: no aparece ninguna clave
-  // nueva con `undefined` dentro.
-  const editable = recortarAEditables(mergeSiteConfig(CONFIG, {}))
-  for (const plan of editable.modalidades as unknown as Array<Record<string, unknown>>) {
-    expect(Object.keys(plan).sort()).toEqual(
-      ['activa', 'id', 'label', 'materiasPorMes', 'mensualidad', 'meses'],
-    )
-  }
+test('8b. el editor no gana ni pierde claves respecto del plan de origen', () => {
+  // El invariante: el objeto que viaja al navegador lleva las seis claves de
+  // siempre MÁS exactamente las opcionales que el plan declara. Ni una de más
+  // con `undefined` dentro, ni una de menos.
+  //
+  // ⚠️ Se compara contra el plan de ORIGEN, no contra una lista fija: esta
+  // prueba corre en los ~144 clones y en uno semanal —CAU #200— las tres
+  // opcionales existen de verdad. Una lista fija lo dejaba en rojo sin tener
+  // ningún problema, que es como se descubrió.
+  const base = mergeSiteConfig(CONFIG, {})
+  const editable = recortarAEditables(base)
+  const planes = editable.modalidades as unknown as Array<Record<string, unknown>>
+  const SIEMPRE = ['activa', 'id', 'label', 'materiasPorMes', 'mensualidad', 'meses']
+  const OPCIONALES = ['nivel', 'semanas', 'cuotaSemanal']
+
+  base.modalidades.forEach((origen, i) => {
+    const o = origen as unknown as Record<string, unknown>
+    const esperadas = [...SIEMPRE, ...OPCIONALES.filter((k) => o[k] !== undefined)].sort()
+    expect(Object.keys(planes[i]).sort()).toEqual(esperadas)
+    for (const v of Object.values(planes[i])) expect(v).not.toBeUndefined()
+  })
 })
