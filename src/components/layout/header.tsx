@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Menu } from 'lucide-react'
 import Image from 'next/image'
 
@@ -22,6 +23,18 @@ function getFechaES() {
 
 export function Header({ pageTitle, userName, avatarUrl, theme = 'dark', onMenuToggle }: HeaderProps) {
   const isLight = theme === 'light'
+
+  // 🐞 La fecha se calculaba durante el render. Aunque el componente es de
+  // cliente, Next lo pre-renderiza en el servidor, y el servidor vive en UTC
+  // mientras la persona vive en su propia zona: pasada cierta hora el servidor
+  // ya escribió el día siguiente y React descartaba el HTML entero por
+  // discrepancia de hidratación (errores 418, 423 y 425). No se ve en local,
+  // donde servidor y navegador comparten reloj: solo aparece desplegado.
+  //
+  // La fecha se pinta después de montar. El hueco de un fotograma no se nota;
+  // el re-render completo de la página sí se notaba.
+  const [fecha, setFecha] = useState('')
+  useEffect(() => { setFecha(getFechaES()) }, [])
 
   const initials = userName
     .split(' ')
@@ -70,7 +83,7 @@ export function Header({ pageTitle, userName, avatarUrl, theme = 'dark', onMenuT
           </h1>
           {isLight && (
             <p className="hidden sm:block text-xs capitalize" style={{ color: dateColor }}>
-              {getFechaES()}
+              {fecha}
             </p>
           )}
         </div>
