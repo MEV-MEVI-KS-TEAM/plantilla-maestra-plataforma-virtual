@@ -97,9 +97,25 @@ export const CONFIG = {
   },
 
   // === DOCUMENTOS REQUERIDOS POR NIVEL ===
+  // ⚠️ ESTA LISTA NO LA LEE NADIE HOY. Es documental: la pantalla de documentos
+  // del alumno lleva sus propias listas (TIPOS_SECUNDARIA / TIPOS_PREPA /
+  // TIPOS_DIPLOMADO en src/app/(dashboard)/alumno/documentos/page.tsx) y son
+  // las que mandan.
+  //
+  // Y NO COINCIDEN: aquí figura «Acta de Nacimiento» y la app no la pide. Por
+  // eso no basta con enchufar esta lista a la pantalla — a las ~144 escuelas
+  // ya sembradas les aparecería de golpe un documento obligatorio nuevo, con
+  // alumnos a medio expediente. Unificarlas es un cambio de producto, no de
+  // config: hay que decidir primero cuál de las dos listas es la buena.
+  //
+  // Se mantiene, y se le agrega `licenciatura`, para que el día que se unifique
+  // el catálogo esté completo y nadie tenga que reconstruirlo.
   documentosRequeridos: {
     secundaria:   ['Certificado de Primaria', 'CURP', 'Acta de Nacimiento', 'Identificación Oficial', 'Foto de Perfil (fondo blanco)'],
     preparatoria: ['Certificado de Secundaria', 'CURP', 'Acta de Nacimiento', 'Identificación Oficial', 'Foto de Perfil (fondo blanco)'],
+    // El aspirante a licenciatura acredita BACHILLERATO, no secundaria. La
+    // pantalla ya lo etiqueta así (deriva el nivel de `plan_nombre`).
+    licenciatura: ['Certificado de Bachillerato', 'CURP', 'Acta de Nacimiento', 'Identificación Oficial', 'Foto de Perfil (fondo blanco)'],
   },
 
   // === LANDING ===
