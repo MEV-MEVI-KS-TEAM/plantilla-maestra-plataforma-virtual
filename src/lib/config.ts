@@ -214,6 +214,39 @@ export const CONFIG = {
     // precio — pero eso no se ve hasta que alguien pone los dos totales lado a
     // lado.
     mostrarTotalPlan:           false,
+
+    // === VALIDEZ OFICIAL: los documentos que recibe y el folio verificable ===
+    //
+    // 🛑 EL FOLIO NO SE FABRICA. `CC9R3B3250002927` es la acreditación
+    // COMPARTIDA de la red y se replica a propósito: es una muestra real que
+    // cualquiera puede teclear en el portal de la SEP para comprobar el
+    // estándar de certificación. Inventar uno sería publicar un documento
+    // oficial falso.
+    //
+    // 🛑 `activa: false` POR DEFECTO. Si la escuela NO comparte el convenio,
+    // esta sección se queda apagada: no se le atribuye una acreditación que no
+    // tiene. Encenderla es una decisión de Kevin, cliente por cliente.
+    validezOficial: {
+      activa: false,
+      titulo: 'Tu certificado vale en México y USA',
+      subtitulo: 'Al terminar recibes DOS documentos oficiales',
+      documentos: [
+        { img: '/certificados/innovative-online-academy.png',
+          alt: 'Certificado Innovative Online Academy (USA)',
+          pie: 'Innovative Online Academy · California, USA' },
+        { img: '/certificados/sep-revalidacion.png',
+          alt: 'Resolución de Revalidación SEP (México)',
+          pie: 'Revalidación oficial SEP · Sistema Educativo Nacional' },
+      ] as ReadonlyArray<{ img: string; alt: string; pie: string }>,
+      verificaTitulo: 'Verifica tú mismo',
+      verificaResalte: 'es 100% real',
+      verificaTexto: 'Entra al portal oficial de la SEP y escribe el folio de validación. Los documentos aparecen registrados oficialmente.',
+      folioEtiqueta: 'Folio de ejemplo verificable',
+      folio: 'CC9R3B3250002927',
+      folioNota: 'Escribe este folio en el portal SEP y verás el documento real — muestra del estándar de certificación de nuestro sistema.',
+      portalTexto: 'Verificar en portal SEP',
+      portalUrl: 'https://siged.sep.gob.mx/SIGED/revalidaciones.html',
+    },
     catalogoTitulo:             'Nuestros diplomados',
     // Texto NEUTRO: igual que en el diploma (B4), el default NO dice "validez
     // oficial", "SEP" ni "RVOE". Eso solo lo agrega quien acredite su registro.

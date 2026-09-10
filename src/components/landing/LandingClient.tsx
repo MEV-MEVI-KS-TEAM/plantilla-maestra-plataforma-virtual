@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
-import { getModalidadesActivas, getDuracionLabel, getPlanLabelPublico, getTotalPlan } from '@/lib/modalidades'
+import { getModalidadesActivas, getDuracionLabel, getPlanLabelConDuracion, getTotalPlan } from '@/lib/modalidades'
 import { interpolar, type LandingConfig } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { aclarar, oscurecer, hexToRgb, ratioContraste, luminanciaRelativa, colorLegibleSobre, colorLegibleConAlpha, oscurecerHasta } from '@/lib/contraste'
@@ -517,6 +517,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   const mods = config.modalidades
   const activas = getModalidadesActivas(mods)
   const C = paletaLanding(config.colores)
+  // La acreditación NO es branding: sale de `CONFIG`, no de la config editable.
+  // Nadie debe poder encender desde un panel una validez oficial que la escuela
+  // no tiene, ni cambiar el folio que la persona va a teclear en el portal.
+  const VALIDEZ = CONFIG.landing.validezOficial
   // Con la paleta personalizada el div raíz reparte los tonos a las clases de
   // globals.css (ver variablesLanding). Sin ella no se inyecta ninguna
   // variable: el style queda idéntico al de siempre y el CSS usa sus fallbacks.
@@ -725,12 +729,12 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     {[
                       // Rótulo PÚBLICO: la escuela puede vender "Express" lo que por
                       // dentro es "3 Meses". El registro y la constancia siguen con el interno.
-                      ...activas.map(m => ({ label: `Plan ${getPlanLabelPublico(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
+                      ...activas.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
                       // Total del plan: apagado por defecto en toda la flota (ver
                       // landing.mostrarTotalPlan). Encendido, es lo que deja ver que dos
                       // planes de ritmos distintos pueden costar exactamente lo mismo.
                       ...(CONFIG.landing.mostrarTotalPlan
-                        ? activas.map(m => ({ label: `Total ${getPlanLabelPublico(m, mods)}`, price: getTotalPlan(m, p.inscripcion), unit: '' }))
+                        ? activas.map(m => ({ label: `Total ${getPlanLabelConDuracion(m, mods)}`, price: getTotalPlan(m, p.inscripcion), unit: '' }))
                         : []),
                       { label: 'Certificación', price: p.certificacionPreparatoria, unit: ' único' },
                     ].map(row => (
@@ -762,10 +766,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.
-                      ...activas.map(m => ({ label: `Plan ${getPlanLabelPublico(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
+                      ...activas.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
                       ...(CONFIG.landing.mostrarTotalPlan
                         ? activas.map(m => ({
-                            label: `Total ${getPlanLabelPublico(m, mods)}`,
+                            label: `Total ${getPlanLabelConDuracion(m, mods)}`,
                             price: getTotalPlan(
                               { ...m, mensualidad: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal },
                               p.inscripcion,
@@ -797,6 +801,77 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
             <AvisoMoneda className="mt-8 text-center text-xs" style={{ color: C.navySuave }} />
           </div>
         </section>
+
+        {/* ── VALIDEZ OFICIAL: los documentos y el folio verificable ──
+            Portado de imc-digital-school (bloques «VALIDEZ OFICIAL B y C»).
+            🛑 Solo se pinta si la escuela COMPARTE el convenio de la red
+            (`landing.validezOficial.activa`). Apagada, no existe: no se le
+            atribuye a nadie una acreditación que no tiene. */}
+        {VALIDEZ.activa && (
+        <>
+        <section className="py-20 md:py-28 px-4 sm:px-8" style={{ background: C.white }}>
+          <div className="max-w-6xl mx-auto">
+            <div data-reveal className="text-center">
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold leading-tight ${playfair.className}`} style={{ color: C.navy }}>
+                {texto(VALIDEZ.titulo)}
+              </h2>
+              <p className="text-lg mt-5" style={{ color: C.navySuave }}>{texto(VALIDEZ.subtitulo)}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mt-12">
+              {VALIDEZ.documentos.map((d, i) => (
+                <div key={d.img} data-reveal data-d={String(i + 1)}
+                  className="rounded-2xl p-5 md:p-7"
+                  style={{ background: C.white, border: `1px solid ${conAlpha(C.royal, 0.14)}`, boxShadow: `0 18px 44px ${C.navy}12` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={d.img} alt={d.alt} loading="lazy" className="w-full h-auto rounded-lg" />
+                  <p className="text-center text-sm mt-4" style={{ color: C.navySuave }}>{d.pie}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-20 md:py-28 px-4 sm:px-8" style={{ background: C.navy }}>
+          <div className="max-w-3xl mx-auto">
+            <h2 data-reveal className={`text-3xl sm:text-4xl font-bold text-center leading-tight ${playfair.className}`} style={{ color: C.white }}>
+              {texto(VALIDEZ.verificaTitulo)} — <span style={{ color: C.ice }}>{texto(VALIDEZ.verificaResalte)}</span>
+            </h2>
+            <p data-reveal data-d="1" className="text-lg text-center mt-6" style={{ color: iceSuave(C, 0.78) }}>
+              {texto(VALIDEZ.verificaTexto)}
+            </p>
+
+            <div data-reveal data-d="2" className="mt-12 rounded-2xl py-8 md:py-10 px-6 md:px-10"
+              style={{ background: conAlpha(C.hero, 0.6), border: `2px solid ${conAlpha(C.royal, 0.3)}` }}>
+              <p className="text-center text-sm uppercase tracking-widest mb-4" style={{ color: iceSuave(C, 0.7) }}>
+                {texto(VALIDEZ.folioEtiqueta)}
+              </p>
+              {/* 🛑 EL FOLIO VA A MÁXIMO CONTRASTE, no en el color de acento:
+                  es el dato que la persona copia a mano en el portal de la SEP.
+                  Un folio mal leído no verifica nada. */}
+              <p className="text-center font-mono font-bold text-2xl md:text-4xl lg:text-5xl break-all"
+                style={{ color: C.white, letterSpacing: '0.22em' }}>
+                {VALIDEZ.folio}
+              </p>
+            </div>
+
+            <p data-reveal data-d="3" className="text-base text-center mt-6 max-w-xl mx-auto" style={{ color: iceSuave(C, 0.7) }}>
+              {texto(VALIDEZ.folioNota)}
+            </p>
+
+            <div data-reveal data-d="4" className="text-center mt-10">
+              <a href={VALIDEZ.portalUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 font-bold px-10 py-4 rounded-xl text-base md:text-lg transition-all duration-300 hover:-translate-y-0.5"
+                style={{ background: C.royal, color: C.sobreAcento, boxShadow: `0 8px 28px ${C.royal}55` }}>
+                {texto(VALIDEZ.portalTexto)}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </section>
+        </>
+        )}
 
         {/* ── BEFORE / AFTER ───────────────────────────────────────── */}
         <section className="py-24 sm:py-32 px-4 sm:px-8 bg-white">

@@ -13,6 +13,7 @@ import {
   getDuracionLabel,
   getPlanLabel,
   getPlanLabelPublico,
+  getPlanLabelConDuracion,
   getTotalPlan,
   type ModalidadPrograma,
 } from '@/lib/modalidades'
@@ -223,4 +224,33 @@ test('getTotalPlan: inscripción + todas las mensualidades', () => {
   expect(getTotalPlan(tres, 50)).toBe(getTotalPlan(seis, 50))
   // Una inscripción inválida no propaga NaN a la landing.
   expect(getTotalPlan(tres, Number.NaN)).toBe(900)
+})
+
+test('getPlanLabelConDuracion: con nombre comercial dice CUÁNTO DURA', () => {
+  // El fallo que lo motivó: la landing ofrecía "Plan Express $300/mes" y "Plan
+  // Regular $150/mes" sin decir en ninguna parte que uno son 3 meses y el otro
+  // 6. Dos precios distintos y ninguna forma de saber qué se compra.
+  const mods = [
+    { id: '3_meses', label: '3 Meses', labelPublico: 'Express', meses: 3, mensualidad: 300, materiasPorMes: 4, activa: true },
+    { id: '6_meses', label: '6 Meses', labelPublico: 'Regular', meses: 6, mensualidad: 150, materiasPorMes: 2, activa: true },
+  ]
+  expect(getPlanLabelConDuracion(mods[0], mods)).toBe('Express · 3 meses')
+  expect(getPlanLabelConDuracion(mods[1], mods)).toBe('Regular · 6 meses')
+})
+
+test('getPlanLabelConDuracion: INVARIANTE — sin nombre comercial no añade nada', () => {
+  // El label interno YA dice la duración: "3 Meses · 3 meses" sería ruido, y
+  // son ~144 escuelas las que no declaran `labelPublico`.
+  const mods = [
+    { id: '3_meses', label: '3 meses — Express',  meses: 3, mensualidad: 2000, materiasPorMes: 4, activa: true },
+    { id: '6_meses', label: '6 meses — Estándar', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
+  ]
+  for (const m of mods) {
+    expect(getPlanLabelConDuracion(m, mods)).toBe(getPlanLabel(m, mods))
+  }
+})
+
+test('getPlanLabelConDuracion: singular cuando el plan dura un mes', () => {
+  const mods = [{ id: '1_mes', label: '1 Mes', labelPublico: 'Intensivo', meses: 1, mensualidad: 900, materiasPorMes: 8, activa: true }]
+  expect(getPlanLabelConDuracion(mods[0], mods)).toBe('Intensivo · 1 mes')
 })
