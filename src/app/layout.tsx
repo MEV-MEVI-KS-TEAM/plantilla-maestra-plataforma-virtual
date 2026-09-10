@@ -1,3 +1,4 @@
+import { colorLegibleSobre, oscurecerHasta } from '@/lib/contraste'
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -109,6 +110,30 @@ export default async function RootLayout({
     '--color-sidebar-realce':        c.sidebarRealce,
     '--color-sidebar-borde':         c.sidebarBorde,
     '--color-sidebar-borde-fuerte':  c.sidebarBordeFuerte,
+
+    // ── Tokens derivados para CONTRASTE ──────────────────────────────────
+    // No son colores de marca nuevos: son el mismo color de marca ajustado
+    // para los dos sitios donde usarlo crudo lo vuelve ilegible.
+    //
+    // `--color-acento-texto`: el acento como COLOR DE LETRA sobre el papel.
+    // El oro de GRATIA (#C09852) da 2.67 sobre blanco; el azul de fábrica ya
+    // cumple, así que en las ~144 escuelas este token vale exactamente
+    // `acento` y no cambia nada.
+    '--color-acento-texto': colorLegibleSobre(cfg.colores.acento, cfg.colores.superficie, 4.5),
+    // `--color-acento-profundo`: el acento OSCURECIDO hasta que el blanco se
+    // lea encima. Lo usan los degradados de las pantallas de acceso, que
+    // pasan por el acento a media parada con texto blanco fijo.
+    // 7.0 y no 4.5: encima van textos secundarios con opacidad, y un fondo que
+    // cumple justo en sólido deja de cumplir en cuanto la letra se aclara.
+    '--color-acento-profundo': oscurecerHasta(cfg.colores.acento, '#FFFFFF', 7),
+    // El acento aclarado para servir de REALCE DENTRO de ese panel oscuro.
+    // `--color-acento-texto` no sirve ahí: se oscurece contra el papel y acaba
+    // siendo el mismo tono que el propio panel.
+    '--color-acento-sobre-oscuro': colorLegibleSobre(
+      cfg.colores.acento,
+      oscurecerHasta(cfg.colores.acento, '#FFFFFF', 7),
+      4.5,
+    ),
   } as React.CSSProperties
 
   return (

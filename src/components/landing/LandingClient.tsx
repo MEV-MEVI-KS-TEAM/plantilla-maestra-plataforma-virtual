@@ -11,7 +11,7 @@ import { CONFIG } from '@/lib/config'
 import { getModalidadesActivas, getDuracionLabel, getPlanLabelPublico, getTotalPlan } from '@/lib/modalidades'
 import { interpolar, type LandingConfig } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
-import { aclarar, oscurecer, hexToRgb } from '@/lib/contraste'
+import { aclarar, oscurecer, hexToRgb, ratioContraste, luminanciaRelativa, colorLegibleSobre, colorLegibleConAlpha, oscurecerHasta } from '@/lib/contraste'
 import { precioPublico } from '@/lib/cursos/catalogo'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
@@ -41,6 +41,40 @@ type Paleta = {
   ctaFin: string
   /** '#050a14': fondo del footer. */
   footer: string
+  /**
+   * '#FFFFFF': el color que va ENCIMA del acento (el avatar del testimonio).
+   * Es lo único que necesita contrastar con `royal`, no con el papel.
+   */
+  sobreAcento: string
+  /**
+   * '#0D1B3E88': el tono de los textos SECUNDARIOS sobre el papel. Con la
+   * paleta original es el literal de siempre; con una personalizada se garantiza
+   * que cumpla AA, porque `navy` a media opacidad sobre blanco se queda corto en
+   * cuanto el color de marca no es un azul muy oscuro.
+   */
+  navySuave: string
+  /**
+   * '#1565C0': cierre del degradado del numerito 01..04 del proceso. Arranca en
+   * `navy` (oscuro), así que este extremo tiene que admitir el MISMO color de
+   * texto: con una paleta personalizada se oscurece el acento hasta lograrlo.
+   */
+  stepFin: string
+  /** '#ffffff': el texto de ese numerito, legible en los dos extremos. */
+  sobreStep: string
+  /**
+   * El fondo oscuro MÁS CLARO que llega a pintar la landing (las secciones
+   * apilan capas translúcidas sobre `navy`). Es contra el que hay que medir un
+   * texto secundario, no contra el hero.
+   */
+  refOscuro: string
+  /** `false` en la paleta de fábrica: ahí no se ajusta nada y el pixel no cambia. */
+  personalizada: boolean
+  /**
+   * '#1565C0': el acento AJUSTADO para servir de color de texto sobre el papel.
+   * Idéntico a `royal` cuando el acento ya cumple AA sobre blanco, que es el
+   * caso del azul de fábrica.
+   */
+  royalTexto: string
 }
 
 /**
@@ -59,6 +93,15 @@ const PALETA_ORIGINAL: Paleta = {
   conFin: '#0a1f4a',
   ctaFin: '#0d3080',
   footer: '#050a14',
+  // El azul de fábrica ya cumple AA sobre blanco (4.6), así que `royalTexto`
+  // ES `royal`: con la paleta original no cambia ni un byte de lo pintado.
+  sobreAcento: '#FFFFFF',
+  royalTexto: '#1565C0',
+  navySuave: '#0D1B3E88',
+  stepFin: '#1565C0',
+  sobreStep: '#ffffff',
+  refOscuro: '#0D1B3E',
+  personalizada: false,
 }
 
 /**
@@ -102,9 +145,59 @@ function paletaLanding(colores: LandingConfig['colores']): Paleta {
   const navy = colores.secundario
   const royal = colores.acento
   const azure = aclarar(royal, 0.35)
+
+  // 🛑 `white` ES EL PAPEL DE LA LANDING, no "el texto sobre el acento".
+  //
+  // Aquí vivía el peor fallo de la personalización: `white` salía de
+  // `colores.textoSobreAcento`. Ese token contrasta con el ACENTO, que es otra
+  // pregunta. GRATIA (#198) lo tiene en verde petróleo —correcto: sobre su oro
+  // el blanco da 2.67 y el verde 5.34— y la landing lo tomó como su blanco.
+  // Resultado: `background: C.white` pintó la página entera de verde petróleo y
+  // los títulos del hero, que van en `C.white` sobre ese mismo verde, quedaron
+  // en **ratio 1.00**: texto invisible, no "poco contraste". Diez nodos, el
+  // nombre de la escuela y el h1 entre ellos.
+  //
+  // El papel es `superficie` (blanco en la plantilla y en todo cliente en light
+  // mode). Y como también sirve de texto sobre los fondos oscuros de la
+  // landing, se garantiza que sea legible sobre el más claro de los dos.
+  const white = colorLegibleSobre(colores.superficie, navy, 4.5)
+
+  // 🛑 `bright` ES "EL ACENTO UN PASO MÁS CLARO", no el color de hover.
+  //
+  // Salía de `colores.acentoHover`, y por convención de la plantilla ese token
+  // es el acento un paso más OSCURO (para el hover de un botón). Eso INVIERTE
+  // la relación que tiene con `royal` en el diseño original (#1E88E5 es más
+  // claro que #1565C0) y rompe los degradados `royal → bright`: en GRATIA el
+  // botón "Crear cuenta" iba de oro a oro oscuro, y ningún color de texto sirve
+  // para los dos extremos a la vez — el blanco falla en el oro y el verde falla
+  // en el oro oscuro. Derivándolo se conserva la relación y el degradado entero
+  // admite el mismo texto.
+  const bright = aclarar(royal, 0.12)
+
+  // El acento como TEXTO sobre el papel. Un acento de marca no siempre sirve:
+  // el oro de GRATIA da 2.67 sobre blanco. Se oscurece lo justo y el token de
+  // marca (`royal`) queda intacto para rellenos, bordes y barras.
+  const royalTexto = colorLegibleSobre(royal, white, 5.2)
+
+  // `ice` es texto claro sobre los fondos OSCUROS (hero, navy, footer), casi
+  // siempre con alpha. `acentoClaro` puede ser cualquier cosa —el oro suave de
+  // GRATIA es casi blanco y funciona, pero un cliente con acentoClaro medio
+  // dejaría ilegible medio hero—, así que se exige que cumpla sobre `hero`.
+  // `ice` nunca se pinta sólido: va con alpha entre .45 y .75 sobre los fondos
+  // oscuros. Exigirle contraste en sólido no basta —el tono aguanta, la mezcla
+  // no—, así que se comprueba ya mezclado al alpha MÁS BAJO que usa la landing.
+  // El fondo de referencia NO es `hero`: la landing apila capas translúcidas
+  // sobre `navy` y las secciones intermedias acaban bastante más claras que el
+  // hero (medido: hasta un 20 % por encima). Se calibra contra ese peor caso o
+  // el texto cumple en la portada y falla tres secciones más abajo.
+  const candidatosOscuros = [aclarar(navy, 0.22), oscurecer(royal, 0.33), oscurecer(royal, 0.61)]
+  const fondoOscuroMasClaro = candidatosOscuros.reduce((a, b) =>
+    luminanciaRelativa(a) >= luminanciaRelativa(b) ? a : b)
+  const ice = colorLegibleConAlpha(colores.acentoClaro, fondoOscuroMasClaro, 0.45, 4.5)
+
   return {
     hero: colores.primario, navy, royal,
-    bright: colores.acentoHover, azure, ice: colores.acentoClaro, white: colores.textoSobreAcento,
+    bright, azure, ice, white,
     textoClaro: aclarar(azure, 0.45),
     aurora3: oscurecer(royal, 0.5),
     dolorInicio: oscurecer(navy, 0.48),
@@ -112,6 +205,19 @@ function paletaLanding(colores: LandingConfig['colores']): Paleta {
     conFin: oscurecer(royal, 0.61),
     ctaFin: oscurecer(royal, 0.33),
     footer: oscurecer(navy, 0.68),
+    sobreAcento: colores.textoSobreAcento,
+    royalTexto,
+    navySuave: colorLegibleSobre(navy, white, 4.5),
+    // El degradado del numerito arranca en `navy`, que es oscuro. Se oscurece
+    // el acento hasta que el mismo blanco que ya funciona sobre `navy` funcione
+    // también en el cierre: un degradado que va de oscuro a claro no admite
+    // ningún color de texto en todo su recorrido.
+    stepFin: colorLegibleSobre(royal, white, 4.5) === royal
+      ? royal
+      : oscurecerHasta(royal, white, 4.5),
+    sobreStep: white,
+    refOscuro: fondoOscuroMasClaro,
+    personalizada: true,
   }
 }
 
@@ -122,6 +228,35 @@ function paletaLanding(colores: LandingConfig['colores']): Paleta {
  * BYTE-idéntico al literal de antes: el HTML prerenderizado es el invariante.
  * Hex irreconocible → se devuelve tal cual, igual que aclarar/oscurecer.
  */
+/**
+ * Texto SECUNDARIO sobre los fondos oscuros de la landing.
+ *
+ * Con la paleta de fábrica devuelve el rgba de siempre, byte a byte. Con una
+ * personalizada sube el alpha lo justo para llegar a AA: bajar la opacidad es
+ * una decisión de diseño legítima —así se lee "secundario"— pero por debajo de
+ * cierto punto el texto deja de ser secundario y pasa a ser ilegible, y dónde
+ * está ese punto depende de lo oscuro que sea el fondo de cada marca.
+ *
+ * Se sube en pasos de 0.05 y nunca se pasa de 1: si ni opaco cumpliera, el
+ * problema sería el tono `ice`, que ya se garantiza en `paletaLanding`.
+ */
+function iceSuave(C: Paleta, alpha: number): string {
+  if (!C.personalizada) return conAlpha(C.ice, alpha)
+  for (let a = alpha; a <= 1.0001; a += 0.05) {
+    const mezclado = mezclarSobre(C.ice, C.refOscuro, Math.min(a, 1))
+    if (ratioContraste(mezclado, C.refOscuro) >= 4.5) return conAlpha(C.ice, Math.min(a, 1))
+  }
+  return iceSuave(C, 1)
+}
+
+/** `hex` pintado con `alpha` encima de `fondo`, resuelto a un hex sólido. */
+function mezclarSobre(hex: string, fondo: string, alpha: number): string {
+  const c = hexToRgb(hex), b = hexToRgb(fondo)
+  if (!c || !b) return hex
+  const m = (x: number, y: number) => Math.round(x * alpha + y * (1 - alpha))
+  return '#' + [m(c.r, b.r), m(c.g, b.g), m(c.b, b.b)].map(v => v.toString(16).padStart(2, '0')).join('')
+}
+
 function conAlpha(hex: string, alpha: number | string): string {
   const rgb = hexToRgb(hex)
   if (!rgb) return hex
@@ -153,6 +288,14 @@ function variablesLanding(C: Paleta): CSSProperties {
     ['--landing-azure' as string]: C.azure,
     ['--landing-ice'   as string]: C.ice,
     ['--landing-white' as string]: C.white,
+    // Tonos que garantizan contraste con una paleta personalizada. Los
+    // fallbacks de cada regla siguen siendo los literales de siempre, así que
+    // sin paleta propia el CSS pinta exactamente lo de antes.
+    ['--landing-sobre-acento' as string]: C.sobreAcento,
+    ['--landing-royal-texto'  as string]: C.royalTexto,
+    ['--landing-navy-suave'   as string]: C.navySuave,
+    ['--landing-step-fin'     as string]: C.stepFin,
+    ['--landing-sobre-step'   as string]: C.sobreStep,
     ['--landing-royal-10' as string]: conAlpha(C.royal, 0.1),
     ['--landing-royal-12' as string]: conAlpha(C.royal, 0.12),
     ['--landing-azure-10' as string]: conAlpha(C.azure, '.1'),
@@ -419,8 +562,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
             style={{ color: C.azure, border: `1px solid ${conAlpha(C.azure, '.22')}`, background: 'transparent' }}>
             <LogIn size={15} />Iniciar sesión
           </Link>
-          <Link href="/register" className="px-4 sm:px-5 py-2 rounded-lg text-sm font-bold text-white transition-all"
-            style={{ background: `linear-gradient(135deg,${C.royal},${C.bright})`, boxShadow: `0 4px 14px ${C.royal}55` }}>
+          <Link href="/register" className="px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all"
+            style={{ background: `linear-gradient(135deg,${C.royal},${C.bright})`, color: C.sobreAcento, boxShadow: `0 4px 14px ${C.royal}55` }}>
             Crear cuenta →
           </Link>
         </nav>
@@ -490,7 +633,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
             {/* El '\n' del texto es el <br> de siempre entre líneas. El espacio
                 delante de cada línea siguiente es el que había en el JSX: en
                 móvil (br oculto) es lo que separa "trabajo." de "Con". */}
-            <p className="text-base sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed" style={{ color: conAlpha(C.ice, 0.75) }}>
+            <p className="text-base sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed" style={{ color: iceSuave(C, 0.75) }}>
               {texto(L.hero_subtitulo).split('\n').map((linea, i) => (
                 i === 0 ? linea : <Fragment key={i}><br className="hidden sm:block" />{` ${linea}`}</Fragment>
               ))}
@@ -511,7 +654,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     <Counter to={s.valor} suffix={s.sufijo} />
                   </div>
                   <div className="text-sm font-semibold mt-1" style={{ color: C.white }}>{texto(s.etiqueta)}</div>
-                  <div className="text-xs mt-0.5" style={{ color: conAlpha(C.ice, 0.45) }}>{texto(s.sub)}</div>
+                  <div className="text-xs mt-0.5" style={{ color: iceSuave(C, 0.45) }}>{texto(s.sub)}</div>
                 </div>
               ))}
             </div>
@@ -535,7 +678,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                 <div key={i} className="pain-card" data-reveal data-d={String(i+1)}>
                   <div className="text-3xl mb-3">{it.icono}</div>
                   <h3 className="font-semibold text-[15px] mb-2" style={{ color: C.ice }}>{texto(it.titulo)}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: conAlpha(C.ice, 0.55) }}>{texto(it.desc)}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: iceSuave(C, 0.55) }}>{texto(it.desc)}</p>
                 </div>
               ))}
             </div>
@@ -546,7 +689,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   {config.nombreCompleto}
                 </span>
               </p>
-              <p className="mt-3 text-sm sm:text-base" style={{ color: conAlpha(C.ice, 0.6) }}>
+              <p className="mt-3 text-sm sm:text-base" style={{ color: iceSuave(C, 0.6) }}>
                 {texto(L.dolor_cierre_sub)}
               </p>
             </div>
@@ -558,11 +701,11 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           <div className="max-w-5xl mx-auto">
             <div data-reveal className="text-center mb-14">
               <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
-                style={{ background: `${C.royal}15`, color: C.royal }}>{texto(L.programas_kicker)}</span>
+                style={{ background: `${C.royal}15`, color: C.royalTexto }}>{texto(L.programas_kicker)}</span>
               <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
                 {texto(L.programas_titulo)}
               </h2>
-              <p className="mt-3 text-sm sm:text-base max-w-md mx-auto" style={{ color: `${C.navy}88` }}>
+              <p className="mt-3 text-sm sm:text-base max-w-md mx-auto" style={{ color: C.navySuave }}>
                 {texto(L.programas_subtitulo)}
               </p>
             </div>
@@ -593,16 +736,16 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
                         style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                        <span className="text-sm" style={{ color: conAlpha(C.ice, 0.7) }}>{row.label}</span>
+                        <span className="text-sm" style={{ color: iceSuave(C, 0.7) }}>{row.label}</span>
                         <span className={`text-base font-bold ${playfair.className}`} style={{ color: C.azure }}>
                           {fmt(row.price)}<span className="text-xs font-normal opacity-70">{row.unit}</span>
-                          <Equivalencia monto={row.price} style={{ color: conAlpha(C.ice, 0.55) }} />
+                          <Equivalencia monto={row.price} style={{ color: iceSuave(C, 0.55) }} />
                         </span>
                       </div>
                     ))}
                   </div>
-                  <Link href="/register" className="mt-8 block w-full text-center py-3.5 rounded-xl font-bold text-white transition-all"
-                    style={{ background: `linear-gradient(135deg,${C.royal},${C.bright})`, boxShadow: `0 8px 28px ${C.royal}55` }}>
+                  <Link href="/register" className="mt-8 block w-full text-center py-3.5 rounded-xl font-bold transition-all"
+                    style={{ background: `linear-gradient(135deg,${C.royal},${C.bright})`, color: C.sobreAcento, boxShadow: `0 8px 28px ${C.royal}55` }}>
                     {texto(L.programas_cta)}
                   </Link>
                 </Card3D>
@@ -615,7 +758,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="mb-5">
                     <h3 className={`text-2xl font-bold ${playfair.className}`} style={{ color: C.navy }}>Secundaria</h3>
                   </div>
-                  <p className="text-xs font-semibold mb-6" style={{ color: C.royal }}>Inscripción: {fmt(p.inscripcion)}</p>
+                  <p className="text-xs font-semibold mb-6" style={{ color: C.royalTexto }}>Inscripción: {fmt(p.inscripcion)}</p>
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.
@@ -634,10 +777,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
                         style={{ background: `${C.royal}08`, border: `1px solid ${C.royal}14` }}>
-                        <span className="text-sm" style={{ color: `${C.navy}88` }}>{row.label}</span>
-                        <span className={`text-base font-bold ${playfair.className}`} style={{ color: C.royal }}>
+                        <span className="text-sm" style={{ color: C.navySuave }}>{row.label}</span>
+                        <span className={`text-base font-bold ${playfair.className}`} style={{ color: C.royalTexto }}>
                           {fmt(row.price)}<span className="text-xs font-normal opacity-60">{row.unit}</span>
-                          <Equivalencia monto={row.price} style={{ color: conAlpha(C.ice, 0.55) }} />
+                          <Equivalencia monto={row.price} style={{ color: C.navySuave }} />
                         </span>
                       </div>
                     ))}
@@ -651,7 +794,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               )}
             </div>
             {/* Solo se pinta si la escuela NO cobra en pesos (ver AvisoMoneda). */}
-            <AvisoMoneda className="mt-8 text-center text-xs" style={{ color: conAlpha(C.ice, 0.6) }} />
+            <AvisoMoneda className="mt-8 text-center text-xs" style={{ color: C.navySuave }} />
           </div>
         </section>
 
@@ -660,7 +803,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           <div className="max-w-4xl mx-auto">
             <div data-reveal className="text-center mb-14">
               <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
-                style={{ background: `${C.royal}10`, color: C.royal }}>{texto(L.transformacion_kicker)}</span>
+                style={{ background: `${C.royal}10`, color: C.royalTexto }}>{texto(L.transformacion_kicker)}</span>
               <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
                 {texto(L.transformacion_titulo)}
               </h2>
@@ -671,12 +814,12 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                 style={{ background: '#FEF2F2', border: '1px solid rgba(239,68,68,0.15)' }}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                    style={{ background: '#FEE2E2', color: '#DC2626' }}>✕</div>
-                  <span className="font-bold text-sm uppercase tracking-wider" style={{ color: '#DC2626' }}>{`Sin ${config.nombre}`}</span>
+                    style={{ background: '#FEE2E2', color: '#B91C1C' }}>✕</div>
+                  <span className="font-bold text-sm uppercase tracking-wider" style={{ color: '#B91C1C' }}>{`Sin ${config.nombre}`}</span>
                 </div>
                 {L.transformacion_sin.map((t, i) => (
                   <div key={i} className="flex items-start gap-3 mb-4">
-                    <span className="mt-0.5 flex-shrink-0 text-red-400 text-sm">✕</span>
+                    <span className="mt-0.5 flex-shrink-0 text-red-700 text-sm">✕</span>
                     <p className="text-sm leading-relaxed" style={{ color: '#7f1d1d' }}>{texto(t)}</p>
                   </div>
                 ))}
@@ -686,13 +829,13 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                 style={{ background: `linear-gradient(145deg,${C.navy},${C.conFin})`, border: `1px solid ${conAlpha(C.azure, 0.2)}` }}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                    style={{ background: conAlpha(C.azure, 0.2), color: C.azure }}>✓</div>
+                    style={{ background: conAlpha(C.azure, 0.2), color: C.ice }}>✓</div>
                   <span className="font-bold text-sm uppercase tracking-wider" style={{ color: C.azure }}>{`Con ${config.nombre}`}</span>
                 </div>
                 {L.transformacion_con.map((t, i) => (
                   <div key={i} className="flex items-start gap-3 mb-4">
                     <span className="mt-0.5 flex-shrink-0" style={{ color: '#4ade80', fontSize: 14 }}>✓</span>
-                    <p className="text-sm leading-relaxed" style={{ color: conAlpha(C.ice, 0.8) }}>{texto(t)}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: iceSuave(C, 0.8) }}>{texto(t)}</p>
                   </div>
                 ))}
               </div>
@@ -705,7 +848,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           <div className="max-w-4xl mx-auto">
             <div data-reveal className="text-center mb-16">
               <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
-                style={{ background: `${C.royal}10`, color: C.royal }}>{texto(L.proceso_kicker)}</span>
+                style={{ background: `${C.royal}10`, color: C.royalTexto }}>{texto(L.proceso_kicker)}</span>
               <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
                 {texto(L.proceso_titulo)}
               </h2>
@@ -717,7 +860,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className={`cjvb-step-num ${playfair.className}`}>{String(i+1).padStart(2, '0')}</div>
                   <div className="pt-1">
                     <h3 className="text-lg sm:text-xl font-semibold mb-1.5" style={{ color: C.navy }}>{texto(item.titulo)}</h3>
-                    <p className="text-sm sm:text-base leading-relaxed" style={{ color: `${C.navy}75` }}>{texto(item.desc)}</p>
+                    <p className="text-sm sm:text-base leading-relaxed" style={{ color: C.navySuave }}>{texto(item.desc)}</p>
                   </div>
                 </li>
               ))}
@@ -731,7 +874,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           <div className="max-w-5xl mx-auto">
             <div data-reveal className="text-center mb-14">
               <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
-                style={{ background: `${C.royal}10`, color: C.royal }}>{texto(L.testimonios_kicker)}</span>
+                style={{ background: `${C.royal}10`, color: C.royalTexto }}>{texto(L.testimonios_kicker)}</span>
               <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
                 {texto(L.testimonios_titulo)}
               </h2>
@@ -751,16 +894,16 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     ))}
                   </div>
                   {/* Quote */}
-                  <p className="text-sm leading-relaxed flex-1" style={{ color: `${C.navy}88` }}>&ldquo;{t.quote}&rdquo;</p>
+                  <p className="text-sm leading-relaxed flex-1" style={{ color: C.navySuave }}>&ldquo;{t.quote}&rdquo;</p>
                   {/* Author */}
                   <div className="flex items-center gap-3 pt-2 border-t" style={{ borderColor: `${C.royal}12` }}>
                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                      style={{ background: `linear-gradient(135deg,${C.royal},${C.bright})`, color: C.white }}>
+                      style={{ background: `linear-gradient(135deg,${C.royal},${C.bright})`, color: C.sobreAcento }}>
                       {t.initials}
                     </div>
                     <div>
                       <p className="font-semibold text-sm" style={{ color: C.navy }}>{t.name}, {t.age}</p>
-                      <p className="text-xs" style={{ color: C.royal }}>{t.nivel}</p>
+                      <p className="text-xs" style={{ color: C.royalTexto }}>{t.nivel}</p>
                     </div>
                   </div>
                 </div>
@@ -779,7 +922,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.white }}>
                 {texto(L.beneficios_titulo)}
               </h2>
-              <p className="mt-3 text-sm sm:text-base max-w-md mx-auto" style={{ color: conAlpha(C.ice, 0.55) }}>
+              <p className="mt-3 text-sm sm:text-base max-w-md mx-auto" style={{ color: iceSuave(C, 0.55) }}>
                 {texto(L.beneficios_subtitulo)}
               </p>
             </div>
@@ -791,7 +934,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     <CheckIcon color={C.azure} />
                   </div>
                   <h3 className="font-semibold text-[15px] mb-2" style={{ color: C.white }}>{texto(b.titulo)}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: conAlpha(C.ice, 0.52) }}>{texto(b.desc)}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: iceSuave(C, 0.52) }}>{texto(b.desc)}</p>
                 </div>
               ))}
             </div>
@@ -809,7 +952,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
             <div className="max-w-6xl mx-auto">
               <div data-reveal className="text-center mb-12">
                 <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
-                  style={{ background: `${C.royal}10`, color: C.royal }}>Programas</span>
+                  style={{ background: `${C.royal}10`, color: C.royalTexto }}>Programas</span>
                 <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
                   {texto(L.catalogoTitulo)}
                 </h2>
@@ -827,7 +970,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     className="flex flex-col rounded-2xl p-6 bg-white transition-shadow hover:shadow-lg"
                     style={{ border: '1px solid #E2E8F0' }}
                   >
-                    <span className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: C.royal }}>
+                    <span className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: C.royalTexto }}>
                       {c.tipo === 'diplomado' ? 'Diplomado' : 'Curso'}
                     </span>
                     <h3 className="text-lg font-bold leading-snug mb-2" style={{ color: C.navy }}>
@@ -869,7 +1012,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                           <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>Pago único</p>
                         </>
                       ) : null}
-                      <p className="text-xs font-semibold mt-2" style={{ color: C.royal }}>Ver temario →</p>
+                      <p className="text-xs font-semibold mt-2" style={{ color: C.royalTexto }}>Ver temario →</p>
                     </div>
                   </Link>
                 ))}
@@ -883,7 +1026,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           <div className="max-w-2xl mx-auto">
             <div data-reveal className="text-center mb-14">
               <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
-                style={{ background: `${C.royal}10`, color: C.royal }}>{texto(L.faq_kicker)}</span>
+                style={{ background: `${C.royal}10`, color: C.royalTexto }}>{texto(L.faq_kicker)}</span>
               <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
                 {texto(L.faq_titulo)}
               </h2>
@@ -912,7 +1055,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   {texto(L.cta_highlight)}
                 </span>
               </h2>
-              <p className="mb-10 text-base sm:text-lg" style={{ color: conAlpha(C.ice, 0.7) }}>
+              <p className="mb-10 text-base sm:text-lg" style={{ color: iceSuave(C, 0.7) }}>
                 {texto(L.cta_subtitulo)}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -926,7 +1069,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
         </section>
 
         {/* ── FOOTER ───────────────────────────────────────────────── */}
-        <footer className="py-12 px-4 sm:px-8 text-center" style={{ background: C.footer, color: conAlpha(C.ice, 0.45) }}>
+        <footer className="py-12 px-4 sm:px-8 text-center" style={{ background: C.footer, color: iceSuave(C, 0.45) }}>
           <div className="flex justify-center mb-4">
             {/* `brightness-0 invert` fuerza el logo a blanco puro. Sirve cuando
                 el cliente NO entregó variante para fondo oscuro y `logoOscuro`
@@ -944,7 +1087,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           </div>
           <p className="text-sm font-semibold" style={{ color: C.ice }}>{config.nombreCompleto}</p>
           <p className="text-xs mt-1.5">{CONFIG.dominio}</p>
-          <div className="flex items-center justify-center gap-3 mt-4 flex-wrap text-xs" style={{ color: 'rgba(224,235,255,0.4)' }}>
+          <div className="flex items-center justify-center gap-3 mt-4 flex-wrap text-xs" style={{ color: iceSuave(C, 0.4) }}>
             <a href={`mailto:${config.contactoEmail}`} className="hover:text-white transition-colors">{config.contactoEmail}</a>
             <span>·</span>
             <a href={config.whatsappUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a>
@@ -964,7 +1107,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               </a>
             )}
           </div>
-          <div className="flex items-center justify-center gap-4 mt-6 text-xs flex-wrap" style={{ color: 'rgba(224,235,255,0.35)' }}>
+          <div className="flex items-center justify-center gap-4 mt-6 text-xs flex-wrap" style={{ color: iceSuave(C, 0.35) }}>
             <Link href="/aviso-de-privacidad" className="hover:text-white transition-colors">Aviso de Privacidad</Link>
             <span>·</span>
             <Link href="/terminos-y-condiciones" className="hover:text-white transition-colors">Términos y Condiciones</Link>
