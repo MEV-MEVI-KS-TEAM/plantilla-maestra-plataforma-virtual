@@ -6,6 +6,7 @@ import {
   CLAVES_LANDING_PINTADAS,
   CLAVES_PALETA,
   LISTAS_LANDING,
+  COLORES_DE_FABRICA,
   esPaletaPersonalizada,
   resolverLanding,
 } from '@/lib/landing-textos'
@@ -184,7 +185,47 @@ test('esPaletaPersonalizada: un color DISTINTO sí la enciende, clave por clave'
   }
 })
 
-test('esPaletaPersonalizada: base por defecto = CONFIG.colores', () => {
+test('esPaletaPersonalizada: REGRESIÓN — el config.ts del cliente NO puede ser la referencia', () => {
+  // EDUHCO (#197) y GRATIA (#198): la escuela declara su paleta en config.ts,
+  // no toca el panel, despliega… y la portada sale con el azul de la plantilla.
+  // La causa era comparar contra `CONFIG.colores`, que en el repo de un cliente
+  // YA SON sus colores: "iguales" → false → PALETA_ORIGINAL.
+  const gratia = {
+    primario:         '#053030',
+    secundario:       '#0A4444',
+    acento:           '#C09852',
+    acentoHover:      '#8F6B2E',
+    acentoClaro:      '#F7EFE2',
+    textoSobreAcento: '#053030',
+  }
+  // Con la referencia correcta, una paleta propia enciende la landing…
+  expect(esPaletaPersonalizada(gratia)).toBe(true)
+  // …y comparada contra sí misma (el bug) daría false. Este es el caso que
+  // rompía: el clon del cliente evaluaba exactamente esto.
+  expect(esPaletaPersonalizada(gratia, gratia)).toBe(false)
+})
+
+test('esPaletaPersonalizada: INVARIANTE — la paleta de fábrica no enciende nada', () => {
+  // Las ~144 escuelas que nunca tocaron `colores` tienen que ver su landing
+  // exactamente igual que antes de este fix.
+  expect(esPaletaPersonalizada(COLORES_DE_FABRICA)).toBe(false)
+  for (const k of CLAVES_PALETA) {
+    expect(COLORES_DE_FABRICA[k], `falta ${k} en COLORES_DE_FABRICA`).toMatch(/^#[0-9A-F]{6}$/)
+  }
+})
+
+test('COLORES_DE_FABRICA sigue sincronizada con el config.ts de la PLANTILLA', () => {
+  // Solo puede comprobarse en la plantilla maestra: en el repo de un cliente
+  // `CONFIG.colores` son los suyos y esta comparación no significa nada. Se
+  // salta ahí, y en la plantilla actúa de guardián de la sincronía.
+  const esPlantilla = CONFIG.nombre === 'MEV' || CONFIG.prefijoMatricula === 'MEV'
+  if (!esPlantilla) return
+  for (const k of CLAVES_PALETA) {
+    expect(COLORES_DE_FABRICA[k], k).toBe((CONFIG.colores as Record<string, string>)[k])
+  }
+})
+
+test('esPaletaPersonalizada: base por defecto = paleta de fábrica', () => {
   expect(esPaletaPersonalizada(CONFIG.colores)).toBe(false)
   expect(esPaletaPersonalizada({ ...CONFIG.colores, acento: '#010203' })).toBe(true)
   // Una clave AUSENTE cuenta como distinta (es el comportamiento de siempre):

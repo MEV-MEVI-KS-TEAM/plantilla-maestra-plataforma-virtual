@@ -198,11 +198,45 @@ function normalizarHex(v: string | undefined): string | undefined {
 }
 
 /**
- * ¿El admin tocó algún color desde el editor?
+ * La paleta con la que sale la plantilla de fábrica: el azul sobre pizarra que
+ * lleva el diseño original de la landing (`PALETA_ORIGINAL` en LandingClient).
+ *
+ * ⚠️ SON LITERALES A PROPÓSITO, NO `CONFIG.colores`. En el repo de un cliente,
+ * `CONFIG.colores` son los colores DE ESE CLIENTE, no los de fábrica; usarlo
+ * como referencia era el bug que este bloque arregla (ver
+ * `esPaletaPersonalizada`). Si algún día cambia la paleta de fábrica de la
+ * plantilla, hay que cambiar estos seis valores a mano — y una prueba unitaria
+ * avisa si se desincronizan del `config.ts` de la plantilla maestra.
+ */
+export const COLORES_DE_FABRICA: { readonly [K in ClavePaleta]: string } = {
+  primario:         '#0F172A',
+  secundario:       '#1E293B',
+  acento:           '#3B82F6',
+  acentoHover:      '#2563EB',
+  acentoClaro:      '#DBEAFE',
+  textoSobreAcento: '#FFFFFF',
+}
+
+/**
+ * ¿Esta escuela tiene una paleta propia? Es decir: ¿hay que pintar la landing
+ * con sus colores en vez de con el azul de fábrica?
  *
  * Es el interruptor de TODO lo personalizado de la landing —la paleta derivada
  * y las variables CSS que se inyectan para globals.css—, así que vive en un
  * solo sitio y no pueden discrepar.
+ *
+ * 🛑 SE COMPARA CONTRA LA PALETA DE FÁBRICA, NO CONTRA `CONFIG.colores`.
+ * El default era `CONFIG.colores` y eso hacía que la landing IGNORARA la paleta
+ * del cliente: en el repo de una escuela, `CONFIG.colores` ya SON sus colores,
+ * así que sin overrides en la BD la comparación daba "iguales" → `false` → la
+ * landing se pintaba con el azul de la plantilla. El cliente ponía su verde y
+ * su oro en el config, desplegaba, y la portada seguía saliendo azul marino.
+ * Lo reportó EDUHCO (#197, 9-sep-2026) y volvió a morder en GRATIA (#198).
+ *
+ * Para las ~144 escuelas que NUNCA tocaron `colores` en su `config.ts` el
+ * resultado es exactamente el mismo que antes (su config ES el de fábrica), así
+ * que su landing no cambia ni un píxel. Solo cambia —y a favor— la de quien ya
+ * había declarado una paleta propia y no la estaba viendo.
  *
  * COMPARACIÓN NORMALIZADA (hardening). Antes se comparaba el hex tal cual, y
  * eso confundía "otro color" con "el mismo color escrito distinto": el editor
@@ -215,7 +249,7 @@ function normalizarHex(v: string | undefined): string | undefined {
  */
 export function esPaletaPersonalizada(
   colores: ColoresComparables | undefined,
-  base: ColoresComparables = CONFIG.colores,
+  base: ColoresComparables = COLORES_DE_FABRICA,
 ): boolean {
   return CLAVES_PALETA.some((k) => normalizarHex(colores?.[k]) !== normalizarHex(base?.[k]))
 }
