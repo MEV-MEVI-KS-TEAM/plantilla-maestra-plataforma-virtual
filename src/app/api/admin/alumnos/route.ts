@@ -21,6 +21,19 @@ async function checkAdmin(userId: string): Promise<boolean> {
   return (data?.rol as string | undefined)?.toUpperCase() === 'ADMIN'
 }
 
+/**
+ * Un alumno de CURSO (`nivel = 'diplomado'`) o sin nivel no cursa el programa
+ * escolar: su duración no sale de las modalidades de secundaria o preparatoria.
+ *
+ * ⚠️ `getMesesByModalidad(null)` NO devuelve null: cae al fallback «primera
+ * modalidad activa». Sin esta guarda el listado le anuncia «0 de 3 meses» de un
+ * plan que ese alumno no tiene, que es justo lo que ve la escuela en cuanto
+ * empieza a inscribir gente a sus cursos.
+ */
+function sinPlanEscolar(nivel: string | null | undefined): boolean {
+  return !nivel || nivel === 'diplomado'
+}
+
 // ─── Curso de ingreso solicitado ──────────────────────────────────────────────
 // Se resuelve APARTE de la consulta principal, no dentro de su `select`, y se
 // aplica a los tres retornos. Los tres intentos consultan schemas distintos y
@@ -144,11 +157,11 @@ export async function GET() {
           nivel:                a.nivel ?? null,
           carrera:              a.carrera ?? null,
           plan_nombre:          getPlanNombre(a.nivel, a.carrera),
-          modalidad:            a.modalidad ?? getDefaultModalidadId(),
+          modalidad:            a.modalidad ?? (sinPlanEscolar(a.nivel) ? null : getDefaultModalidadId()),
           sindicalizado:        a.es_sindicalizado ?? a.sindicalizado ?? false,
           activo:               a.activo ?? false,
           meses_desbloqueados:  a.meses_desbloqueados ?? 0,
-          duracion_meses:       getMesesByModalidad(a.modalidad),
+          duracion_meses:       sinPlanEscolar(a.nivel) ? 0 : getMesesByModalidad(a.modalidad),
           inscripcion_pagada:   a.inscripcion_pagada ?? false,
           contactado_whatsapp:  a.contactado_whatsapp ?? false,
           created_at:           a.created_at,
@@ -205,11 +218,11 @@ export async function GET() {
           nivel:                a.nivel ?? null,
           carrera:              a.carrera ?? null,
           plan_nombre:          getPlanNombre(a.nivel, a.carrera),
-          modalidad:            a.modalidad ?? getDefaultModalidadId(),
+          modalidad:            a.modalidad ?? (sinPlanEscolar(a.nivel) ? null : getDefaultModalidadId()),
           sindicalizado:        a.es_sindicalizado ?? a.sindicalizado ?? false,
           activo:               a.activo ?? false,
           meses_desbloqueados:  a.meses_desbloqueados ?? 0,
-          duracion_meses:       getMesesByModalidad(a.modalidad),
+          duracion_meses:       sinPlanEscolar(a.nivel) ? 0 : getMesesByModalidad(a.modalidad),
           inscripcion_pagada:   a.inscripcion_pagada ?? false,
           contactado_whatsapp:  a.contactado_whatsapp ?? false,
           created_at:           a.created_at,
@@ -250,11 +263,11 @@ export async function GET() {
         nivel:                a.nivel ?? null,
         carrera:              a.carrera ?? null,
         plan_nombre:          getPlanNombre(a.nivel, a.carrera),
-        modalidad:            a.modalidad ?? getDefaultModalidadId(),
+        modalidad:            a.modalidad ?? (sinPlanEscolar(a.nivel) ? null : getDefaultModalidadId()),
         sindicalizado:        a.es_sindicalizado ?? a.sindicalizado ?? false,
         activo:               a.activo ?? false,
         meses_desbloqueados:  a.meses_desbloqueados ?? 0,
-        duracion_meses:       getMesesByModalidad(a.modalidad),
+        duracion_meses:       sinPlanEscolar(a.nivel) ? 0 : getMesesByModalidad(a.modalidad),
         inscripcion_pagada:   a.inscripcion_pagada ?? false,
         contactado_whatsapp:  a.contactado_whatsapp ?? false,
         created_at:           a.created_at,
@@ -283,6 +296,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { nombre_completo, email, password, nivel, modalidad, telefono, carrera } = body
+    // Cursos a los que el admin inscribe al alumno en el mismo alta. Llega solo
+    // cuando el nivel elegido es el del catálogo ('diplomado').
+    const cursosIds: string[] = Array.isArray(body.cursos_ids)
+      ? (body.cursos_ids as unknown[]).filter((x): x is string => typeof x === 'string' && x.length > 0)
+      : []
 
     // Aceptar "nombre_completo" del form y dividirlo en nombre / apellidos
     const partes     = (nombre_completo as string | undefined)?.trim().split(/\s+/) ?? []
@@ -315,6 +333,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Un alumno de curso sin curso no existe: entraría con nivel 'diplomado' y
+    // sin nada que ver, y `nivel` es write-once. Se corta aquí, ANTES de crear
+    // el usuario de Auth, para no dejar cuentas huérfanas.
+    const nivelElegido = nivelForzado ?? nivel
+    if (nivelElegido === 'diplomado' && cursosIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Selecciona al menos un curso o diplomado' },
+        { status: 400 },
+      )
+    }
+
+    // ⚠️ NO se confía del cliente el id que manda: se valida contra los cursos
+    // realmente PUBLICADOS, igual que en /api/auth/register-complete. Un POST a
+    // mano con el UUID de un curso en borrador no debe inscribir a nadie.
+    const admin = createAdminClient()
+
+    let cursosValidados: string[] = []
+    if (cursosIds.length > 0) {
+      const { data: publicados } = await admin
+        .from('cursos')
+        .select('id')
+        .in('id', cursosIds)
+        .eq('estado', 'publicado')
+      cursosValidados = ((publicados ?? []) as { id: string }[]).map(c => c.id)
+      if (cursosValidados.length === 0) {
+        return NextResponse.json(
+          { error: 'Los cursos seleccionados ya no están disponibles. Elige otros.' },
+          { status: 400 },
+        )
+      }
+    }
+
     // La carrera decide QUÉ catálogo ve el alumno (lib/acceso-materias) y, como
     // `nivel`, no hay pantalla para corregirla después: un alumno de
     // licenciatura sin carrera se queda sin materias. Se valida contra el
@@ -330,8 +380,6 @@ export async function POST(request: NextRequest) {
         )
       }
     }
-
-    const admin = createAdminClient()
 
     // Crear usuario en Supabase Auth
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -378,8 +426,15 @@ export async function POST(request: NextRequest) {
       .from('alumnos')
       .insert({
         id:                  newUserId,
-        nivel:               nivelForzado ?? (nivel as 'secundaria' | 'preparatoria' | 'licenciatura'),
-        modalidad:           nivelForzado ? null : (modalidad ?? getDefaultModalidadId()),
+        nivel:               nivelForzado ?? (nivel as 'secundaria' | 'preparatoria' | 'licenciatura' | 'diplomado'),
+        // ⚠️ Sin la guarda por 'diplomado', un alumno de curso se llevaba
+        // `getDefaultModalidadId()` y su ficha anunciaba «0 de 3 meses» de un
+        // programa que no cursa: `duracion_meses` es GENERATED a partir de la
+        // modalidad, y `getMesesByModalidad(null)` cae al fallback «primera
+        // modalidad activa» en vez de devolver null.
+        modalidad:           (nivelForzado || nivelElegido === 'diplomado')
+                               ? null
+                               : (modalidad ?? getDefaultModalidadId()),
         carrera:             carreraNormalizada || null,
         meses_desbloqueados: 0,
       })
@@ -412,7 +467,34 @@ export async function POST(request: NextRequest) {
       if (reparado) alumno = reparado
     }
 
-    return NextResponse.json(alumno, { status: 201 })
+    // ── Inscripción a los cursos marcados ────────────────────────────────────
+    // Va DESPUÉS del alta porque `curso_inscripciones` referencia `alumnos(id)`,
+    // y en la MISMA llamada para que el alumno no quede a medias si el admin
+    // cierra la pestaña.
+    //
+    // ⚠️ `meses_desbloqueados` queda en 0 a propósito: inscribir NO abre el
+    // contenido. Abrir el Mes 1 sigue siendo un acto deliberado contra un pago
+    // verificado, igual que en el registro público.
+    let cursosAsignados = 0
+    if (cursosValidados.length > 0) {
+      const { error: insError } = await admin
+        .from('curso_inscripciones')
+        .insert(cursosValidados.map(curso_id => ({
+          curso_id,
+          alumno_id:           newUserId,
+          meses_desbloqueados: 0,
+        })))
+      if (insError && insError.code !== '23505') {
+        // No es fatal: el alumno ya existe y es válido. Tumbar el alta por esto
+        // dejaría una cuenta de Auth huérfana; el admin puede inscribirlo desde
+        // la ficha. Se registra para que quede rastro.
+        console.error('[POST /api/admin/alumnos] curso_inscripciones:', insError.message)
+      } else {
+        cursosAsignados = cursosValidados.length
+      }
+    }
+
+    return NextResponse.json({ ...(alumno ?? {}), cursos_asignados: cursosAsignados }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/admin/alumnos]', err)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
