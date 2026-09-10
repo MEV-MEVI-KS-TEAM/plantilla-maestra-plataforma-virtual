@@ -271,6 +271,10 @@ test('7. la landing no lleva "/mes" escrito a mano en las tarjetas de plan', () 
   const tarjetas = landing
     .split('\n')
     .filter(l => l.includes('planesPrepa.map') || l.includes('planesSec.map'))
+  // En la plantilla las tarjetas TIENEN que estar: si desaparecieran, esta
+  // prueba dejaría de vigilar nada en silencio. En el clon de una escuela con
+  // landing PROPIA —CAU #200— no existen, y su guardián vive en sus pruebas.
+  if (!ES_PLANTILLA && tarjetas.length === 0) test.skip()
   expect(tarjetas.length).toBeGreaterThan(0)
   for (const linea of tarjetas) {
     expect(linea, 'unidad escrita a mano en una tarjeta de plan').not.toContain("'/mes'")
@@ -279,6 +283,7 @@ test('7. la landing no lleva "/mes" escrito a mano en las tarjetas de plan', () 
 
 test('7b. la unidad del precio sale de la periodicidad', () => {
   const landing = leer('src/components/landing/LandingClient.tsx')
+  if (!ES_PLANTILLA && !landing.includes('planesPrepa.map')) test.skip()
   expect(landing).toContain("unidadCuota")
 })
 

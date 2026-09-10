@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { ES_PLANTILLA } from './es-plantilla'
 import { CONFIG } from '@/lib/config'
 import {
   CLAVES_EDITABLES,
@@ -600,14 +601,23 @@ test('F3: interpolar sustituye {duracion} y {nombre} y deja {desconocido} tal cu
   // No pesca nada del prototipo.
   expect(interpolar('{constructor} {toString}', vars)).toBe('{constructor} {toString}')
   // Los defaults de la landing se resuelven con los placeholders del contrato.
-  const cfg = mergeSiteConfig(CONFIG, {})
-  const todas = { duracion: '3 o 6 meses', nombre: cfg.nombre, nombreCompleto: cfg.nombreCompleto, whatsapp: cfg.whatsapp, inscripcion: '$599' }
-  expect(interpolar(cfg.landing.faq_items[4].a, todas)).toContain(`al ${cfg.whatsapp}.`)
-  expect(interpolar(cfg.landing.programas_subtitulo, todas)).toBe('Inscripción única $599 · Elige tu nivel y plan')
+  // Solo en la PLANTILLA: compara contra los textos de fábrica (ver
+  // tests/unit/es-plantilla.ts); en el clon de una escuela son los suyos.
+  if (ES_PLANTILLA) {
+    const cfg = mergeSiteConfig(CONFIG, {})
+    const todas = { duracion: '3 o 6 meses', nombre: cfg.nombre, nombreCompleto: cfg.nombreCompleto, whatsapp: cfg.whatsapp, inscripcion: '$599' }
+    expect(interpolar(cfg.landing.faq_items[4].a, todas)).toContain(`al ${cfg.whatsapp}.`)
+    expect(interpolar(cfg.landing.programas_subtitulo, todas)).toBe('Inscripción única $599 · Elige tu nivel y plan')
+  }
   expect([...PLACEHOLDERS].sort()).toEqual(['duracion', 'inscripcion', 'nombre', 'nombreCompleto', 'whatsapp'])
 })
 
 test('F3: los defaults nuevos son los literales de la landing (invariante) y hero_* dejaron de ser letra muerta', () => {
+  // GUARDIÁN de fábrica: cada línea compara contra un texto LITERAL de la
+  // plantilla. En el clon de una escuela que escribió su propia landing —el
+  // hero, el FAQ, el botón final— sale roja sin que haya nada roto, que es
+  // justo lo que enseña a ignorar la suite (Bug 164).
+  if (!ES_PLANTILLA) test.skip()
   const l = esperado().landing
   expect(l.hero_titulo).toBe('Tu Secundaria o Preparatoria')
   expect(l.hero_highlight).toBe('desde donde estés')
