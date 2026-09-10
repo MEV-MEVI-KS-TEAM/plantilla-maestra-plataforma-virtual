@@ -88,6 +88,16 @@ export async function GET() {
     const uMap = new Map((usuariosRaw ?? []).map(u => [u.id, u]))
     const aMap = new Map(alumnos.map(a => [a.id, a]))
 
+    // ── Encabezados con la moneda REAL de la escuela ───────────────────────
+    // Iban escritos "(MXN)" a mano en once sitios. En un cliente que cobra en
+    // dólares, el contador abría el .xlsx y leía pesos: la columna decía una
+    // moneda y los números eran de otra.
+    const M = cfg.moneda
+    const COL_MONTO      = `Monto (${M})`
+    const COL_PROGRAMA   = `Programa (${M})`
+    const COL_DIPLOMADOS = `Diplomados (${M})`
+    const COL_TOTAL      = `Total (${M})`
+
     // ── Hoja 2 · Pagos ─────────────────────────────────────────────────────
     const hojaPagos = pagos.map(p => ({
       'Fecha':          soloFecha(p.fecha_pago),
@@ -96,7 +106,7 @@ export async function GET() {
       'Nivel':          NIVEL_LABELS[aMap.get(p.alumno_id)?.nivel ?? ''] ?? '',
       'Concepto':       CONCEPTO_LABELS[p.concepto ?? ''] ?? p.concepto ?? '',
       'Mes que abrió':  p.mes_desbloqueado ?? '',
-      'Monto (MXN)':    Number(p.monto ?? 0),
+      [COL_MONTO]:      Number(p.monto ?? 0),
       'Método':         p.metodo_pago ?? '',
       'Referencia':     p.referencia ?? '',
       'Registrado por': nombreDe(uMap.get(p.registrado_por)),
@@ -149,22 +159,22 @@ export async function GET() {
     const filasMes = (!mesRes.error && Array.isArray(mesRes.data) ? mesRes.data : []) as Record<string, unknown>[]
     const hojaMes = filasMes.map(r => ({
       'Mes':                 mesLegible(String(r.mes)),
-      'Programa (MXN)':      Number(r.programa ?? 0),
-      'Diplomados (MXN)':    Number(r.cursos ?? 0),
-      'Total (MXN)':         Number(r.total ?? 0),
+      [COL_PROGRAMA]:        Number(r.programa ?? 0),
+      [COL_DIPLOMADOS]:      Number(r.cursos ?? 0),
+      [COL_TOTAL]:           Number(r.total ?? 0),
     }))
 
     const filasSem = (!semRes.error && Array.isArray(semRes.data) ? semRes.data : []) as Record<string, unknown>[]
     const hojaSemana = filasSem.map(r => ({
       'Semana del':          soloFecha(String(r.semana_inicio)),
-      'Programa (MXN)':      Number(r.programa ?? 0),
-      'Diplomados (MXN)':    Number(r.cursos ?? 0),
-      'Total (MXN)':         Number(r.total ?? 0),
+      [COL_PROGRAMA]:        Number(r.programa ?? 0),
+      [COL_DIPLOMADOS]:      Number(r.cursos ?? 0),
+      [COL_TOTAL]:           Number(r.total ?? 0),
     }))
 
     // ── Hoja 1 · Resumen ───────────────────────────────────────────────────
     const totalIngresos = pagos.reduce((s, p) => s + Number(p.monto ?? 0), 0)
-    const ingresosMes = hojaMes.length ? hojaMes[hojaMes.length - 1]['Total (MXN)'] : 0
+    const ingresosMes = hojaMes.length ? Number(hojaMes[hojaMes.length - 1][COL_TOTAL] ?? 0) : 0
     const hoy = new Date()
     const hojaResumen = [
       { Concepto: 'Institución',             Valor: cfg.nombreCompleto },
@@ -173,8 +183,8 @@ export async function GET() {
       { Concepto: 'Alumnos activos',         Valor: alumnos.filter(a => a.activo !== false).length },
       { Concepto: 'Con inscripción pagada',  Valor: alumnos.filter(a => a.inscripcion_pagada).length },
       { Concepto: 'Pagos registrados',       Valor: pagos.length },
-      { Concepto: 'Ingresos del mes (MXN)',  Valor: ingresosMes },
-      { Concepto: 'Ingresos totales (MXN)',  Valor: totalIngresos },
+      { Concepto: `Ingresos del mes (${M})`, Valor: ingresosMes },
+      { Concepto: `Ingresos totales (${M})`, Valor: totalIngresos },
       { Concepto: 'Materias con calificaciones', Valor: hojaRendimiento.length },
     ]
 
@@ -189,11 +199,11 @@ export async function GET() {
         : XLSX.utils.aoa_to_sheet([encabezados])
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hojaResumen), 'Resumen')
-    XLSX.utils.book_append_sheet(wb, hoja(hojaPagos,       ['Fecha', 'Alumno', 'Matrícula', 'Nivel', 'Concepto', 'Mes que abrió', 'Monto (MXN)', 'Método', 'Referencia', 'Registrado por']), 'Pagos')
+    XLSX.utils.book_append_sheet(wb, hoja(hojaPagos,       ['Fecha', 'Alumno', 'Matrícula', 'Nivel', 'Concepto', 'Mes que abrió', COL_MONTO, 'Método', 'Referencia', 'Registrado por']), 'Pagos')
     XLSX.utils.book_append_sheet(wb, hoja(hojaAlumnos,     ['Matrícula', 'Alumno', 'Correo', 'Teléfono', 'Nivel', 'Modalidad', 'Inscripción pagada', 'Meses desbloqueados', 'Estado', 'Fecha de inscripción']), 'Alumnos')
     XLSX.utils.book_append_sheet(wb, hoja(hojaRendimiento, ['Materia', 'Calificaciones', 'Acreditados', 'No acreditados', '% de acreditación', 'Promedio']), 'Rendimiento')
-    XLSX.utils.book_append_sheet(wb, hoja(hojaMes,         ['Mes', 'Programa (MXN)', 'Diplomados (MXN)', 'Total (MXN)']), 'Ingresos por mes')
-    XLSX.utils.book_append_sheet(wb, hoja(hojaSemana,      ['Semana del', 'Programa (MXN)', 'Diplomados (MXN)', 'Total (MXN)']), 'Ingresos semanal')
+    XLSX.utils.book_append_sheet(wb, hoja(hojaMes,         ['Mes', COL_PROGRAMA, COL_DIPLOMADOS, COL_TOTAL]), 'Ingresos por mes')
+    XLSX.utils.book_append_sheet(wb, hoja(hojaSemana,      ['Semana del', COL_PROGRAMA, COL_DIPLOMADOS, COL_TOTAL]), 'Ingresos semanal')
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
     const slug = cfg.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')

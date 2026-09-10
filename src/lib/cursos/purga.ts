@@ -2,7 +2,7 @@
  * Purga de la copia prerenderizada del catálogo público (B8.2).
  *
  * ⚠️ ARCHIVO APARTE DE catalogo.ts A PROPÓSITO. `LandingClient` (componente
- * 'use client') importa `precioMXN` de catalogo.ts; cuando la purga vivió ahí,
+ * 'use client') importa `precioPublico` de catalogo.ts; cuando la purga vivió ahí,
  * `next/cache` entró por esa cadena al bundle del NAVEGADOR y la landing de los
  * 144 clientes engordó de 11.3 kB a 25.4 kB — por código de caché de servidor
  * que el cliente jamás puede ejecutar. Separado, la cadena cliente no lo toca.

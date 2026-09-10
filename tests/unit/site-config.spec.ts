@@ -159,7 +159,7 @@ test('9. overrides que no son objeto plano → defaults, sin lanzar', () => {
   }
 })
 
-test('10. toPublicSiteConfig expone exactamente las 16 claves públicas (sin landing)', () => {
+test('10. toPublicSiteConfig expone exactamente las 18 claves públicas (sin landing)', () => {
   const pub = toPublicSiteConfig(mergeSiteConfig(CONFIG, {}))
   const claves = Object.keys(pub).sort()
 
@@ -167,8 +167,11 @@ test('10. toPublicSiteConfig expone exactamente las 16 claves públicas (sin lan
     'nombre', 'nombreCompleto', 'tagline', 'cct', 'logo', 'logoOscuro', 'colores',
     'whatsapp', 'whatsappUrl', 'whatsappDisplay', 'email', 'contactoEmail',
     'contactoTelefono', 'redes', 'precios', 'modalidades',
+    // La moneda y su tipo de cambio: dos escalares que CUALQUIER componente
+    // cliente con un precio en pantalla necesita para formatearlo.
+    'moneda', 'tipoCambioMXN',
   ]
-  expect(esperadas.length).toBe(16)
+  expect(esperadas.length).toBe(18)
   expect(claves).toEqual([...esperadas].sort())
   expect([...CLAVES_PUBLICAS].sort()).toEqual([...esperadas].sort())
 

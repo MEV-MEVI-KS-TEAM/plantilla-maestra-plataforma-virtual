@@ -1,5 +1,8 @@
 'use client'
 
+import { AvisoMoneda, Equivalencia } from '@/components/moneda-equivalencia'
+import { CONFIG } from '@/lib/config'
+import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -617,13 +620,19 @@ export default function RegisterPage() {
                           </span>
                           {o.precio > 0 && (
                             <span className="flex-shrink-0 text-sm font-bold" style={{ color: 'var(--color-acento)' }}>
-                              ${o.precio.toLocaleString('es-MX')}
+                              {formatearMoneda(o.precio, CONFIG, { conCodigo: true })}
+                              <Equivalencia monto={o.precio} />
                             </span>
                           )}
                         </button>
                       )
                     })}
                   </div>
+
+                  {/* Obligatorio: el alumno está a punto de comprometerse con un
+                      pago y tiene que saber en qué moneda. Nada en una escuela
+                      que cobra en pesos. */}
+                  <AvisoMoneda className="text-xs mt-2" style={{ color: '#64748B' }} />
 
                   {pidioCurso && (
                     <p className="text-xs mt-2" style={{ color: '#64748B' }}>

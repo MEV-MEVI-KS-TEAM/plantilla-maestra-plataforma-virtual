@@ -18,11 +18,13 @@
  * Los TÍTULOS de módulos sí son públicos: son el temario, y el temario es
  * material de venta.
  */
+import { CONFIG } from '@/lib/config'
+import { formatearMoneda } from '@/lib/moneda'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // La purga del catálogo (revalidatePath al publicar/editar/borrar) vive en
 // src/lib/cursos/purga.ts, NO aquí: este archivo lo importa LandingClient
-// ('use client') por precioMXN, y traer next/cache por esa cadena metía código
+// ('use client') por precioPublico, y traer next/cache por esa cadena metía código
 // de caché de servidor al bundle del navegador (+14 kB en la landing de los 144).
 
 /** Lista blanca de campos del catálogo. Todo lo que no esté aquí, no sale. */
@@ -128,11 +130,16 @@ export async function detallePublico(cursoId: string): Promise<DetallePublico | 
   }
 }
 
-/** Formato MXN sin decimales — los precios de la plantilla son enteros. */
-export function precioMXN(n: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(n)
+/**
+ * Precio de catálogo, sin decimales — los precios de la plantilla son enteros.
+ *
+ * Se llamaba `precioMXN` y forzaba pesos. El nombre era el bug: en una escuela
+ * que cobra en dólares anunciaba un diplomado de 450 USD como "$450", en la
+ * misma página y con el mismo aspecto que los precios en pesos del resto de la
+ * flota.
+ */
+export function precioPublico(n: number): string {
+  return formatearMoneda(n, CONFIG, { conCodigo: true })
 }
 
 /** Mensaje precargado de WhatsApp para un diplomado concreto. */

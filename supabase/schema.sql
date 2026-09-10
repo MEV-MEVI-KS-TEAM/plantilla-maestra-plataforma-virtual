@@ -314,7 +314,14 @@ CREATE TABLE IF NOT EXISTS public.pagos (
   fecha_pago       DATE NOT NULL DEFAULT CURRENT_DATE,
     -- fecha real del pago (editable por el admin; puede ser retroactiva)
   registrado_por   UUID NOT NULL REFERENCES auth.users(id),
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Moneda REAL de este pago (ISO 4217) y tipo de cambio vigente el día que se
+  -- registró. Con el default 'MXN' una escuela en pesos se comporta igual que
+  -- antes de #198. El tipo de cambio se guarda POR PAGO para que actualizarlo
+  -- desde el panel no reescriba los recibos ya emitidos. Ver la migración
+  -- 20260910120000_moneda_pago.sql (retrofit de clientes ya desplegados).
+  moneda               TEXT NOT NULL DEFAULT 'MXN' CHECK (moneda ~ '^[A-Z]{3}$'),
+  tipo_cambio_aplicado NUMERIC(10,4) CHECK (tipo_cambio_aplicado IS NULL OR tipo_cambio_aplicado > 0)
 );
 
 

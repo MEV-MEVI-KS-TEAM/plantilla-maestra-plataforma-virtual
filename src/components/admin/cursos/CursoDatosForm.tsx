@@ -1,5 +1,6 @@
 'use client'
 
+import { CONFIG } from '@/lib/config'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { ImagePlus, Trash2, AlertTriangle } from 'lucide-react'
@@ -363,11 +364,11 @@ export function CursoDatosForm({ curso, inscritosActivos = 0, onChanged, onError
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <CampoNumero
-            id="curso-precio-inscripcion" label="Inscripción (MXN)" valor={precioInscripcion} onChange={setPrecioInscripcion}
+            id="curso-precio-inscripcion" label={`Inscripción (${CONFIG.moneda})`} valor={precioInscripcion} onChange={setPrecioInscripcion}
             min={0} step="0.01" ayuda="Cuota única al inscribirse. Deja 0 si no cobras inscripción."
           />
           <CampoNumero
-            id="curso-precio-mensualidad" label="Mensualidad (MXN)" valor={precioMensualidad} onChange={setPrecioMensualidad}
+            id="curso-precio-mensualidad" label={`Mensualidad (${CONFIG.moneda})`} valor={precioMensualidad} onChange={setPrecioMensualidad}
             min={0} step="0.01" ayuda="Lo que paga cada mes. Es el monto que se propone al registrar el pago."
           />
           <CampoNumero

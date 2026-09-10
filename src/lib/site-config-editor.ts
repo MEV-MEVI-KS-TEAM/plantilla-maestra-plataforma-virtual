@@ -22,6 +22,7 @@
  * importa tal cual para prevalidar antes de mandar el PUT. Duplicarla sería
  * abrir la puerta a que el navegador acepte lo que el servidor rechaza.
  */
+import type { Moneda } from './moneda'
 import type { OverrideModalidad, SiteConfigOverrides } from '@/lib/site-config-core'
 import {
   PALETAS,
@@ -449,16 +450,21 @@ export function advertenciasContraste(
 // ─── Números ─────────────────────────────────────────────────────────────────
 
 /**
- * '$2,000'. Pesos mexicanos SIN centavos: todos los precios de la plataforma
- * son enteros (ver `LIMITES.precioMax`) y el admin los captura así.
+ * '$2,000', o '$300 USD' si la escuela cobra en dólares. SIN centavos: todos
+ * los precios de la plataforma son enteros (ver `LIMITES.precioMax`) y el admin
+ * los captura así.
  *
  * Se arma con `toLocaleString` y no con `style: 'currency'` porque el formato
  * de moneda de es-MX añade decimales y, según el ICU del entorno, puede
  * prefijar 'MX$' — el editor tiene que enseñar lo mismo que la landing.
+ *
+ * El parámetro tiene default 'MXN' a propósito: así los llamadores de una
+ * escuela en pesos producen exactamente la cadena de antes de #198.
  */
-export function formatoMXN(n: number): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return '$0'
-  return '$' + Math.round(n).toLocaleString('es-MX', { maximumFractionDigits: 0 })
+export function formatoDinero(n: number, moneda: Moneda = 'MXN'): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return moneda === 'MXN' ? '$0' : '$0 ' + moneda
+  const texto = '$' + Math.round(n).toLocaleString('es-MX', { maximumFractionDigits: 0 })
+  return moneda === 'MXN' ? texto : `${texto} ${moneda}`
 }
 
 /**

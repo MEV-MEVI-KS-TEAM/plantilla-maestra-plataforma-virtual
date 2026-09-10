@@ -14,12 +14,14 @@
  * sin tarjetas de precio y el registro sin nada que elegir.
  */
 import { BadgeDollarSign, Layers } from 'lucide-react'
+import { CONFIG } from '@/lib/config'
+import type { Moneda } from '@/lib/moneda'
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
 import {
   escribirModalidad,
   escribirRuta,
   estaSobrescrito,
-  formatoMXN,
+  formatoDinero,
   modalidadesEfectivas,
   puedeDesactivar,
   quitarRuta,
@@ -40,11 +42,11 @@ import {
 
 const ICONO = { className: 'w-4 h-4', style: { color: 'var(--color-acento)' } }
 
-/** El mismo número, en pesos, junto al input. */
-function EnPesos({ valor }: { valor: number }) {
+/** El mismo número, ya formateado, junto al input. */
+function EnPesos({ valor, moneda }: { valor: number; moneda: Moneda }) {
   return (
     <span className="text-sm font-semibold tabular-nums" style={{ color: '#10B981' }}>
-      {formatoMXN(valor)}
+      {formatoDinero(valor, moneda)}
     </span>
   )
 }
@@ -101,7 +103,7 @@ export function PestanaPrecios({
         valor={numero}
         min={campo?.min ?? LIMITES.precioMin}
         max={campo?.max ?? LIMITES.precioMax}
-        sufijo={<EnPesos valor={numero} />}
+        sufijo={<EnPesos valor={numero} moneda={CONFIG.moneda} />}
         deshabilitado={!puedeEditar}
         sobrescrito={estaSobrescrito(overrides, clave)}
         resaltado={claveConError === clave}
@@ -173,7 +175,7 @@ export function PestanaPrecios({
                     valor={m.mensualidad}
                     min={LIMITES.precioMin}
                     max={LIMITES.precioMax}
-                    sufijo={<EnPesos valor={m.mensualidad} />}
+                    sufijo={<EnPesos valor={m.mensualidad} moneda={CONFIG.moneda} />}
                     deshabilitado={!puedeEditar}
                     resaltado={errorAqui}
                     onChange={(n) => actualizar((prev) => escribirModalidad(prev, m.id, { mensualidad: n }))}

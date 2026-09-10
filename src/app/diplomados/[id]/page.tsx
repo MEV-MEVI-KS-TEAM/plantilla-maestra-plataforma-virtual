@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { detallePublico, precioMXN, waUrlDiplomado } from '@/lib/cursos/catalogo'
+import { detallePublico, precioPublico, waUrlDiplomado } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
 
@@ -94,19 +94,19 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
               {curso.precio_mensualidad > 0 ? (
                 <>
                   <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>
-                    {precioMXN(curso.precio_mensualidad)}
+                    {precioPublico(curso.precio_mensualidad)}
                     <span className="text-sm font-normal" style={{ color: 'var(--color-texto-secundario)' }}> / mes</span>
                   </p>
                   {curso.precio_inscripcion > 0 && (
                     <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
-                      Inscripción de {precioMXN(curso.precio_inscripcion)}
+                      Inscripción de {precioPublico(curso.precio_inscripcion)}
                     </p>
                   )}
                 </>
               ) : (
                 <>
                   <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>
-                    {precioMXN(curso.precio_inscripcion)}
+                    {precioPublico(curso.precio_inscripcion)}
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>Pago único</p>
                 </>

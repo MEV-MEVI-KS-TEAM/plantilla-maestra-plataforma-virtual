@@ -73,7 +73,16 @@ export interface ConfigEditable {
   landing: Pick<SiteConfig['landing'], ClaveLandingEditable>
   precios: Pick<SiteConfig['precios'], 'inscripcion' | 'certificacionSecundaria' | 'certificacionPreparatoria'>
   modalidades: SiteConfig['modalidades']
+  tipoCambioMXN: number
 }
+
+/**
+ * ⚠️ `moneda` NO está aquí a propósito. Lo que sale de `recortarAEditables` es
+ * exactamente lo que el editor puede reenviar en su PUT, y una clave fuera de
+ * `CLAVES_EDITABLES` se rechaza con "Clave no editable" (fail-closed). Los
+ * componentes del editor que necesitan la moneda para FORMATEAR la leen de
+ * `CONFIG` directamente: no se puede sobrescribir, así que siempre es la misma.
+ */
 
 // ─── Storage de branding (helpers isomorfos) ─────────────────────────────────
 
@@ -274,6 +283,24 @@ function validarEmail(valor: unknown, etiqueta: string, max: number): Limpio<str
   if (v.length > max) return fallo(`El campo ${etiqueta} supera los ${max} caracteres`)
   if (!esquemaEmail.safeParse(v).success) return fallo(`El campo ${etiqueta} no es un correo válido`)
   return { ok: true, valor: v }
+}
+
+/**
+ * Número con hasta 4 decimales, para el tipo de cambio. Se acepta la cadena que
+ * el admin teclea ('16.90', y también '16,90' porque su teclado tiene coma) y
+ * se redondea a 4 decimales: más precisión que esa no la publica ningún banco y
+ * guardarla invita a diferencias de un centavo entre pantallas.
+ *
+ * El 0 es válido y significa "no mostrar equivalencia": es la salida del admin
+ * que no quiere anunciar un tipo de cambio que no puede mantener al día.
+ */
+function validarDecimal(valor: unknown, etiqueta: string, min: number, max: number): Limpio<number> | Fallo {
+  const crudo = typeof valor === 'string' ? Number(valor.trim().replace(',', '.')) : valor
+  const r = z.number().min(min).max(max).safeParse(crudo)
+  if (!r.success || !Number.isFinite(r.data)) {
+    return fallo(`El campo ${etiqueta} debe ser un número entre ${min} y ${max}`)
+  }
+  return { ok: true, valor: Math.round(r.data * 10000) / 10000 }
 }
 
 function validarEntero(valor: unknown, etiqueta: string, min: number, max: number): Limpio<number> | Fallo {
@@ -572,6 +599,8 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
       return validarEmail(valor, campo.etiqueta, max)
     case 'entero':
       return validarEntero(valor, campo.etiqueta, campo.min ?? 0, campo.max ?? Number.MAX_SAFE_INTEGER)
+    case 'decimal':
+      return validarDecimal(valor, campo.etiqueta, campo.min ?? 0, campo.max ?? Number.MAX_SAFE_INTEGER)
     case 'url':
       if (ruta === 'logo' || ruta === 'logoOscuro') {
         return validarLogo(valor, campo.etiqueta, max, defaultBase, ctx.origenStorage, ruta === 'logoOscuro')

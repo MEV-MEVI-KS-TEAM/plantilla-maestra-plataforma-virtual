@@ -1,3 +1,5 @@
+import { CONFIG } from '@/lib/config'
+import { formatearMoneda } from '@/lib/moneda'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -94,7 +96,7 @@ export async function GET(
 
     // ── URL de WhatsApp con mensaje prellenado (convención Contactar) ───────
     const conceptoLabel = CONCEPTO_LABELS[pago.concepto ?? 'mensualidad'] ?? pago.concepto
-    const montoFmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(Number(pago.monto))
+    const montoFmt = formatearMoneda(Number(pago.monto), CONFIG, { decimales: 2, conCodigo: true })
     const mensaje = `Hola ${alumnoNombre}, aquí está tu recibo de pago de ${conceptoLabel} por ${montoFmt}: ${signed.signedUrl}`
     const whatsappUrl = waUrl(alumnoUsuario?.telefono, mensaje)
 

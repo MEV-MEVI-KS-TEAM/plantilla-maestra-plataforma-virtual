@@ -20,6 +20,7 @@
  * eso el merge es aditivo, la lista blanca es cerrada y los alias de precios
  * SOLO se sincronizan cuando el override correspondiente está presente.
  */
+import type { Moneda } from '@/lib/moneda'
 import { CONFIG } from '@/lib/config'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -40,20 +41,31 @@ import { CONFIG } from '@/lib/config'
  * etiquetas, así que se ensanchan a `string[]`. Si algún día un `[]` de CONFIG
  * guarda objetos, hay que tiparlo en config.ts con `as Array<…>`, como ya hace
  * `landing.testimonios`.
+ *
+ * ⚠️ EXCEPCIÓN PARA `Moneda`. La primera rama existe porque ensanchar `'MXN' |
+ * 'USD'` a `string` haría que `SiteConfig['moneda']` fuese un string cualquiera:
+ * `formatearMoneda(n, cfg)` dejaría de compilar y, peor, el tipo ya no impediría
+ * que alguien colara `'usd'` o `'pesos'` en la config. `[T] extends [Moneda]` va
+ * entre corchetes para que la condición NO se distribuya sobre la unión: sin
+ * ellos, TypeScript evaluaría 'MXN' y 'USD' por separado y el resultado volvería
+ * a ser la unión ensanchada rama a rama. Un literal que no sea una moneda
+ * ('GRATIA', '#053030'…) no extiende `Moneda` y sigue cayendo en `string`.
  */
-export type Widen<T> = T extends string
-  ? string
-  : T extends number
-    ? number
-    : T extends boolean
-      ? boolean
-      : T extends ReadonlyArray<infer U>
-        ? [U] extends [never]
-          ? string[]
-          : Widen<U>[]
-        : T extends object
-          ? { -readonly [K in keyof T]: Widen<T[K]> }
-          : T
+export type Widen<T> = [T] extends [Moneda]
+  ? Moneda
+  : T extends string
+    ? string
+    : T extends number
+      ? number
+      : T extends boolean
+        ? boolean
+        : T extends ReadonlyArray<infer U>
+          ? [U] extends [never]
+            ? string[]
+            : Widen<U>[]
+          : T extends object
+            ? { -readonly [K in keyof T]: Widen<T[K]> }
+            : T
 
 /**
  * `readonly` recursivo. Es el tipo con el que viaja la config al navegador:
@@ -208,6 +220,11 @@ export const CLAVES_EDITABLES = [
   'landing.cta_subtitulo',
   'landing.cta_boton',
   'landing.cta_whatsapp',
+  // tipo de cambio: es un dato que se mueve TODOS LOS DÍAS (el dólar osciló
+  // entre 16.85 y 18.78 en las últimas 52 semanas), así que tenerlo solo en
+  // `config.ts` lo condena a volverse mentira en semanas. La `moneda` en sí NO
+  // entra: cambiarla es cambiar lo que se cobra, no la marca.
+  'tipoCambioMXN',
   // precios canónicos (los alias legacy se derivan de estos, ver derivarAliasPrecios)
   'precios.inscripcion',
   'precios.certificacionSecundaria',
@@ -740,6 +757,13 @@ export const CLAVES_PUBLICAS = [
   'redes',
   'precios',
   'modalidades',
+  // La moneda viaja al navegador porque CUALQUIER componente cliente que pinte
+  // un precio la necesita para formatearlo. Son dos escalares, no los 42 textos
+  // de la landing: el coste en el HTML es irrelevante y la alternativa —pasarla
+  // por props desde cada Server Component— se olvida en cuanto alguien añade
+  // una pantalla con dinero.
+  'moneda',
+  'tipoCambioMXN',
 ] as const
 
 /**
@@ -768,6 +792,8 @@ export function toPublicSiteConfig(cfg: SiteConfig): PublicSiteConfig {
     logo: cfg.logo,
     logoOscuro: cfg.logoOscuro,
     colores: cfg.colores,
+    moneda: cfg.moneda,
+    tipoCambioMXN: cfg.tipoCambioMXN,
     whatsapp: cfg.whatsapp,
     whatsappUrl: cfg.whatsappUrl,
     whatsappDisplay: cfg.whatsappDisplay,

@@ -1,5 +1,7 @@
 'use client'
 
+import { AvisoMoneda, Equivalencia } from '@/components/moneda-equivalencia'
+import { formatearMoneda } from '@/lib/moneda'
 import { useEffect, useState } from 'react'
 import { CONFIG } from '@/lib/config'
 import { useSiteConfig } from '@/components/site-config-provider'
@@ -22,7 +24,7 @@ import { useSiteConfig } from '@/components/site-config-provider'
 type Perfil = { nivel?: string; carrera?: string }
 
 const fmt = (n: number) =>
-  n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 })
+  formatearMoneda(n, CONFIG, { conCodigo: true })
 
 export default function PagarPage() {
   const [nivel, setNivel]       = useState<string | null>(null)
@@ -89,8 +91,9 @@ export default function PagarPage() {
                 </div>
                 <div className="flex items-center gap-4 flex-shrink-0">
                   {e.monto !== null && (
-                    <span className="text-lg font-bold" style={{ color: 'var(--color-texto)' }}>
+                    <span className="text-lg font-bold text-right" style={{ color: 'var(--color-texto)' }}>
                       {fmt(e.monto)}
+                      <Equivalencia monto={e.monto} />
                     </span>
                   )}
                   <a href={e.url} target="_blank" rel="noopener noreferrer"
@@ -102,6 +105,10 @@ export default function PagarPage() {
               </div>
             ))}
           </div>
+
+          {/* Obligatorio donde el alumno ve lo que va a pagar. Se pinta solo si
+              la escuela cobra en una moneda distinta del peso. */}
+          <AvisoMoneda className="text-xs px-1" />
 
           <div className="rounded-xl p-5 space-y-3"
             style={{ background: 'var(--color-fondo-alt, #F8FAFC)', border: '1px solid var(--color-borde)' }}>

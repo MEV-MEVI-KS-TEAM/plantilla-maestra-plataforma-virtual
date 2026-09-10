@@ -48,6 +48,7 @@ export type TipoCampo =
   | 'telefono'
   | 'email'
   | 'entero'
+  | 'decimal'
   | 'lista-texto'
   | 'lista-objetos'
   | 'modalidades'
@@ -144,6 +145,12 @@ export const LIMITES = {
   /** Precios y mensualidades, en MXN enteros. */
   precioMin: 0,
   precioMax: 50000,
+  // Tipo de cambio: 0 = "no mostrar equivalencia". El techo es deliberadamente
+  // holgado (ninguna moneda que la flota vaya a cobrar se acerca) pero cerrado:
+  // sin él, un dedazo de 16.90 a 1690 multiplicaría por cien todos los precios
+  // que ve el alumno en pesos.
+  tipoCambioMin: 0,
+  tipoCambioMax: 1000,
   /** Valor al que sube un contador del hero. */
   contadorValorMax: 100000,
   // Máximos de elementos por lista.
@@ -370,16 +377,21 @@ export const CAMPOS: ReadonlyArray<Campo> = [
 
   // ── Precios (canónicos; los alias legacy se derivan en el merge) ──
   { clave: 'precios.inscripcion', seccion: 'precios', etiqueta: 'Inscripción', tipo: 'entero',
-    min: LIMITES.precioMin, max: LIMITES.precioMax, ayuda: 'MXN, sin centavos.' },
+    min: LIMITES.precioMin, max: LIMITES.precioMax, ayuda: 'Sin centavos, en la moneda de cobro de la escuela.' },
   { clave: 'precios.certificacionSecundaria', seccion: 'precios', etiqueta: 'Certificación de Secundaria', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax },
   { clave: 'precios.certificacionPreparatoria', seccion: 'precios', etiqueta: 'Certificación de Preparatoria', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax },
 
+  // ── Tipo de cambio (solo se pinta si la escuela NO cobra en pesos) ──
+  { clave: 'tipoCambioMXN', seccion: 'precios', etiqueta: 'Tipo de cambio (pesos por dólar)', tipo: 'decimal',
+    min: LIMITES.tipoCambioMin, max: LIMITES.tipoCambioMax,
+    ayuda: 'Solo afecta las equivalencias que se muestran. Todos los cargos se hacen en la moneda de la escuela. Conviene revisarlo cada mes.' },
+
   // ── Modalidades (semántica especial: objeto por id, solo mensualidad y activa) ──
   { clave: 'modalidades', seccion: 'modalidades', etiqueta: 'Planes', tipo: 'modalidades',
     min: LIMITES.precioMin, max: LIMITES.precioMax,
-    ayuda: 'Por plan: mensualidad (MXN) y si está activo. Duración y materias por mes no se editan.' },
+    ayuda: 'Por plan: mensualidad y si está activo. Duración y materias por mes no se editan.' },
 ]
 
 // ─── Índices ─────────────────────────────────────────────────────────────────

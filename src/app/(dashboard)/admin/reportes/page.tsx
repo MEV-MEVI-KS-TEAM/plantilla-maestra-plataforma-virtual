@@ -1,5 +1,7 @@
 'use client'
 
+import { CONFIG } from '@/lib/config'
+import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect } from 'react'
 import { Users, UserCheck, DollarSign, TrendingUp, BarChart3, Loader2, BookOpen, Award, GraduationCap, Download, AlertTriangle } from 'lucide-react'
 
@@ -180,7 +182,7 @@ function TablaBarras({ titulo, icono: Icono, filas, desglosar }: {
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(n)
+  formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
 
 export default function ReportesPage() {
   const [stats, setStats] = useState<Stats | null>(null)

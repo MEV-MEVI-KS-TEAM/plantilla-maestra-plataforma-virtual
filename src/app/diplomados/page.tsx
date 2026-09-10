@@ -16,7 +16,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { listarCatalogoPublico, precioMXN } from '@/lib/cursos/catalogo'
+import { listarCatalogoPublico, precioPublico } from '@/lib/cursos/catalogo'
 
 // Título, logo y WhatsApp son editables desde "Personalizar mi página": salen
 // de la config fusionada, no de CONFIG, para que un cambio del admin se vea
@@ -116,8 +116,8 @@ export default async function DiplomadosPage() {
                   )}
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primario)', margin: 0 }}>
                     {c.precio_mensualidad > 0
-                      ? <>{precioMXN(c.precio_mensualidad)}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> /mes</span></>
-                      : precioMXN(c.precio_inscripcion)}
+                      ? <>{precioPublico(c.precio_mensualidad)}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> /mes</span></>
+                      : precioPublico(c.precio_inscripcion)}
                   </p>
                 </div>
               </Link>

@@ -1,3 +1,4 @@
+import { formatearMoneda } from '@/lib/moneda'
 import { existsSync } from 'fs'
 import path from 'path'
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer'
@@ -30,7 +31,7 @@ const CONCEPTO_LABELS: Record<string, string> = {
 }
 
 const fmtMoneda = (n: number) =>
-  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(n)
+  formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
 
 const fmtFecha = (fecha: string) => {
   // fecha_pago llega como YYYY-MM-DD (date puro): anclar a mediodía evita el

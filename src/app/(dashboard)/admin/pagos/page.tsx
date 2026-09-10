@@ -1,5 +1,7 @@
 'use client'
 
+import { CONFIG } from '@/lib/config'
+import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Loader2, CreditCard, Search, FileText, MessageCircle, TrendingUp, Receipt } from 'lucide-react'
@@ -36,7 +38,7 @@ const NIVEL_LABELS: Record<string, string> = {
 }
 
 const mxn = (n: number) =>
-  n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+  formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
 
 const fecha = (iso: string | null) =>
   iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'

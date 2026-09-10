@@ -1,3 +1,6 @@
+import { CONFIG } from '@/lib/config'
+import { tipoCambioValido } from '@/lib/moneda'
+import { getSiteConfig } from '@/lib/site-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -178,6 +181,9 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient()
+    // El tipo de cambio se edita desde el panel, así que sale de la config
+    // fusionada (BD + config.ts), no del config.ts a secas.
+    const cfgSitio = await getSiteConfig()
 
     // Validar que el alumno exista antes de insertar
     const { data: alumno, error: alumnoErr } = await admin
@@ -200,6 +206,17 @@ export async function POST(request: NextRequest) {
         referencia: typeof referencia === 'string' && referencia.trim() !== '' ? referencia.trim() : null,
         registrado_por: user.id,
         ...(fechaPago ? { fecha_pago: fechaPago } : {}),
+        // La moneda y el tipo de cambio SOLO se escriben si la escuela no cobra
+        // en pesos. En una escuela en MXN el insert queda byte a byte como
+        // antes de #198, así que los ~144 clientes ya desplegados no necesitan
+        // la migración 20260910120000 para seguir registrando pagos.
+        //
+        // Se guarda el tipo de cambio VIGENTE HOY, no se deriva al leer: es lo
+        // que congela el recibo. Si el admin lo actualiza mañana, este pago
+        // conserva la equivalencia que se le enseñó al alumno.
+        ...(CONFIG.moneda !== 'MXN'
+          ? { moneda: CONFIG.moneda, tipo_cambio_aplicado: tipoCambioValido(cfgSitio.tipoCambioMXN) }
+          : {}),
       })
       .select()
       .single()
