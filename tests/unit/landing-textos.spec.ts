@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
+import { ES_PLANTILLA } from './es-plantilla'
 import {
   CLAVES_LANDING_PINTADAS,
   CLAVES_PALETA,
@@ -218,25 +219,25 @@ test('COLORES_DE_FABRICA sigue sincronizada con el config.ts de la PLANTILLA', (
   // Solo puede comprobarse en la plantilla maestra: en el repo de un cliente
   // `CONFIG.colores` son los suyos y esta comparación no significa nada. Se
   // salta ahí, y en la plantilla actúa de guardián de la sincronía.
-  // ⚠️ El `as string` NO SOBRA: CONFIG lleva `as const`, así que estas claves
-  // son tipos literales ('GRATIA', 'GRA'…) y compararlas con 'MEV' en el repo
-  // de un cliente es un TS2367 ("no overlap") que rompería su `tsc --noEmit`.
-  // Es el mismo escape que usan `modo` y `moneda` en config.ts.
-  const esPlantilla =
-    (CONFIG.nombre as string) === 'MEV' || (CONFIG.prefijoMatricula as string) === 'MEV'
-  if (!esPlantilla) return
+  if (!ES_PLANTILLA) return
   for (const k of CLAVES_PALETA) {
     expect(COLORES_DE_FABRICA[k], k).toBe((CONFIG.colores as Record<string, string>)[k])
   }
 })
 
 test('esPaletaPersonalizada: base por defecto = paleta de fábrica', () => {
-  expect(esPaletaPersonalizada(CONFIG.colores)).toBe(false)
-  expect(esPaletaPersonalizada({ ...CONFIG.colores, acento: '#010203' })).toBe(true)
+  // ⚠️ SE PRUEBA CONTRA `COLORES_DE_FABRICA`, NO CONTRA `CONFIG.colores`. Es lo
+  // que afirma el nombre de la prueba, y es lo único que significa algo en el
+  // repo de un cliente: ahí `CONFIG.colores` SON los suyos, así que esperar
+  // `false` era esperar que su paleta propia no fuera propia. Reventaba en el
+  // clon de cualquier escuela con colores —SAMEX (#199) lo destapó— mientras
+  // en la plantilla pasaba de casualidad, porque ahí las dos coinciden.
+  expect(esPaletaPersonalizada(COLORES_DE_FABRICA)).toBe(false)
+  expect(esPaletaPersonalizada({ ...COLORES_DE_FABRICA, acento: '#010203' })).toBe(true)
   // Una clave AUSENTE cuenta como distinta (es el comportamiento de siempre):
   // el cliente tiene menos colores que la plantilla y no se puede afirmar que
   // sean los mismos.
-  const sinAcento = { ...CONFIG.colores } as Record<string, string | undefined>
+  const sinAcento = { ...COLORES_DE_FABRICA } as Record<string, string | undefined>
   delete sinAcento.acento
   expect(esPaletaPersonalizada(sinAcento as never)).toBe(true)
   expect(esPaletaPersonalizada(undefined)).toBe(true)

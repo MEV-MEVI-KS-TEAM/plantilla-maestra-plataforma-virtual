@@ -42,6 +42,25 @@ function mods(overrides: unknown): readonly ModalidadPrograma[] {
   return mergeSiteConfig(CONFIG, overrides).modalidades
 }
 
+/**
+ * Las modalidades con un rótulo COMPUESTO ("3 meses — Express"), pase lo que
+ * pase en el `config.ts` de este repo.
+ *
+ * `getPlanLabel` recorta el sufijo tras el guion largo cuando solo queda un
+ * plan, y las pruebas de esa regla necesitan un label que TENGA sufijo. La
+ * plantilla lo trae de fábrica, pero estas mismas pruebas corren en los ~144
+ * clones, y una escuela que venda "3 Meses" a secas —como SAMEX (#199)— las
+ * dejaba en rojo sin tener ningún problema. La premisa se construye aquí en
+ * vez de darla por supuesta.
+ */
+const CON_SUFIJO = mods({}).map(m => ({
+  ...m,
+  label: `${m.meses} meses — ${m.meses === 3 ? 'Express' : 'Estándar'}`,
+})) as readonly ModalidadPrograma[]
+
+/** Los mismos rótulos compuestos, con 6_meses apagado. */
+const CON_SUFIJO_SIN_6 = CON_SUFIJO.map(m => (m.id === '6_meses' ? { ...m, activa: false } : m))
+
 /** El programa de la plantilla trae 3_meses y 6_meses, las dos activas. */
 const SIN_6 = mods({ modalidades: { '6_meses': { activa: false } } })
 const SIN_3 = mods({ modalidades: { '3_meses': { activa: false } } })
@@ -94,8 +113,11 @@ test('2. apagar 6_meses deja solo 3_meses en el catálogo', () => {
   expect(isModalidadActiva('6_meses', SIN_6)).toBe(false)
   expect(getModalidad('6_meses', SIN_6)).toBeUndefined()
   // El label NO depende de `activa`: la UI de un alumno ya inscrito en el plan
-  // retirado sigue pudiendo nombrarlo.
-  expect(getLabelByModalidad('6_meses', SIN_6)).toBe('6 meses — Estándar')
+  // retirado sigue pudiendo nombrarlo. Se comprueba contra la tabla que se le
+  // pasa, no contra un literal del config de este repo.
+  expect(getLabelByModalidad('6_meses', SIN_6))
+    .toBe(SIN_6.find(m => m.id === '6_meses')!.label)
+  expect(getLabelByModalidad('6_meses', CON_SUFIJO_SIN_6)).toBe('6 meses — Estándar')
 })
 
 test('2b. getDuracionLabel con una sola activa dice "3 meses"', () => {
@@ -106,11 +128,17 @@ test('2b. getDuracionLabel con una sola activa dice "3 meses"', () => {
 })
 
 test('2c. getPlanLabel quita el sufijo cuando solo queda un plan', () => {
-  const tresMeses = mods({}).find(m => m.id === '3_meses')!
+  const tresMeses = CON_SUFIJO.find(m => m.id === '3_meses')!
   // Sin competencia el "— Express" sobra.
-  expect(getPlanLabel(tresMeses, SIN_6)).toBe('3 meses')
-  // Con las dos activas se conserva el label completo de config.ts.
-  expect(getPlanLabel(tresMeses, mods({}))).toBe('3 meses — Express')
+  expect(getPlanLabel(tresMeses, CON_SUFIJO_SIN_6)).toBe('3 meses')
+  // Con las dos activas se conserva el label completo.
+  expect(getPlanLabel(tresMeses, CON_SUFIJO)).toBe('3 meses — Express')
+
+  // Y un label SIN sufijo se devuelve intacto en los dos casos: una escuela
+  // que vende "3 Meses" a secas no pierde su rótulo al apagar el otro plan.
+  const simple = { ...tresMeses, label: '3 Meses' }
+  expect(getPlanLabel(simple, [simple])).toBe('3 Meses')
+  expect(getPlanLabel(simple, CON_SUFIJO)).toBe('3 Meses')
 })
 
 test('2d. getDefaultModalidadId es la primera ACTIVA del merge', () => {

@@ -522,8 +522,16 @@ export function normalizarArreglo(ruta: ClaveEditable, valor: ReadonlyArray<unkn
 export interface PreciosAplicados {
   certificacionSecundaria?: number
   certificacionPreparatoria?: number
-  /** Una entrada por modalidad cuya mensualidad se sobrescribió. `meses` sale de la BASE, no del id. */
-  mensualidades?: ReadonlyArray<{ meses: number; mensualidad: number }>
+  /**
+   * Una entrada por modalidad cuya mensualidad se sobrescribió. `meses` sale de
+   * la BASE, no del id.
+   *
+   * `mensualidadBase` es lo que ese plan costaba ANTES del override, y es lo
+   * que decide qué alias lo siguen: solo los que ya valían eso. Sin ese dato no
+   * hay manera de distinguir un alias que arrastra el precio del plan de uno
+   * que la escuela puso distinto a propósito.
+   */
+  mensualidades?: ReadonlyArray<{ meses: number; mensualidad: number; mensualidadBase: number }>
 }
 
 /**
@@ -544,6 +552,28 @@ export interface PreciosAplicados {
  * '6_meses'; lo que define a qué plan pertenece el precio es la duración. Una
  * modalidad con otros `meses` (9, 12…) no tiene alias legacy y no deriva nada.
  */
+/**
+ * Los alias legacy de `precios` que describen la mensualidad de cada duración.
+ * Están en una tabla y no en un `if` largo para que agregar una duración con
+ * alias propios sea una línea y no cuatro asignaciones repetidas.
+ */
+const ALIAS_MENSUALIDAD: Record<number, ReadonlyArray<keyof SiteConfig['precios']>> = {
+  3: [
+    'plan3mMensualidad',
+    'secundaria_3meses_normal',
+    'secundaria_3meses_sindicalizado',
+    'preparatoria_3meses_normal',
+    'preparatoria_3meses_sindicalizado',
+  ],
+  6: [
+    'plan6mMensualidad',
+    'secundaria_6meses_normal',
+    'secundaria_6meses_sindicalizado',
+    'preparatoria_6meses_normal',
+    'preparatoria_6meses_sindicalizado',
+  ],
+}
+
 export function derivarAliasPrecios(cfg: SiteConfig, aplicados: PreciosAplicados): SiteConfig {
   if (aplicados.certificacionSecundaria !== undefined) {
     cfg.precios.certificacion_secundaria = aplicados.certificacionSecundaria
@@ -553,21 +583,22 @@ export function derivarAliasPrecios(cfg: SiteConfig, aplicados: PreciosAplicados
     cfg.precios.certificacion_preparatoria = aplicados.certificacionPreparatoria
     cfg.landing.certificacion_preparatoria = aplicados.certificacionPreparatoria
   }
-  for (const { meses, mensualidad } of aplicados.mensualidades ?? []) {
-    if (meses === 3) {
-      cfg.precios.plan3mMensualidad = mensualidad
-      cfg.precios.secundaria_3meses_normal = mensualidad
-      cfg.precios.secundaria_3meses_sindicalizado = mensualidad
-      cfg.precios.preparatoria_3meses_normal = mensualidad
-      cfg.precios.preparatoria_3meses_sindicalizado = mensualidad
-    } else if (meses === 6) {
-      cfg.precios.plan6mMensualidad = mensualidad
-      cfg.precios.secundaria_6meses_normal = mensualidad
-      cfg.precios.secundaria_6meses_sindicalizado = mensualidad
-      cfg.precios.preparatoria_6meses_normal = mensualidad
-      cfg.precios.preparatoria_6meses_sindicalizado = mensualidad
+  for (const { meses, mensualidad, mensualidadBase } of aplicados.mensualidades ?? []) {
+    const alias = ALIAS_MENSUALIDAD[meses]
+    // Otros `meses` (9, 12…): sin alias legacy, no se deriva nada.
+    if (!alias) continue
+    for (const clave of alias) {
+      // 🛑 SOLO SI VENÍA SIGUIENDO AL PLAN. Un alias que ya valía otra cosa es
+      //    un precio que la escuela puso a propósito y que el admin ni siquiera
+      //    ve en el editor —hay un campo por plan, no uno por nivel—, así que
+      //    pisarlo sería cambiarle el cobro a un alumno sin que nadie lo pida.
+      //    Le pasaba a SAMEX (#199): su secundaria cuesta 2,700 y su
+      //    preparatoria 3,000, y publicar cualquier cambio subía la secundaria
+      //    a 3,000. `mensualidadBase === undefined` (llamada directa, sin el
+      //    dato) mantiene el comportamiento histórico de derivar siempre.
+      if (mensualidadBase !== undefined && cfg.precios[clave] !== mensualidadBase) continue
+      cfg.precios[clave] = mensualidad
     }
-    // Otros `meses`: sin alias legacy, no se deriva nada.
   }
   return cfg
 }
@@ -581,15 +612,17 @@ export function derivarAliasPrecios(cfg: SiteConfig, aplicados: PreciosAplicados
 function aplicarModalidades(
   cfg: SiteConfig,
   overrides: unknown,
-): ReadonlyArray<{ meses: number; mensualidad: number }> {
+): ReadonlyArray<{ meses: number; mensualidad: number; mensualidadBase: number }> {
   if (!esObjetoPlano(overrides)) return []
-  const aplicadas: Array<{ meses: number; mensualidad: number }> = []
+  const aplicadas: Array<{ meses: number; mensualidad: number; mensualidadBase: number }> = []
   for (const modalidad of cfg.modalidades) {
     const ov = overrides[modalidad.id]
     if (!esObjetoPlano(ov)) continue
     if (esPrecio(ov.mensualidad)) {
+      // El precio de ANTES se lee aquí, mientras `cfg` sigue siendo la base.
+      const mensualidadBase = modalidad.mensualidad
       modalidad.mensualidad = ov.mensualidad
-      aplicadas.push({ meses: modalidad.meses, mensualidad: ov.mensualidad })
+      aplicadas.push({ meses: modalidad.meses, mensualidad: ov.mensualidad, mensualidadBase })
     }
     if (typeof ov.activa === 'boolean') {
       modalidad.activa = ov.activa
