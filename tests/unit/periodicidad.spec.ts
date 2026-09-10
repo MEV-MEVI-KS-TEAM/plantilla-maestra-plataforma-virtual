@@ -14,7 +14,7 @@ import {
 } from '@/lib/periodicidad'
 import { subtotalCuotas, getTotalPlan, type ModalidadPrograma } from '@/lib/modalidades'
 import { formatoMXN, formatoPrecio, formatoMonto } from '@/lib/formato'
-import { validarOverrides } from '@/lib/site-config-validacion'
+import { validarOverrides, recortarAEditables } from '@/lib/site-config-validacion'
 import { mergeSiteConfig } from '@/lib/site-config-core'
 
 /**
@@ -270,4 +270,37 @@ test('7. la landing no lleva "/mes" escrito a mano en las tarjetas de plan', () 
 test('7b. la unidad del precio sale de la periodicidad', () => {
   const landing = leer('src/components/landing/LandingClient.tsx')
   expect(landing).toContain("unidadCuota")
+})
+
+// ─── 8. Las claves del plan llegan al editor ─────────────────────────────────
+
+test('8. recortarAEditables conserva nivel, semanas y cuotaSemanal', () => {
+  // `recortarAEditables` copia las modalidades campo por campo, y las tres
+  // claves opcionales se le habían quedado fuera. El editor de una escuela
+  // semanal recibía un plan sin sus semanas y sin su cuota: la pestaña de
+  // Precios no podía ni rotular el campo. Lo cazó el clon de CAU #200.
+  const base = mergeSiteConfig(CONFIG, {}) as unknown as {
+    modalidades: Array<Record<string, unknown>>
+  }
+  base.modalidades[0].nivel = 'secundaria'
+  base.modalidades[0].semanas = 12
+  base.modalidades[0].cuotaSemanal = 250
+
+  const editable = recortarAEditables(base as never)
+  const plan = (editable.modalidades as unknown as Array<Record<string, unknown>>)[0]
+
+  expect(plan.nivel).toBe('secundaria')
+  expect(plan.semanas).toBe(12)
+  expect(plan.cuotaSemanal).toBe(250)
+})
+
+test('8b. sin esas claves, el objeto del editor es el de siempre', () => {
+  // El invariante de las ~144 escuelas mensuales: no aparece ninguna clave
+  // nueva con `undefined` dentro.
+  const editable = recortarAEditables(mergeSiteConfig(CONFIG, {}))
+  for (const plan of editable.modalidades as unknown as Array<Record<string, unknown>>) {
+    expect(Object.keys(plan).sort()).toEqual(
+      ['activa', 'id', 'label', 'materiasPorMes', 'mensualidad', 'meses'],
+    )
+  }
 })

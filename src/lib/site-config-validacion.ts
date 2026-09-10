@@ -759,14 +759,29 @@ export function recortarAEditables(cfg: SiteConfig): ConfigEditable {
     if (v === undefined) continue
     escribirRuta(salida, ruta, Array.isArray(v) ? JSON.parse(JSON.stringify(v)) : v)
   }
-  salida.modalidades = cfg.modalidades.map((m) => ({
-    id: m.id,
-    label: m.label,
-    meses: m.meses,
-    mensualidad: m.mensualidad,
-    materiasPorMes: m.materiasPorMes,
-    activa: m.activa,
-  }))
+  // ⚠️ Se copia campo por campo A PROPÓSITO (no con spread): esto viaja al
+  // navegador y la lista dice exactamente qué se publica.
+  //
+  // `nivel`, `semanas` y `cuotaSemanal` son OPCIONALES y solo existen en las
+  // escuelas que las declaran. Sin ellas aquí, el editor de una escuela
+  // asimétrica o de cobro semanal recibía un plan sin su nivel y sin sus
+  // semanas: la pestaña de Precios no podía ni rotular la cuota ni decir de
+  // cuántos pagos era el plan. Se añaden solo si vienen, para que el objeto de
+  // las ~144 escuelas mensuales sea byte por byte el de antes.
+  salida.modalidades = cfg.modalidades.map((m) => {
+    const extra = m as { nivel?: string; semanas?: number; cuotaSemanal?: number }
+    return {
+      id: m.id,
+      label: m.label,
+      meses: m.meses,
+      mensualidad: m.mensualidad,
+      materiasPorMes: m.materiasPorMes,
+      activa: m.activa,
+      ...(typeof extra.nivel === 'string' ? { nivel: extra.nivel } : {}),
+      ...(typeof extra.semanas === 'number' ? { semanas: extra.semanas } : {}),
+      ...(typeof extra.cuotaSemanal === 'number' ? { cuotaSemanal: extra.cuotaSemanal } : {}),
+    }
+  })
   return salida as unknown as ConfigEditable
 }
 
