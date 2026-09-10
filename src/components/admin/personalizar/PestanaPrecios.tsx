@@ -15,6 +15,7 @@
  */
 import { BadgeDollarSign, Layers } from 'lucide-react'
 import { CONFIG } from '@/lib/config'
+import { esSemanal } from '@/lib/periodicidad'
 import type { Moneda } from '@/lib/moneda'
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
 import {
@@ -41,6 +42,30 @@ import {
 } from './Comunes'
 
 const ICONO = { className: 'w-4 h-4', style: { color: 'var(--color-acento)' } }
+
+/**
+ * Tope de la cuota SEMANAL. No es el de la mensualidad: una cuota semanal es
+ * del orden de una cuarta parte, y el techo pensado para mensualidades deja
+ * pasar cifras que solo pueden ser un tecleo mal dado — multiplicado después
+ * por 12 o 24 semanas. Debe coincidir con `LIMITE_CUOTA_SEMANAL` del validador,
+ * que es quien manda: esto solo evita que el admin descubra el límite después
+ * de escribir.
+ */
+const MAX_CUOTA_SEMANAL = 15000
+
+/**
+ * Las cifras semanales de un plan.
+ *
+ * Se leen con un cast porque `SiteConfig` se deriva del `CONFIG` de FÁBRICA,
+ * que es mensual y no declara estas claves. En el clon de una escuela semanal
+ * sí existen. Es el mismo recurso que usa `aplicarModalidades` en core.
+ */
+function cuotaDe(m: unknown): number {
+  return Number((m as { cuotaSemanal?: number }).cuotaSemanal ?? 0)
+}
+function semanasDe(m: unknown): number {
+  return Number((m as { semanas?: number }).semanas ?? 0)
+}
 
 /** El mismo número, ya formateado, junto al input. */
 function EnPesos({ valor, moneda }: { valor: number; moneda: Moneda }) {
@@ -90,6 +115,9 @@ export function PestanaPrecios({
   defaults, overrides, actualizar, puedeEditar, claveConError,
 }: PropsPestana) {
   const mods = modalidadesEfectivas(defaults.modalidades, overrides.modalidades)
+  // Fijo por config, no editable: la periodicidad no la cambia el admin desde
+  // aquí (ver la nota de `periodicidad` en config.ts).
+  const semanal = esSemanal()
 
   function campoPrecio(clave: string) {
     const campo = campoPorClave(clave)
@@ -146,6 +174,7 @@ export function PestanaPrecios({
                     <p className="text-sm font-semibold" style={{ color: TXT }}>{m.label}</p>
                     <p className="text-xs mt-0.5" style={{ color: TXT_TENUE }}>
                       {m.meses} {m.meses === 1 ? 'mes' : 'meses'} · {m.materiasPorMes} materias por mes
+                      {semanal && semanasDe(m) > 0 && ` · ${semanasDe(m)} pagos semanales`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -169,20 +198,29 @@ export function PestanaPrecios({
                 </div>
 
                 <div className="flex items-end justify-between gap-3 flex-wrap">
+                  {/* 🛑 En una escuela SEMANAL este campo edita `cuotaSemanal`,
+                      no `mensualidad`. Antes rotulaba "Mensualidad" y escribía
+                      en una clave que su app no lee para cobrar: el admin
+                      publicaba un precio nuevo y no cambiaba absolutamente nada.
+                      Pasó en RHEMA #193 y EDUHCO #197, los dos en producción. */}
                   <CampoEntero
-                    clave={claveMensualidad}
-                    etiqueta="Mensualidad"
-                    valor={m.mensualidad}
+                    clave={semanal ? `modalidades.${m.id}.cuotaSemanal` : claveMensualidad}
+                    etiqueta={semanal ? 'Cuota semanal' : 'Mensualidad'}
+                    valor={semanal ? cuotaDe(m) : m.mensualidad}
                     min={LIMITES.precioMin}
-                    max={LIMITES.precioMax}
-                    sufijo={<EnPesos valor={m.mensualidad} moneda={CONFIG.moneda} />}
+                    max={semanal ? MAX_CUOTA_SEMANAL : LIMITES.precioMax}
+                    sufijo={<EnPesos valor={semanal ? cuotaDe(m) : m.mensualidad} moneda={CONFIG.moneda} />}
                     deshabilitado={!puedeEditar}
                     resaltado={errorAqui}
-                    onChange={(n) => actualizar((prev) => escribirModalidad(prev, m.id, { mensualidad: n }))}
+                    onChange={(n) => actualizar((prev) => escribirModalidad(
+                      prev, m.id, semanal ? { cuotaSemanal: n } : { mensualidad: n },
+                    ))}
                   />
                   {override && puedeEditar && (
                     <BotonRestaurar
-                      onClick={() => actualizar((prev) => escribirModalidad(prev, m.id, { mensualidad: null, activa: null }))}
+                      onClick={() => actualizar((prev) => escribirModalidad(
+                        prev, m.id, { mensualidad: null, cuotaSemanal: null, activa: null },
+                      ))}
                       etiqueta={`el plan ${m.label}`}
                     />
                   )}
@@ -195,6 +233,13 @@ export function PestanaPrecios({
           <Ayuda>
             Solo queda un plan activo, por eso no se puede apagar. Enciende otro
             primero si necesitas cambiarlo.
+          </Ayuda>
+        )}
+        {semanal && (
+          <Ayuda>
+            Cambiar la cuota <strong>no modifica los calendarios ya
+            generados</strong>: cada alumno conserva la cuota con la que se
+            inscribió. La nueva se aplica a quien se registre a partir de ahora.
           </Ayuda>
         )}
       </Tarjeta>

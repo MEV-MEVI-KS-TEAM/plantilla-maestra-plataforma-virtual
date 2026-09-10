@@ -8,6 +8,7 @@ import { nivelForzadoDeRegistro } from '@/lib/modo'
 import { getCarreras, getPlanNombre } from '@/lib/licenciatura-utils'
 import { nivelesPermitidos } from '@/lib/niveles'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
+import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 
 // ─── Verificar rol ADMIN (normaliza mayúsculas) ───────────────────────────────
@@ -466,6 +467,13 @@ export async function POST(request: NextRequest) {
         .single()
       if (reparado) alumno = reparado
     }
+
+    // Calendario de cuotas semanales. Inerte en una escuela mensual.
+    //
+    // El admin puede además regenerarlo desde la ficha del alumno con otra
+    // fecha de inicio, y dar de alta a un alumno con un plan a medida (fuera
+    // del catálogo) desde /admin/cobranza.
+    await generarCalendarioSemanal(admin, newUserId)
 
     // ── Inscripción a los cursos marcados ────────────────────────────────────
     // Va DESPUÉS del alta porque `curso_inscripciones` referencia `alumnos(id)`,

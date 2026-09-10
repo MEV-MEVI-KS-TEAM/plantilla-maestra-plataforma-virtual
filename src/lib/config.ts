@@ -74,10 +74,43 @@ export const CONFIG = {
   // Si solo 3 meses: poner activa:false en 6meses
   // Si solo 6 meses: poner activa:false en 3meses
   // Si ambas: ambas activa:true
+  //
+  // Claves OPCIONALES por modalidad, según lo que venda la escuela:
+  //   nivel        → a qué nivel aplica este plan. Sin él, aplica a todos.
+  //                  Para una oferta ASIMÉTRICA (Secundaria solo 3 meses,
+  //                  Preparatoria solo 6). Ver planesPorNivel().
+  //   semanas      → cuántas cuotas semanales tiene el plan (solo si la
+  //   cuotaSemanal → escuela cobra por semana; ver `periodicidad` abajo).
   modalidades: [
     { id: '3_meses', label: '3 meses — Express',  meses: 3, mensualidad: 2000, materiasPorMes: 4, activa: true  },
     { id: '6_meses', label: '6 meses — Estándar', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true  },
   ] as const,
+
+  // === PERIODICIDAD DE COBRO ===
+  // 'mensual' → mensualidades, como toda la vida.
+  // 'semanal' → cuotas por semana, con calendario propio (`calendario_pagos`),
+  //             "Mis Pagos" del alumno y "Cobranza de la semana" del admin.
+  //             La escuela declara `semanas` y `cuotaSemanal` en cada modalidad.
+  //
+  // ⚠️ DEFAULT 'mensual' A PROPÓSITO: con este valor la app se comporta
+  // EXACTAMENTE igual que antes, la tabla del calendario queda vacía y ninguna
+  // de sus pantallas se monta. La personalización es aditiva o no es.
+  //
+  // ⚠️ Esto describe CÓMO SE COBRA, no cuánto dura el programa: `meses` y
+  // `materiasPorMes` siguen gobernando el acceso académico igual. En CAU (#200)
+  // la Secundaria son 3 meses académicos Y 12 semanas de cobro, y las dos
+  // cifras conviven — cuatro semanas por mes.
+  //
+  // 🛑 Si una cuota semanal se trata como mensualidad, la escuela cobra UNA
+  // CUARTA PARTE de lo que vendió, y sin que nadie vea un error.
+  //
+  // ⚠️ EL `as Periodicidad` NO SOBRA, por lo mismo que el `as ModoPlataforma`:
+  // sin él, el `as const` del objeto estrecha esta clave al literal 'mensual' y
+  // `CONFIG.periodicidad === 'semanal'` deja de compilar (TS2367).
+  //
+  // 🛑 NO se edita desde el panel: cambiar la periodicidad no es cambiar la
+  // marca, es cambiar cómo se le cobra al alumno. La fija el operador.
+  periodicidad:    'mensual' as Periodicidad,
 
   // === MONEDA DE COBRO ===
   // ⚠️ DEFAULT 'MXN' A PROPÓSITO: con este valor toda la app formatea el dinero
@@ -532,3 +565,10 @@ export type Modalidad = typeof CONFIG.modalidades[number]
  * `src/lib/modo.ts`, junto con lo que cada modo oculta.
  */
 export type ModoPlataforma = 'tradicional' | 'solo_cursos'
+
+/**
+ * Cada cuánto cobra la escuela. Vive aquí y no en `periodicidad.ts` para que
+ * ese módulo pueda importar CONFIG sin cerrar un ciclo de imports — igual que
+ * `ModoPlataforma` respecto de `modo.ts`.
+ */
+export type Periodicidad = 'mensual' | 'semanal'

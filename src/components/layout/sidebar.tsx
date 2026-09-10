@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types'
 import { CONFIG } from '@/lib/config'
 import { esSoloCursos } from '@/lib/modo'
+import { esSemanal, RUTA_PAGOS_ALUMNO_SEMANAL, RUTA_COBRANZA_ADMIN } from '@/lib/periodicidad'
 import { useSiteConfig } from '@/components/site-config-provider'
 
 interface NavItem {
@@ -133,9 +134,29 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   // 'Pagos' del alumno solo existe si la escuela cargó enlaces de cobro. La
   // pantalla /alumno/pagar viene desde el onboarding, pero sin este item solo
   // se llegaba escribiendo la URL a mano.
-  const itemsFinales = role === 'ALUMNO' && CONFIG.pagos?.activo
-    ? [...navItems, { label: 'Pagos', href: '/alumno/pagar', emoji: '💳', icon: CreditCard }]
+  //
+  // En una escuela de cobro SEMANAL el item apunta a "Mis Pagos" (el calendario
+  // de semanas) y no depende de `pagos.activo`: ahí no es una pasarela de cobro
+  // opcional, es donde el alumno ve lo que debe. Con el default mensual esta
+  // expresión es EXACTAMENTE la de antes.
+  const semanal = esSemanal()
+  const itemPagosAlumno = semanal
+    ? { label: 'Mis Pagos', href: RUTA_PAGOS_ALUMNO_SEMANAL, emoji: '💳', icon: CreditCard }
+    : { label: 'Pagos', href: '/alumno/pagar', emoji: '💳', icon: CreditCard }
+
+  let itemsFinales = role === 'ALUMNO' && (semanal || CONFIG.pagos?.activo)
+    ? [...navItems, itemPagosAlumno]
     : navItems
+
+  // "Cobranza de la semana" es la pantalla que más usa una escuela que cobra
+  // cada siete días: quién trae semanas vencidas y a quién hay que escribirle.
+  // Se le da al secretario también, que es quien cobra.
+  if (semanal && (role === 'ADMIN' || role === 'SECRETARIO')) {
+    itemsFinales = [
+      ...itemsFinales,
+      { label: 'Cobranza', href: RUTA_COBRANZA_ADMIN, emoji: '📆', icon: CreditCard },
+    ]
+  }
 
   useEffect(() => {
     if (role !== 'ADMIN') return

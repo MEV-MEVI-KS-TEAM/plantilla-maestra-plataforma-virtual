@@ -260,6 +260,19 @@ export function esClaveEditable(ruta: string): ruta is ClaveEditable {
  */
 export interface OverrideModalidad {
   mensualidad?: number
+  /**
+   * La cuota de UNA semana, en las escuelas con `periodicidad: 'semanal'`.
+   *
+   * 🛑 Sin esta clave, el panel de una escuela semanal solo podía editar
+   * `mensualidad` — un campo que su app no lee para cobrar. El admin publicaba
+   * un precio nuevo y no cambiaba nada, ni en la landing ni en el cobro. Pasó
+   * en RHEMA #193 y en EDUHCO #197, los dos en producción.
+   *
+   * ⚠️ Cambiarla NO reescribe los calendarios ya generados: cada semana lleva su
+   * monto congelado desde que se creó. La cuota nueva rige para quien se
+   * inscriba después.
+   */
+  cuotaSemanal?: number
   activa?: boolean
 }
 
@@ -623,6 +636,20 @@ function aplicarModalidades(
       const mensualidadBase = modalidad.mensualidad
       modalidad.mensualidad = ov.mensualidad
       aplicadas.push({ meses: modalidad.meses, mensualidad: ov.mensualidad, mensualidadBase })
+    }
+    if (esPrecio(ov.cuotaSemanal)) {
+      // Solo se escribe si la modalidad YA declara una cuota semanal en
+      // config.ts. Meterle una a un plan mensual crearía un plan híbrido que
+      // `subtotalCuotas()` cobraría por semanas que nadie definió.
+      //
+      // El cast es el mismo recurso que usa `modalidadesLic()` para
+      // `CONFIG.licenciaturas`: `SiteConfig` se deriva del `CONFIG` de FÁBRICA,
+      // que es mensual y no declara la clave. En el clon de una escuela semanal
+      // sí existe, y esta lectura la encuentra.
+      const conCuota = modalidad as { cuotaSemanal?: number }
+      if (typeof conCuota.cuotaSemanal === 'number') {
+        conCuota.cuotaSemanal = ov.cuotaSemanal
+      }
     }
     if (typeof ov.activa === 'boolean') {
       modalidad.activa = ov.activa

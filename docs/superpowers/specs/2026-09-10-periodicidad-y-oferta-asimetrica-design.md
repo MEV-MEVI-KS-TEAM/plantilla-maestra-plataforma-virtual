@@ -147,12 +147,28 @@ guardián de onboarding.
   semanas en vez de 24 — **$3,000 menos, sin ningún error**. La guardia de rol
   impedía que lo hiciera un alumno, no que lo hiciera un servidor mal
   configurado. Si la firma sigue existiendo, sigue siendo invocable.
+
+  ⚠️ **Precisión hecha al implementar.** La firma que se elimina es la de **6
+  argumentos de `generar_calendario_por_nivel`**. `generar_calendario_pagos(alumno,
+  semanas, cuota, fecha)` **se conserva**: es la del ALTA MANUAL, para un alumno
+  con plan fuera del catálogo — CAU gestiona así sus planes de 2 y 4 meses. Ahí
+  las cifras vienen de fuera porque ese es justo el caso de uso. Se expone como
+  una acción propia del panel (`plan_a_medida`), no como parámetro opcional de
+  `regenerar`, para que las dos no se confundan nunca.
 - `registrar_cuota_semanal`, `condonar_semana`, `estado_cuenta_semanal`.
 - Guardia `calendario_pagos_autorizado()` (staff o service_role): un alumno
   recibe **42501** en las cuatro RPCs.
 - Trigger que devuelve la semana a `pendiente` si se borra el pago.
 - `'vencido'` se **deriva** (pendiente + fecha pasada), no se persiste: no hace
   falta cron y nunca queda desactualizado.
+
+**⚠️ Hallazgo al implementar: la migración NO añade un CHECK a
+`pagos.concepto`.** El diseño lo daba por hecho copiando de EDUHCO, pero la
+plantilla **no tiene** ese CHECK — `concepto` es `TEXT NOT NULL DEFAULT
+'mensualidad'` sin restricción. EDUHCO pudo imponerlo porque su BD nacía vacía;
+aplicárselo a 144 bases con datos que nadie ha inventariado es la forma más
+rápida de reventar una migración en producción. `'cuota_semanal'` ya es válido
+sin tocar nada, y el default tampoco se mueve. Lo vigila la prueba `6b`.
 
 La migración corre en **todos** los clientes. En uno mensual la tabla queda
 vacía e inerte; hacerla condicional obligaría a un `DO $$` que la vuelve

@@ -501,12 +501,27 @@ function validarListaObjetos(valor: unknown, campo: Campo, listaBase: unknown): 
 const LIMITE_MENSUALIDAD = { min: 0, max: 50000 }
 
 /**
- * `null` en `mensualidad` / `activa` = quitar ese override. Ninguna otra
- * propiedad: `meses`, `label`, `materiasPorMes` definen el producto y viven en
- * config.ts (ver `OverrideModalidad` en core).
+ * Tope propio para la CUOTA SEMANAL, y no es una copia por simetría.
+ *
+ * Una cuota semanal es del orden de una cuarta parte de una mensualidad, así
+ * que el techo de $50,000 pensado para mensualidades deja pasar cifras que en
+ * una escuela semanal solo pueden ser un error de tecleo — y un error ahí se
+ * multiplica por 12 o por 24 semanas antes de que nadie lo note.
+ */
+const LIMITE_CUOTA_SEMANAL = { min: 0, max: 15000 }
+
+/**
+ * `null` en `mensualidad` / `cuotaSemanal` / `activa` = quitar ese override.
+ * Ninguna otra propiedad: `meses`, `label`, `materiasPorMes` y `semanas`
+ * definen el PRODUCTO y viven en config.ts (ver `OverrideModalidad` en core).
+ *
+ * 🛑 `semanas` NO es editable, por la misma razón que `meses`: es la estructura
+ * del plan, no su precio. Cambiarla desde el panel descuadraría los calendarios
+ * ya generados sin que el admin lo pida.
  */
 const esquemaOverrideModalidad = z.strictObject({
   mensualidad: z.int().min(LIMITE_MENSUALIDAD.min).max(LIMITE_MENSUALIDAD.max).nullable().optional(),
+  cuotaSemanal: z.int().min(LIMITE_CUOTA_SEMANAL.min).max(LIMITE_CUOTA_SEMANAL.max).nullable().optional(),
   activa: z.boolean().nullable().optional(),
 })
 
@@ -514,12 +529,12 @@ function validarModalidades(
   valor: unknown,
   campo: Campo,
   base: SiteConfig,
-): Limpio<Record<string, { mensualidad?: number; activa?: boolean }>> | Fallo {
+): Limpio<Record<string, { mensualidad?: number; cuotaSemanal?: number; activa?: boolean }>> | Fallo {
   if (!esObjetoPlano(valor)) return fallo(`El campo ${campo.etiqueta} debe ser un objeto por id de plan`, 'modalidades')
   const min = campo.min ?? LIMITE_MENSUALIDAD.min
   const max = campo.max ?? LIMITE_MENSUALIDAD.max
   const ids = new Set(base.modalidades.map((m) => m.id))
-  const salida: Record<string, { mensualidad?: number; activa?: boolean }> = {}
+  const salida: Record<string, { mensualidad?: number; cuotaSemanal?: number; activa?: boolean }> = {}
 
   for (const id of Object.keys(valor)) {
     const clave = `modalidades.${id}`
@@ -543,16 +558,34 @@ function validarModalidades(
       if (sub === 'mensualidad') {
         return fallo(`La mensualidad del plan ${id} debe ser un entero entre ${min} y ${max}`, clave)
       }
+      if (sub === 'cuotaSemanal') {
+        return fallo(
+          `La cuota semanal del plan ${id} debe ser un entero entre ${LIMITE_CUOTA_SEMANAL.min} y ${LIMITE_CUOTA_SEMANAL.max}`,
+          clave,
+        )
+      }
       if (sub === 'activa') return fallo(`"activa" del plan ${id} debe ser verdadero o falso`, clave)
-      return fallo(`El plan ${id} debe ser un objeto con mensualidad y/o activa`, clave)
+      return fallo(`El plan ${id} debe ser un objeto con cuota y/o activa`, clave)
     }
-    const limpio: { mensualidad?: number; activa?: boolean } = {}
+    const limpio: { mensualidad?: number; cuotaSemanal?: number; activa?: boolean } = {}
     if (typeof r.data.mensualidad === 'number') {
       // El rango del catálogo manda si es más estrecho que el del esquema.
       if (r.data.mensualidad < min || r.data.mensualidad > max) {
         return fallo(`La mensualidad del plan ${id} debe ser un entero entre ${min} y ${max}`, clave)
       }
       limpio.mensualidad = r.data.mensualidad
+    }
+    if (typeof r.data.cuotaSemanal === 'number') {
+      // La cuota semanal NO usa el rango del catálogo: `campo.min/max` describe
+      // mensualidades, y aplicárselo a una cuota semanal sería el mismo error de
+      // unidad que este PR viene a arreglar.
+      if (r.data.cuotaSemanal < LIMITE_CUOTA_SEMANAL.min || r.data.cuotaSemanal > LIMITE_CUOTA_SEMANAL.max) {
+        return fallo(
+          `La cuota semanal del plan ${id} debe ser un entero entre ${LIMITE_CUOTA_SEMANAL.min} y ${LIMITE_CUOTA_SEMANAL.max}`,
+          clave,
+        )
+      }
+      limpio.cuotaSemanal = r.data.cuotaSemanal
     }
     if (typeof r.data.activa === 'boolean') limpio.activa = r.data.activa
     if (Object.keys(limpio).length > 0) salida[id] = limpio

@@ -27,6 +27,7 @@
  * miden el navegador (`maxlength`) y la API sin dependencias. Un emoji cuenta
  * 2; por eso `icono` admite 8.
  */
+import { CONFIG } from '@/lib/config'
 import { PLACEHOLDERS, type ClaveEditable, type Placeholder } from '@/lib/site-config-core'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -388,10 +389,16 @@ export const CAMPOS: ReadonlyArray<Campo> = [
     min: LIMITES.tipoCambioMin, max: LIMITES.tipoCambioMax,
     ayuda: 'Solo afecta las equivalencias que se muestran. Todos los cargos se hacen en la moneda de la escuela. Conviene revisarlo cada mes.' },
 
-  // ── Modalidades (semántica especial: objeto por id, solo mensualidad y activa) ──
+  // ── Modalidades (semántica especial: objeto por id, solo la cuota y activa) ──
+  //
+  // La ayuda cambia con la periodicidad porque en una escuela semanal la
+  // palabra "mensualidad" no describe nada de lo que el admin está editando: su
+  // cuota se cobra cada siete días.
   { clave: 'modalidades', seccion: 'modalidades', etiqueta: 'Planes', tipo: 'modalidades',
     min: LIMITES.precioMin, max: LIMITES.precioMax,
-    ayuda: 'Por plan: mensualidad y si está activo. Duración y materias por mes no se editan.' },
+    ayuda: CONFIG.periodicidad === 'semanal'
+      ? 'Por plan: cuota semanal y si está activo. La duración, las semanas y las materias por mes no se editan. Cambiar la cuota NO altera los calendarios ya generados: aplica a quien se inscriba después.'
+      : 'Por plan: mensualidad y si está activo. Duración y materias por mes no se editan.' },
 ]
 
 // ─── Índices ─────────────────────────────────────────────────────────────────

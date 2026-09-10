@@ -101,6 +101,23 @@ export type ModalidadPrograma = {
   nivel?: string
   meses: number
   mensualidad: number
+  /**
+   * Cuántas CUOTAS SEMANALES tiene este plan, y de cuánto es cada una.
+   *
+   * Solo en escuelas con `CONFIG.periodicidad === 'semanal'`. Opcionales: en
+   * las ~144 mensuales no se declaran y nada las lee.
+   *
+   * ⚠️ `semanas` NO es `meses × 4` calculado al vuelo: es un dato del contrato.
+   * RHEMA (#193) vende 3 meses en 13 semanas y 6 en 26; CAU (#200) vende 3
+   * meses en 12 y 6 en 24. Derivarlo le cobraría a uno de los dos una semana
+   * de más o de menos por plan.
+   *
+   * ⚠️ Y `semanas` NO sustituye a `meses`: `meses` sigue gobernando el acceso
+   * académico (cuántos meses de materias se abren). Un plan puede durar 3 meses
+   * académicos y cobrarse en 12 semanas sin contradicción.
+   */
+  semanas?: number
+  cuotaSemanal?: number
   materiasPorMes: number
   activa: boolean
 }
@@ -295,6 +312,49 @@ export function getDuracionLabelPorNivel(
   return getDuracionLabel(planesPorNivel(nivel, mods))
 }
 
+/* ─── Cobro semanal ─────────────────────────────────────────────────────────
+ *
+ * Solo significan algo con `CONFIG.periodicidad === 'semanal'`. En una escuela
+ * mensual devuelven 0 y nadie los llama.
+ *
+ * 🛑 NO derivan las semanas de los meses. Ver la nota en `ModalidadPrograma`:
+ * RHEMA vende 3 meses en 13 semanas y CAU los vende en 12. Calcular `meses × 4`
+ * le cobraría a uno de los dos una semana de más por plan.
+ */
+
+/** Cuántas cuotas semanales tiene el plan de este nivel. 0 si no lleva. */
+export function getSemanasPorNivel(
+  nivel: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): number {
+  return modalidadPorNivel(nivel, mods)?.semanas ?? 0
+}
+
+/** De cuánto es cada cuota semanal en este nivel. 0 si no lleva. */
+export function getCuotaSemanalPorNivel(
+  nivel: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): number {
+  return modalidadPorNivel(nivel, mods)?.cuotaSemanal ?? 0
+}
+
+/**
+ * Lo que suman TODAS las cuotas de un plan: semanas × cuota, o meses ×
+ * mensualidad. La colegiatura, sin inscripción ni certificación.
+ *
+ * Un solo helper para las dos periodicidades porque quien lo llama —la landing,
+ * el registro, el documento de entrega— quiere el mismo número: cuánto suma el
+ * plan. Distinguir ahí fuera es lo que hace que una pantalla se quede en la
+ * fórmula vieja.
+ */
+export function subtotalCuotas(modalidad: ModalidadPrograma | undefined): number {
+  if (!modalidad) return 0
+  if (modalidad.semanas && modalidad.cuotaSemanal) {
+    return modalidad.semanas * modalidad.cuotaSemanal
+  }
+  return modalidad.meses * modalidad.mensualidad
+}
+
 /**
  * Verifica si un ID de modalidad está activo.
  */
@@ -486,5 +546,9 @@ export function getPlanLabelConDuracion(
  */
 export function getTotalPlan(modalidad: ModalidadPrograma, inscripcion: number): number {
   const ins = Number.isFinite(inscripcion) ? inscripcion : 0
-  return ins + modalidad.meses * modalidad.mensualidad
+  // Delega en `subtotalCuotas`, que sabe si el plan se cobra por semana o por
+  // mes. En una escuela mensual devuelve exactamente lo de siempre
+  // (`meses × mensualidad`); en una semanal, sin esto, el total anunciado sería
+  // el de un plan mensual imaginario.
+  return ins + subtotalCuotas(modalidad)
 }
