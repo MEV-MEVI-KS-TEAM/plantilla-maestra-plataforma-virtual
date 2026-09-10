@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { destinoSiEsRutaDeProgama, aterrizajeAlumno } from '@/lib/modo'
+import { destinoSiEsRutaDePagoAjena } from '@/lib/periodicidad'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -148,6 +149,24 @@ export async function updateSession(request: NextRequest) {
     if (destinoModo) {
       const url = request.nextUrl.clone()
       url.pathname = destinoModo
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+
+    // Y la pantalla de pagos de la OTRA periodicidad. Ocultar la entrada del
+    // menú es UX; la URL sigue existiendo y se comparte por WhatsApp. Sin esto,
+    // un alumno de una escuela mensual que abre /alumno/pagos aterriza en una
+    // pantalla que consulta un calendario que este cliente nunca llenó.
+    //
+    // Se manda a la pantalla EQUIVALENTE, no al dashboard: quien abrió un
+    // enlace de "mis pagos" quiere ver sus pagos.
+    //
+    // Con `periodicidad: 'mensual'` y sin las rutas semanales desplegadas esto
+    // no dispara nunca.
+    const destinoPago = destinoSiEsRutaDePagoAjena(request.nextUrl.pathname)
+    if (destinoPago) {
+      const url = request.nextUrl.clone()
+      url.pathname = destinoPago
       url.search = ''
       return NextResponse.redirect(url)
     }

@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { nivelForzadoDeRegistro } from '@/lib/modo'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
+import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 
 export async function POST(request: Request) {
@@ -151,6 +152,16 @@ export async function POST(request: Request) {
       console.error('[register-complete] alumnos insert error:', alumnoError)
       return Response.json({ error: alumnoError.message }, { status: 500 })
     }
+
+    // Calendario de cuotas semanales. Solo hace algo si la escuela cobra por
+    // semana; en las ~144 mensuales devuelve 0 sin tocar la BD.
+    //
+    // Va DESPUÉS del insert porque lee `alumnos.nivel` para deducir el plan, y
+    // no bloquea el alta: si falla, el alumno queda registrado y el admin le
+    // genera el calendario con un clic. Al revés —tumbar el registro— dejaría
+    // una cuenta de Auth creada y un prospecto que no puede ni reintentar con
+    // el mismo correo.
+    await generarCalendarioSemanal(admin, user.id)
 
     // Inscripción al curso elegido. Va DESPUÉS del alta del alumno porque
     // curso_inscripciones referencia alumnos(id).

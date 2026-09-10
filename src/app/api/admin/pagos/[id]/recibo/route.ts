@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 import { NextRequest, NextResponse } from 'next/server'
@@ -12,9 +13,35 @@ import { waUrl } from '@/lib/whatsapp'
 const SIGNED_URL_TTL = 86400
 
 const CONCEPTO_LABELS: Record<string, string> = {
-  inscripcion: 'inscripción',
-  mensualidad: 'mensualidad',
-  otro:        'pago',
+  inscripcion:   'inscripción',
+  mensualidad:   'mensualidad',
+  cuota_semanal: 'cuota semanal',
+  certificacion: 'certificación',
+  otro:          'pago',
+}
+
+/**
+ * Cuántas semanas tiene el calendario de este alumno, para el «de M» del
+ * recibo. Devuelve 0 si no lleva calendario (escuela mensual): el recibo se
+ * queda en «Semana N» en vez de anunciar un total inventado.
+ */
+async function totalSemanasDe(
+  admin: SupabaseClient,
+  alumnoId: string,
+): Promise<number> {
+  try {
+    const { data } = await admin
+      .from('calendario_pagos')
+      .select('total_semanas')
+      .eq('alumno_id', alumnoId)
+      .limit(1)
+      .maybeSingle()
+    return Number(data?.total_semanas ?? 0)
+  } catch {
+    // La tabla puede no existir en un cliente sin la migración: el recibo se
+    // emite igual, que es lo que la persona está esperando.
+    return 0
+  }
 }
 
 /**
@@ -40,7 +67,7 @@ export async function GET(
     // ── Pago + datos para el recibo ──────────────────────────────────────────
     const { data: pago, error: pagoErr } = await admin
       .from('pagos')
-      .select('id, alumno_id, monto, concepto, mes_desbloqueado, metodo_pago, referencia, registrado_por, fecha_pago, created_at')
+      .select('id, alumno_id, monto, concepto, mes_desbloqueado, numero_semana, metodo_pago, referencia, registrado_por, fecha_pago, created_at')
       .eq('id', params.id)
       .single()
     if (pagoErr || !pago) {
@@ -95,7 +122,16 @@ export async function GET(
     }
 
     // ── URL de WhatsApp con mensaje prellenado (convención Contactar) ───────
-    const conceptoLabel = CONCEPTO_LABELS[pago.concepto ?? 'mensualidad'] ?? pago.concepto
+    let conceptoLabel = CONCEPTO_LABELS[pago.concepto ?? 'mensualidad'] ?? pago.concepto
+    // 🛑 En un cobro semanal el recibo tiene que decir QUÉ semana cubre. "Cuota
+    // semanal" a secas no le sirve a un alumno con veinticuatro recibos
+    // iguales, ni a la escuela cuando el alumno reclama que ya pagó esa.
+    if (pago.concepto === 'cuota_semanal' && pago.numero_semana) {
+      const total = await totalSemanasDe(admin, pago.alumno_id)
+      conceptoLabel = total
+        ? `Semana ${pago.numero_semana} de ${total}`
+        : `Semana ${pago.numero_semana}`
+    }
     const montoFmt = formatearMoneda(Number(pago.monto), CONFIG, { decimales: 2, conCodigo: true })
     const mensaje = `Hola ${alumnoNombre}, aquí está tu recibo de pago de ${conceptoLabel} por ${montoFmt}: ${signed.signedUrl}`
     const whatsappUrl = waUrl(alumnoUsuario?.telefono, mensaje)

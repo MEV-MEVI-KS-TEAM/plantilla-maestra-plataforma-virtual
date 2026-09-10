@@ -44,6 +44,15 @@ export interface ModalidadEditable {
   label: string
   meses: number
   mensualidad: number
+  /**
+   * Cifras del cobro SEMANAL, solo en las escuelas que lo usan. Opcionales
+   * porque el `CONFIG` de fábrica es mensual y no las declara.
+   *
+   * `semanas` viaja para poder MOSTRARLA junto al plan, no para editarla: es
+   * estructura, igual que `meses` y `materiasPorMes`.
+   */
+  semanas?: number
+  cuotaSemanal?: number
   materiasPorMes: number
   activa: boolean
 }
@@ -70,6 +79,8 @@ export interface AdvertenciaContraste {
  */
 export interface ParcialModalidad {
   mensualidad?: number | null
+  /** La cuota de una semana, en las escuelas de cobro semanal. */
+  cuotaSemanal?: number | null
   activa?: boolean | null
 }
 
@@ -260,6 +271,9 @@ export function escribirModalidad(
   if (parcial.mensualidad === null) delete actual.mensualidad
   else if (parcial.mensualidad !== undefined) actual.mensualidad = parcial.mensualidad
 
+  if (parcial.cuotaSemanal === null) delete actual.cuotaSemanal
+  else if (parcial.cuotaSemanal !== undefined) actual.cuotaSemanal = parcial.cuotaSemanal
+
   if (parcial.activa === null) delete actual.activa
   else if (parcial.activa !== undefined) actual.activa = parcial.activa
 
@@ -287,6 +301,12 @@ export function modalidadesEfectivas(
     return {
       ...m,
       mensualidad: typeof ov?.mensualidad === 'number' ? ov.mensualidad : m.mensualidad,
+      // Sin esto, el input de la cuota semanal no reflejaría lo que el admin
+      // acaba de teclear: el estado lo guarda pero la pantalla sigue pintando
+      // el valor de config.ts.
+      ...(typeof m.cuotaSemanal === 'number' || typeof ov?.cuotaSemanal === 'number'
+        ? { cuotaSemanal: typeof ov?.cuotaSemanal === 'number' ? ov.cuotaSemanal : m.cuotaSemanal }
+        : {}),
       activa: typeof ov?.activa === 'boolean' ? ov.activa : m.activa,
     }
   })
