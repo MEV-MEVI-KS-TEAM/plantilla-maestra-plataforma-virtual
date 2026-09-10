@@ -27,9 +27,23 @@ const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<'
 let MONEDA = 'MXN'
 export function fijarMoneda(m) { MONEDA = m === 'MXN' || !m ? 'MXN' : String(m) }
 
-/** '$2,000' en pesos; '$300 USD' en cualquier otra moneda. */
+/**
+ * '$2,000' en pesos; '$300 USD' en cualquier otra moneda; y **'Gratis'** cuando
+ * el concepto no se cobra.
+ *
+ * 🛑 CERO SE ESCRIBE "Gratis", NUNCA "$0". Le pasa a toda escuela que regale la
+ * inscripción o la certificación —DPAZ (#191), EDUHCO (#197), SAMEX (#199)— y
+ * el documento de entrega decía «Inscripción (pago único): $0». Un "$0" en un
+ * papel oficial se lee como un error de la plantilla, no como un regalo, y es
+ * justo lo que la escuela está vendiendo. Es la misma regla que ya rige en la
+ * landing.
+ *
+ * "Gratis" no lleva código de moneda: gratis es gratis en cualquiera.
+ */
 const mxn = (n) => {
-  const v = '$' + Number(n || 0).toLocaleString('es-MX')
+  const num = Number(n || 0)
+  if (!Number.isFinite(num) || num === 0) return 'Gratis'
+  const v = '$' + num.toLocaleString('es-MX')
   return MONEDA === 'MXN' ? v : `${v} ${MONEDA}`
 }
 const cap = (s) => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1)
