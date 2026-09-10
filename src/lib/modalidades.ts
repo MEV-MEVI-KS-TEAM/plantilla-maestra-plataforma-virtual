@@ -84,6 +84,21 @@ export type ModalidadPrograma = {
    * exactamente lo de hoy en las ~144 escuelas que no lo declaran.
    */
   labelPublico?: string
+  /**
+   * A qué NIVEL aplica este plan. Sin declararlo, aplica a todos — que es el
+   * estado de las ~144 escuelas y por eso la clave es opcional.
+   *
+   * EDUHCO (#197) fue el primero que no podía declararse: vende Secundaria
+   * SOLO en 3 meses y Preparatoria SOLO en 6, y las otras dos combinaciones no
+   * existen. Con la lista plana, la landing y el registro pintan el producto
+   * cartesiano `niveles × modalidades` y ofrecen dos planes que la escuela no
+   * vende. Al alumno que elige uno de ellos no hay nada que cobrarle.
+   *
+   * ⚠️ El JSON del onboarding trae esas combinaciones inexistentes con precio
+   * `0`. NO son precios: copiarlas al config anuncia «$0» en dos planes
+   * fantasma. Si un plan no se vende, no se declara.
+   */
+  nivel?: string
   meses: number
   mensualidad: number
   materiasPorMes: number
@@ -221,6 +236,63 @@ export function getModalidadesActivas(
   mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
 ): readonly ModalidadPrograma[] {
   return mods.filter(m => m.activa)
+}
+
+/* ─── Oferta por nivel ──────────────────────────────────────────────────────
+ *
+ * Los tres helpers de abajo son de CATÁLOGO COMERCIAL: llevan `mods` al final
+ * y quien los use desde una pantalla debe pasarle la tabla FUSIONADA
+ * (`config.modalidades`), o enseñará lo de `config.ts` en vez de lo que el
+ * admin dejó en su panel. Ver la regla de alcance en la cabecera del archivo.
+ */
+
+/**
+ * Los planes que ESE nivel vende de verdad.
+ *
+ * 🛑 Es lo que sustituye al producto cartesiano `niveles × modalidades`. Si la
+ * landing y el registro iteran sobre esto, es IMPOSIBLE pintar un plan que no
+ * existe: no hay una lista paralela que se pueda olvidar de actualizar.
+ *
+ * Una modalidad SIN `nivel` aplica a todos los niveles, así que en las ~144
+ * escuelas que no lo declaran esto devuelve exactamente `getModalidadesActivas()`
+ * para cualquier nivel — la conducta de hoy, sin una sola diferencia.
+ */
+export function planesPorNivel(
+  nivel: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): readonly ModalidadPrograma[] {
+  const activas = getModalidadesActivas(mods)
+  if (!nivel) return activas
+  return activas.filter(m => !m.nivel || m.nivel === nivel)
+}
+
+/**
+ * El plan de un nivel cuando solo hay UNO, para deducirlo sin preguntar.
+ *
+ * Devuelve `undefined` con 0 y con 2 o más: quien llama decide si muestra un
+ * selector o deduce. NO adivina cuál de dos planes quiso el alumno — en un
+ * cobro por plan, elegir por él es elegir cuánto paga.
+ */
+export function modalidadPorNivel(
+  nivel: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): ModalidadPrograma | undefined {
+  const planes = planesPorNivel(nivel, mods)
+  return planes.length === 1 ? planes[0] : undefined
+}
+
+/**
+ * La frase de duración de UN nivel: «3 meses», «3 o 6 meses».
+ *
+ * `getDuracionLabel()` mezcla todos los planes de la escuela y en una oferta
+ * asimétrica eso miente: EDUHCO anunciaría «3 o 6 meses» en las dos portadas
+ * cuando cada nivel tiene una sola duración posible.
+ */
+export function getDuracionLabelPorNivel(
+  nivel: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
+  return getDuracionLabel(planesPorNivel(nivel, mods))
 }
 
 /**

@@ -9,7 +9,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, Phone, User, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { planesPorNivel, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatura-utils'
 import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
@@ -252,16 +252,44 @@ export default function RegisterPage() {
     return () => { vivo = false }
   }, [])
 
-  // Al cambiar de nivel se limpian plan y carrera: las modalidades de
-  // licenciatura (6/9) no son las del programa (3/6), y una carrera arrastrada
-  // desde una selección previa dejaría al alumno con un dato que no le toca.
-  useEffect(() => { setModalidad(''); setCarrera('') }, [nivel])
-
   const esLicenciatura = nivel === 'licenciatura' || esDiplomadoLic
 
   // Las carreras ofrecidas dependen de la opción: quien eligió «Diplomados» no
   // debe ver las licenciaturas, ni al revés.
   const carrerasOfrecidas = esDiplomadoLic ? getCarrerasDiplomado() : getCarrerasLicenciatura()
+
+  /**
+   * Los planes que ESTE nivel vende de verdad.
+   *
+   * Antes se ofrecía `getModalidadesActivas()` a todo el mundo, que es el
+   * producto cartesiano `niveles × modalidades`. En una escuela de oferta
+   * asimétrica —Secundaria solo 3 meses, Preparatoria solo 6— eso le ofrece al
+   * aspirante dos planes que la escuela no vende, y al que elige uno de ellos
+   * no hay nada que cobrarle. Las de licenciatura siguen aparte: tienen su
+   * propia tabla (6/9 meses) y no se editan desde el panel.
+   */
+  const planesDelNivel = esLicenciatura
+    ? getModalidadesLicenciatura()
+    : planesPorNivel(nivelDeOpcion(nivel), cfg.modalidades)
+
+  /**
+   * Cuando el nivel tiene UN solo plan no hay nada que preguntar: se deduce.
+   *
+   * Un desplegable de una sola opción no es una elección, es un trámite — y uno
+   * que el aspirante puede dejar sin tocar y llevarse un «Selecciona la
+   * modalidad» sin entender qué le falta.
+   */
+  const planUnico = !esLicenciatura && nivel && planesDelNivel.length === 1
+    ? planesDelNivel[0]
+    : undefined
+  // Dependencia estable para el efecto: el objeto se reconstruye en cada render.
+  const idPlanUnico = planUnico?.id ?? ''
+
+  // Al cambiar de nivel se limpian plan y carrera: las modalidades de
+  // licenciatura (6/9) no son las del programa (3/6), y una carrera arrastrada
+  // desde una selección previa dejaría al alumno con un dato que no le toca.
+  // Si el nivel nuevo tiene un solo plan, se deduce en el mismo paso.
+  useEffect(() => { setModalidad(idPlanUnico); setCarrera('') }, [nivel, idPlanUnico])
 
   // Derive current progress step
   const filledStep1 = !!(nombre && apellidoPat && apellidoMat && telefono)
@@ -547,7 +575,16 @@ export default function RegisterPage() {
                     </>
                   ) : (
                   <>
-                  <Label text="Modalidad" required={!pidioCurso} />
+                  <Label text="Modalidad" required={!pidioCurso && !planUnico} />
+                  {planUnico ? (
+                    /* Un solo plan para este nivel: se muestra, no se elige.
+                       El alumno tiene que LEER la duración que contrata — por
+                       eso se pinta el plan y no se esconde el campo entero. */
+                    <div style={{ ...selectStyle, display: 'flex', alignItems: 'center' }}>
+                      {planUnico.label}
+                    </div>
+                  ) : (
+                  <>
                   {/* Licenciatura tiene su propia tabla de planes (6/9 meses).
                       Con la lista del programa (3/6) el alumno elegía un plan
                       que su carrera no ofrece. */}
@@ -557,12 +594,16 @@ export default function RegisterPage() {
                     <option value="">{nivel ? 'Selecciona…' : 'Primero elige nivel'}</option>
                     {/* F3B: las modalidades del programa salen del config
                         FUSIONADO — si el admin apaga un plan desde su panel,
-                        deja de ofrecerse aquí sin redeploy. Las de
-                        licenciatura no se editan y siguen en CONFIG. */}
-                    {(esLicenciatura ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
+                        deja de ofrecerse aquí sin redeploy. Y salen POR NIVEL:
+                        una escuela asimétrica no ofrece aquí un plan que ese
+                        nivel no vende. Las de licenciatura no se editan y
+                        siguen en CONFIG. */}
+                    {planesDelNivel.map(m => (
                       <option key={m.id} value={m.id}>{m.label}</option>
                     ))}
                   </select>
+                  </>
+                  )}
                   </>
                   )}
                 </div>
