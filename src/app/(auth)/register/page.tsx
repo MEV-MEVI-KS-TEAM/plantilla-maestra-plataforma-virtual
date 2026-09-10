@@ -63,7 +63,7 @@ const selectStyle: React.CSSProperties = {
 function Label({ text, required: req }: { text: string; required?: boolean }) {
   return (
     <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-      {text}{req && <span style={{ color: '#EF4444' }}> *</span>}
+      {text}{req && <span style={{ color: '#DC2626' }}> *</span>}
     </label>
   )
 }
@@ -111,7 +111,7 @@ function ProgressBar({ current }: { current: 1 | 2 | 3 }) {
                 className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all"
                 style={{
                   background: done ? 'var(--color-acento)' : active ? 'var(--color-acento)' : 'var(--color-borde)',
-                  color:      done || active ? '#fff' : 'var(--color-borde)',
+                  color:      done || active ? 'var(--color-texto-sobre-acento)' : 'var(--color-texto-secundario)',
                   boxShadow:  active ? '0 0 0 4px rgba(27,47,110,0.18)' : 'none',
                 }}
               >
@@ -119,7 +119,7 @@ function ProgressBar({ current }: { current: 1 | 2 | 3 }) {
               </div>
               <span
                 className="mt-1.5 text-xs font-medium text-center leading-tight hidden sm:block"
-                style={{ color: active ? 'var(--color-acento)' : done ? 'var(--color-acento)' : 'var(--color-borde)', maxWidth: 72 }}
+                style={{ color: active || done ? 'var(--color-acento-texto)' : 'var(--color-texto-secundario)', maxWidth: 72 }}
               >
                 {s.label}
               </span>
@@ -146,7 +146,7 @@ function LeftPanel() {
       style={{
         width: '38%',
         minHeight: '100vh',
-        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento) 55%, var(--color-primario) 100%)',
+        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento-profundo) 55%, var(--color-primario) 100%)',
         position: 'relative',
         overflow: 'hidden',
         flexShrink: 0,
@@ -164,7 +164,7 @@ function LeftPanel() {
           <Image src={cfg.logo} alt={cfg.nombre} width={68} height={68}
             style={{ borderRadius: 12, objectFit: 'contain', display: 'block' }} priority />
         </div>
-        <p className="mt-4 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>
+        <p className="mt-4 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em' }}>
           {cfg.nombreCompleto.toUpperCase()}
         </p>
       </div>
@@ -172,7 +172,7 @@ function LeftPanel() {
       <div className="relative z-10">
         <h2 className="text-3xl font-bold leading-tight mb-3" style={{ color: '#fff', fontFamily: 'Syne, sans-serif' }}>
           Comienza hoy<br />
-          <span style={{ color: 'var(--color-acento)' }}>tu camino educativo</span>
+          <span style={{ color: 'var(--color-acento-sobre-oscuro)' }}>tu camino educativo</span>
         </h2>
         <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.75)', lineHeight: 1.7 }}>
           Únete a alumnos que han completado su trayectoria educativa con nosotros.
@@ -181,7 +181,7 @@ function LeftPanel() {
         <div className="flex flex-col gap-3">
           {BENEFITS.map(b => (
             <div key={b} className="flex items-center gap-3">
-              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: 'var(--color-acento)' }} />
+              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: 'var(--color-acento-sobre-oscuro)' }} />
               <span className="text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>{b}</span>
             </div>
           ))}
@@ -190,7 +190,7 @@ function LeftPanel() {
 
       <div className="relative z-10">
         <div style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12, padding: '12px 16px' }}>
-          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>CENTRO DE APOYO</p>
+          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>CENTRO DE APOYO</p>
           <p className="text-sm font-bold" style={{ color: '#fff' }}>Acreditación de Conocimientos</p>
         </div>
       </div>
@@ -423,7 +423,7 @@ export default function RegisterPage() {
                 <div>
                   <Label text="Nombre(s)" required />
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                     <input type="text" required value={nombre} onChange={e => setNombre(e.target.value)}
                       placeholder="María" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
                   </div>
@@ -444,7 +444,7 @@ export default function RegisterPage() {
               <div>
                 <Label text="Teléfono / WhatsApp" required />
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                   <input type="tel" required value={telefono}
                     onChange={e => setTelefono(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10 dígitos" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
@@ -460,7 +460,7 @@ export default function RegisterPage() {
               <div className="mb-3">
                 <Label text="Correo electrónico" required />
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                   <input type="email" required autoComplete="email" value={email}
                     onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com"
                     style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
@@ -472,14 +472,14 @@ export default function RegisterPage() {
                 <div>
                   <Label text="Contraseña" required />
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                     <input type={showPass ? 'text' : 'password'} required autoComplete="new-password"
                       value={password} onChange={e => setPassword(e.target.value)}
                       placeholder="Mín. 8 caracteres"
                       style={{ ...inputStyle, paddingRight: 38 }} onFocus={onFocus} onBlur={onBlur} />
                     <button type="button" tabIndex={-1} onClick={() => setShowPass(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-borde)', padding: 2 }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-texto-secundario)', padding: 2 }}>
                       {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -487,14 +487,14 @@ export default function RegisterPage() {
                 <div>
                   <Label text="Confirmar contraseña" required />
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                     <input type={showConfirm ? 'text' : 'password'} required autoComplete="new-password"
                       value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="Repite tu contraseña"
                       style={{ ...inputStyle, paddingRight: 38 }} onFocus={onFocus} onBlur={onBlur} />
                     <button type="button" tabIndex={-1} onClick={() => setShowConfirm(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-borde)', padding: 2 }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-texto-secundario)', padding: 2 }}>
                       {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -619,7 +619,7 @@ export default function RegisterPage() {
                             )}
                           </span>
                           {o.precio > 0 && (
-                            <span className="flex-shrink-0 text-sm font-bold" style={{ color: 'var(--color-acento)' }}>
+                            <span className="flex-shrink-0 text-sm font-bold" style={{ color: 'var(--color-acento-texto)' }}>
                               {formatearMoneda(o.precio, CONFIG, { conCodigo: true })}
                               <Equivalencia monto={o.precio} />
                             </span>
@@ -672,7 +672,7 @@ export default function RegisterPage() {
             </button>
 
             {/* Legal */}
-            <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--color-borde)' }}>
+            <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--color-texto-secundario)' }}>
               Al registrarte aceptas que {cfg.nombreCompleto} tratará tus datos
               conforme a su política de privacidad.
             </p>
@@ -680,7 +680,7 @@ export default function RegisterPage() {
             {/* Login link */}
             <p className="text-center text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
               ¿Ya tienes cuenta?{' '}
-              <Link href="/login" className="font-semibold transition-colors" style={{ color: 'var(--color-acento)' }}
+              <Link href="/login" className="font-semibold transition-colors" style={{ color: 'var(--color-acento-texto)' }}
                 onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
                 onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}>
                 Inicia sesión
@@ -701,7 +701,7 @@ export default function RegisterPage() {
             <span style={{ color: '#22C55E' }}><WaSvg size={16} /></span>
             ¿Necesitas ayuda? WhatsApp
           </a>
-          <p className="text-xs" style={{ color: '#C8D8E4' }}>
+          <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
             © {new Date().getFullYear()} {cfg.nombreCompleto}
           </p>
         </div>

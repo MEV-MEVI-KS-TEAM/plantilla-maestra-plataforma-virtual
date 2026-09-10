@@ -136,3 +136,95 @@ export function sugerirTextoSobre(fondo: string): '#FFFFFF' | '#0A0A0A' {
 export function esHexValido(v: unknown): v is string {
   return typeof v === 'string' && /^#[0-9A-Fa-f]{6}$/.test(v)
 }
+
+/**
+ * El color de marca, ajustado LO JUSTO para ser legible sobre un fondo dado —
+ * aclarándolo si el fondo es oscuro y oscureciéndolo si es claro.
+ *
+ * ⚠️ POR QUÉ HACE FALTA. Un acento de marca casi nunca sirve como color de
+ * texto sobre las dos caras de la landing. El oro de GRATIA (#C09852) da 5.34
+ * sobre su verde petróleo pero **2.67 sobre blanco**: en los kickers y los
+ * precios de las tarjetas claras el texto desaparecía. Subir el tamaño no
+ * arregla nada: 18 px con peso 600 NO cuenta como texto grande para WCAG.
+ *
+ * Se mueve en pasos del 5 % en vez de saltar a blanco o negro para CONSERVAR EL
+ * TONO: el oro se vuelve un oro más oscuro, no un gris. Así el token de marca
+ * queda intacto para rellenos, bordes y trazos —que es lo que el manual del
+ * cliente custodia— y solo se declara una variante para texto.
+ *
+ * Si ni el blanco ni el negro cumplieran (imposible con un mínimo de 4.5, pero
+ * el bucle no lo asume) se devuelve el extremo al que iba.
+ */
+export function colorLegibleSobre(color: string, fondo: string, minimo: number = AA_MINIMO): string {
+  if (!hexToRgb(color) || !hexToRgb(fondo)) return color
+  if (ratioContraste(color, fondo) >= minimo) return color
+  // Un fondo claro pide texto más oscuro, y al revés. El umbral es la
+  // luminancia a la que el blanco y el negro empatan aproximadamente.
+  const fondoEsClaro = luminanciaRelativa(fondo) > 0.18
+  const mover = fondoEsClaro ? oscurecer : aclarar
+  for (let f = 0.05; f <= 1.0001; f += 0.05) {
+    const candidato = mover(color, f)
+    if (ratioContraste(candidato, fondo) >= minimo) return candidato
+  }
+  return fondoEsClaro ? '#000000' : '#FFFFFF'
+}
+
+/**
+ * Como `colorLegibleSobre`, pero para un color que se va a pintar CON ALPHA.
+ *
+ * Un tono puede cumplir de sobra en sólido y quedarse corto al 45 % de
+ * opacidad, que es como la landing pinta sus textos secundarios sobre los
+ * fondos oscuros: el subtítulo del hero, las etiquetas de los indicadores y las
+ * filas de precio de la tarjeta oscura. Se comprueba el color YA MEZCLADO al
+ * alpha más bajo en que se vaya a usar, y se ajusta el tono base hasta que la
+ * mezcla cumple.
+ */
+export function colorLegibleConAlpha(
+  color: string,
+  fondo: string,
+  alpha: number,
+  minimo: number = AA_MINIMO,
+): string {
+  const bg = hexToRgb(fondo)
+  if (!hexToRgb(color) || !bg) return color
+  const a = Math.min(Math.max(alpha, 0.05), 1)
+  const mezclado = (hex: string): string => {
+    const c = hexToRgb(hex)
+    if (!c) return hex
+    const m = (x: number, y: number) => Math.round(x * a + y * (1 - a))
+    return (
+      '#' +
+      [m(c.r, bg.r), m(c.g, bg.g), m(c.b, bg.b)]
+        .map((v) => v.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase()
+    )
+  }
+  if (ratioContraste(mezclado(color), fondo) >= minimo) return color
+  const fondoEsClaro = luminanciaRelativa(fondo) > 0.18
+  const mover = fondoEsClaro ? oscurecer : aclarar
+  for (let f = 0.05; f <= 1.0001; f += 0.05) {
+    const candidato = mover(color, f)
+    if (ratioContraste(mezclado(candidato), fondo) >= minimo) return candidato
+  }
+  return fondoEsClaro ? '#000000' : '#FFFFFF'
+}
+
+/**
+ * El color OSCURECIDO lo justo para que `texto` se lea encima.
+ *
+ * Es la operación inversa de `colorLegibleSobre`: ahí se mueve el texto para
+ * que quepa en el fondo; aquí se mueve el FONDO para que quepa un texto que no
+ * se puede cambiar. Hace falta en los degradados: si un extremo es oscuro y el
+ * otro es el acento claro, ningún color de letra sirve para todo el recorrido,
+ * y lo que hay que ceder es el extremo claro.
+ */
+export function oscurecerHasta(fondo: string, texto: string, minimo: number = AA_MINIMO): string {
+  if (!hexToRgb(fondo) || !hexToRgb(texto)) return fondo
+  if (ratioContraste(fondo, texto) >= minimo) return fondo
+  for (let f = 0.05; f <= 1.0001; f += 0.05) {
+    const candidato = oscurecer(fondo, f)
+    if (ratioContraste(candidato, texto) >= minimo) return candidato
+  }
+  return '#000000'
+}

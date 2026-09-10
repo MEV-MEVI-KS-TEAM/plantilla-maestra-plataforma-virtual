@@ -47,7 +47,7 @@ function LeftPanel() {
       style={{
         width: '40%',
         minHeight: '100vh',
-        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento) 55%, var(--color-primario) 100%)',
+        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento-profundo) 55%, var(--color-primario) 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -83,7 +83,7 @@ function LeftPanel() {
           priority
           />
         </div>
-        <p className="mt-4 text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.05em' }}>
+        <p className="mt-4 text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.88)', letterSpacing: '0.05em' }}>
           {cfg.nombreCompleto.toUpperCase()}
         </p>
       </div>
@@ -92,7 +92,7 @@ function LeftPanel() {
       <div className="relative z-10">
         <h2 className="text-4xl font-bold leading-tight mb-3" style={{ color: '#fff', fontFamily: 'Syne, sans-serif' }}>
           Tu educación,<br />
-          <span style={{ color: 'var(--color-acento)' }}>a tu ritmo</span>
+          <span style={{ color: 'var(--color-acento-sobre-oscuro)' }}>a tu ritmo</span>
         </h2>
         <p className="text-base mb-8" style={{ color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
           Estudia desde la comodidad de tu hogar y obtén acompañamiento en tu certificación.
@@ -101,7 +101,7 @@ function LeftPanel() {
         <div className="flex flex-col gap-3">
           {BENEFITS.map(b => (
             <div key={b} className="flex items-center gap-3">
-              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: 'var(--color-acento)' }} />
+              <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: 'var(--color-acento-sobre-oscuro)' }} />
               <span className="text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>{b}</span>
             </div>
           ))}
@@ -116,7 +116,7 @@ function LeftPanel() {
           borderRadius: 12,
           padding: '12px 16px',
         }}>
-          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>
+          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>
             CENTRO DE APOYO
           </p>
           <p className="text-sm font-bold" style={{ color: '#fff' }}>
@@ -225,7 +225,7 @@ export default function LoginPage() {
                 Correo electrónico
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                 <input
                   type="email" required autoComplete="email"
                   value={email} onChange={e => setEmail(e.target.value)}
@@ -248,7 +248,7 @@ export default function LoginPage() {
                 </label>
                 <Link href="/forgot-password"
                   className="text-xs font-medium transition-colors"
-                  style={{ color: 'var(--color-acento)' }}
+                  style={{ color: 'var(--color-acento-texto)' }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
                   onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
                 >
@@ -256,7 +256,7 @@ export default function LoginPage() {
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-borde)' }} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-texto-secundario)' }} />
                 <input
                   type={showPass ? 'text' : 'password'} required autoComplete="current-password"
                   value={password} onChange={e => setPassword(e.target.value)}
@@ -270,7 +270,7 @@ export default function LoginPage() {
                 />
                 <button type="button" tabIndex={-1} onClick={() => setShowPass(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--color-borde)' }}>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--color-texto-secundario)' }}>
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -309,7 +309,7 @@ export default function LoginPage() {
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
-            <span className="text-xs px-1" style={{ color: 'var(--color-borde)' }}>o</span>
+            <span className="text-xs px-1" style={{ color: 'var(--color-texto-secundario)' }}>o</span>
             <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
           </div>
 
@@ -342,7 +342,7 @@ export default function LoginPage() {
             ¿No tienes cuenta?{' '}
             <Link href="/register"
               className="font-semibold transition-colors"
-              style={{ color: 'var(--color-acento)' }}
+              style={{ color: 'var(--color-acento-texto)' }}
               onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
             >
@@ -352,7 +352,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="mt-8 text-xs" style={{ color: 'var(--color-borde)' }}>
+        <p className="mt-8 text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
           © {new Date().getFullYear()} {cfg.nombreCompleto}
         </p>
       </div>

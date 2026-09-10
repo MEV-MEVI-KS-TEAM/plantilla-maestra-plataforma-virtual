@@ -17,6 +17,12 @@
   --color-primario:           #0F172A;
   --color-acento:             #3B82F6;
   --color-acento-hover:       #2563EB;
+  /* El acento ajustado para dos usos donde el crudo no se lee: como color de
+     letra sobre el papel, y como fondo con texto blanco. Con el azul de
+     fábrica los dos coinciden con el propio acento. */
+  --color-acento-texto:       #1D4ED8;
+  --color-acento-profundo:    #1D4ED8;
+  --color-acento-sobre-oscuro: #93C5FD;
   --color-texto-sobre-acento: #FFFFFF;
   --color-texto:              #0F172A;
   --color-texto-secundario:   #525252;
@@ -134,18 +140,18 @@ section[id] { scroll-margin-top: 84px; }
 .faq-icon {
   flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: var(--landing-ice, #EEF2FF); color: var(--landing-royal, #1565C0);
+  background: var(--landing-ice, #EEF2FF); color: var(--landing-royal-texto, #1565C0);
   transition: transform .25s cubic-bezier(.4,0,.2,1), background .18s ease;
   font-size: 16px; line-height: 1;
 }
-.faq-icon.open { transform: rotate(45deg); background: var(--landing-royal, #1565C0); color: var(--landing-white, #fff); }
+.faq-icon.open { transform: rotate(45deg); background: var(--landing-royal, #1565C0); color: var(--landing-sobre-acento, #fff); }
 .faq-body {
   overflow: hidden; max-height: 0;
   transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease;
   opacity: 0;
 }
 .faq-body.open { opacity: 1; }
-.faq-body-inner { padding-bottom: 18px; font-size: 14px; line-height: 1.7; color: var(--landing-navy-68, rgba(13,27,62,.68)); }
+.faq-body-inner { padding-bottom: 18px; font-size: 14px; line-height: 1.7; color: var(--landing-navy-suave, rgba(13,27,62,.68)); }
 
 /* Testimonial card */
 .testi-card {
@@ -205,19 +211,19 @@ section[id] { scroll-margin-top: 84px; }
 .cjvb-btn-wa {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px 32px; border-radius: 12px;
-  background: #25D366; color: #fff;
+  background: #075E54; color: #fff;
   font-weight: 700; font-size: 15px;
-  box-shadow: 0 6px 20px rgba(37,211,102,.35);
+  box-shadow: 0 6px 20px rgba(7,94,84,.35);
   transition: transform .18s ease, box-shadow .18s ease;
 }
-.cjvb-btn-wa:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(37,211,102,.45); }
+.cjvb-btn-wa:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(7,94,84,.45); }
 
 .cjvb-step-num {
   flex-shrink: 0; width: 56px; height: 56px; border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 13px;
-  background: linear-gradient(135deg, var(--landing-navy, #0D1B3E), var(--landing-royal, #1565C0));
-  color: var(--landing-white, #ffffff);
+  background: linear-gradient(135deg, var(--landing-navy, #0D1B3E), var(--landing-step-fin, #1565C0));
+  color: var(--landing-sobre-step, #ffffff);
   box-shadow: 0 8px 24px var(--landing-navy-35, rgba(13,27,62,.35));
 }
 
