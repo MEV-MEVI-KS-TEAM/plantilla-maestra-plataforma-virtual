@@ -8,7 +8,9 @@ import {
   type TokensColores,
 } from '@/lib/site-config-paletas'
 import { ratioContraste, esHexValido } from '@/lib/contraste'
+import { CLAVES_PALETA, COLORES_DE_FABRICA } from '@/lib/landing-textos'
 import { CONFIG } from '@/lib/config'
+import { ES_PLANTILLA } from './es-plantilla'
 
 /**
  * Personalizar mi página — paletas curadas.
@@ -31,17 +33,36 @@ test('hay exactamente 12 paletas con ids únicos', () => {
   }
 })
 
-test('la primera paleta es la original y calca CONFIG.colores token por token', () => {
+test('la primera paleta es la original y cubre los mismos tokens que el config', () => {
   const original = PALETAS[0]
   expect(original.original).toBe(true)
   // Solo UNA puede ser la original: "restaurar" tiene que ser inequívoco.
   expect(PALETAS.filter(p => p.original).length).toBe(1)
 
-  // Los 12 tokens de la plantilla, ni uno más ni uno menos. Si alguien agrega
-  // un color a CONFIG.colores sin agregarlo a las paletas, esto lo para.
+  // Los 12 tokens, ni uno más ni uno menos. Si alguien agrega un color a
+  // CONFIG.colores sin agregarlo a las paletas, esto lo para. Vale en
+  // cualquier repo: el cliente cambia los VALORES de su paleta, no las claves.
   const tokensConfig = Object.keys(CONFIG.colores).sort()
   expect([...TOKENS_COLORES].sort()).toEqual(tokensConfig)
 
+  // Los seis tonos de marca se comparan contra la paleta DE FÁBRICA, que es
+  // literal y no se mueve con el cliente. Esto también corre en los 144 clones.
+  for (const token of CLAVES_PALETA) {
+    expect(
+      original.colores[token],
+      `la paleta original difiere de la de fábrica en "${token}"`,
+    ).toBe(COLORES_DE_FABRICA[token])
+  }
+})
+
+test('la paleta original calca CONFIG.colores token por token (solo plantilla)', () => {
+  // 🛑 GUARDIÁN DE SINCRONÍA, NO DE COMPORTAMIENTO. En el repo de una escuela
+  //    `CONFIG.colores` son los SUYOS y esta comparación no significa nada: lo
+  //    único que hacía era dejar en rojo la suite de cualquier cliente con
+  //    paleta propia (lo destapó SAMEX, #199). En la plantilla sigue atando la
+  //    paleta original al config de fábrica, que es donde importa.
+  if (!ES_PLANTILLA) return
+  const original = PALETAS[0]
   for (const token of TOKENS_COLORES) {
     expect(
       original.colores[token],

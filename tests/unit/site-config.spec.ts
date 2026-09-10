@@ -32,6 +32,37 @@ import {
 /** CONFIG como JSON plano: sin `readonly` de tipo y sin referencias compartidas. */
 const esperado = () => JSON.parse(JSON.stringify(CONFIG)) as SiteConfig
 
+/**
+ * CONFIG con los alias de mensualidad ALINEADOS a su plan, pase lo que pase en
+ * el `config.ts` de este repo.
+ *
+ * Las pruebas de derivación afirman "tocar el plan arrastra sus alias", y eso
+ * SOLO ocurre cuando el alias venía siguiendo al plan (ver `derivarAliasPrecios`).
+ * En la plantilla se cumple de nacimiento, pero estas mismas pruebas corren en
+ * los ~144 clones, y una escuela que cobre distinto por nivel —SAMEX (#199):
+ * secundaria 2,700 y preparatoria 3,000— las dejaba en rojo sin tener ningún
+ * problema. La premisa se construye aquí en vez de darla por supuesta.
+ */
+const baseAlineada = (): SiteConfig => {
+  const cfg = mergeSiteConfig(CONFIG, {})
+  for (const m of cfg.modalidades) {
+    if (m.meses === 3) {
+      cfg.precios.plan3mMensualidad = m.mensualidad
+      cfg.precios.secundaria_3meses_normal = m.mensualidad
+      cfg.precios.secundaria_3meses_sindicalizado = m.mensualidad
+      cfg.precios.preparatoria_3meses_normal = m.mensualidad
+      cfg.precios.preparatoria_3meses_sindicalizado = m.mensualidad
+    } else if (m.meses === 6) {
+      cfg.precios.plan6mMensualidad = m.mensualidad
+      cfg.precios.secundaria_6meses_normal = m.mensualidad
+      cfg.precios.secundaria_6meses_sindicalizado = m.mensualidad
+      cfg.precios.preparatoria_6meses_normal = m.mensualidad
+      cfg.precios.preparatoria_6meses_sindicalizado = m.mensualidad
+    }
+  }
+  return cfg
+}
+
 test('1. overrides {} → deep-equal a CONFIG y sin referencias compartidas', () => {
   const r = mergeSiteConfig(CONFIG, {})
   expect(r).toEqual(esperado())
@@ -69,8 +100,8 @@ test('3. un arreglo en override reemplaza el arreglo completo', () => {
 })
 
 test('4. modalidades[3_meses].mensualidad deriva los alias de 3 meses y deja los de 6 intactos', () => {
-  const r = mergeSiteConfig(CONFIG, { modalidades: { '3_meses': { mensualidad: 2500 } } })
-  const base = esperado()
+  const base = baseAlineada()
+  const r = mergeSiteConfig(base, { modalidades: { '3_meses': { mensualidad: 2500 } } })
 
   // La modalidad tocada.
   const m3 = r.modalidades.find((m) => m.id === '3_meses')!
@@ -273,10 +304,11 @@ test('los alias legacy divergentes de un cliente se respetan si el canónico NO 
 test('derivarAliasPrecios elige los alias por `meses`, no por id, y no deriva nada para otros meses', () => {
   const cfg = mergeSiteConfig(CONFIG, {})
   const base = esperado()
-  derivarAliasPrecios(cfg, { mensualidades: [{ meses: 9, mensualidad: 777 }] })
+  const base6 = base.precios.plan6mMensualidad
+  derivarAliasPrecios(cfg, { mensualidades: [{ meses: 9, mensualidad: 777, mensualidadBase: 999 }] })
   expect(cfg).toEqual(base)
 
-  derivarAliasPrecios(cfg, { mensualidades: [{ meses: 6, mensualidad: 888 }] })
+  derivarAliasPrecios(cfg, { mensualidades: [{ meses: 6, mensualidad: 888, mensualidadBase: base6 }] })
   expect(cfg.precios.plan6mMensualidad).toBe(888)
   expect(cfg.precios.preparatoria_6meses_sindicalizado).toBe(888)
   expect(cfg.precios.plan3mMensualidad).toBe(base.precios.plan3mMensualidad)
@@ -428,7 +460,7 @@ test('cct y landing.cct se aplican a la vez y por separado', () => {
 })
 
 test('las dos modalidades a la vez derivan cada una sus alias', () => {
-  const r = mergeSiteConfig(CONFIG, {
+  const r = mergeSiteConfig(baseAlineada(), {
     modalidades: { '3_meses': { mensualidad: 2500, activa: false }, '6_meses': { mensualidad: 1250 } },
   })
   const m3 = r.modalidades.find((m) => m.id === '3_meses')!
@@ -597,4 +629,95 @@ test('F3: los defaults nuevos son los literales de la landing (invariante) y her
   expect(l.cta_titulo).toBe('Tu futuro empieza')
   expect(l.cta_highlight).toBe('hoy mismo')
   expect(l.cta_boton).toBe('Crear cuenta gratis →')
+})
+
+// ─── Mensualidad por NIVEL: el editor tiene un campo y la escuela dos precios ─
+//
+// Bug SAMEX (#199, 10-sep-2026). El editor de "Personalizar mi página" muestra
+// UNA mensualidad por plan, pero `precios` desglosa cada plan en secundaria y
+// preparatoria. Al publicar, `derivarAliasPrecios` copiaba la mensualidad del
+// plan a los CUATRO alias de esos meses, así que a una escuela cuya secundaria
+// es más barata que su preparatoria —SAMEX cobra 2,700 y 3,000— publicar
+// cualquier cambio le SUBÍA el precio de la secundaria al de la preparatoria.
+// Un alumno de secundaria terminaba con un cargo que nadie autorizó.
+//
+// La regla es la que ya rige el resto del módulo: un alias sigue al canónico
+// SOLO si venía siguiéndolo. Si en el config.ts divergía, esa divergencia es
+// una decisión de la escuela y el merge no la pisa.
+
+/** CONFIG de una escuela con la secundaria más barata que la preparatoria. */
+const configPorNivel = (): SiteConfig => {
+  const cfg = mergeSiteConfig(CONFIG, {})
+  cfg.modalidades = cfg.modalidades.map((m) =>
+    m.meses === 3 ? { ...m, mensualidad: 3000 } : { ...m, mensualidad: 1500 },
+  ) as SiteConfig['modalidades']
+  cfg.precios.plan3mMensualidad = 3000
+  cfg.precios.plan6mMensualidad = 1500
+  cfg.precios.preparatoria_3meses_normal = 3000
+  cfg.precios.preparatoria_3meses_sindicalizado = 3000
+  cfg.precios.preparatoria_6meses_normal = 1500
+  cfg.precios.preparatoria_6meses_sindicalizado = 1500
+  cfg.precios.secundaria_3meses_normal = 2700
+  cfg.precios.secundaria_3meses_sindicalizado = 2700
+  cfg.precios.secundaria_6meses_normal = 1400
+  cfg.precios.secundaria_6meses_sindicalizado = 1400
+  return cfg
+}
+
+test('mensualidad por nivel: republicar el MISMO precio no le sube el costo a la secundaria', () => {
+  const base = configPorNivel()
+  // Lo que manda el editor al publicar cualquier cambio: el plan con su precio
+  // de siempre, sin tocar. Antes del fix esto ponía la secundaria en 3000.
+  const r = mergeSiteConfig(base, {
+    nombre: 'Otro nombre',
+    modalidades: { '3_meses': { mensualidad: 3000 }, '6_meses': { mensualidad: 1500 } },
+  })
+  expect(r.precios.secundaria_3meses_normal).toBe(2700)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(2700)
+  expect(r.precios.secundaria_6meses_normal).toBe(1400)
+  expect(r.precios.secundaria_6meses_sindicalizado).toBe(1400)
+  // La preparatoria, que sí seguía al canónico, se queda donde estaba.
+  expect(r.precios.preparatoria_3meses_normal).toBe(3000)
+  expect(r.precios.preparatoria_6meses_normal).toBe(1500)
+})
+
+test('mensualidad por nivel: al cambiarla de verdad, solo sigue el nivel que ya seguía', () => {
+  const base = configPorNivel()
+  const r = mergeSiteConfig(base, { modalidades: { '3_meses': { mensualidad: 3200 } } })
+
+  // El nivel alineado con el plan adopta el precio nuevo.
+  expect(r.precios.preparatoria_3meses_normal).toBe(3200)
+  expect(r.precios.preparatoria_3meses_sindicalizado).toBe(3200)
+  expect(r.precios.plan3mMensualidad).toBe(3200)
+  expect(r.modalidades.find((m) => m.meses === 3)!.mensualidad).toBe(3200)
+
+  // 🛑 El que divergía NO se pisa: su precio es una decisión de la escuela y
+  //    el admin nunca lo vio en pantalla para poder cambiarlo.
+  expect(r.precios.secundaria_3meses_normal).toBe(2700)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(2700)
+
+  // Y 6 meses sigue intacto en los dos niveles.
+  expect(r.precios.preparatoria_6meses_normal).toBe(1500)
+  expect(r.precios.secundaria_6meses_normal).toBe(1400)
+})
+
+test('mensualidad por nivel: con todo alineado se deriva igual que siempre', () => {
+  // El invariante de las escuelas que no desglosan precios por nivel: su
+  // comportamiento no cambia ni un peso.
+  const r = mergeSiteConfig(baseAlineada(), { modalidades: { '3_meses': { mensualidad: 2500 } } })
+  expect(r.precios.plan3mMensualidad).toBe(2500)
+  expect(r.precios.secundaria_3meses_normal).toBe(2500)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(2500)
+  expect(r.precios.preparatoria_3meses_normal).toBe(2500)
+  expect(r.precios.preparatoria_3meses_sindicalizado).toBe(2500)
+})
+
+test('mensualidad por nivel: un alias sindicalizado divergente sobrevive al cambio de precio', () => {
+  // El caso que el propio módulo ya documenta: precio sindicalizado distinto
+  // del normal. Cambiar el plan actualiza el normal y respeta el sindicalizado.
+  const base = baseAlineada()
+  base.precios.secundaria_3meses_sindicalizado = 1500
+  const r = mergeSiteConfig(base, { modalidades: { '3_meses': { mensualidad: 2500 } } })
+  expect(r.precios.secundaria_3meses_normal).toBe(2500)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(1500)
 })
