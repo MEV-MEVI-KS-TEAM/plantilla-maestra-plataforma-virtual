@@ -218,7 +218,12 @@ test('COLORES_DE_FABRICA sigue sincronizada con el config.ts de la PLANTILLA', (
   // Solo puede comprobarse en la plantilla maestra: en el repo de un cliente
   // `CONFIG.colores` son los suyos y esta comparación no significa nada. Se
   // salta ahí, y en la plantilla actúa de guardián de la sincronía.
-  const esPlantilla = CONFIG.nombre === 'MEV' || CONFIG.prefijoMatricula === 'MEV'
+  // ⚠️ El `as string` NO SOBRA: CONFIG lleva `as const`, así que estas claves
+  // son tipos literales ('GRATIA', 'GRA'…) y compararlas con 'MEV' en el repo
+  // de un cliente es un TS2367 ("no overlap") que rompería su `tsc --noEmit`.
+  // Es el mismo escape que usan `modo` y `moneda` en config.ts.
+  const esPlantilla =
+    (CONFIG.nombre as string) === 'MEV' || (CONFIG.prefijoMatricula as string) === 'MEV'
   if (!esPlantilla) return
   for (const k of CLAVES_PALETA) {
     expect(COLORES_DE_FABRICA[k], k).toBe((CONFIG.colores as Record<string, string>)[k])
