@@ -201,6 +201,19 @@ export const CONFIG = {
     // Apagarlo sigue siendo válido para una escuela que quiera vender sus cursos
     // solo por fuera del sitio.
     mostrarCatalogoCursos:      true,
+
+    // ¿La tabla de precios enseña el TOTAL del plan (inscripción + todas las
+    // mensualidades)?
+    //
+    // ⚠️ DEFAULT false A PROPÓSITO: añadir una fila a la tabla de precios de
+    // ~144 landings en producción no es un cambio invisible, y en una escuela
+    // donde el plan largo sale más caro el total no ayuda a vender.
+    //
+    // Se enciende donde el total ES el argumento: GRATIA (#198) cobra 3×300 o
+    // 6×150 y las dos rutas suman 950, así que el alumno elige ritmo y no
+    // precio — pero eso no se ve hasta que alguien pone los dos totales lado a
+    // lado.
+    mostrarTotalPlan:           false,
     catalogoTitulo:             'Nuestros diplomados',
     // Texto NEUTRO: igual que en el diploma (B4), el default NO dice "validez
     // oficial", "SEP" ni "RVOE". Eso solo lo agrega quien acredite su registro.

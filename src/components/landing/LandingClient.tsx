@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
-import { getModalidadesActivas, getDuracionLabel, getPlanLabel } from '@/lib/modalidades'
+import { getModalidadesActivas, getDuracionLabel, getPlanLabelPublico, getTotalPlan } from '@/lib/modalidades'
 import { interpolar, type LandingConfig } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { aclarar, oscurecer, hexToRgb } from '@/lib/contraste'
@@ -580,7 +580,15 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <p className="text-xs font-semibold mb-6" style={{ color: C.azure }}>Inscripción: {fmt(p.inscripcion)}</p>
                   <div className="space-y-3 flex-1">
                     {[
-                      ...activas.map(m => ({ label: `Plan ${getPlanLabel(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
+                      // Rótulo PÚBLICO: la escuela puede vender "Express" lo que por
+                      // dentro es "3 Meses". El registro y la constancia siguen con el interno.
+                      ...activas.map(m => ({ label: `Plan ${getPlanLabelPublico(m, mods)}`, price: m.mensualidad, unit: '/mes' })),
+                      // Total del plan: apagado por defecto en toda la flota (ver
+                      // landing.mostrarTotalPlan). Encendido, es lo que deja ver que dos
+                      // planes de ritmos distintos pueden costar exactamente lo mismo.
+                      ...(CONFIG.landing.mostrarTotalPlan
+                        ? activas.map(m => ({ label: `Total ${getPlanLabelPublico(m, mods)}`, price: getTotalPlan(m, p.inscripcion), unit: '' }))
+                        : []),
                       { label: 'Certificación', price: p.certificacionPreparatoria, unit: ' único' },
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
@@ -611,7 +619,17 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.
-                      ...activas.map(m => ({ label: `Plan ${getPlanLabel(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
+                      ...activas.map(m => ({ label: `Plan ${getPlanLabelPublico(m, mods)}`, price: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal, unit: '/mes' })),
+                      ...(CONFIG.landing.mostrarTotalPlan
+                        ? activas.map(m => ({
+                            label: `Total ${getPlanLabelPublico(m, mods)}`,
+                            price: getTotalPlan(
+                              { ...m, mensualidad: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal },
+                              p.inscripcion,
+                            ),
+                            unit: '',
+                          }))
+                        : []),
                       { label: 'Certificación', price: p.certificacionSecundaria, unit: ' único' },
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
