@@ -26,7 +26,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { construirHTML, mxn, cap } from './documento.mjs'
+import { construirHTML, mxn, cap, fijarMoneda } from './documento.mjs'
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -73,6 +73,10 @@ if (HOSTS_PROVISIONALES.some(h => dominio.includes(h)))
   abortar(`CONFIG.dominio apunta a un host provisional: ${dominio}`,
     'El documento de entrega NO se emite con URLs temporales.\nRegistra y conecta el dominio definitivo, ponlo en src/lib/config.ts y vuelve a correr.')
 const URL_BASE = `https://${dominio}`
+
+// Todos los importes del PDF y del mensaje salen en la moneda REAL de la
+// escuela. Se fija ANTES de construir nada.
+fijarMoneda(CONFIG.moneda)
 
 /* ── 2. Credenciales (fuera del repo) ────────────────────────────────────── */
 const rutaDatos = path.join(RAIZ, opt('datos', 'entrega.local.json'))
@@ -310,12 +314,24 @@ const preciosFilas = []
 const inscDistinta = new Set(nivelesPrograma.map(insc)).size > 1
 preciosFilas.push(['Inscripción (pago único)', ...nivelesPrograma.map(n => mxn(insc(n)))])
 for (const m of modalidadesActivas)
-  preciosFilas.push([`Plan ${m.label || m.id}`, ...nivelesPrograma.map(n => `${mxn(mens(m, n))}/mes`)])
+  preciosFilas.push([`Plan ${m.label || m.id} · ${m.meses} ${m.meses === 1 ? 'mes' : 'meses'}`,
+    ...nivelesPrograma.map(n => `${mxn(mens(m, n))}/mes`)])
+// El total del PLAN, sin certificación: es la cifra con la que el alumno decide.
+for (const m of modalidadesActivas)
+  preciosFilas.push([`Total del plan ${m.label || m.id}`,
+    ...nivelesPrograma.map(n => mxn(insc(n) + mens(m, n) * (m.meses || 0)))])
 if (nivelesPrograma.some(n => cert(n)))
   preciosFilas.push(['Certificación', ...nivelesPrograma.map(n => mxn(cert(n)))])
 for (const m of modalidadesActivas) {
+  // El total INCLUYE la certificación (lo dice `notaPrecios`), pero la etiqueta
+  // decía solo "Costo total — plan X" y se leía como el total del plan. En una
+  // escuela cuyos dos planes suman lo mismo, la diferencia entre $950 y $1,400
+  // es justo lo que el cliente va a repetirle a sus alumnos.
+  const conCert = nivelesPrograma.some(n => cert(n))
+  const sufijo = conCert ? ' (con certificación)' : ''
   const etiqueta = modalidadesActivas.length > 1
-    ? `Costo total — plan ${m.label || m.id}` : 'Costo total del programa completo'
+    ? `Costo total — plan ${m.label || m.id}${sufijo}`
+    : `Costo total del programa completo${sufijo}`
   preciosFilas.push({
     total: true,
     celdas: [etiqueta, ...nivelesPrograma.map(n => mxn(insc(n) + mens(m, n) * (m.meses || 0) + cert(n)))],

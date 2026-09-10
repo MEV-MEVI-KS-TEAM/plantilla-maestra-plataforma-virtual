@@ -11,7 +11,27 @@
  */
 
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
-const mxn = (n) => '$' + Number(n || 0).toLocaleString('es-MX')
+
+/**
+ * Moneda con la que se imprimen TODOS los importes del documento y del mensaje.
+ *
+ * ⚠️ Antes esto era `const mxn = n => '$' + …`: pesos a la fuerza, con el nombre
+ * del bug incluido. El Documento de Entrega Oficial de una escuela que cobra en
+ * dólares anunciaba "$1,400" a secas — el papel que el cliente guarda y con el
+ * que le cotiza a sus alumnos. `pnpm entrega` vive en `scripts/`, fuera del
+ * `src/` que revisa el barrido de moneda, así que se quedó atrás.
+ *
+ * La fija `generar-entrega.mjs` desde `CONFIG.moneda` antes de construir nada.
+ * Default 'MXN' para que las ~144 escuelas en pesos impriman lo de siempre.
+ */
+let MONEDA = 'MXN'
+export function fijarMoneda(m) { MONEDA = m === 'MXN' || !m ? 'MXN' : String(m) }
+
+/** '$2,000' en pesos; '$300 USD' en cualquier otra moneda. */
+const mxn = (n) => {
+  const v = '$' + Number(n || 0).toLocaleString('es-MX')
+  return MONEDA === 'MXN' ? v : `${v} ${MONEDA}`
+}
 const cap = (s) => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1)
 
 /* ── Paleta ────────────────────────────────────────────────────────────────

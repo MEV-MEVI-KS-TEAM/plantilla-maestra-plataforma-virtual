@@ -809,7 +809,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
             atribuye a nadie una acreditación que no tiene. */}
         {VALIDEZ.activa && (
         <>
-        <section className="py-20 md:py-28 px-4 sm:px-8" style={{ background: C.white }}>
+        {/* El id NO es decorativo: el mensaje de entrega que genera
+            `pnpm entrega` enlaza a `<dominio>/#validez`. Sin ancla, ese enlace
+            no lleva a ningún lado en ningún cliente con validez oficial. */}
+        <section id="validez" className="py-20 md:py-28 px-4 sm:px-8" style={{ background: C.white }}>
           <div className="max-w-6xl mx-auto">
             <div data-reveal className="text-center">
               <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold leading-tight ${playfair.className}`} style={{ color: C.navy }}>
