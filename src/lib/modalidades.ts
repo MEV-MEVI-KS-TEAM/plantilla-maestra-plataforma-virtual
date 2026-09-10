@@ -376,6 +376,33 @@ export function getPlanLabelPublico(
 }
 
 /**
+ * El plan como lo tiene que leer alguien que está decidiendo: el nombre
+ * comercial Y CUÁNTO DURA.
+ *
+ * ⚠️ POR QUÉ NO BASTA CON `getPlanLabelPublico`. En cuanto una escuela vende sus
+ * planes con nombre propio, el nombre deja de decir la duración: la landing de
+ * GRATIA (#198) ofrecía "Plan Express $300/mes" y "Plan Regular $150/mes" sin
+ * que en ninguna parte de la página apareciera que uno son 3 meses y el otro 6.
+ * El alumno veía dos precios distintos y ninguna forma de saber qué compraba —
+ * y justo en esta escuela los dos planes suman lo mismo, así que sin la
+ * duración el argumento de venta no se entiende.
+ *
+ * Cuando NO hay nombre comercial no se añade nada: el label interno ya dice la
+ * duración ("3 Meses") y "3 Meses · 3 meses" sería ruido. Por eso las ~144
+ * escuelas que no declaran `labelPublico` ven exactamente lo de siempre.
+ */
+export function getPlanLabelConDuracion(
+  modalidad: ModalidadPrograma,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
+  const publico = getPlanLabelPublico(modalidad, mods)
+  const interno = getPlanLabel(modalidad, mods)
+  if (publico === interno) return publico
+  const n = modalidad.meses
+  return `${publico} · ${n} ${n === 1 ? 'mes' : 'meses'}`
+}
+
+/**
  * Lo que cuesta el plan COMPLETO: inscripción + todas las mensualidades.
  *
  * Se pinta solo si la escuela enciende `landing.mostrarTotalPlan`, porque
