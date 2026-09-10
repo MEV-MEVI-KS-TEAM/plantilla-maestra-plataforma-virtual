@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { ES_PLANTILLA } from './es-plantilla'
 import { CONFIG } from '@/lib/config'
 import { CLAVES_EDITABLES, PLACEHOLDERS, type ClaveEditable } from '@/lib/site-config-core'
 import {
@@ -240,11 +241,18 @@ test('7. todo {x} que aparece en un default está declarado en placeholders del 
     }
   }
   // Y los defaults que el contrato dice que llevan placeholder, lo llevan.
-  expect(usados(CONFIG.landing.programas_subtitulo)).toEqual(['inscripcion'])
-  expect(usados(CONFIG.landing.transformacion_con[2])).toEqual(['duracion'])
-  expect(usados(CONFIG.landing.beneficios_items[4].desc)).toEqual(['duracion'])
-  expect(usados(CONFIG.landing.faq_items[0].a)).toEqual(['duracion'])
-  expect(usados(CONFIG.landing.faq_items[4].a)).toEqual(['whatsapp'])
+  //
+  // Solo en la PLANTILLA: son los textos DE FÁBRICA. Una escuela reescribe
+  // su subtítulo de precios o su FAQ en su config.ts —CAU #200 lo hizo, y
+  // EDUHCO— y ahí estas líneas no significan nada. El recorrido de arriba,
+  // que sí vale en todo repo, sigue exigiendo que cada {x} esté declarado.
+  if (ES_PLANTILLA) {
+    expect(usados(CONFIG.landing.programas_subtitulo)).toEqual(['inscripcion'])
+    expect(usados(CONFIG.landing.transformacion_con[2])).toEqual(['duracion'])
+    expect(usados(CONFIG.landing.beneficios_items[4].desc)).toEqual(['duracion'])
+    expect(usados(CONFIG.landing.faq_items[0].a)).toEqual(['duracion'])
+    expect(usados(CONFIG.landing.faq_items[4].a)).toEqual(['whatsapp'])
+  }
 })
 
 test('8. CAMPOS_POR_SECCION y SECCIONES cubren todo, sin repetir y en el orden de CAMPOS', () => {
