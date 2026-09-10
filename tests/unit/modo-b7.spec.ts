@@ -292,7 +292,15 @@ test('el alta manual del admin también fuerza el nivel en solo_cursos', () => {
   const src = sinComentarios(leer('src/app/api/admin/alumnos/route.ts'))
   expect(src).toContain('nivelForzadoDeRegistro()')
   expect(src).toContain('nivelForzado ?? (nivel as')
-  expect(src).toContain('nivelForzado ? null :')
+  // La modalidad va a NULL cuando el alumno no cursa el programa escolar. Se
+  // afirma el INVARIANTE y no el literal: desde que el admin puede dar de alta
+  // directo a un curso, la guarda cubre dos casos —`nivelForzado` en
+  // solo_cursos y `nivel === 'diplomado'` elegido a mano— y clavar la cadena
+  // exacta hacía fallar la prueba por ampliarla.
+  const post = src.slice(src.indexOf('export async function POST'))
+  const asignacion = post.match(/modalidad:[\s\S]{0,220}?getDefaultModalidadId\(\)/)?.[0] ?? ''
+  expect(asignacion).toContain('nivelForzado')
+  expect(asignacion).toContain('null')
 })
 
 test('a un alumno de diplomado no se le abren meses del programa', () => {

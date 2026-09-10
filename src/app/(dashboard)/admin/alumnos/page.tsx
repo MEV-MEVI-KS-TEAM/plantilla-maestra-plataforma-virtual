@@ -9,7 +9,7 @@ import { useSiteConfig } from '@/components/site-config-provider'
 // El nombre del programa lo arma la API (plan_nombre); aquí solo hacen falta
 // el catálogo de carreras y el switch del add-on.
 import { getCarreras } from '@/lib/licenciatura-utils'
-import { getOpcionesNivelAdmin } from '@/lib/niveles'
+import { getOpcionesNivelAdmin, esOpcionCurso } from '@/lib/niveles'
 import { hayOfertasIngreso } from '@/lib/cursos/oferta'
 
 interface Alumno {
@@ -85,6 +85,23 @@ export default function AlumnosPage() {
   // La columna de curso de ingreso solo existe para quien vende el add-on; en
   // el resto de clientes sería una columna vacía en toda la tabla.
   const vendeCursosIngreso = hayOfertasIngreso()
+
+  // Catálogo de cursos y diplomados PUBLICADOS de esta escuela. Se pide al
+  // mismo endpoint que usa el registro público, que ya filtra por
+  // `estado = 'publicado'` y devuelve solo id, nombre y tipo. Sin él, la opción
+  // «Curso o diplomado» no se ofrece y el admin no tiene dónde inscribir.
+  const [cursos, setCursos] = useState<{ id: string; nombre: string; tipo: string }[]>([])
+  useEffect(() => {
+    let vivo = true
+    fetch('/api/catalogo-publico')
+      .then(r => (r.ok ? r.json() : []))
+      .then(d => { if (vivo && Array.isArray(d)) setCursos(d) })
+      .catch(() => {})   // sin catálogo el alta sigue sirviendo para alumnos con nivel
+    return () => { vivo = false }
+  }, [])
+
+  const opcionesNivel = getOpcionesNivelAdmin(cursos.length > 0)
+
   const [form, setForm] = useState({
     nombre_completo: '',
     email: '',
@@ -93,7 +110,11 @@ export default function AlumnosPage() {
     nivel: '',
     modalidad: '',
     carrera: '',
+    cursos_ids: [] as string[],
   })
+
+  // Un alumno de curso no tiene plan escolar: ni modalidad ni carrera.
+  const soloCurso = esOpcionCurso(form.nivel)
 
   const cargarAlumnos = useCallback(async () => {
     setLoading(true)
@@ -135,6 +156,11 @@ export default function AlumnosPage() {
   async function handleCrear(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
+    // El <select> de cursos son checkboxes: `required` del HTML no los cubre.
+    if (soloCurso && form.cursos_ids.length === 0) {
+      setFormError('Selecciona al menos un curso o diplomado.')
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/admin/alumnos', {
@@ -150,7 +176,7 @@ export default function AlumnosPage() {
       const nombre = form.nombre_completo
       const matricula = data.matricula ?? ''
       setModalOpen(false)
-      setForm({ nombre_completo: '', email: '', password: '', telefono: '', nivel: '', modalidad: '', carrera: '' })
+      setForm({ nombre_completo: '', email: '', password: '', telefono: '', nivel: '', modalidad: '', carrera: '', cursos_ids: [] })
       await cargarAlumnos()
       showToast(`✓ Alumno ${nombre} creado${matricula ? ` con matrícula ${matricula}` : ''}`, 'success')
     } catch {
@@ -497,7 +523,13 @@ export default function AlumnosPage() {
                       <span>·</span>
                       <span>{a.plan_nombre || 'Sin plan'}</span>
                       <span>·</span>
-                      <span>{a.meses_desbloqueados}/{a.duracion_meses} meses</span>
+                      {/* Sin plan escolar no hay denominador que valga: se muestran
+                          los meses abiertos y ya, en vez de un «/0». */}
+                      <span>
+                        {a.duracion_meses > 0
+                          ? `${a.meses_desbloqueados}/${a.duracion_meses} meses`
+                          : `${a.meses_desbloqueados} ${a.meses_desbloqueados === 1 ? 'mes abierto' : 'meses abiertos'}`}
+                      </span>
                     </div>
                     {a.curso_solicitado_nombre && (
                       <div className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2"
@@ -581,7 +613,7 @@ export default function AlumnosPage() {
                         )}
                         <td className="px-4 py-3">
                           <span style={{ color: '#F1F5F9' }}>{a.meses_desbloqueados}</span>
-                          <span style={{ color: '#94A3B8' }}>/{a.duracion_meses}</span>
+                          {a.duracion_meses > 0 && <span style={{ color: '#94A3B8' }}>/{a.duracion_meses}</span>}
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -688,18 +720,59 @@ export default function AlumnosPage() {
                 <select
                   required
                   value={form.nivel}
-                  onChange={e => setForm(prev => ({ ...prev, nivel: e.target.value, modalidad: '', carrera: '' }))}
+                  onChange={e => setForm(prev => ({ ...prev, nivel: e.target.value, modalidad: '', carrera: '', cursos_ids: [] }))}
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                   style={INPUT_STYLE}
                 >
                   <option value="">Selecciona nivel...</option>
                   {/* ⚠️ NO escribir opciones a mano: salen de los productos
                       activos del cliente (TICKET-2026-09-07-52). */}
-                  {getOpcionesNivelAdmin().map(o => (
+                  {opcionesNivel.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Selector de cursos. Sustituye a carrera y modalidad: un alumno de
+                  curso no cursa el programa escolar, y darle una modalidad le
+                  fabricaría una `duracion_meses` de un plan que no tiene. Se
+                  permite marcar varios porque la escuela suele venderlos en
+                  paquete y obligar a repetir el alta no tiene sentido. */}
+              {soloCurso && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>
+                    Cursos y diplomados
+                  </label>
+                  <div
+                    className="rounded-lg px-3 py-2.5 space-y-2 max-h-44 overflow-y-auto"
+                    style={{ background: '#141824', border: '1px solid #2A2F3E' }}
+                  >
+                    {cursos.map(c => {
+                      const marcado = form.cursos_ids.includes(c.id)
+                      return (
+                        <label key={c.id} className="flex items-center gap-2.5 text-sm cursor-pointer" style={{ color: '#CBD5E1' }}>
+                          <input
+                            type="checkbox"
+                            checked={marcado}
+                            onChange={() => setForm(prev => ({
+                              ...prev,
+                              cursos_ids: marcado
+                                ? prev.cursos_ids.filter(id => id !== c.id)
+                                : [...prev.cursos_ids, c.id],
+                            }))}
+                            style={{ accentColor: 'var(--color-acento)' }}
+                          />
+                          {c.nombre}
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs" style={{ color: '#64748B' }}>
+                    Se inscribe al alumno al curso. Para que vea el contenido, abre su
+                    Mes 1 desde la ficha del alumno cuando el pago esté registrado.
+                  </p>
+                </div>
+              )}
 
               {form.nivel === 'licenciatura' && (
                 <div className="space-y-1.5">
@@ -719,6 +792,7 @@ export default function AlumnosPage() {
                 </div>
               )}
 
+              {!soloCurso && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Modalidad</label>
                 <select
@@ -735,6 +809,7 @@ export default function AlumnosPage() {
                   ))}
                 </select>
               </div>
+              )}
 
               {formError && (
                 <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#FCA5A5' }}>

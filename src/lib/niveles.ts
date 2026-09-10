@@ -127,18 +127,33 @@ export function getOpcionesNivel(hayCursosPublicados = false): OpcionNivel[] {
  * Opciones para el ALTA MANUAL del admin (modal «Nuevo Alumno» y «Corregir
  * plan de estudio»).
  *
- * Se quedan fuera:
- * - «Cursos», porque el admin inscribe a un curso desde el módulo de Cursos
- *   (pestaña Alumnos), no dando de alta un alumno con nivel escolar.
- * - «Diplomados», porque en estas dos pantallas el admin ya ve la lista
- *   COMPLETA de carreras —diplomados incluidos— bajo la opción de licenciatura,
- *   que es como lleva funcionando y no hay razón para partirla.
+ * ⚠️ ANTES ESTA FUNCIÓN LLAMABA `getOpcionesNivel(false)` CON EL FLAG FIJO.
+ * El razonamiento era que «el admin inscribe a un curso desde el módulo de
+ * Cursos, no dando de alta un alumno con nivel escolar». En la práctica no
+ * funciona así: para llegar a esa pestaña el alumno TIENE que existir ya, y
+ * para crearlo hay que elegirle un nivel escolar que no cursa. Como
+ * `alumnos.nivel` es write-once y no hay pantalla para corregirlo, el admin
+ * acaba con un padrón de alumnos «Preparatoria» que en realidad llevan un
+ * curso. Es el sexto cliente que lo reporta: Edunova e IMN el 25-ago, SIE el
+ * 27-ago, Instituto 10 de Agosto el 31-ago, Fili Cano el 4-sep y My Way el
+ * 10-sep. En los tres primeros se parcheó el clon del cliente y el arreglo
+ * nunca subió aquí.
+ *
+ * Ahora el flag viaja igual que en el registro público: si la escuela tiene
+ * cursos publicados, la opción aparece en las DOS puertas.
+ *
+ * Sigue fuera «Diplomados» (`diplomado_lic`): en estas pantallas el admin ya ve
+ * la lista COMPLETA de carreras —diplomados del riel de licenciaturas
+ * incluidos— bajo la opción de licenciatura, y partirla no aporta nada.
  *
  * Lo que sí hereda es la ETIQUETA: si el cliente vende «Licenciatura ejecutiva»,
  * el panel debe llamarla igual que el formulario público.
+ *
+ * @param hayCursosPublicados igual que en `getOpcionesNivel`: lo pasa la
+ *   pantalla, que es quien puede consultar el catálogo.
  */
-export function getOpcionesNivelAdmin(): OpcionNivel[] {
-  return getOpcionesNivel(false).filter(o => o.value === o.nivel)
+export function getOpcionesNivelAdmin(hayCursosPublicados = false): OpcionNivel[] {
+  return getOpcionesNivel(hayCursosPublicados).filter(o => o.value === o.nivel)
 }
 
 /** Los `nivel` de BD que este cliente acepta hoy. Para validar en el servidor. */
