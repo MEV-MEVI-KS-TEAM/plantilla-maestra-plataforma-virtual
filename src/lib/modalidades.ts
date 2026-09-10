@@ -70,6 +70,20 @@ export type Modalidad = typeof CONFIG.modalidades[number]
 export type ModalidadPrograma = {
   id: string
   label: string
+  /**
+   * Cómo se llama este plan DE CARA AL PÚBLICO, si la escuela lo vende con
+   * otro nombre del que usa por dentro.
+   *
+   * GRATIA (#198) vende "Express" y "Regular" en la landing, pero su registro,
+   * sus pagos y sus constancias tienen que decir "3 Meses" y "6 Meses": el
+   * alumno firma una duración, no un nombre comercial. Antes de esto había que
+   * elegir uno de los dos, y meter el nombre comercial en `label` lo colaba en
+   * la constancia.
+   *
+   * OPCIONAL: sin él, `labelPublico()` devuelve `label` y la landing dice
+   * exactamente lo de hoy en las ~144 escuelas que no lo declaran.
+   */
+  labelPublico?: string
   meses: number
   mensualidad: number
   materiasPorMes: number
@@ -343,4 +357,35 @@ export function getPlanLabel(
     return modalidad.label.split(' — ')[0].trim()
   }
   return modalidad.label
+}
+
+/**
+ * El nombre del plan PARA LA LANDING: el comercial si la escuela lo declaró,
+ * y si no el interno de siempre.
+ *
+ * 🛑 Solo para la cara pública. El registro, los pagos, el panel y las
+ * constancias siguen usando `getPlanLabel`: ahí el alumno tiene que leer la
+ * duración que contrata, no el nombre de marketing.
+ */
+export function getPlanLabelPublico(
+  modalidad: ModalidadPrograma,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
+  const publico = modalidad.labelPublico?.trim()
+  return publico ? publico : getPlanLabel(modalidad, mods)
+}
+
+/**
+ * Lo que cuesta el plan COMPLETO: inscripción + todas las mensualidades.
+ *
+ * Se pinta solo si la escuela enciende `landing.mostrarTotalPlan`, porque
+ * añadir una fila a la tabla de precios de ~144 landings en producción no es
+ * un cambio invisible. Donde sí importa es en una escuela cuyos planes suman
+ * lo mismo por caminos distintos —GRATIA cobra 3×300 o 6×150, y las dos rutas
+ * dan 950— porque ahí el total es justo el argumento de venta: el alumno elige
+ * ritmo, no precio, y sin el total no hay manera de que lo vea.
+ */
+export function getTotalPlan(modalidad: ModalidadPrograma, inscripcion: number): number {
+  const ins = Number.isFinite(inscripcion) ? inscripcion : 0
+  return ins + modalidad.meses * modalidad.mensualidad
 }

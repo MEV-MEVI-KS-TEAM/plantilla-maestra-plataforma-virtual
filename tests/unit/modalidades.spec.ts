@@ -12,6 +12,8 @@ import {
   getDefaultModalidadId,
   getDuracionLabel,
   getPlanLabel,
+  getPlanLabelPublico,
+  getTotalPlan,
   type ModalidadPrograma,
 } from '@/lib/modalidades'
 
@@ -179,4 +181,46 @@ test('5. PublicSiteConfig["modalidades"] es asignable a ModalidadPrograma[]', ()
     expect(typeof m.materiasPorMes).toBe('number')
     expect(typeof m.activa).toBe('boolean')
   }
+})
+
+// ─── Rótulo público y total del plan (#198) ──────────────────────────────────
+
+test('getPlanLabelPublico: sin labelPublico devuelve exactamente lo de siempre', () => {
+  // INVARIANTE de la flota: ~144 escuelas no lo declaran y su landing no cambia.
+  const mods = [
+    { id: '3_meses', label: '3 meses — Express',  meses: 3, mensualidad: 2000, materiasPorMes: 4, activa: true },
+    { id: '6_meses', label: '6 meses — Estándar', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
+  ]
+  for (const m of mods) {
+    expect(getPlanLabelPublico(m, mods)).toBe(getPlanLabel(m, mods))
+  }
+})
+
+test('getPlanLabelPublico: con labelPublico, la landing dice el comercial y el resto el interno', () => {
+  // GRATIA (#198): "Express"/"Regular" de cara al público, "3 Meses"/"6 Meses"
+  // en registro, pagos y constancias — el alumno firma una duración.
+  const mods = [
+    { id: '3_meses', label: '3 Meses', labelPublico: 'Express', meses: 3, mensualidad: 300, materiasPorMes: 4, activa: true },
+    { id: '6_meses', label: '6 Meses', labelPublico: 'Regular', meses: 6, mensualidad: 150, materiasPorMes: 2, activa: true },
+  ]
+  expect(getPlanLabelPublico(mods[0], mods)).toBe('Express')
+  expect(getPlanLabelPublico(mods[1], mods)).toBe('Regular')
+  expect(getPlanLabel(mods[0], mods)).toBe('3 Meses')
+  expect(getPlanLabel(mods[1], mods)).toBe('6 Meses')
+})
+
+test('getPlanLabelPublico: un labelPublico vacío o de espacios NO tapa el interno', () => {
+  const mods = [{ id: '3_meses', label: '3 Meses', labelPublico: '   ', meses: 3, mensualidad: 300, materiasPorMes: 4, activa: true }]
+  expect(getPlanLabelPublico(mods[0], mods)).toBe('3 Meses')
+})
+
+test('getTotalPlan: inscripción + todas las mensualidades', () => {
+  const tres = { id: '3_meses', label: '3 Meses', meses: 3, mensualidad: 300, materiasPorMes: 4, activa: true }
+  const seis = { id: '6_meses', label: '6 Meses', meses: 6, mensualidad: 150, materiasPorMes: 2, activa: true }
+  expect(getTotalPlan(tres, 50)).toBe(950)
+  expect(getTotalPlan(seis, 50)).toBe(950)
+  // El caso que motivó la función: dos ritmos, el mismo precio.
+  expect(getTotalPlan(tres, 50)).toBe(getTotalPlan(seis, 50))
+  // Una inscripción inválida no propaga NaN a la landing.
+  expect(getTotalPlan(tres, Number.NaN)).toBe(900)
 })
