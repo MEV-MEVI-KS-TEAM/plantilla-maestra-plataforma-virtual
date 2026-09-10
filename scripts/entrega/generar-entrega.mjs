@@ -65,6 +65,7 @@ const HOSTS_PROVISIONALES = ['vercel.app', 'netlify.app', 'localhost', '127.0.0.
 /* ── 1. Config del cliente ───────────────────────────────────────────────── */
 const { CONFIG } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/config.ts')).href)
 
+
 const dominio = String(CONFIG.dominio || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
 if (!dominio) abortar('CONFIG.dominio está vacío.',
   'El documento de entrega se emite con el dominio definitivo del cliente.\nDefínelo en src/lib/config.ts antes de generar la entrega.')
@@ -173,6 +174,50 @@ const tipoDePrograma = (c) => {
 const CARRERAS = (CONFIG.licenciaturas?.activas ? (CONFIG.licenciaturas.carreras || []) : [])
   .map(c => ({ ...c, tipo: tipoDePrograma(c), inv: INV.porCarrera?.[c.slug] ?? null }))
 const TIPOS = [...new Set(CARRERAS.map(c => c.tipo))]
+
+/**
+ * Lo hecho a medida se detecta mirando el repo, no declarándolo a mano: una
+ * lista escrita a mano en el generador envejece a la primera entrega.
+ */
+const existe = (rel) => { try { return fs.existsSync(path.join(RAIZ, rel)) } catch { return false } }
+const RUTAS_TITULACION = (CONFIG.licenciaturas?.rutas || []).filter(r => r.activa !== false)
+const FORMULARIO_DIAGNOSTICO = existe('src/app/(dashboard)/admin/prospectos/page.tsx')
+  || existe('src/app/api/admin/prospectos/route.ts')
+/**
+ * Página institucional con demostración embebida, si el cliente la tiene.
+ *
+ * No se busca por nombre —cada cliente llama a la suya como quiere— sino por lo
+ * que la hace distinta: una página pública que embebe algo servido desde
+ * `public/demo`. Se devuelve su ruta para poder enlazarla.
+ */
+const PAGINA_INSTITUCIONAL = (() => {
+  if (!existe('public/demo')) return null
+  const base = path.join(RAIZ, 'src/app')
+  const buscar = (dir, rel = '') => {
+    let hallado = null
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (hallado) break
+      const abs = path.join(dir, e.name)
+      if (e.isDirectory()) {
+        // Los grupos de rutas de Next, `(auth)` y compañía, no van en la URL.
+        const salto = /^\(.*\)$/.test(e.name)
+        hallado = buscar(abs, salto ? rel : `${rel}/${e.name}`)
+      } else if (e.name === 'page.tsx') {
+        try {
+          if (/["'`]\/demo\//.test(fs.readFileSync(abs, 'utf8'))) hallado = rel || '/'
+        } catch { /* ilegible */ }
+      }
+    }
+    return hallado
+  }
+  try { return buscar(base) } catch { return null }
+})()
+const PAGINAS_LEGALES = [
+  ['src/app/terminos/page.tsx', 'Términos y Condiciones'],
+  ['src/app/privacidad/page.tsx', 'Aviso de Privacidad'],
+  ['src/app/carta-responsiva/page.tsx', 'Carta Responsiva'],
+].filter(([f]) => existe(f)).map(([, n]) => n)
+
 /** Título de la sección y palabra para el bloque, según lo que el cliente vende. */
 // El documento enlaza a la sección de los programas en la página pública. El id
 // se LEE de la landing en vez de darlo por hecho: estaba escrito '#programas' y
@@ -192,11 +237,19 @@ const anclaProgramas = (() => {
   return null
 })()
 
+// El rótulo nombra lo que el cliente vende de verdad. «Cursos y diplomados»
+// para cuatro licenciaturas y dos diplomados no describe ninguna de las dos
+// cosas, y es el título de la página que el cliente va a enseñar.
+const NOMBRE_TIPO = { curso: 'Cursos de preparación', diplomado: 'Diplomados', licenciatura: 'Licenciaturas' }
 const ETIQUETA_PROGRAMAS = TIPOS.length === 0 ? 'Programas'
-  : TIPOS.length === 1
-    ? ({ curso: 'Cursos de preparación', diplomado: 'Diplomados', licenciatura: 'Licenciaturas' })[TIPOS[0]]
-    : 'Cursos y diplomados'
-const PALABRA_BLOQUE = TIPOS.includes('licenciatura') ? 'Cuatrimestres' : 'Módulos'
+  : ['licenciatura', 'diplomado', 'curso']
+      .filter(t => TIPOS.includes(t))
+      .map(t => NOMBRE_TIPO[t])
+      .join(' y ')
+// 🛑 «Cuatrimestre» no se le dice al cliente ni al alumno: es palabra prohibida
+// en todo material de entrega. La llave del JSON del banco se llama así porque
+// la consume el seeder; en pantalla y en papel se dice «módulos».
+const PALABRA_BLOQUE = 'Módulos'
 
 const nivelesPrograma = CONFIG.niveles.filter(n => n !== 'licenciatura')
 const modalidadesActivas = (CONFIG.modalidades || []).filter(m => m && typeof m === 'object' && m.activa)
@@ -213,7 +266,24 @@ const porNivel = (v, nivel) => {
   const vals = Object.values(v).filter(x => typeof x === 'number')
   return vals.length ? Math.max(...vals) : 0
 }
-const insc = (nivel) => porNivel(CONFIG.precios?.inscripcion, nivel)
+/**
+ * Inscripción de un nivel.
+ *
+ * 🐞 Leía solo `precios.inscripcion`, que es UN número, así que en un cliente
+ * con inscripción diferenciada por nivel imprimía la misma cifra para todos.
+ * En SÉNDERI el documento oficial de entrega anunciaba Preparatoria a $399
+ * cuando cuesta $499: la plataforma cobra bien y el papel decía otra cosa.
+ *
+ * Las claves por nivel son las mismas que usa `inscripcionPara()` en el config,
+ * que es de donde lee el registro. Se consultan primero, en sus dos grafías.
+ */
+const insc = (nivel) => {
+  const n = String(nivel || '')
+  const porClave = CONFIG.precios?.[`inscripcion${cap(n)}`]
+    ?? CONFIG.precios?.[`inscripcion_${n.toLowerCase()}`]
+  if (typeof porClave === 'number') return porClave
+  return porNivel(CONFIG.precios?.inscripcion, nivel)
+}
 const cert = (nivel) => CONFIG.precios?.[`certificacion${cap(nivel)}`]
   ?? CONFIG.precios?.[`certificacion_${nivel}`] ?? 0
 /**
@@ -265,13 +335,39 @@ for (const n of nivelesPrograma)
       `${mxn(mens(m, n))}/mes`, `${m.materiasPorMes} materia${m.materiasPorMes === 1 ? '' : 's'} por mes`])
 // Los programas de pago único: se nombran por lo que son. Decir "Licenciatura"
 // a un curso de preparación es anunciarle al cliente algo que no vendió.
-if (CARRERAS.length)
-  for (const m of (CONFIG.licenciaturas.modalidades || []).filter(x => x.activa !== false))
-    modalidadesFilas.push([
-      CARRERAS.length === 1 ? `${CARRERAS[0].nombre} — ${m.label || m.id}`
-                            : `${ETIQUETA_PROGRAMAS} — ${m.label || m.id}`,
-      `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
+//
+// 🐞 Cada plan se nombra por SU RUTA cuando el programa tiene varias, y los que
+// no llevan mensualidad en esta tabla se omiten: el plan de los diplomados
+// aparecía como «$0/mes» porque su precio no vive aquí, y una fila que anuncia
+// un plan gratis en el documento de entrega es una promesa que nadie quiso
+// hacer.
+if (CARRERAS.length) {
+  const rutasLic = (CONFIG.licenciaturas.rutas || []).filter(r => r.activa !== false)
+  const deRuta = new Map()
+  for (const r of rutasLic)
+    for (const m of (r.modalidades || [])) deRuta.set(m.id, r)
+
+  for (const m of (CONFIG.licenciaturas.modalidades || []).filter(x => x.activa !== false)) {
+    if (!m.mensualidad) continue
+    const r = deRuta.get(m.id)
+    const nombre = r && rutasLic.length > 1
+      ? `${r.nombre} — ${m.label || m.id}`
+      : CARRERAS.length === 1 ? `${CARRERAS[0].nombre} — ${m.label || m.id}`
+                              : `${ETIQUETA_PROGRAMAS} — ${m.label || m.id}`
+    modalidadesFilas.push([nombre, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
       `${m.materiasPorMes} materia${m.materiasPorMes === 1 ? '' : 's'} por mes`])
+  }
+
+  // Los diplomados llevan su plan y su precio en su propio bloque del config.
+  const modsDip = (CONFIG.licenciaturas.modalidadesDiplomado || []).filter(x => x.activa !== false)
+  for (const c of CARRERAS.filter(x => x.tipo === 'diplomado' && x.precio)) {
+    const m = modsDip[0]
+    if (!m) continue
+    modalidadesFilas.push([`${c.nombre} — ${m.label || m.id}`, `${m.meses} meses`,
+      `${mxn(c.precio.mensual)}/mes`,
+      `${m.materiasPorMes} materia${m.materiasPorMes === 1 ? '' : 's'} por mes`])
+  }
+}
 // El módulo para que el cliente cargue SUS propios cursos, distinto de los
 // programas ya entregados: se etiqueta para que no se confundan.
 modalidadesFilas.push(['Cursos propios (módulo vacío)', 'La define cada curso', 'Por curso', 'Por módulos'])
@@ -435,6 +531,27 @@ const datos = {
     ] : []),
     'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
     'Rol de secretario con accesos delimitados',
+
+    // ── Lo que se construyó a medida para este cliente ────────────────
+    // El documento listaba solo lo que trae la plantilla, así que todo lo
+    // hecho a medida —que suele ser lo que el cliente pidió y por lo que
+    // pagó— no aparecía por ninguna parte. Estas entradas se encienden solas
+    // según lo que el config declare.
+    ...(CONFIG.comunidad?.activa ? [
+      `${CONFIG.comunidad.etiqueta || 'Comunidad'}: ${CONFIG.comunidad.descripcion || ''} Se valida con matrícula y correo desde el propio registro`.trim(),
+    ] : []),
+    ...(FORMULARIO_DIAGNOSTICO ? [
+      'Formulario de diagnóstico en la página pública: los prospectos entran a tu panel con su programa y su modalidad de interés',
+    ] : []),
+    ...(RUTAS_TITULACION.length > 1 ? [
+      `Dos rutas de titulación distintas (${RUTAS_TITULACION.map(r => r.nombre).join(' y ')}), con su propio plan, su propio precio y su propio aviso legal`,
+    ] : []),
+    ...(PAGINAS_LEGALES.length ? [
+      `Páginas legales publicadas: ${PAGINAS_LEGALES.join(', ')}`,
+    ] : []),
+    ...(PAGINA_INSTITUCIONAL ? [
+      'Página institucional con el manifiesto de la marca y una demostración interactiva de un curso real, abierta sin registro',
+    ] : []),
   ].filter(Boolean),
 }
 
@@ -453,6 +570,88 @@ const pag = await nav.newPage()
 await pag.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle' })
 await pag.evaluate(() => document.fonts.ready)
 await pag.waitForTimeout(2000)
+// ⚠️ Cada `.page` mide once pulgadas y recorta lo que sobra SIN DECIR NADA.
+// Una sección que crece —una carrera más, un aviso legal nuevo, un cliente con
+// más oferta que el de ayer— se lleva por delante lo último que se escribió, y
+// el documento sale con una frase cortada a media línea. Nadie lo ve hasta que
+// lo ve el cliente.
+//
+// Aquí el documento se pagina de verdad: lo que no cabe se pasa a una página
+// nueva, con su misma cabecera y su mismo pie, y los números se renumeran al
+// final. Así el diseño de página fija se mantiene y ninguna sección obliga a
+// adivinar cuánto texto entra.
+const reparto = await pag.evaluate(() => {
+  const cabe = (pagina) => {
+    const cuerpo = pagina.querySelector('.body')
+    return cuerpo.scrollHeight - cuerpo.clientHeight <= 2
+  }
+  const movidos = []
+  let guardia = 0
+  for (let i = 0; i < document.querySelectorAll('.page').length; i++) {
+    const pagina = document.querySelectorAll('.page')[i]
+    const cuerpo = pagina.querySelector('.body')
+    if (cabe(pagina) || cuerpo.children.length < 2) continue
+
+    // Página nueva, calcada de la actual pero con el cuerpo vacío.
+    const nueva = pagina.cloneNode(true)
+    const cuerpoNuevo = nueva.querySelector('.body')
+    cuerpoNuevo.innerHTML = ''
+    pagina.after(nueva)
+
+    // Se pasan bloques del final hasta que la de arriba respire. Siempre queda
+    // al menos uno: un bloque que no cabe ni solo no se arregla moviéndolo.
+    while (!cabe(pagina) && cuerpo.children.length > 1 && guardia++ < 400) {
+      const ultimo = cuerpo.lastElementChild
+      cuerpoNuevo.insertBefore(ultimo, cuerpoNuevo.firstChild)
+      movidos.push(ultimo.tagName.toLowerCase())
+    }
+
+    // Un encabezado no se queda solo al pie de una página con su contenido en
+    // la siguiente. Se va con él.
+    while (cuerpo.children.length > 1 && /^H[2-4]$/.test(cuerpo.lastElementChild?.tagName ?? '')) {
+      cuerpoNuevo.insertBefore(cuerpo.lastElementChild, cuerpoNuevo.firstChild)
+    }
+
+    if (!cuerpoNuevo.children.length) { nueva.remove(); continue }
+
+    // Si la página nueva no empieza por un título, se rotula: quien la lea
+    // suelta tiene que saber de qué sección viene.
+    if (!/^H[1-4]$/.test(cuerpoNuevo.firstElementChild?.tagName ?? '')) {
+      const deDonde = [...document.querySelectorAll('.page')]
+        .slice(0, i + 1).reverse()
+        .map(p => p.querySelector('.body h2'))
+        .find(Boolean)?.textContent?.trim()
+      if (deDonde) {
+        const rotulo = document.createElement('p')
+        rotulo.className = 'cont'
+        rotulo.textContent = `${deDonde} (continúa)`
+        cuerpoNuevo.insertBefore(rotulo, cuerpoNuevo.firstChild)
+      }
+    }
+  }
+  // Renumerar: los números de página se escribieron antes de repartir.
+  const paginas = [...document.querySelectorAll('.page')]
+  paginas.forEach((p, i) => {
+    const pg = p.querySelector('.pg')
+    if (pg) pg.textContent = `Pág. ${i + 1}`
+  })
+  // Lo que siga sin caber después de repartir es un bloque indivisible.
+  const rebeldes = paginas.map((p, i) => {
+    const c = p.querySelector('.body')
+    const sobra = c.scrollHeight - c.clientHeight
+    return sobra > 4
+      ? { pagina: i + 1, titulo: p.querySelector('h2, h3')?.textContent?.trim().slice(0, 46) ?? '', sobra: Math.round(sobra) }
+      : null
+  }).filter(Boolean)
+  return { paginas: paginas.length, movidos: movidos.length, rebeldes }
+})
+log(`· Paginado: ${reparto.paginas} páginas${reparto.movidos ? `, ${reparto.movidos} bloque(s) pasados a página nueva` : ''}`)
+if (reparto.rebeldes.length) {
+  log('🛑 SIGUE SIN CABER, y el PDF lo recorta:')
+  for (const x of reparto.rebeldes) log(`   Pág. ${x.pagina} «${x.titulo}» — sobran ${x.sobra} px`)
+  log('   Es un bloque que no entra ni en una página vacía: hay que acortarlo o partirlo a mano.')
+}
+
 await pag.pdf({ path: pdfPath, format: 'Letter', printBackground: true,
   margin: { top: '0', right: '0', bottom: '0', left: '0' } })
 await nav.close()
@@ -491,9 +690,26 @@ if (!flag('solo-pdf')) {
   // Sin esto, el mensaje de entrega no mencionaba ni una vez lo que el cliente
   // acababa de comprar.
   if (CARRERAS.length) {
+    // Los programas de pago único se listan por TIPO, no en un montón.
+    //
+    // 🐞 Antes salían los seis juntos bajo «Cursos y diplomados», con los
+    // precios de todas las rutas en una sola línea plana. En un cliente con
+    // licenciaturas y diplomados a la vez eso mezcla dos productos que legalmente
+    // no son lo mismo: la licenciatura titula, el diplomado prepara para una
+    // evaluación que hace un tercero. Y colaba planes de otro producto: el de
+    // los diplomados aparecía como «6 meses: $0/mes», porque su mensualidad no
+    // vive en `licenciaturas.modalidades`.
+    const grupos = [
+      ['licenciatura', 'LICENCIATURAS'],
+      ['diplomado',    'DIPLOMADOS'],
+      ['curso',        'CURSOS DE PREPARACIÓN'],
+    ].map(([tipo, titulo]) => [titulo, CARRERAS.filter(c => c.tipo === tipo)])
+      .filter(([, cs]) => cs.length)
+
+    for (const [titulo, carreras] of grupos) {
     const modsLic = (CONFIG.licenciaturas.modalidades || []).filter(m => m.activa !== false)
-    L.push(`🎓 ${ETIQUETA_PROGRAMAS.toUpperCase()}`)
-    for (const c of CARRERAS) {
+    L.push(`🎓 ${grupos.length > 1 ? titulo : ETIQUETA_PROGRAMAS.toUpperCase()}`)
+    for (const c of carreras) {
       const partes = []
       if (c.inv?.materias) partes.push(`${c.inv.materias} materias`)
       if (c.cuatrimestres) partes.push(`${c.cuatrimestres} módulos`)
@@ -501,13 +717,60 @@ if (!flag('solo-pdf')) {
       if (reactivos) partes.push(`${reactivos} reactivos`)
       L.push(`• ${c.nombre}${partes.length ? ` — ${partes.join(' · ')}` : ''}`)
     }
-    if (modsLic.length) {
+    // ── Los planes, cada uno con su ruta ─────────────────────────────
+    // Un cliente puede vender el mismo programa por caminos que se titulan
+    // distinto. Listar sus planes en una sola línea borra la diferencia, que
+    // es justo lo que el cliente tiene que poder explicar a un prospecto.
+    const RUTAS = (CONFIG.licenciaturas.rutas || []).filter(r => r.activa !== false)
+    const esDip = titulo === 'DIPLOMADOS'
+
+    if (esDip) {
+      // El diplomado tiene su propio plan y su propio precio, y ninguno de los
+      // dos vive en `licenciaturas.modalidades`.
+      const modsDip = (CONFIG.licenciaturas.modalidadesDiplomado || []).filter(m => m.activa !== false)
+      for (const c of carreras) {
+        if (!c.precio) continue
+        const p = c.precio
+        const linea = [`${c.nombre}: ${mxn(p.publico)}`]
+        if (p.mensual && modsDip.length) linea.push(`${mxn(p.mensual)}/mes durante ${modsDip[0].meses} meses`)
+        if (p.exhibiciones && p.montoExhibicion) linea.push(`o ${p.exhibiciones} pagos de ${mxn(p.montoExhibicion)}`)
+        // `alumnoSenderi` es como lo llamó el primer cliente que tuvo tarifa
+        // preferente; `alumnoActivo` es el nombre neutro. Se admiten los dos.
+        const preferente = p.alumnoActivo ?? p.alumnoSenderi
+        if (preferente) linea.push(`${mxn(preferente)} para quien ya cursa otro programa`)
+        L.push(`Precio · ${linea.join(' · ')}`)
+      }
+      // El marco legal del diplomado: lo que se vende es la preparación.
+      const aviso = CONFIG.licenciaturas.avisoCostoDiplomado
+      const dis = CONFIG.licenciaturas.disclaimerDiplomado
+      if (aviso) L.push(`⚠️ ${aviso}`)
+      if (dis) L.push(`⚠️ ${dis}`)
+    } else if (RUTAS.length > 1) {
+      // Cada ruta lleva sus propias modalidades dentro, con su propio precio.
+      for (const r of RUTAS) {
+        const mods = (r.modalidades || []).filter(m => m.activa !== false)
+        L.push(`Ruta ${r.nombre} — el documento lo otorga: ${r.titulaQuien || 'la institución'}`)
+        if (mods.length)
+          L.push(`   Planes: ${mods.map(m => `${m.label || m.id}: ${mxn(m.mensualidad)}/mes`).join(' · ')}`)
+        if (r.certificacion) {
+          L.push(`   Titulación: ${mxn(r.certificacion)}${
+            r.aportaciones && r.montoAportacion
+              ? ` en ${r.aportaciones} aportaciones de ${mxn(r.montoAportacion)}` : ''}`)
+        }
+        // 🛑 El aviso legal de una ruta que NO titula va en el mensaje de
+        // entrega, no solo en la landing: el cliente tiene que poder explicarlo
+        // igual que lo explica su página, y este es el papel al que va a volver.
+        if (r.disclaimer) L.push(`   ⚠️ ${r.disclaimer}`)
+      }
+    } else if (modsLic.length) {
       const precios = modsLic.map(m => `${m.label || m.id}: ${mxn(m.mensualidad)}/mes`).join(' · ')
       L.push(`Precio: ${precios}`)
     }
+
     const inscLic = CONFIG.licenciaturas.inscripcion
-    L.push(inscLic ? `Inscripción: ${mxn(inscLic)}` : 'Sin inscripción adicional.')
+    if (!esDip) L.push(inscLic ? `Inscripción: ${mxn(inscLic)}` : 'Sin inscripción adicional.')
     L.push('Se inscriben desde tu misma página, eligiendo el programa al registrarse.', '')
+    }
   }
   L.push('⚙️ LO QUE PUEDES HACER DESDE TU PANEL',
     '• Dar de alta alumnos y abrirles el contenido mes a mes',
@@ -518,7 +781,27 @@ if (!flag('solo-pdf')) {
     '• Crear tus propios Cursos y Diplomados cuando quieras',
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
+      : []),
+    // Lo hecho a medida también se opera desde el panel, y si no se nombra el
+    // cliente no sabe que lo tiene.
+    ...(FORMULARIO_DIAGNOSTICO
+      ? ['• Ver los prospectos que dejan sus datos en tu página, con el programa que les interesa']
+      : []),
+    ...(CONFIG.comunidad?.activa
+      ? [`• Marcar a quien concluye un programa como ${(CONFIG.comunidad.etiqueta || 'parte de tu comunidad').split(' · ')[0]}, para que su siguiente inscripción salga en $0`]
       : []), '')
+
+  // ── Lo que ya está publicado de cara a sus prospectos ──────────────────
+  // El mensaje hablaba del panel y de los precios, pero no de las páginas que
+  // el visitante ve. Son parte de lo entregado y el cliente tiene que saber
+  // que existen para poder enseñarlas.
+  const publicas = [
+    D.validez !== false && `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`,
+    PAGINA_INSTITUCIONAL && `• Manifiesto de tu marca, con una demostración de un curso real que se prueba sin registro: ${URL_BASE}${PAGINA_INSTITUCIONAL}`,
+    FORMULARIO_DIAGNOSTICO && `• Formulario de diagnóstico para captar prospectos: ${URL_BASE}/#diagnostico`,
+    PAGINAS_LEGALES.length && `• ${PAGINAS_LEGALES.join(', ')}, redactados y publicados`,
+  ].filter(Boolean)
+  if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')
   L.push('📄 Te adjunto el Documento de Entrega Oficial con todo el detalle.',
     'Guárdalo, ahí tienes tus accesos y el resumen completo de tu plataforma.', '')
   L.push('🎬 ACADEMIA MEV — TUS TUTORIALES', '',
