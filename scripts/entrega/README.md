@@ -109,6 +109,18 @@ El documento **no es una plantilla fija**: cambia según lo que el cliente compr
   mano: comunidad con inscripción $0, formulario de diagnóstico, páginas legales
   y página institucional con demostración embebida.
 - **Cursos y Diplomados** → siempre presente; dice si va vacío o con contenido.
+- **Cobro semanal** (`periodicidad: 'semanal'`) → los planes salen de
+  `modalidades[].nivel`, no del cruce niveles × modalidades; la cuota se escribe
+  a la semana, el total suma inscripción + todas las cuotas + certificación, y
+  el mensaje explica el calendario de pagos y Cobranza. Vive en `planes.mjs` y
+  lo prueba `tests/unit/entrega-semanal.spec.ts`.
+- **Varios alumnos de prueba** → `alumnosPrueba: [{ "email", "password" }]` en
+  `entrega.local.json`: una fila por alumno, con su nivel y su matrícula. Con un
+  solo `alumnoEmail`, la matrícula es la de ese alumno, no la del primero de la base.
+- **Oferta solo informativa** (`CONFIG.ofertaPublica`, en los clones que la
+  declaran) → los planes atendidos por WhatsApp y el catálogo de licenciaturas
+  se nombran en la funcionalidad y en «Lo que ya ve tu prospecto».
+- **Sin eslogan** → no se imprimen comillas vacías; el pie lleva el nombre.
 
 ## La regla del dominio
 

@@ -27,6 +27,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { construirHTML, mxn, cap, fijarMoneda } from './documento.mjs'
+import {
+  esSemanal, planesSemanales, tablaPrecios, colsModalidades, filasModalidades,
+  frasesSemanales, lineasPreciosWhatsApp, ofertaInformativa,
+} from './planes.mjs'
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -96,6 +100,16 @@ const D = JSON.parse(fs.readFileSync(rutaDatos, 'utf8'))
 for (const k of ['adminNombre', 'adminEmail', 'adminPassword'])
   if (!D[k]) abortar(`Falta "${k}" en ${path.basename(rutaDatos)}`)
 
+/**
+ * Alumnos de prueba que se entregan: uno, como siempre (`alumnoEmail`), o varios
+ * con `alumnosPrueba: [{ email, password }]`. Una escuela que vende cada nivel con
+ * otra duración entrega uno por nivel, porque sus calendarios no se parecen
+ * (CAU #200: 12 semanas en secundaria, 24 en preparatoria).
+ */
+const ALUMNOS_PRUEBA = Array.isArray(D.alumnosPrueba) && D.alumnosPrueba.length
+  ? D.alumnosPrueba.filter(a => a?.email)
+  : (D.alumnoEmail ? [{ email: D.alumnoEmail, password: D.alumnoPassword }] : [])
+
 /* ── 3. Conteo real de contenido ─────────────────────────────────────────── */
 async function inventario() {
   const env = path.join(RAIZ, '.env.local')
@@ -155,6 +169,16 @@ async function inventario() {
   const { data: al } = await sb.from('alumnos').select('matricula')
     .not('matricula', 'is', null).order('created_at').limit(1)
   inv.matricula = al?.[0]?.matricula ?? null
+  // La matrícula que se imprime es la DEL ALUMNO DE PRUEBA, no la del primer
+  // alumno de la base. En CAU (#200) el primero dado de alta era el de
+  // preparatoria, y el documento le ponía su matrícula al de secundaria.
+  inv.alumnos = {}
+  for (const a of ALUMNOS_PRUEBA) {
+    const { data: u } = await sb.from('usuarios').select('id').eq('email', a.email).maybeSingle()
+    if (!u) { log(`  ⚠ ${a.email} no está en usuarios: sale sin matrícula`); continue }
+    const { data: fila } = await sb.from('alumnos').select('matricula, nivel').eq('id', u.id).maybeSingle()
+    inv.alumnos[a.email] = { matricula: fila?.matricula ?? null, nivel: fila?.nivel ?? null }
+  }
   return inv
 }
 log('· Leyendo inventario de contenido…')
@@ -308,6 +332,27 @@ const mens = (m, nivel) => {
   return porNivel(m.mensualidad, nivel)
 }
 
+/* ── Cobro SEMANAL ───────────────────────────────────────────────────────────
+ * Todo lo de arriba es mensual y cruza niveles × modalidades. En una escuela que
+ * cobra por semana eso imprimía «$250/mes», totales de meses × cuota y planes que
+ * el nivel no vende (EDUHCO #197, CAU #200). Sus tablas y frases salen de
+ * `planes.mjs`, que las prueba; la rama mensual no cambia ni un carácter.
+ */
+const SEMANAL = esSemanal(CONFIG)
+const PLANES_SEMANALES = SEMANAL ? planesSemanales(CONFIG, nivelesPrograma, { insc, cert }) : []
+if (SEMANAL && !PLANES_SEMANALES.length)
+  abortar('CONFIG.periodicidad es "semanal", pero ninguna modalidad activa trae semanas y cuotaSemanal.',
+    'Cada plan semanal necesita { semanas, cuotaSemanal } en CONFIG.modalidades.')
+const FRASES_SEMANALES = SEMANAL ? frasesSemanales(PLANES_SEMANALES, nivelesPrograma) : null
+// Lo que la página anuncia sin venderlo en línea (planes por WhatsApp, catálogo
+// informativo). Solo existe en los clones que lo declaran en CONFIG.ofertaPublica.
+const OFERTA_INFORMATIVA = ofertaInformativa(CONFIG)
+const anclaEnLanding = (id) => {
+  try {
+    return fs.readFileSync(path.join(RAIZ, 'src/components/landing/LandingClient.tsx'), 'utf8').includes(`id="${id}"`)
+  } catch { return false }
+}
+
 // Tabla de precios: una columna por nivel, una fila por concepto.
 const preciosCols = ['Concepto', ...nivelesPrograma.map(cap)]
 const preciosFilas = []
@@ -338,6 +383,15 @@ for (const m of modalidadesActivas) {
   })
 }
 
+// En una escuela semanal, la tabla de arriba se sustituye entera por la de sus
+// planes reales: con un plan por nivel, una columna por nivel; con varios, una
+// fila por plan.
+if (SEMANAL) {
+  const t = tablaPrecios(PLANES_SEMANALES, nivelesPrograma)
+  preciosCols.splice(0, preciosCols.length, ...t.cols)
+  preciosFilas.splice(0, preciosFilas.length, ...t.filas)
+}
+
 // Tabla de modalidades contratadas.
 const rango = (m) => {
   const v = [...new Set(nivelesPrograma.map(n => mens(m, n)))].sort((a, b) => a - b)
@@ -349,6 +403,11 @@ for (const n of nivelesPrograma)
   for (const m of modalidadesActivas)
     modalidadesFilas.push([`${cap(n)} — plan ${m.label || m.id}`, `${m.meses} meses`,
       `${mxn(mens(m, n))}/mes`, `${m.materiasPorMes} materia${m.materiasPorMes === 1 ? '' : 's'} por mes`])
+// Escuela semanal: una fila por plan REAL, con su cuota a la semana.
+if (SEMANAL) {
+  modalidadesCols.splice(0, modalidadesCols.length, ...colsModalidades)
+  modalidadesFilas.splice(0, modalidadesFilas.length, ...filasModalidades(PLANES_SEMANALES))
+}
 // Los programas de pago único: se nombran por lo que son. Decir "Licenciatura"
 // a un curso de preparación es anunciarle al cliente algo que no vendió.
 //
@@ -468,7 +527,10 @@ const datos = {
   adminNombre: D.adminNombre, adminGenero: D.adminGenero || 'o',
   adminEmail: D.adminEmail, adminPassword: D.adminPassword,
   alumnoEmail: D.alumnoEmail, alumnoPassword: D.alumnoPassword,
-  matricula: INV.matricula,
+  matricula: D.alumnoEmail && INV.alumnos ? (INV.alumnos[D.alumnoEmail]?.matricula ?? null) : INV.matricula,
+  alumnosPrueba: ALUMNOS_PRUEBA.length > 1
+    ? ALUMNOS_PRUEBA.map(a => ({ ...a, ...(INV.alumnos?.[a.email] || {}) }))
+    : null,
   whatsappDisplay: CONFIG.whatsappDisplay,
   infra,
   logoData: CONFIG.logoListo === false ? null : (b64(CONFIG.logoOscuro || CONFIG.logo) || b64(CONFIG.logo)),
@@ -481,13 +543,13 @@ const datos = {
   fraseIntro: `Una sola plataforma que atiende tus ${nivelesPrograma.length === 1 ? 'alumnos' : `${nivelesPrograma.length} niveles`}: ${listaNiveles}${
     CARRERAS.length ? `, más ${CARRERAS.length === 1 ? 'tu programa' : `tus ${CARRERAS.length} programas`} de pago único` : ''
   }. El alumno se registra, elige ${CARRERAS.length ? 'qué quiere estudiar' : 'su nivel'} y avanza mes a mes; tú lo administras todo desde un único panel.`,
-  frasePrecios: modalidadesActivas.length === 1
+  frasePrecios: SEMANAL ? FRASES_SEMANALES.frasePrecios : modalidadesActivas.length === 1
     ? `Tu escuela opera con un plan único de ${modalidadesActivas[0].meses} meses${inscDistinta ? ' y una inscripción diferenciada por nivel' : ''}. Así quedó cargado en la plataforma:`
     : `Tu escuela ofrece ${modalidadesActivas.length} planes de ${dur} meses${inscDistinta ? ', con inscripción diferenciada por nivel' : ''}. Así quedaron cargados:`,
-  notaPrecios: 'El total suma inscripción + mensualidades del plan + certificación. Los montos se muestran solos en la página pública y en el registro, y el panel te sugiere el monto correcto según el nivel del alumno al capturar un pago.',
+  notaPrecios: SEMANAL ? FRASES_SEMANALES.notaPrecios : 'El total suma inscripción + mensualidades del plan + certificación. Los montos se muestran solos en la página pública y en el registro, y el panel te sugiere el monto correcto según el nivel del alumno al capturar un pago.',
   contenido,
   preciosCols, preciosFilas, modalidadesCols, modalidadesFilas,
-  notaModalidades: modalidadesActivas.length === 1
+  notaModalidades: SEMANAL ? FRASES_SEMANALES.notaModalidades : modalidadesActivas.length === 1
     ? 'Tu plataforma ofrece un solo plan, así que el alumno no elige duración al registrarse: se le asigna automáticamente.'
     : 'El alumno elige su plan al registrarse, y el ritmo de apertura de materias se ajusta solo.',
   // Se enriquece con el conteo REAL de la base y con el tipo de cada programa,
@@ -508,14 +570,18 @@ const datos = {
     `"Así se estudia en tu plataforma" — compártelo con tus alumnos nuevos: ${TUTORIALES.alumno}`,
   ],
   primerosPasos: [
-    'Entra al panel y recorre el menú con calma: Alumnos, Estado de Cuenta y Reportes',
-    D.alumnoEmail && 'Inicia sesión con el alumno de prueba para ver la plataforma desde su lado',
+    SEMANAL
+      ? 'Entra al panel y recorre el menú con calma: Alumnos, Cobranza, Estado de Cuenta y Reportes'
+      : 'Entra al panel y recorre el menú con calma: Alumnos, Estado de Cuenta y Reportes',
+    ALUMNOS_PRUEBA.length > 1
+      ? 'Inicia sesión con los alumnos de prueba para ver la plataforma desde su lado'
+      : ALUMNOS_PRUEBA.length === 1 && 'Inicia sesión con el alumno de prueba para ver la plataforma desde su lado',
     'Da de alta a tu primer alumno real y registra su inscripción',
     'Comparte tu dirección y el video "Así se estudia" con cada nuevo estudiante',
   ].filter(Boolean),
   incluye: [
     `Programa académico de ${listaNiveles}`,
-    modalidadesActivas.length === 1
+    SEMANAL ? FRASES_SEMANALES.incluye : modalidadesActivas.length === 1
       ? `Plan único de ${modalidadesActivas[0].meses} meses`
       : `${modalidadesActivas.length} planes de estudio (${dur} meses)`,
     // Lo que el cliente ya tiene cargado va ANTES del módulo vacío: es lo que
@@ -540,6 +606,7 @@ const datos = {
     D.validez !== false && 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP',
     'Módulo de pagos: recibo en PDF con tu marca y envío por WhatsApp',
     'Estado de cuenta por alumno',
+    SEMANAL && 'Cobro semanal: calendario de pagos por alumno con la fecha de cada semana, «Mis Pagos» para el alumno y «Cobranza» para ti, con quién trae semanas vencidas',
     'Reportes de ingresos por semana y por mes, con descarga',
     'Gestión de documentos del alumno con validación del administrador',
     ...(CARRERAS.length ? [
@@ -565,6 +632,12 @@ const datos = {
     ...(PAGINAS_LEGALES.length ? [
       `Páginas legales publicadas: ${PAGINAS_LEGALES.join(', ')}`,
     ] : []),
+    ...(OFERTA_INFORMATIVA?.personalizados.length ? [
+      `Planes con atención personalizada anunciados en tu página, con botón directo a tu WhatsApp: ${OFERTA_INFORMATIVA.personalizados.join(' · ')}`,
+    ] : []),
+    ...(OFERTA_INFORMATIVA?.programas ? [
+      `Catálogo informativo de ${OFERTA_INFORMATIVA.programas} licenciaturas en ${OFERTA_INFORMATIVA.areas} áreas, sin registro en línea`,
+    ] : []),
     ...(PAGINA_INSTITUCIONAL ? [
       'Página institucional con el manifiesto de la marca y una demostración interactiva de un curso real, abierta sin registro',
     ] : []),
@@ -574,7 +647,10 @@ const datos = {
 /* ── 6. PDF ──────────────────────────────────────────────────────────────── */
 const SALIDA = path.join(RAIZ, 'entrega')
 fs.mkdirSync(SALIDA, { recursive: true })
-const slug = (CONFIG.nombre || 'cliente').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '')
+// Sin tildes antes de filtrar: «CENTRO ACADÉMICO UNIÓN» salía como
+// CENTRO_ACAD_MICO_UNI_N_Entrega_Oficial.pdf, el nombre que el cliente ve adjunto.
+const slug = (CONFIG.nombre || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '')
 const htmlPath = path.join(SALIDA, '.entrega.html')
 const pdfPath = path.join(SALIDA, `${slug}_Entrega_Oficial.pdf`)
 
@@ -680,7 +756,12 @@ if (!flag('solo-pdf')) {
   L.push(`¡Hola ${D.adminNombre.split(' ')[0]}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
   L.push('🌐 TU PLATAFORMA', URL_BASE, '')
   L.push('👤 ACCESO ADMINISTRADOR', `Usuario: ${D.adminEmail}`, `Contraseña: ${D.adminPassword}`, `Panel: ${URL_BASE}/admin`, '')
-  if (D.alumnoEmail) L.push('🎓 ACCESO ALUMNO DE PRUEBA',
+  if (ALUMNOS_PRUEBA.length > 1) {
+    L.push('🎓 ACCESO ALUMNOS DE PRUEBA', '(para que veas la plataforma tal como la ve un alumno de cada nivel)')
+    for (const a of datos.alumnosPrueba)
+      L.push(`${a.nivel ? cap(a.nivel) : 'Alumno'}: ${a.email} · Contraseña: ${a.password}`)
+    L.push('')
+  } else if (D.alumnoEmail) L.push('🎓 ACCESO ALUMNO DE PRUEBA',
     '(para que veas la plataforma tal como la ve un alumno)',
     `Usuario: ${D.alumnoEmail}`, `Contraseña: ${D.alumnoPassword}`, '')
   if (contenido.length) {
@@ -689,17 +770,23 @@ if (!flag('solo-pdf')) {
     L.push('')
   }
   L.push('💳 TUS PRECIOS, YA CONFIGURADOS')
-  for (const n of nivelesPrograma) {
-    const partes = [`inscripción ${mxn(insc(n))}`]
-    for (const m of modalidadesActivas)
-      partes.push(modalidadesActivas.length > 1
-        ? `${m.label || m.id}: ${mxn(mens(m, n))}/mes` : `${mxn(mens(m, n))}/mes`)
-    if (cert(n)) partes.push(`certificación ${mxn(cert(n))}`)
-    L.push(`${cap(n)}: ${partes.join(' · ')}`)
+  if (SEMANAL) {
+    // Cada plan con su cuota a la semana: «$250/mes» aquí le cobraría al cliente
+    // una cuarta parte de lo que vende.
+    L.push(...lineasPreciosWhatsApp(PLANES_SEMANALES, nivelesPrograma))
+  } else {
+    for (const n of nivelesPrograma) {
+      const partes = [`inscripción ${mxn(insc(n))}`]
+      for (const m of modalidadesActivas)
+        partes.push(modalidadesActivas.length > 1
+          ? `${m.label || m.id}: ${mxn(mens(m, n))}/mes` : `${mxn(mens(m, n))}/mes`)
+      if (cert(n)) partes.push(`certificación ${mxn(cert(n))}`)
+      L.push(`${cap(n)}: ${partes.join(' · ')}`)
+    }
+    L.push(modalidadesActivas.length === 1
+      ? `Plan único de ${modalidadesActivas[0].meses} meses.`
+      : `Planes disponibles: ${modalidadesActivas.map(m => m.label || m.id).join(' y ')}.`, '')
   }
-  L.push(modalidadesActivas.length === 1
-    ? `Plan único de ${modalidadesActivas[0].meses} meses.`
-    : `Planes disponibles: ${modalidadesActivas.map(m => m.label || m.id).join(' y ')}.`, '')
 
   // Los programas de pago único van con su propio bloque: son otro producto,
   // con otro precio y —normalmente— sin la inscripción del programa escolar.
@@ -791,6 +878,7 @@ if (!flag('solo-pdf')) {
   L.push('⚙️ LO QUE PUEDES HACER DESDE TU PANEL',
     '• Dar de alta alumnos y abrirles el contenido mes a mes',
     '• Registrar pagos y generar el recibo en PDF con tu logo',
+    ...(SEMANAL ? ['• Marcar cada semana pagada y ver en Cobranza quién trae semanas vencidas'] : []),
     '• Ver el estado de cuenta de cada alumno',
     '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
@@ -815,6 +903,8 @@ if (!flag('solo-pdf')) {
     D.validez !== false && `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`,
     PAGINA_INSTITUCIONAL && `• Manifiesto de tu marca, con una demostración de un curso real que se prueba sin registro: ${URL_BASE}${PAGINA_INSTITUCIONAL}`,
     FORMULARIO_DIAGNOSTICO && `• Formulario de diagnóstico para captar prospectos: ${URL_BASE}/#diagnostico`,
+    OFERTA_INFORMATIVA?.personalizados.length && `• Planes con atención personalizada, que se contratan por WhatsApp: ${OFERTA_INFORMATIVA.personalizados.join(' · ')}${anclaEnLanding('planes') ? ` — ${URL_BASE}/#planes` : ''}`,
+    OFERTA_INFORMATIVA?.programas && `• Catálogo informativo de ${OFERTA_INFORMATIVA.programas} licenciaturas, sin registro en línea${anclaEnLanding('licenciaturas') ? `: ${URL_BASE}/#licenciaturas` : ''}`,
     PAGINAS_LEGALES.length && `• ${PAGINAS_LEGALES.join(', ')}, redactados y publicados`,
   ].filter(Boolean)
   if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')

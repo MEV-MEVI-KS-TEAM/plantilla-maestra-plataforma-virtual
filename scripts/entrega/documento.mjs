@@ -74,6 +74,12 @@ function paleta(colores = {}) {
     sobreTotal: razon(acento, primario) >= 4.5
       ? acento
       : (contraste(primario) === 'claro' ? '#FFFFFF' : '#111111'),
+    // Lo que va en acento ENCIMA de la banda: número de página y pie. Con una
+    // marca de un solo tono —CAU #200 usa la misma tinta de primario y de
+    // acento— daba 1.0 y el documento salía sin números de página.
+    acentoSobreBanda: razon(acento, primario) >= 4.5
+      ? acento
+      : (contraste(primario) === 'claro' ? '#FFFFFF' : '#111111'),
     sobreAcento: contraste(acento) === 'claro' ? '#FFFFFF' : '#0A0A0A',
     texto: '#1A1712',
     suave: '#6B5F52',
@@ -110,9 +116,9 @@ body{ font-family:${fuentes.cuerpoCSS}; color:${P.texto};
 .hdr{ background:${P.banda}; color:${P.sobreBanda}; height:.62in; flex-shrink:0;
       display:flex; align-items:center; justify-content:space-between;
       padding:0 .55in; font-size:8.5pt; }
-.hdr .pg{ color:${P.acento}; font-weight:600; }
+.hdr .pg{ color:${P.acentoSobreBanda}; font-weight:600; }
 .body{ flex:1; padding:.42in .55in .2in; overflow:hidden; }
-.ftr{ background:${P.banda}; color:${P.acento}; height:.42in; flex-shrink:0;
+.ftr{ background:${P.banda}; color:${P.acentoSobreBanda}; height:.42in; flex-shrink:0;
       display:flex; align-items:center; justify-content:center;
       font-family:${fuentes.tituloCSS}; font-style:italic; font-size:9.5pt; }
 h1{ font-family:${fuentes.tituloCSS}; font-size:25pt; font-weight:800; text-align:center; }
@@ -188,12 +194,14 @@ function marca(d) {
     : `<div class="banner"><div class="txt">${esc(d.nombre)}</div></div>`
 }
 
+// Sin eslogan (CAU #200 no tiene) no se imprime la cita: salían unas comillas
+// vacías en la portada y en el cierre, y el pie quedaba en blanco.
 function portada(d) {
   return `
 ${marca(d)}
 <h1 class="mt">${esc(d.nombreCompleto.toUpperCase())}</h1>
 <div class="sub">Documento de entrega oficial de tu plataforma educativa</div>
-<div class="quote mt">"${esc(d.tagline)}"</div>
+${d.tagline ? `<div class="quote mt">"${esc(d.tagline)}"</div>` : ''}
 <div class="hr"></div>
 <!-- Fórmula neutra: el saludo dependía de un campo de género que se rellena a
      mano en cada entrega y que nadie confirma con la persona. Equivocarlo en la
@@ -221,11 +229,19 @@ ${kv([
     ['Panel de administración', `${d.url}/admin`],
     ['Usuario administrador', d.adminEmail],
     ['Contraseña', d.adminPassword],
-    d.alumnoEmail && ['Alumno de prueba', `${d.alumnoEmail} / ${d.alumnoPassword}`],
-    d.matricula && ['Matrícula del alumno', d.matricula],
+    // Varios alumnos de prueba (uno por nivel): cada uno con SU matrícula.
+    ...(d.alumnosPrueba?.length
+      ? d.alumnosPrueba.map(a => [`Alumno de prueba${a.nivel ? ` — ${cap(a.nivel)}` : ''}`,
+          `${a.email} / ${a.password}${a.matricula ? ` · matrícula ${a.matricula}` : ''}`])
+      : [
+          d.alumnoEmail && ['Alumno de prueba', `${d.alumnoEmail} / ${d.alumnoPassword}`],
+          d.matricula && ['Matrícula del alumno', d.matricula],
+        ]),
     d.whatsappDisplay && ['WhatsApp de contacto', d.whatsappDisplay],
   ])}
-${d.alumnoEmail ? `<p class="small">El usuario <b>${esc(d.alumnoEmail)}</b> está creado para que veas
+${d.alumnosPrueba?.length ? `<p class="small">Se entrega un alumno de prueba por nivel, para que veas
+exactamente lo que verá cada alumno al registrarse. Úsalos también para recorridos
+de demostración a futuros estudiantes.</p>` : d.alumnoEmail ? `<p class="small">El usuario <b>${esc(d.alumnoEmail)}</b> está creado para que veas
 exactamente lo que verá un alumno al registrarse. Úsalo también para recorridos
 de demostración a futuros estudiantes.</p>` : ''}
 ${d.contenido.length ? `<h3>Contenido cargado</h3>${dt(['Concepto', 'Cantidad'], d.contenido)}` : ''}`
@@ -461,8 +477,8 @@ function cierre(d) {
   return `
 ${marca(d)}
 <h1 class="mt">${esc(d.nombreCompleto.toUpperCase())}</h1>
-<div class="center" style="font-family:${d.fuentes.tituloCSS};font-style:italic;
-     font-size:12pt;color:${d.P.acento2};margin-top:.06in;">${esc(d.taglineCierre)}</div>
+${d.taglineCierre ? `<div class="center" style="font-family:${d.fuentes.tituloCSS};font-style:italic;
+     font-size:12pt;color:${d.P.acento2};margin-top:.06in;">${esc(d.taglineCierre)}</div>` : ''}
 <div class="hr"></div>
 <h2 class="center" style="font-size:16pt;">Hoy comienza tu ${esc(d.palabraInstitucion)} en línea</h2>
 <div class="mt"></div>
@@ -474,7 +490,7 @@ meses verás resultados que hoy parecen lejanos.</p>
 <p class="mt">Estamos contigo en este camino. Cualquier duda técnica, escríbenos.
 Nuestro objetivo es que <b>${esc(d.nombreCompleto)}</b> se convierta en un
 referente de educación virtual en línea.</p>
-<div class="quote mt2">"${esc(d.tagline)}"</div>
+${d.tagline ? `<div class="quote mt2">"${esc(d.tagline)}"</div>` : ''}
 <div class="center mt2">
   <div style="font-weight:700;font-size:12pt;">Equipo MEV — Mi Escuela Virtual</div>
   <div class="small">Soporte y desarrollo de plataformas educativas</div>
@@ -500,7 +516,7 @@ export function construirHTML(d) {
   const paginas = secciones.map((body, i) => `<div class="page">
 <div class="hdr"><span>${d.marcaEncabezado} · Documento de Entrega Oficial · MEV (Mi Escuela Virtual)</span><span class="pg">Pág. ${i + 1}</span></div>
 <div class="body">${body}</div>
-<div class="ftr">${esc(d.taglineCierre)}</div>
+<div class="ftr">${esc(d.taglineCierre || d.nombreCompleto)}</div>
 </div>`).join('\n')
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8">
