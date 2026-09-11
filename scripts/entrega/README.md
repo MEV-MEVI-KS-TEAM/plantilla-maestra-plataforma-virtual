@@ -19,7 +19,7 @@ primera corrida en un repo:
 | **Node ≥ 23.6** (`node --version`) | Importa `src/lib/config.ts` tal cual, con el type stripping nativo de Node. Con un Node anterior falla con `Unknown file extension ".ts"`; el script lo detecta y lo dice claro. |
 | `pnpm install` | Trae `@supabase/supabase-js` (inventario) y `@playwright/test` (impresión a PDF). |
 | `npx playwright install chromium` | Descarga el Chromium con el que Playwright imprime el PDF. Una vez por máquina; si falta, el error es `Executable doesn't exist`. |
-| `entrega.local.json` en la raíz | Credenciales del admin y del alumno de prueba. Parte de `scripts/entrega/entrega.local.ejemplo.json`. Git lo ignora. |
+| `entrega.local.json` en la raíz | Credenciales del admin, del alumno de prueba y de las cuentas del cliente (correo, Supabase y GoDaddy). Parte de `scripts/entrega/entrega.local.ejemplo.json`. Git lo ignora. |
 | `.env.local` en la raíz | Lo mismo que usa la app (`vercel env pull .env.local`). De aquí salen el inventario de contenido y la URL del proyecto de Supabase. Sin él, el documento sale sin inventario y sin proyecto de Supabase. |
 
 Verificación rápida: `node --version` da 23.6 o más, y
@@ -55,14 +55,16 @@ que no tenerlo.
 | Licenciaturas, cursos de ingreso | `src/lib/config.ts` |
 | Materias, semanas, preguntas, matrícula | consulta real a Supabase vía `.env.local` |
 | Nombre del admin y contraseñas | `entrega.local.json` (ignorado por git) |
+| Cuentas del cliente con su contraseña: correo, Supabase y GoDaddy (Infraestructura) | `entrega.local.json` → `cuentas`: `{ "correo": { "email", "password" }, "supabase": {…}, "godaddy": {…} }`. En MEV salen de la ficha de `credenciales-clientes` (`outlook_*`, `supabase_*`, `godaddy_*`) |
 | Dominio y URL de la plataforma (Infraestructura) | `CONFIG.dominio` |
 | Registrador del dominio (Infraestructura) | `entrega.local.json` → `registrador`; si falta, **GoDaddy** |
 | Proyecto de Supabase: ref, URL y panel (Infraestructura) | `NEXT_PUBLIC_SUPABASE_URL` de `.env.local` (o `supabaseUrl` en `entrega.local.json` si no hay `.env.local`). El ref es el subdominio; el panel es `https://supabase.com/dashboard/project/<ref>`. |
 
 Si no hay `.env.local` o le faltan credenciales, el inventario se omite y el
 resto del documento se genera igual. La página de Infraestructura avisa en
-consola si no encontró la URL de Supabase, y se puede omitir por completo con
-`"infraestructura": false` en `entrega.local.json`.
+consola si no encontró la URL de Supabase o si faltan las `cuentas`. Se puede
+omitir con `"infraestructura": false` en `entrega.local.json`; si hay `cuentas`,
+la página sale igual, con ellas solas.
 
 ## El documento se pagina solo
 
@@ -137,13 +139,22 @@ documento con una dirección temporal.
 Va justo después de "Tu plataforma", en el mismo estilo. Es la página que
 necesitará cualquier técnico que en el futuro dé soporte al cliente:
 
-- Dominio, registrador (GoDaddy) y a dónde apunta el DNS (Vercel)
+- **Correo de tus cuentas**: correo, contraseña y dónde entrar (Outlook, Gmail o
+  Yahoo; con un correo de dominio propio no se inventa la dirección)
+- Dominio, registrador (GoDaddy), **cuenta de GoDaddy con su contraseña** y a
+  dónde apunta el DNS (Vercel)
 - Dirección pública de la plataforma
-- Proyecto de Supabase: ref, URL del proyecto y URL del panel de control
+- Proyecto de Supabase: ref, URL del proyecto, URL del panel de control y
+  **cuenta de Supabase con su contraseña**
 - Nota fija: *las llaves de servicio y la contraseña de la base de datos se
   entregan por canal seguro, nunca por chat*
 
-Todo lo que imprime es una dirección o un identificador público. De
+**Las cuentas van con su contraseña desde el 11-sep-2026** (antes iban por canal
+seguro). Son del cliente, porque lo que se le entrega es su dominio y su
+Supabase, y sin ellas no puede renovar el dominio ni entrar a su base de datos.
+Solo van en el PDF: el mensaje de WhatsApp dice que están ahí, sin repetirlas.
+
+Fuera de las cuentas, todo lo que imprime es una dirección o un identificador público. De
 `.env.local` solo se usa `NEXT_PUBLIC_SUPABASE_URL`; la service_role se lee
 únicamente para contar filas del inventario y nunca llega al documento.
 
@@ -152,10 +163,20 @@ Todo lo que imprime es una dirección o un identificador público. De
 Por política de entrega, nunca se incluye:
 
 - Llaves de servicio, `service_role`, anon key ni contraseñas de base de datos
-- Credenciales de las cuentas de Supabase, Vercel o GoDaddy (van por canal seguro)
+- El access token de Supabase (`sbp_…`), aunque se tenga a mano: abre la cuenta
+  entera sin contraseña ni segundo factor
+- Credenciales de Vercel: el hosting se queda en MEV
 - Datos del repositorio de código ni identificadores internos de Vercel
   (project id, team id)
 - Recomendaciones de cambiar contraseñas
+
+**El generador lo hace cumplir.** Si `entrega.local.json` trae algo con forma de
+access token (`sbp_…`), llave (`sb_secret_…`, un JWT anon o service_role),
+cadena de conexión `postgresql://…@` o token de GitHub en cualquier campo,
+también en un `password`, aborta y nombra el campo sin repetir el valor. Cada
+cuenta de `cuentas` acepta solo `email` y `password`: un `accessToken` de más
+también aborta, igual que una contraseña que siga con el marcador `••••` del
+ejemplo. Lo prueba `tests/unit/entrega-cuentas.spec.ts`.
 
 ## Referencia visual
 
