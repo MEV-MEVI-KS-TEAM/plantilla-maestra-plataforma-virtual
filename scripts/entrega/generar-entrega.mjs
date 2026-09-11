@@ -31,6 +31,7 @@ import {
   esSemanal, planesSemanales, tablaPrecios, colsModalidades, filasModalidades,
   frasesSemanales, lineasPreciosWhatsApp, ofertaInformativa,
 } from './planes.mjs'
+import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -94,11 +95,35 @@ if (!fs.existsSync(rutaDatos)) abortar(`No encuentro ${path.basename(rutaDatos)}
     adminPassword: '••••••',
     alumnoEmail: 'prueba@gmail.com',
     alumnoPassword: '12345678',
+    cuentas: {
+      correo: { email: 'cuentas@cliente.com', password: '••••••' },
+      supabase: { email: 'cuentas@cliente.com', password: '••••••' },
+      godaddy: { email: 'cuentas@cliente.com', password: '••••••' },
+    },
   }, null, 2),
 ].join('\n'))
 const D = JSON.parse(fs.readFileSync(rutaDatos, 'utf8'))
 for (const k of ['adminNombre', 'adminEmail', 'adminPassword'])
   if (!D[k]) abortar(`Falta "${k}" en ${path.basename(rutaDatos)}`)
+
+// 🛑 Un token o una llave en el archivo de datos acabaría en un PDF que se
+// reenvía y se guarda en cualquier parte. Se busca por forma en TODO el archivo
+// y se nombra el campo, nunca el valor.
+const SECRETOS = secretosEn(D)
+if (SECRETOS.length) abortar(`${path.basename(rutaDatos)} trae secretos que nunca van en la entrega:\n  ${SECRETOS.join('\n  ')}`,
+  'El access token de Supabase (sbp_…), las llaves anon/service_role y la cadena de conexión de la\nbase de datos se entregan por canal seguro, nunca en el documento. Quítalos del archivo y vuelve a correr.')
+
+/**
+ * Cuentas del cliente —su correo, Supabase y el registrador del dominio— que van
+ * con su contraseña en la página de Infraestructura (`cuentas` en
+ * entrega.local.json). Son suyas: sin ellas no puede renovar el dominio ni
+ * entrar a su base de datos.
+ */
+const REGISTRADOR = D.registrador || 'GoDaddy'
+let CUENTAS_CLIENTE = null
+try { CUENTAS_CLIENTE = cuentasDeEntrega(D.cuentas) } catch (e) { abortar(`${path.basename(rutaDatos)}: ${e.message}`) }
+if (!CUENTAS_CLIENTE)
+  log(`  ⚠ sin "cuentas" en ${path.basename(rutaDatos)} — el PDF sale sin los accesos del correo, Supabase y ${REGISTRADOR} del cliente`)
 
 /**
  * Alumnos de prueba que se entregan: uno, como siempre (`alumnoEmail`), o varios
@@ -452,7 +477,8 @@ modalidadesFilas.push(['Cursos propios (módulo vacío)', 'La define cada curso'
 // NEXT_PUBLIC_SUPABASE_URL (si el repo no lo tiene, vale `supabaseUrl` en
 // entrega.local.json). La service_role y la contraseña de BD nunca llegan al
 // documento. Registrador: entrega.local.json → `registrador` (default GoDaddy,
-// donde MEV registra todos los dominios). `"infraestructura": false` omite la página.
+// donde MEV registra todos los dominios). `"infraestructura": false` omite la página,
+// salvo que haya `cuentas`: esas se entregan siempre (CUENTAS_CLIENTE, arriba).
 function urlSupabaseDesdeEnv() {
   const env = path.join(RAIZ, '.env.local')
   if (!fs.existsSync(env)) return ''
@@ -465,7 +491,7 @@ if (D.infraestructura !== false && !supabaseRef)
   log('  ⚠ sin NEXT_PUBLIC_SUPABASE_URL — la página de Infraestructura sale sin el proyecto de Supabase (añade "supabaseUrl" a entrega.local.json)')
 const infra = D.infraestructura === false ? null : {
   dominio,
-  registrador: D.registrador || 'GoDaddy',
+  registrador: REGISTRADOR,
   dns: D.dns || 'Apunta a Vercel, donde se aloja la plataforma',
   url: URL_BASE,
   supabaseRef,
@@ -533,6 +559,8 @@ const datos = {
     : null,
   whatsappDisplay: CONFIG.whatsappDisplay,
   infra,
+  cuentas: CUENTAS_CLIENTE,
+  registrador: REGISTRADOR,
   logoData: CONFIG.logoListo === false ? null : (b64(CONFIG.logoOscuro || CONFIG.logo) || b64(CONFIG.logo)),
   isotipoData: CONFIG.isotipo ? b64(CONFIG.isotipo) : null,
   // Usa la palabra que el cliente eligió para su institución —academia,
@@ -909,7 +937,10 @@ if (!flag('solo-pdf')) {
   ].filter(Boolean)
   if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')
   L.push('📄 Te adjunto el Documento de Entrega Oficial con todo el detalle.',
-    'Guárdalo, ahí tienes tus accesos y el resumen completo de tu plataforma.', '')
+    // Las contraseñas de las cuentas van SOLO en el PDF: el mensaje dice que están ahí.
+    CUENTAS_CLIENTE
+      ? `Guárdalo: ahí tienes tus accesos, también los de ${nombresDeCuentas(CUENTAS_CLIENTE, REGISTRADOR)}, y el resumen completo de tu plataforma.`
+      : 'Guárdalo, ahí tienes tus accesos y el resumen completo de tu plataforma.', '')
   L.push('🎬 ACADEMIA MEV — TUS TUTORIALES', '',
     'Antes de empezar, dedica unos minutos a nuestros micro-tutoriales oficiales:',
     `▶️ ${TUTORIALES.playlist}`, '',

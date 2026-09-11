@@ -248,37 +248,65 @@ ${d.contenido.length ? `<h3>Contenido cargado</h3>${dt(['Concepto', 'Cantidad'],
 }
 
 /**
- * Infraestructura: dominio, registrador y proyecto de Supabase.
+ * Infraestructura: dominio, registrador, proyecto de Supabase y la cuenta con que
+ * se entra a cada uno.
  *
  * Es la página que necesitará cualquier técnico que en el futuro dé soporte al
- * cliente: qué dominio es, dónde está registrado, a dónde apunta y en qué
- * proyecto vive su base de datos. Va SOLO lo que es una dirección o un
- * identificador público. Las llaves de servicio y la contraseña de la base de
- * datos NO se imprimen nunca aquí: `generar-entrega.mjs` ni siquiera las pasa.
+ * cliente: qué dominio es, dónde está registrado, a dónde apunta, en qué
+ * proyecto vive su base de datos y con qué cuenta se abre cada servicio.
+ *
+ * Las cuentas (correo, Supabase y registrador: `entrega.local.json → cuentas`)
+ * son del cliente y van con su contraseña, cada una junto al servicio que abre:
+ * sin ellas no puede renovar su dominio ni entrar a su base de datos. El access
+ * token, las llaves de servicio y la contraseña de la base de datos NO se
+ * imprimen nunca: `cuentas.mjs` hace abortar al generador si aparecen en los datos.
+ *
+ * Con `"infraestructura": false` (sin `infra`) pero con cuentas, la página sale
+ * igual con las cuentas solas.
  */
 function infraestructura(d) {
   const I = d.infra
+  const C = d.cuentas || {}
+  const registrador = I?.registrador || d.registrador || 'GoDaddy'
+  // Si el mismo correo abre las otras cuentas, se dice: explica por qué importa.
+  const abre = [
+    C.supabase && C.supabase.email === C.correo?.email && 'Supabase',
+    C.godaddy && C.godaddy.email === C.correo?.email && registrador,
+  ].filter(Boolean)
   return `
 <h2>Tu infraestructura</h2>
 <div class="rule"></div>
 <p class="lead">Tu plataforma corre sobre tres piezas: un dominio, el servidor
 que sirve la página y una base de datos. Aquí queda por escrito dónde vive cada
-una, para que cualquier persona que te dé soporte en el futuro sepa a dónde
+una${d.cuentas ? ' y con qué cuenta se entra' : ''}, para que cualquier persona que te dé soporte en el futuro sepa a dónde
 entrar sin tener que adivinar.</p>
-<h3>Dominio</h3>
+${C.correo ? `<h3>Correo de tus cuentas</h3>
 ${kv([
-    ['Dominio', I.dominio],
-    ['Registrador', I.registrador],
-    ['DNS', I.dns],
-    ['Dirección de la plataforma', I.url],
+    ['Correo', C.correo.email],
+    ['Contraseña', C.correo.password],
+    C.correo.acceso && ['Dónde entrar', C.correo.acceso],
+  ])}
+<p class="small">${abre.length
+    ? `Con este correo se abrieron tus cuentas de ${abre.join(' y ')}: ahí llegan sus avisos y la recuperación de sus contraseñas.`
+    : 'Ahí llegan los avisos de tus cuentas.'}</p>` : ''}
+${I || C.godaddy ? `<h3>Dominio</h3>
+${kv([
+    I && ['Dominio', I.dominio],
+    ['Registrador', registrador],
+    C.godaddy && [`Cuenta de ${registrador}`, C.godaddy.email],
+    C.godaddy && ['Contraseña', C.godaddy.password],
+    I && ['DNS', I.dns],
+    I && ['Dirección de la plataforma', I.url],
   ])}
 <p class="small">El dominio se renueva cada año con el registrador. Si vence, la
-plataforma deja de abrir aunque todo lo demás siga funcionando.</p>
-${I.supabaseRef ? `<h3>Base de datos y usuarios (Supabase)</h3>
+plataforma deja de abrir aunque todo lo demás siga funcionando.</p>` : ''}
+${I?.supabaseRef || C.supabase ? `<h3>Base de datos y usuarios (Supabase)</h3>
 ${kv([
-    ['Proyecto', I.supabaseRef],
-    ['URL del proyecto', I.supabaseUrl],
-    ['Panel de control', I.supabaseDashboard],
+    I?.supabaseRef && ['Proyecto', I.supabaseRef],
+    I?.supabaseRef && ['URL del proyecto', I.supabaseUrl],
+    I?.supabaseRef && ['Panel de control', I.supabaseDashboard],
+    C.supabase && ['Cuenta de Supabase', C.supabase.email],
+    C.supabase && ['Contraseña', C.supabase.password],
   ])}
 <p class="small">En el panel de Supabase viven los usuarios registrados, las
 tablas de alumnos y pagos, y los respaldos automáticos de tu base de datos.</p>` : ''}
@@ -504,7 +532,8 @@ export function construirHTML(d) {
   const P = paleta(d.colores)
   d.P = P
   const secciones = [portada(d), accesos(d)]
-  if (d.infra) secciones.push(infraestructura(d))
+  // Las cuentas del cliente viven en esta página: sin infra, sale con ellas solas.
+  if (d.infra || d.cuentas) secciones.push(infraestructura(d))
   secciones.push(precios(d))
   // Una sección puede devolver varias páginas: `.page` recorta lo que no cabe,
   // así que la de programas se parte a propósito cuando trae rutas de
@@ -527,4 +556,4 @@ ${paginas}
 </body></html>`
 }
 
-export { mxn, cap, dt, kv, ul, paleta }
+export { mxn, cap, dt, kv, ul, paleta, infraestructura }

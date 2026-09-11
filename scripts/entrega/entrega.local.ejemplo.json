@@ -10,5 +10,11 @@
   "palabraInstitucion": "instituto",
   "validez": true,
   "_infraestructura": "Página de Infraestructura del PDF. Todo es opcional: registrador (default GoDaddy); supabaseUrl SOLO si el repo no tiene .env.local (es la URL pública https://<ref>.supabase.co, NUNCA una llave); infraestructura:false omite la página.",
-  "registrador": "GoDaddy"
+  "registrador": "GoDaddy",
+  "_cuentas": "Cuentas del cliente que van CON SU CONTRASEÑA en la página de Infraestructura: su correo, Supabase y GoDaddy (en MEV salen de la ficha de credenciales-clientes: outlook_*, supabase_*, godaddy_*). Cada una lleva SOLO email y password. El access token de Supabase, las llaves y la contraseña de la base de datos NUNCA van aquí: el generador aborta si los encuentra, y también si una contraseña sigue con el marcador de este ejemplo.",
+  "cuentas": {
+    "correo": { "email": "cuentas@cliente.com", "password": "••••••••" },
+    "supabase": { "email": "cuentas@cliente.com", "password": "••••••••" },
+    "godaddy": { "email": "cuentas@cliente.com", "password": "••••••••" }
+  }
 }
