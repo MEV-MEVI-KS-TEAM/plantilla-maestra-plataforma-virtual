@@ -118,7 +118,7 @@ export async function signIn(
 
 export async function signOut(): Promise<void> {
   const supabase = createClient()
-  await supabase.auth.signOut()
+  await supabase.auth.signOut({ scope: 'local' })
 }
 
 // ─── getUser ──────────────────────────────────────────────────────────────────

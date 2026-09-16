@@ -192,7 +192,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
 
   async function handleSignOut() {
     const supabase = createClient()
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
     router.push('/login')
   }
 
