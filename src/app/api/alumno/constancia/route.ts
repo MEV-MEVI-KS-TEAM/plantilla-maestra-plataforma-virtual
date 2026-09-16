@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { obtenerOEmitirFolio } from '@/lib/constancia-folio'
 import { CONFIG } from '@/lib/config'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { cargarAlumnoAcceso, cargarContextoAcceso } from '@/lib/acceso-materias'
@@ -169,7 +170,14 @@ export async function GET() {
       }
     }
 
+    // El folio lo emite el SERVIDOR y queda guardado en `constancias`: antes lo
+    // fabricaba el navegador con Math.random() en cada render, así que cambiaba
+    // cada vez que el alumno abría su constancia y no servía para verificar
+    // nada. Es lo que hace posible la página pública /validar.
+    const folio = await obtenerOEmitirFolio(createAdminClient(), user.id)
+
     return NextResponse.json({
+      folio,
       nombre_completo,
       nombre:              usuario?.nombre   ?? '',
       apellidos:           usuario?.apellidos ?? '',

@@ -46,7 +46,12 @@ export async function updateSession(request: NextRequest) {
   // cursos. Sin esta entrada el middleware responde 401 y el selector nunca se
   // dibuja. La lista blanca de campos la impone `listarCatalogoPublico()`; aquí
   // no se expone nada nuevo.
-  const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/aviso-de-privacidad', '/terminos-y-condiciones', '/diplomados', '/api/catalogo-publico']
+  const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/aviso-de-privacidad', '/terminos-y-condiciones', '/diplomados', '/api/catalogo-publico',
+    // `/validar` y su API son PÚBLICAS a propósito: quien comprueba una
+    // constancia es un tercero —una empresa que contrata, otra escuela— que no
+    // tiene ni debe tener cuenta aquí. Sin esto el middleware las mandaría a
+    // /login y la validación sería inútil.
+    '/validar', '/api/validar']
   const isPublicRoute = publicRoutes.some(route =>
     route === '/'
       ? request.nextUrl.pathname === '/'

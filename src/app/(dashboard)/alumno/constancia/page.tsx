@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Loader2, Printer, Download } from 'lucide-react'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
@@ -28,13 +28,15 @@ interface DatosConstancia {
   porcentaje_avance: number
   avatar_url?: string | null
   materias_cursadas: MateriaCursada[]
+  /** Folio persistido que emite el servidor. */
+  folio?: string
 }
 
-function generarFolio() {
-  const year = new Date().getFullYear()
-  const rand = Math.floor(100000 + Math.random() * 900000)
-  return `CONST-${year}-${rand}`
-}
+// 🐞 Aquí vivía generarFolio(), que fabricaba el folio con Math.random() en el
+// NAVEGADOR y no lo guardaba: cambiaba en cada apertura de la constancia, así
+// que dos impresiones del mismo alumno salían con folios distintos y ninguno
+// correspondía a nada. Ahora lo emite el servidor una sola vez y viaja en la
+// respuesta de /api/alumno/constancia (TICKET-2026-09-16-11).
 
 const BADGE: Record<Estado, React.CSSProperties> = {
   Acreditada:      { background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' },
@@ -57,10 +59,8 @@ export default function ConstanciaPage() {
   const [datos, setDatos] = useState<DatosConstancia | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const folioRef = useRef<string>('')
 
   useEffect(() => {
-    folioRef.current = generarFolio()
     fetch('/api/alumno/constancia')
       .then(r => r.json())
       .then(data => {
@@ -71,7 +71,7 @@ export default function ConstanciaPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const folio = folioRef.current
+  const folio = datos?.folio ?? '—'
 
   const fecha = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -79,7 +79,7 @@ export default function ConstanciaPage() {
     ? Math.round((datos.meses_desbloqueados / datos.duracion_meses) * 100)
     : 0
 
-  const disclaimerParts = `Este documento es un comprobante académico interno con folio {folio} generado digitalmente por ${cfg.nombre}. Para verificar su autenticidad, contacte a administración.`.split('{folio}')
+  const disclaimerParts = `Este documento es un comprobante académico interno con folio {folio} generado digitalmente por ${cfg.nombre}. Verifica su autenticidad en la página /validar de este sitio, con ese folio.`.split('{folio}')
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
