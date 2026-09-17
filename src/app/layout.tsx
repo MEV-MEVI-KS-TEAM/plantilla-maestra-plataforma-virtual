@@ -1,4 +1,4 @@
-import { colorLegibleSobre, oscurecerHasta } from '@/lib/contraste'
+import { colorLegibleSobre, oscurecerHasta, sugerirTextoSobre } from '@/lib/contraste'
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -97,6 +97,32 @@ export default async function RootLayout({
     '--color-fondo':              cfg.colores.fondo,
     '--color-superficie':         cfg.colores.superficie,
     '--color-borde':              cfg.colores.borde,
+
+    // ── Tres variables que la plantilla USA y no declaraba ──────────────
+    //
+    // 🛑 Una variable CSS sin declarar NO se degrada a un color por defecto:
+    // la propiedad se queda sin valor y el elemento HEREDA la del padre. El
+    // efecto no es «un tono un poco distinto», es texto del color equivocado,
+    // y donde el padre es un bloque de marca sale texto de marca sobre marca.
+    // Lo encontró AULA RAÍZ (#208), cuya landing las usa sin fallback: un
+    // badge de nivel heredaba el verde del menú y quedaba en 3.53.
+    //
+    // En esta plantilla `--color-fondo-alt` y `--color-texto-sobre-primario`
+    // ya se usan en `alumno/pagar`, pero ahí van con fallback CSS
+    // (`var(--x, #fff)`), así que el fallback era LO QUE SE VEÍA SIEMPRE: el
+    // botón «Pagar en línea» se pintaba con blanco fijo y las tarjetas con un
+    // gris que no es de ninguna escuela. Declaradas, esas dos pantallas pasan
+    // a usar la paleta del cliente y el fallback vuelve a ser lo que dice ser.
+    //
+    // ⚠️ Si añades un `var(--color-…)` nuevo en cualquier componente,
+    // decláralo aquí. Lo vigila `tests/unit/variables-css.spec.ts`.
+    '--color-acento-claro':         cfg.colores.acentoClaro,
+    '--color-fondo-alt':            cfg.colores.acentoClaro,
+    // El color de letra que se lee sobre `primario`. NO se fija en blanco: una
+    // escuela con primario claro necesita letra oscura, y ahí un `#FFF` a mano
+    // da un botón ilegible. `sugerirTextoSobre` elige por luminancia.
+    '--color-texto-sobre-primario': sugerirTextoSobre(cfg.colores.primario),
+
     // Realces del sidebar. OPCIONALES: si el cliente no los declara quedan
     // undefined y sidebar.tsx cae en su fallback histórico, así que un cliente
     // que no los use ve exactamente el mismo panel de siempre. Existen porque
