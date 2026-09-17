@@ -18,6 +18,25 @@ export const CONFIG = {
   // Es el mismo escape que ya usa `landing.testimonios` con `as Array<…>`.
   modo:            'tradicional' as ModoPlataforma,
 
+  // === ESTILO DE LA PORTADA ===
+  // 'animada'  → la portada actual: hero con logo y escena que sigue al puntero,
+  //              secciones que se revelan al desplazar, franja de indicadores,
+  //              niveles, planes, licenciaturas, validez, antes y después, cómo
+  //              funciona, testimonios, beneficios, catálogo, preguntas y cierre.
+  //              Deriva TODA su paleta de `colores` midiendo el contraste, así
+  //              que cada escuela la ve con su propia marca.
+  // 'clasica'  → `LandingClient`, la portada anterior. Se conserva intacta.
+  //
+  // ⚠️ DEFAULT 'animada' PARA LAS ESCUELAS NUEVAS. Las que ya están entregadas
+  // NO cambian: sus `config.ts` no traen esta clave y `estiloLanding()`
+  // (src/lib/landing-estilo.ts) responde 'clasica' cuando falta. Cambiar la
+  // portada de una escuela viva es decisión suya, no un efecto de redesplegar.
+  //
+  // ⚠️ EL `as EstiloLanding` NO SOBRA, por lo mismo que el `as ModoPlataforma`:
+  // sin él, el `as const` estrecha la clave al literal y comparar con 'clasica'
+  // deja de compilar (TS2367).
+  estiloLanding:   'animada' as EstiloLanding,
+
   // === IDENTIDAD DEL CLIENTE ===
   nombre:          'MEV',                    // nombre corto: 'IVS', 'CJVB', 'ADE'
   nombreCompleto:  'Mi Escuela Virtual',     // nombre completo legal
@@ -565,6 +584,9 @@ export type Modalidad = typeof CONFIG.modalidades[number]
  * `src/lib/modo.ts`, junto con lo que cada modo oculta.
  */
 export type ModoPlataforma = 'tradicional' | 'solo_cursos'
+
+/** Qué portada sirve `src/app/page.tsx`. Ver `estiloLanding` arriba. */
+export type EstiloLanding = 'animada' | 'clasica'
 
 /**
  * Cada cuánto cobra la escuela. Vive aquí y no en `periodicidad.ts` para que

@@ -1,0 +1,801 @@
+/* ───────────────────────────────────────────────────────────────────────────
+ * Landing ANIMADA — capa de movimiento y formas encima de globals.css.
+ *
+ * ── Qué hay aquí ────────────────────────────────────────────────────────────
+ *
+ *   .la-arco          disco del color de marca detrás de las tarjetas del hero,
+ *                     sangrado por el borde; sigue al puntero
+ *   .la-circulo       círculo del acento, con aire entre él y el arco
+ *   .la-tarjeta-hero  lo que vende la escuela en tres tarjetas: entran
+ *                     escalonadas, flotan a destiempo y cada una con su profundidad
+ *   .la-disco         el disco claro del cierre: el hero invertido
+ *   .la-filete        el filete de los títulos
+ *
+ * ── Reglas del movimiento ───────────────────────────────────────────────────
+ *
+ *  - Solo se anima `transform` / `translate` / `scale` / `opacity`: todo corre
+ *    en el compositor y nada mueve el layout. La única excepción es el acordeón
+ *    de preguntas (`grid-template-rows`).
+ *  - NADA depende del JavaScript para VERSE. El HTML del servidor trae todo
+ *    visible; el revelado solo se activa (clase `la-anim` en <html>) después de
+ *    marcar como visible lo que ya está en pantalla, así que no hay parpadeo.
+ *  - `prefers-reduced-motion: reduce` apaga desplazamientos y bucles.
+ *  - Lo que se usa con el dedo no reacciona a `hover`.
+ *
+ * 🛑 CERO COLORES DE MARCA AQUÍ: llegan por `style` (o por `--la-color`,
+ *    `--la-hover`, `--la-subrayado`) desde tokens.ts, que es donde se mide el
+ *    contraste. Las sombras y los velos van en rgba neutro.
+ * ⚠️ Este archivo lo importa `layout.tsx` SIEMPRE, pero todo cuelga de
+ *    `.la-landing` salvo las dos variables de curva: una escuela con la landing
+ *    clásica no ve ni un cambio.
+ */
+
+body {
+  /* Con respaldo DENTRO del var(): sin las tipografías cargadas la regla se
+   * invalidaría entera y el cuerpo quedaría con la fuente del navegador. */
+  font-family: var(--font-body, system-ui), -apple-system, 'Segoe UI', sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-heading, Georgia), Georgia, 'Times New Roman', serif;
+}
+
+:root {
+  /* Curvas de la landing animada. */
+  --la-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --la-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+html:has(.la-landing) {
+  scroll-behavior: smooth;
+}
+
+/* Revelado lateral fuera de pantalla: sin barra horizontal en móvil (CAMPUS
+ * #206). `clip` y no `hidden`: `hidden` crea un contenedor de scroll y el
+ * encabezado deja de quedarse pegado. */
+.la-landing {
+  overflow-x: clip;
+}
+
+/* Títulos y datos de la franja repartidos en renglones parejos: sin una palabra
+ * huérfana en la última línea («… tú eliges el / ritmo»). */
+.la-landing h1,
+.la-landing h2,
+.la-landing h3,
+.la-landing #indicadores li {
+  text-wrap: balance;
+}
+
+/* ═══ HERO ═══════════════════════════════════════════════════════════════════
+ *
+ * Dos columnas en escritorio: a la izquierda el logo, el nombre, el eslogan, la
+ * línea de oferta y los botones; a la derecha la ESCENA. En móvil la escena baja
+ * después de los botones.
+ *
+ * Cada elemento anima propiedades DISTINTAS a propósito: el contenedor mueve
+ * `translate` (parallax) y el cuerpo `opacity`/`scale` (entrada) y `transform`
+ * (flotar). Una animación sobre `translate` le ganaría a la transición.
+ *
+ * 🛑 ZONA LIMPIA. El arco vive DENTRO de la columna de la escena, desplazado a la
+ *    derecha para sangrar por el borde de la pantalla; su borde izquierdo queda
+ *    a la derecha de la columna de texto.
+ * 🛑 EL CÍRCULO NO TOCA EL ARCO. La distancia entre centros es
+ *    radio del arco + 28 px + radio del círculo, y los dos comparten la MISMA
+ *    profundidad de parallax (-18 px) y no flotan: el aire blanco no cambia
+ *    nunca. En móvil el círculo no se pinta.
+ * 🛑 Se verifica CON CAPTURA en escritorio Y en móvil, no leyendo este archivo.
+ */
+
+.la-hero-contenido {
+  max-width: 640px;
+}
+
+.la-forma {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.la-escena {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 0 12px;
+}
+
+/* Móvil: disco chico centrado detrás de las tarjetas. */
+.la-arco {
+  width: 300px;
+  height: 300px;
+  left: 50%;
+  top: 50%;
+  margin: -150px 0 0 -150px;
+  border-radius: 9999px;
+  translate: calc(var(--la-px, 0) * -18px) calc(var(--la-py, 0) * -18px);
+  transition: translate 900ms var(--la-ease-out);
+  animation: la-forma-entrada 1100ms var(--la-ease-out) 120ms both;
+}
+
+.la-circulo {
+  display: none;
+  width: 120px;
+  height: 120px;
+  border-radius: 9999px;
+  translate: calc(var(--la-px, 0) * -18px) calc(var(--la-py, 0) * -18px);
+  transition: translate 900ms var(--la-ease-out);
+  animation: la-forma-entrada 1000ms var(--la-ease-out) 380ms both;
+}
+
+.la-tarjetas {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 350px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  z-index: 1;
+}
+
+.la-tarjeta-hero {
+  translate: calc(var(--la-px, 0) * var(--la-prof, 10px)) calc(var(--la-py, 0) * var(--la-prof, 10px));
+  transition: translate 900ms var(--la-ease-out);
+}
+
+.la-tarjeta-hero--1 { --la-prof: 8px;  margin-right: 16px; }
+.la-tarjeta-hero--2 { --la-prof: 14px; margin-left: 20px; }
+.la-tarjeta-hero--3 { --la-prof: 20px; margin-right: 6px; }
+
+.la-tarjeta-hero__cuerpo {
+  box-shadow: 0 18px 40px -18px rgba(30, 33, 64, 0.38);
+  animation:
+    la-tarjeta-entrada 900ms var(--la-ease-out) 450ms both,
+    la-flotar-tarjeta 7s ease-in-out 1500ms infinite alternate;
+}
+
+.la-tarjeta-hero--2 .la-tarjeta-hero__cuerpo { animation-delay: 600ms, 1900ms; animation-duration: 900ms, 8.5s; }
+.la-tarjeta-hero--3 .la-tarjeta-hero__cuerpo { animation-delay: 750ms, 1700ms; animation-duration: 900ms, 6s; }
+
+@media (min-width: 640px) {
+  .la-arco { width: 340px; height: 340px; margin: -170px 0 0 -170px; }
+}
+
+@media (min-width: 1024px) {
+  .la-hero { min-height: 680px; }
+
+  /* Disco de 520 px corrido a la derecha: sangra por el borde de la pantalla.
+   * Centro del arco: (50% + 110 px, 230 px). */
+  .la-escena {
+    min-height: 580px;
+    padding: 70px 0 0;
+  }
+
+  .la-arco {
+    width: 520px;
+    height: 520px;
+    top: -30px;
+    left: 50%;
+    margin: 0 0 0 -150px;
+  }
+
+  /* Círculo de 120 px al sur-oeste del arco: distancia entre centros
+   * 260 + 28 + 60 = 348 px a 45° → 246 px en cada eje. Centro del círculo:
+   * (50% + 110 − 246, 230 + 246) = (50% − 136 px, 476 px). */
+  .la-circulo {
+    display: block;
+    left: 50%;
+    top: 416px;
+    margin-left: -196px;
+  }
+
+  .la-tarjetas { max-width: 370px; }
+}
+
+@media (min-width: 1280px) {
+  /* Arco de 560: centro (50% + 130, 230) con top -50 y margin -150.
+   * Distancia 280 + 28 + 60 = 368 → 260 px por eje → centro del círculo
+   * (50% − 130, 490). */
+  .la-arco { width: 560px; height: 560px; top: -50px; }
+  .la-circulo { top: 430px; margin-left: -190px; }
+}
+
+@keyframes la-forma-entrada {
+  from { opacity: 0; scale: 0.8; }
+}
+
+@keyframes la-tarjeta-entrada {
+  from { opacity: 0; scale: 0.94; }
+}
+
+@keyframes la-flotar-tarjeta {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-8px); }
+}
+
+@keyframes la-trazar-banda {
+  from { transform: scaleX(0); }
+}
+
+/* ═══ CIERRE: EL HERO INVERTIDO ══════════════════════════════════════════════
+ * El logo sobre un disco claro en medio del bloque oscuro: sobre su propio color
+ * se fundiría con el fondo. */
+
+.la-escena-cierre {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 280px;
+}
+
+.la-disco {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 280px;
+  height: 280px;
+  margin: -140px 0 0 -140px;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.la-marca-cierre {
+  filter: drop-shadow(0 10px 14px rgba(30, 33, 64, 0.18));
+  animation: la-flotar-tarjeta 6.5s ease-in-out 800ms infinite alternate;
+}
+
+@media (min-width: 1024px) {
+  .la-escena-cierre { min-height: 330px; }
+  .la-disco { width: 330px; height: 330px; margin: -165px 0 0 -165px; }
+}
+
+/* ═══ ENTRADA DEL HERO ═══════════════════════════════════════════════════════
+ * CSS puro: se ve igual sin JavaScript. */
+
+@keyframes la-subir {
+  from { opacity: 0; translate: 0 18px; }
+}
+
+@keyframes la-crecer {
+  from { opacity: 0; scale: 0.94; }
+}
+
+.la-entrada {
+  animation: la-subir 900ms var(--la-ease-out) both;
+  animation-delay: var(--la-delay, 0ms);
+}
+
+.la-entrada--escala {
+  animation-name: la-crecer;
+  transform-origin: left center;
+}
+
+.la-filete-hero {
+  transform-origin: left center;
+  animation: la-trazar-banda 800ms var(--la-ease-out) 600ms both;
+}
+
+/* ═══ REVELADO AL HACER SCROLL ═══════════════════════════════════════════════
+ * Lo enciende useRevelado() añadiendo `la-anim` a <html>. Hasta entonces, y sin
+ * JavaScript, todo está visible. */
+
+.la-anim [data-la-reveal] {
+  transition:
+    opacity 700ms var(--la-ease-out) var(--la-delay, 0ms),
+    translate 800ms var(--la-ease-out) var(--la-delay, 0ms),
+    scale 800ms var(--la-ease-out) var(--la-delay, 0ms),
+    transform 250ms var(--la-ease-out);
+}
+
+.la-anim [data-la-reveal]:not(.la-visible) {
+  opacity: 0;
+  translate: 0 24px;
+}
+
+.la-anim [data-la-reveal='izq']:not(.la-visible) { translate: -32px 0; }
+.la-anim [data-la-reveal='der']:not(.la-visible) { translate: 32px 0; }
+.la-anim [data-la-reveal='escala']:not(.la-visible) { translate: none; scale: 0.9; }
+
+/* «sube»: las tarjetas suben un poco más y crecen apenas. */
+.la-anim [data-la-reveal='sube'] {
+  transform-origin: center bottom;
+}
+.la-anim [data-la-reveal='sube']:not(.la-visible) {
+  translate: 0 28px;
+  scale: 0.97;
+}
+
+/* La línea de los pasos se dibuja de izquierda a derecha. */
+.la-anim [data-la-reveal='linea'] {
+  opacity: 1;
+  translate: none;
+  transform-origin: left center;
+  transition: transform 1400ms var(--la-ease-in-out) 250ms;
+}
+.la-anim [data-la-reveal='linea']:not(.la-visible) {
+  opacity: 1;
+  translate: none;
+  transform: scaleX(0);
+}
+
+/* ═══ FILETES ════════════════════════════════════════════════════════════════
+ * El filete de los títulos y la barra superior de las tarjetas repiten el
+ * subrayado del logo: crecen de izquierda a derecha cuando entran. */
+
+.la-filete {
+  display: inline-block;
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  transition: transform 700ms var(--la-ease-out) 200ms;
+}
+
+.la-surco {
+  transform-origin: left center;
+  transition: transform 900ms var(--la-ease-out) calc(var(--la-delay, 0ms) + 250ms);
+}
+
+.la-anim [data-la-reveal]:not(.la-visible) .la-filete,
+.la-anim [data-la-reveal]:not(.la-visible) .la-surco {
+  transform: scaleX(0);
+}
+
+/* Subrayado que se pinta bajo una palabra del título. */
+.la-subrayado {
+  background-image: linear-gradient(var(--la-color), var(--la-color));
+  background-repeat: no-repeat;
+  background-position: 0 92%;
+  background-size: 100% 0.18em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background-size 1000ms var(--la-ease-out) 350ms;
+}
+
+.la-anim [data-la-reveal]:not(.la-visible) .la-subrayado {
+  background-size: 0% 0.18em;
+}
+
+/* En el hero no hay revelado al scroll: el subrayado se pinta al cargar. */
+@keyframes la-subrayar {
+  from { background-size: 0% 0.18em; }
+}
+
+.la-subrayado--entrada {
+  animation: la-subrayar 1100ms var(--la-ease-out) 800ms both;
+}
+
+/* ═══ BOTONES Y TARJETAS ═════════════════════════════════════════════════════ */
+
+.la-btn {
+  transition: transform 160ms var(--la-ease-out), background-color 180ms ease, border-color 180ms ease;
+}
+
+.la-btn .la-flecha {
+  transition: transform 220ms var(--la-ease-out);
+}
+
+.la-card {
+  position: relative;
+  transition: transform 250ms var(--la-ease-out);
+}
+
+.la-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 22px 44px -22px rgba(30, 33, 64, 0.38);
+  opacity: 0;
+  transition: opacity 250ms ease;
+  pointer-events: none;
+}
+
+.la-documento__img {
+  transition: transform 600ms var(--la-ease-out);
+}
+
+.la-icono-card {
+  transition: transform 300ms var(--la-ease-out);
+}
+
+.la-red {
+  transition: transform 200ms var(--la-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .la-btn:hover { transform: translateY(-2px); }
+  /* El hover de cada botón es el SUYO (acento → acento oscuro, blanco → realce),
+   * declarado en tokens.ts y pasado por `--la-hover`. */
+  .la-btn-color:hover {
+    background-color: var(--la-hover) !important;
+    border-color: var(--la-hover) !important;
+  }
+  .la-btn:hover .la-flecha { transform: translateX(4px); }
+  .la-card:hover { transform: translateY(-5px); }
+  .la-card:hover::after { opacity: 1; }
+  .la-card:hover .la-icono-card { transform: rotate(-7deg) scale(1.06); }
+  .la-documento:hover .la-documento__img { transform: scale(1.03); }
+  .la-red:hover { transform: translateY(-2px); }
+}
+
+.la-btn:active,
+.la-red:active {
+  transform: scale(0.97);
+  transition-duration: 100ms;
+}
+
+.la-inclinable {
+  transition: transform 450ms var(--la-ease-out);
+  will-change: transform;
+}
+
+/* ═══ ENCABEZADO, MENÚ Y ENLACES ═════════════════════════════════════════════ */
+
+.la-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 16px;
+  background: linear-gradient(rgba(30, 33, 64, 0.10), rgba(30, 33, 64, 0));
+  opacity: 0;
+  transition: opacity 250ms ease;
+  pointer-events: none;
+}
+
+.la-header--desplazado::after {
+  opacity: 1;
+}
+
+.la-nav-link {
+  position: relative;
+}
+
+/* El subrayado del enlace lleva el acento y crece desde el centro; la letra pasa
+ * de tinta a acento al pasar. */
+.la-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--la-subrayado, currentColor);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 260ms var(--la-ease-out);
+}
+
+.la-nav-link[aria-current='true']::after {
+  transform: scaleX(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .la-nav-link:hover::after { transform: scaleX(1); }
+  .la-nav-link:hover { color: var(--la-hover-texto, currentColor) !important; }
+}
+
+@keyframes la-desplegar {
+  from { opacity: 0; translate: 0 -8px; }
+}
+
+.la-menu-movil {
+  animation: la-desplegar 220ms var(--la-ease-out) both;
+}
+
+.la-menu-movil .la-entrada {
+  animation-duration: 400ms;
+}
+
+/* ═══ BARRA DE AVANCE ════════════════════════════════════════════════════════ */
+
+.la-barra-avance {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 70;
+  pointer-events: none;
+}
+
+.la-barra-avance__relleno {
+  height: 100%;
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+/* ═══ WHATSAPP FLOTANTE ══════════════════════════════════════════════════════
+ * 🟠 Hoy no se pinta: la escuela todavía no capturó su número. Los estilos se
+ * quedan porque el botón aparece solo en cuanto lo haga, y entonces tiene que
+ * verse bien sin tocar código. El contorno blanco lo separa de las secciones
+ * oscuras, donde un botón del color del fondo desaparecería. */
+
+.la-wa-flotante {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 55;
+  width: 58px;
+  height: 58px;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 14px 30px -10px rgba(30, 33, 64, 0.55);
+  opacity: 0;
+  transform: translateY(14px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 250ms var(--la-ease-out), transform 250ms var(--la-ease-out);
+}
+
+.la-wa-flotante--visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.la-wa-flotante::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid var(--la-anillo);
+  animation: la-pulso 2.8s var(--la-ease-out) infinite;
+}
+
+@keyframes la-pulso {
+  0%        { transform: scale(1);   opacity: 0.8; }
+  70%, 100% { transform: scale(1.6); opacity: 0; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .la-wa-flotante--visible:hover { transform: translateY(-3px); }
+}
+
+.la-wa-flotante--visible:active {
+  transform: scale(0.95);
+  transition-duration: 100ms;
+}
+
+/* ═══ PREGUNTAS FRECUENTES ═══════════════════════════════════════════════════ */
+
+.la-faq__titulo {
+  margin: 0;
+}
+
+.la-faq__boton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  text-align: left;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.la-faq__icono {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 260ms var(--la-ease-out), background-color 200ms ease, color 200ms ease;
+}
+
+.la-faq__icono--abierta {
+  transform: rotate(45deg);
+}
+
+.la-faq__boton:active .la-faq__icono {
+  scale: 0.9;
+}
+
+.la-faq__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 320ms var(--la-ease-out);
+}
+
+.la-faq__panel--abierta {
+  grid-template-rows: 1fr;
+}
+
+.la-faq__interior {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.la-faq__interior > p {
+  opacity: 0;
+  translate: 0 -6px;
+  transition: opacity 200ms ease, translate 320ms var(--la-ease-out);
+}
+
+.la-faq__panel--abierta .la-faq__interior > p {
+  opacity: 1;
+  translate: none;
+  transition-delay: 70ms;
+}
+
+/* ═══ FOLIO VERIFICABLE ══════════════════════════════════════════════════════
+ * Los caracteres del folio aparecen uno a uno. El folio va a máximo contraste. */
+
+.la-folio-car {
+  display: inline-block;
+  transition:
+    opacity 450ms var(--la-ease-out) calc(var(--la-i, 0) * 45ms + 250ms),
+    translate 550ms var(--la-ease-out) calc(var(--la-i, 0) * 45ms + 250ms);
+}
+
+.la-anim .la-folio:not(.la-visible) .la-folio-car {
+  opacity: 0;
+  translate: 0 12px;
+}
+
+.la-copiar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+}
+
+.la-copiar__iconos {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+}
+
+.la-copiar__icono {
+  position: absolute;
+  inset: 0;
+  transition: opacity 200ms ease, scale 220ms var(--la-ease-out), filter 200ms ease;
+}
+
+.la-copiar__icono--oculto {
+  opacity: 0;
+  scale: 0.6;
+  filter: blur(2px);
+}
+
+/* ═══ HALOS Y AROS DE LAS SECCIONES NAVY ═════════════════════════════════════
+ * Halos difusos y aros finos en los realces del bloque. 🛑 Nunca en un color de
+ * marca: dentro del bloque oscuro puede empastarse. */
+
+.la-halo {
+  position: absolute;
+  width: 560px;
+  height: 560px;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0.12;
+  background: radial-gradient(circle, var(--la-color) 0%, transparent 65%);
+  animation: la-flotar-a 20s var(--la-ease-in-out) infinite alternate;
+}
+
+.la-halo--izq { left: -280px; top: -220px; }
+.la-halo--der { right: -300px; bottom: -260px; animation-direction: alternate-reverse; }
+
+.la-aro {
+  position: absolute;
+  border-radius: 9999px;
+  border-style: solid;
+  pointer-events: none;
+  opacity: 0.18;
+}
+
+.la-aro--1 {
+  display: none;
+  width: 220px;
+  height: 220px;
+  border-width: 10px;
+  left: -90px;
+  top: -90px;
+  animation: la-flotar-b 14s var(--la-ease-in-out) infinite alternate;
+}
+
+.la-aro--2 {
+  width: 200px;
+  height: 200px;
+  border-width: 10px;
+  right: -110px;
+  bottom: -120px;
+  animation: la-flotar-a 17s var(--la-ease-in-out) infinite alternate;
+}
+
+@media (min-width: 768px) {
+  .la-aro--1 { display: block; }
+  .la-aro--2 { width: 300px; height: 300px; right: -90px; bottom: -150px; }
+}
+
+@keyframes la-flotar-a {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-16px, 22px, 0); }
+}
+
+@keyframes la-flotar-b {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to   { transform: translate3d(14px, -18px, 0) rotate(7deg); }
+}
+
+/* ═══ MOVIMIENTO REDUCIDO ════════════════════════════════════════════════════
+ * Todo lo que se desplaza, flota o respira se apaga. Lo que queda es la página
+ * completa y quieta: la escena en su sitio, las cifras
+ * finales, las tarjetas quietas. */
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.la-landing) {
+    scroll-behavior: auto;
+  }
+
+  .la-entrada,
+  .la-subrayado--entrada,
+  .la-forma,
+  .la-arco,
+  .la-circulo,
+  .la-tarjeta-hero__cuerpo,
+  .la-marca-cierre,
+  .la-filete-hero,
+  .la-halo,
+  .la-aro,
+  .la-menu-movil,
+  .la-wa-flotante::before {
+    animation: none !important;
+  }
+
+  .la-anim [data-la-reveal],
+  .la-anim [data-la-reveal]:not(.la-visible) {
+    opacity: 1 !important;
+    translate: none !important;
+    scale: none !important;
+    transition: none !important;
+  }
+
+  .la-anim [data-la-reveal='linea'],
+  .la-anim [data-la-reveal]:not(.la-visible) .la-filete,
+  .la-anim [data-la-reveal]:not(.la-visible) .la-surco {
+    transform: none !important;
+  }
+
+  .la-anim [data-la-reveal]:not(.la-visible) .la-subrayado {
+    background-size: 100% 0.18em !important;
+  }
+
+  .la-anim .la-folio:not(.la-visible) .la-folio-car,
+  .la-folio-car {
+    opacity: 1 !important;
+    translate: none !important;
+    transition: none !important;
+  }
+
+  .la-arco,
+  .la-circulo,
+  .la-tarjeta-hero {
+    translate: none !important;
+  }
+
+  .la-inclinable {
+    transform: none !important;
+  }
+
+  .la-card:hover,
+  .la-btn:hover,
+  .la-red:hover,
+  .la-documento:hover .la-documento__img,
+  .la-card:hover .la-icono-card {
+    transform: none !important;
+  }
+}

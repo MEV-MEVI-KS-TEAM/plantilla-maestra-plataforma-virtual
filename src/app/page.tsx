@@ -44,6 +44,8 @@ import { CONFIG } from '@/lib/config'
 import { getSiteConfig, toLandingConfig } from '@/lib/site-config'
 import { listarCatalogoPublico } from '@/lib/cursos/catalogo'
 import { LandingClient } from '@/components/landing/LandingClient'
+import { LandingAnimada } from '@/components/landing/animada/LandingAnimada'
+import { landingAnimadaActiva } from '@/lib/landing-estilo'
 
 export default async function LandingPage() {
   // Config fusionada (config.ts + overrides del editor). Lo editable de la
@@ -59,5 +61,10 @@ export default async function LandingPage() {
     ? await listarCatalogoPublico()
     : []
 
-  return <LandingClient catalogo={catalogo} config={toLandingConfig(config)} />
+  // La portada ANIMADA es la de las escuelas nuevas; la clásica se conserva
+  // para las que ya estaban entregadas (ver src/lib/landing-estilo.ts). Las dos
+  // reciben EXACTAMENTE lo mismo, así que lo que el admin publique desde
+  // «Personalizar mi página» llega igual a cualquiera de las dos.
+  const props = { catalogo, config: toLandingConfig(config) }
+  return landingAnimadaActiva() ? <LandingAnimada {...props} /> : <LandingClient {...props} />
 }

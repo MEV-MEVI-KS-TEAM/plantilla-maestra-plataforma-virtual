@@ -106,3 +106,99 @@ export function agruparPorCuatrimestre<T extends { orden?: number | null }>(
   }
   return mapa
 }
+
+// ─── Costo completo del programa ────────────────────────────────────────────
+//
+// Los planes de licenciatura no se editan desde «Personalizar mi página»: viven
+// en CONFIG.licenciaturas. La landing, el registro y el alta del panel leen el
+// desglose de aquí para decir la MISMA cifra en los tres lugares.
+//
+// La titulación entra en el total a propósito. En la licenciatura suele ser la
+// parte más grande de la inversión (62–65 % en UNIVERSIDAD INSPIRA #203, 56–59 %
+// en UVEP #209): anunciar la mensualidad sola, con la titulación aparte, deja el
+// costo real en letra chica. (Mismos helpers que LIBERATING KING ACADEMY #202 e
+// INSPIRA #203.)
+
+type ModalidadLicCfg = {
+  id: string
+  label: string
+  meses: number
+  mensualidad: number
+  activa?: boolean
+}
+
+function cfgPrecios() {
+  return (CONFIG as {
+    licenciaturas?: {
+      activas?: boolean
+      inscripcion?: number
+      certificacion?: number
+      modalidades?: readonly ModalidadLicCfg[]
+    }
+  }).licenciaturas
+}
+
+export type DesgloseLicenciatura = {
+  modalidadId: string
+  /** Como la nombra el config (ej. «Regular 12 meses»). */
+  etiqueta: string
+  meses: number
+  mensualidad: number
+  inscripcion: number
+  /** mensualidad × meses */
+  colegiatura: number
+  /** Título y cédula profesional (cuándo se paga lo dice cada escuela). */
+  titulacion: number
+  /** inscripción + colegiatura + titulación: el programa completo. */
+  total: number
+}
+
+/** El desglose de cada plan ACTIVO, en el orden del config. Vacío con el add-on apagado. */
+export function getDesglosesLicenciatura(): DesgloseLicenciatura[] {
+  const lic = cfgPrecios()
+  if (!lic?.activas) return []
+  const inscripcion = Number(lic.inscripcion ?? 0)
+  const titulacion = Number(lic.certificacion ?? 0)
+  return (lic.modalidades ?? [])
+    .filter(m => m.activa !== false && m.meses > 0 && m.mensualidad > 0)
+    .map(m => {
+      const colegiatura = m.mensualidad * m.meses
+      return {
+        modalidadId: m.id,
+        etiqueta: m.label,
+        meses: m.meses,
+        mensualidad: m.mensualidad,
+        inscripcion,
+        colegiatura,
+        titulacion,
+        total: inscripcion + colegiatura + titulacion,
+      }
+    })
+}
+
+export function getDesgloseLicenciatura(modalidadId: string | null | undefined): DesgloseLicenciatura | null {
+  if (!modalidadId) return null
+  return getDesglosesLicenciatura().find(d => d.modalidadId === modalidadId) ?? null
+}
+
+/**
+ * El total común a TODOS los planes, o `null` si alguno difiere o hay menos de
+ * dos. «Los planes cuestan lo mismo» solo se afirma con esto: se CALCULA de los
+ * precios en vez de confiar en una bandera del config, así que el día que cambie
+ * un precio la frase desaparece sola en vez de quedar mintiendo.
+ */
+export function getTotalComunLicenciatura(
+  desgloses: readonly DesgloseLicenciatura[] = getDesglosesLicenciatura(),
+): number | null {
+  if (desgloses.length < 2) return null
+  return desgloses.every(d => d.total === desgloses[0].total) ? desgloses[0].total : null
+}
+
+/**
+ * La parte que la titulación representa del costo total del plan, redondeada
+ * (56 % y 59 % en UVEP). `null` sin titulación o sin total.
+ */
+export function porcentajeTitulacion(d: DesgloseLicenciatura | null | undefined): number | null {
+  if (!d || d.total <= 0 || d.titulacion <= 0) return null
+  return Math.round((d.titulacion / d.total) * 100)
+}
