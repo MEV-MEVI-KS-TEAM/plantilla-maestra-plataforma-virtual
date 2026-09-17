@@ -34,6 +34,7 @@ import {
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
 import {
   unirConY, soloLicenciaturas, desglosesLicenciatura, porcentajeTitulacionTexto, nombrarProgramas,
+  ritmoDeApertura,
 } from './licenciaturas.mjs'
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -268,6 +269,17 @@ const PAGINA_INSTITUCIONAL = (() => {
   }
   try { return buscar(base) } catch { return null }
 })()
+// Lo que el panel de Pagos e Informes hace de verdad, leído del código: el
+// mensaje decía «generar el recibo» sin decir que se le manda al alumno, y
+// «reportes» donde el menú dice «Informes» y hay un Excel para descargar.
+const RECIBO_POR_CORREO = (() => {
+  try { return fs.readFileSync(path.join(RAIZ, 'src/app/(dashboard)/admin/pagos/page.tsx'), 'utf8').includes("'correo'") }
+  catch { return false }
+})()
+const INFORMES_EXCEL = existe('src/app/api/admin/reportes/excel/route.ts')
+// Verificación pública de constancias por folio (PR #130).
+const VALIDAR_CONSTANCIAS = existe('src/app/validar/page.tsx')
+
 const PAGINAS_LEGALES = [
   ['src/app/terminos/page.tsx', 'Términos y Condiciones'],
   ['src/app/privacidad/page.tsx', 'Aviso de Privacidad'],
@@ -442,7 +454,7 @@ const modalidadesFilas = []
 for (const n of nivelesPrograma)
   for (const m of modalidadesActivas)
     modalidadesFilas.push([`${cap(n)} — plan ${m.label || m.id}`, `${m.meses} meses`,
-      `${mxn(mens(m, n))}/mes`, `${m.materiasPorMes} materia${m.materiasPorMes === 1 ? '' : 's'} por mes`])
+      `${mxn(mens(m, n))}/mes`, ritmoDeApertura(m.materiasPorMes)])
 // Escuela semanal: una fila por plan REAL, con su cuota a la semana.
 if (SEMANAL) {
   modalidadesCols.splice(0, modalidadesCols.length, ...colsModalidades)
@@ -470,7 +482,7 @@ if (CARRERAS.length) {
       : CARRERAS.length === 1 ? `${CARRERAS[0].nombre} — ${m.label || m.id}`
                               : `${ETIQUETA_PROGRAMAS} — ${m.label || m.id}`
     modalidadesFilas.push([nombre, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
-      `${m.materiasPorMes} materia${m.materiasPorMes === 1 ? '' : 's'} por mes`])
+      ritmoDeApertura(m.materiasPorMes)])
   }
 
   // Los diplomados llevan su plan y su precio en su propio bloque del config.
@@ -480,7 +492,7 @@ if (CARRERAS.length) {
     if (!m) continue
     modalidadesFilas.push([`${c.nombre} — ${m.label || m.id}`, `${m.meses} meses`,
       `${mxn(c.precio.mensual)}/mes`,
-      `${m.materiasPorMes} materia${m.materiasPorMes === 1 ? '' : 's'} por mes`])
+      ritmoDeApertura(m.materiasPorMes)])
   }
 }
 // El módulo para que el cliente cargue SUS propios cursos, distinto de los
@@ -649,7 +661,7 @@ const datos = {
     'Módulo de pagos: recibo en PDF con tu marca y envío por WhatsApp',
     'Estado de cuenta por alumno',
     SEMANAL && 'Cobro semanal: calendario de pagos por alumno con la fecha de cada semana, «Mis Pagos» para el alumno y «Cobranza» para ti, con quién trae semanas vencidas',
-    'Reportes de ingresos por semana y por mes, con descarga',
+    INFORMES_EXCEL ? 'Informes de ingresos por semana y por mes, con descarga a Excel' : 'Reportes de ingresos por semana y por mes, con descarga',
     'Gestión de documentos del alumno con validación del administrador',
     ...(CARRERAS.length ? [
       `${ETIQUETA_PROGRAMAS} ya ${soloLicenciaturas(CARRERAS) ? 'cargadas y listas' : 'cargados y listos'} para inscribir: ${unirConY(CARRERAS.map(c => c.nombre))}`,
@@ -929,10 +941,10 @@ if (!flag('solo-pdf')) {
   }
   L.push('⚙️ LO QUE PUEDES HACER DESDE TU PANEL',
     '• Dar de alta alumnos y abrirles el contenido mes a mes',
-    '• Registrar pagos y generar el recibo en PDF con tu logo',
+    `• Registrar pagos, generar el recibo en PDF con tu logo y enviárselo al alumno por WhatsApp${RECIBO_POR_CORREO ? ' o por correo' : ''}`,
     ...(SEMANAL ? ['• Marcar cada semana pagada y ver en Cobranza quién trae semanas vencidas'] : []),
     '• Ver el estado de cuenta de cada alumno',
-    '• Consultar reportes de ingresos por semana y por mes',
+    INFORMES_EXCEL ? '• Consultar tus Informes de ingresos por semana y por mes, y descargarlos en Excel' : '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
     '• Crear tus propios Cursos y Diplomados cuando quieras',
     ...(CARRERAS.length
@@ -961,6 +973,7 @@ if (!flag('solo-pdf')) {
     // a sus prospectos y el mensaje solo nombraba la validez.
     !OFERTA_INFORMATIVA?.personalizados.length && anclaEnLanding('planes') && `• Tus niveles y planes, con sus precios: ${URL_BASE}/#planes`,
     CARRERAS.length && !OFERTA_INFORMATIVA?.programas && anclaProgramas && `• ${ETIQUETA_PROGRAMAS}${DESGLOSES_LIC.length ? ', con su costo completo y la titulación desglosada' : ''}: ${URL_BASE}/#${anclaProgramas}`,
+    VALIDAR_CONSTANCIAS && `• Verificación de constancias: quien reciba una constancia de tu escuela confirma su folio en ${URL_BASE}/validar`,
     PAGINAS_LEGALES.length && `• ${PAGINAS_LEGALES.join(', ')}, redactados y publicados`,
   ].filter(Boolean)
   if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')

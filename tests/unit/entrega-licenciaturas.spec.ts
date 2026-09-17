@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 // El generador es JS puro, sin tipos: se prueba tal cual corre.
 import {
   unirConY, soloLicenciaturas, titulacionAparte, desglosesLicenciatura,
-  porcentajeTitulacionTexto, nombrarProgramas,
+  porcentajeTitulacionTexto, nombrarProgramas, ritmoDeApertura,
 } from '../../scripts/entrega/licenciaturas.mjs'
 import { construirHTML } from '../../scripts/entrega/documento.mjs'
 
@@ -91,6 +91,13 @@ test('listas en español: «A, B y C»', () => {
   expect(unirConY(['A', 'B'])).toBe('A y B')
   expect(unirConY(['A', 'B', 'C'])).toBe('A, B y C')
   expect(unirConY([])).toBe('')
+})
+
+test('un ritmo fraccionario se dice en promedio, no como error de captura', () => {
+  expect(ritmoDeApertura(4)).toBe('4 materias por mes')
+  expect(ritmoDeApertura(1)).toBe('1 materia por mes')
+  expect(ritmoDeApertura(2.67)).toBe('2.67 materias por mes, en promedio')
+  expect(ritmoDeApertura(undefined)).toBe('')
 })
 
 /* ── Documento ──────────────────────────────────────────────────────────── */

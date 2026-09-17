@@ -88,3 +88,17 @@ export function nombrarProgramas(carreras = []) {
   const pagoUnico = carreras.every(c => Number(c.precio?.publico) > 0 && !Number(c.precio?.mensual))
   return pagoUnico ? `${base} de pago único` : base
 }
+
+/**
+ * «4 materias por mes» · «1 materia por mes» · «2.67 materias por mes, en promedio».
+ *
+ * 32 materias en 12 meses dan 2.67 al mes: la plataforma abre 3, 6, 9… y la
+ * última cae en el mes 12 (Bug 115). Sin el «en promedio», «2.67 materias por
+ * mes» se lee como un error de captura en el papel que el cliente archiva.
+ */
+export function ritmoDeApertura(materiasPorMes) {
+  const n = Number(materiasPorMes)
+  if (!(n > 0)) return ''
+  if (Number.isInteger(n)) return `${n} materia${n === 1 ? '' : 's'} por mes`
+  return `${n} materias por mes, en promedio`
+}
