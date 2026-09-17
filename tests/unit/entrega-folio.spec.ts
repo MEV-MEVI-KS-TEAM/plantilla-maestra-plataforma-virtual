@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-// @ts-expect-error — el generador es JS puro, sin tipos: se prueba tal cual corre.
+// El generador es JS puro, sin tipos: se prueba tal cual corre.
 import { soporte } from '../../scripts/entrega/documento.mjs'
 
 /**
@@ -27,10 +27,11 @@ const BASE = {
   primerosPasos: ['Entra al panel y recorre el menú con calma'],
 }
 
-test('CON folio: el documento ofrece verificarlo en el portal SIGED', () => {
+test('CON folio: el documento ofrece verificarlo en el portal SIGED, y cuenta tres bloques', () => {
   const html = soporte({ ...BASE, validez: true, folioVerificable: true })
   expect(html).toContain('Verifícalo tú mismo')
   expect(html).toContain('SIGED')
+  expect(html).toContain('tres bloques')
 })
 
 test('SIN folio: no se promete ningún folio, pero la sección de validez sigue estando', () => {
@@ -38,9 +39,16 @@ test('SIN folio: no se promete ningún folio, pero la sección de validez sigue 
   // La escuela SÍ tiene validez oficial y sus dos documentos: eso no se quita.
   expect(html).toContain('Validez oficial y respaldo')
   expect(html).toContain('dos documentos oficiales')
-  // Lo que no puede aparecer es la promesa de un folio que no existe.
+  // Lo que no puede aparecer es la promesa de un folio que no existe…
   expect(html).not.toContain('Verifícalo tú mismo')
   expect(html).not.toContain('folio')
+  // …ni la de un enlace al portal de la SEP: sin folio la landing no pinta ese
+  // bloque completo, botón incluido, así que tampoco hay enlace que ofrecer.
+  expect(html).not.toContain('SIGED')
+  expect(html).not.toContain('portal oficial de la SEP')
+  // Y el conteo se ajusta: son DOS bloques, no tres.
+  expect(html).toContain('dos bloques')
+  expect(html).not.toContain('tres bloques')
 })
 
 test('sin validez oficial no hay sección, con folio o sin él', () => {

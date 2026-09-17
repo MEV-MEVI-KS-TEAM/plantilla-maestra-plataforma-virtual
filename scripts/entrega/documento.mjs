@@ -334,21 +334,39 @@ ${d.notaModalidades ? `<p class="small">${esc(d.notaModalidades)}</p>` : ''}`
 }
 
 function cursos(d) {
+  // Los cursos que el cliente YA tiene publicados. Con el add-on de Cursos de
+  // Ingreso esta página deja de ser una invitación a crear el primero y pasa a
+  // ser el inventario de lo que ya está a la venta.
+  //
+  // 🛑 Decía «módulo vacío» y «crea tu primer curso» aunque hubiera cursos
+  // publicados, y en la misma página imprimía «con 2 curso(s) cargado(s)»: el
+  // documento se contradecía a sí mismo y le negaba al cliente por escrito lo
+  // que acababa de comprar.
+  const lista = d.cursosLista || []
+  const n = lista.length || d.cursosPublicados || 0
+  const hay = n > 0
+  const plural = n === 1 ? 'curso' : 'cursos'
+  const titulo = hay ? 'Tus cursos, ya publicados' : 'Crea tus propios cursos'
+
   return `
-<h2><span class="num">Módulo incluido ·</span> Crea tus propios cursos</h2>
+<h2><span class="num">Módulo incluido ·</span> ${titulo}</h2>
 <div class="rule"></div>
 <p class="lead">Además del programa académico, tu plataforma incluye un módulo
 independiente para vender cursos y diplomados cortos. Se entrega
-<b>instalado y ${d.cursosPublicados ? `con ${d.cursosPublicados} curso(s) cargado(s)` : 'vacío'}</b>,
-listo para que ${d.cursosPublicados ? 'sigas ampliando tu oferta' : 'cargues tu propia oferta cuando lo decidas'}.</p>
+<b>instalado y ${hay ? `con ${n} ${plural} ya ${n === 1 ? 'publicado' : 'publicados'} y a la venta` : 'vacío'}</b>,
+listo para que ${hay ? 'sigas ampliando tu oferta cuando quieras' : 'cargues tu propia oferta cuando lo decidas'}.</p>
 ${kv([
     ['Panel de gestión', `${d.url}/admin/cursos`],
     ['Catálogo público', `${d.url}/diplomados`],
-    ['Contenido inicial', d.cursosPublicados ? `${d.cursosPublicados} curso(s)` : 'Vacío — lo defines tú'],
+    ['Contenido inicial', hay ? `${n} ${plural} ${n === 1 ? 'publicado' : 'publicados'}` : 'Vacío — lo defines tú'],
   ])}
+${hay && lista.length ? `<h3>Lo que ya está a la venta</h3>
+${dt(['Curso', 'Precio'], lista.map(c => [c.nombre, c.precio || 'Lo defines tú']))}` : ''}
 <h3>Qué te permite hacer</h3>
 ${ul([
-    'Crear cursos con un asistente paso a paso: portada, módulos y lecciones',
+    hay
+      ? 'Crear más cursos con un asistente paso a paso: portada, módulos y lecciones'
+      : 'Crear cursos con un asistente paso a paso: portada, módulos y lecciones',
     'Cada lección admite video y material de apoyo descargable',
     'Examen final con banco de preguntas propio por curso',
     'Constancia con folio consecutivo al terminar el curso',
@@ -356,10 +374,57 @@ ${ul([
     'Cobro por inscripción y por mensualidad, independiente del programa académico',
     'Apertura de contenido mes a mes, igual que en el programa',
   ])}
-<div class="note"><b>Cómo empezar</b><p>Entra a <b>Gestionar Cursos</b> en el menú de
-tu panel y crea tu primer curso. Mientras no publiques ninguno, la sección de
-diplomados no se muestra en tu página pública.</p></div>
+<div class="note"><b>Cómo empezar</b><p>${hay
+    ? `Tu catálogo público ya muestra ${n === 1 ? 'este curso' : `estos ${n} cursos`}: enséñalo tal cual a tus prospectos. Desde <b>Gestionar Cursos</b> inscribes alumnos, sigues su avance y añades los cursos que quieras.`
+    : 'Entra a <b>Gestionar Cursos</b> en el menú de tu panel y crea tu primer curso. Mientras no publiques ninguno, la sección de diplomados no se muestra en tu página pública.'}</p></div>
 ${tablaModalidades(d)}`
+}
+
+/**
+ * «Personalizar mi página» — la página que faltaba.
+ *
+ * ⚠️ POR QUÉ IMPORTA. Es el ÚNICO módulo que el cliente opera solo, sin
+ * pedirnos nada y sin redeploy, y el documento de entrega no lo mencionaba en
+ * ninguna de sus siete páginas. El cliente acababa la lectura sin saber que
+ * puede cambiar su eslogan, sus textos, sus colores y su logo.
+ *
+ * Y en una escuela que entrega SIN WhatsApp es más que una comodidad: es el
+ * único camino para encender sus propios botones de WhatsApp. Sin esta página,
+ * ese cliente se queda con una plataforma sin su canal principal y sin saber
+ * que depende de un campo que él puede llenar en un minuto.
+ */
+function personalizar(d) {
+  const P = d.P
+  return `
+<h2><span class="num">Tu marca ·</span> Personalizar mi página</h2>
+<div class="rule"></div>
+<p class="lead">Tu página pública no está congelada. Desde tu propio panel
+cambias los textos, los colores y el logo, y los ves publicados al instante —sin
+pedirnos nada y sin esperar a nadie.</p>
+${kv([
+    ['Dónde está', `${d.url}/admin/configuracion`],
+    ['En el menú', 'Personalizar mi página'],
+    ['Quién puede entrar', 'Solo tu cuenta de administrador'],
+  ])}
+<h3>Qué puedes cambiar tú</h3>
+${ul([
+    'El nombre visible, el eslogan y los textos de cada sección de tu página',
+    'Tu logo y el icono que se ve en la pestaña del navegador',
+    'Los colores de tu marca, con 12 paletas listas o los tuyos propios',
+    'Tu WhatsApp, tu correo y tu teléfono de contacto',
+    'Los precios y los planes que se anuncian en la página y en el registro',
+  ])}
+<div class="note"><b>Publicar y volver atrás</b><p>Cada cambio se guarda cuando
+pulsas <b>Publicar cambios</b>, y <b>Restaurar diseño original</b> devuelve la
+página exactamente a como se te entregó. Nada de lo que pruebes es
+irreversible.</p></div>
+${d.sinWhatsApp ? `<div class="note"><b>⭐ Tu WhatsApp, en cuanto lo captures</b>
+<p>Tu página se entrega <b>sin botones de WhatsApp</b> a propósito: no nos diste
+un número y preferimos no publicar uno que no lleve a ninguna parte. En cuanto
+escribas el tuyo en <b>Personalizar mi página</b> y pulses Publicar, los botones
+de WhatsApp <b>aparecen solos</b> en tu portada, en tu página de planes y en el
+pie — sin que nadie toque el código. Es el cambio de más impacto que puedes
+hacer hoy en tu página.</p></div>` : ''}`
 }
 
 function licenciaturas(d) {
@@ -479,17 +544,17 @@ function soporte(d) {
 ${d.validez ? `<h2>Validez oficial y respaldo</h2>
 <div class="rule"></div>
 <p class="lead">Tu página pública incluye una sección dedicada a la validez del
-certificado, con tres bloques que resuelven la objeción más común de cualquier
+certificado, con ${d.folioVerificable ? 'tres bloques' : 'dos bloques'} que resuelven la objeción más común de cualquier
 prospecto: "¿esto es real?".</p>
 ${ul([
       '<b>Un certificado, dos países</b> — reconocimiento en México y Estados Unidos',
       '<b>Los dos documentos oficiales</b> que recibe el alumno al terminar, con imagen de cada uno',
-      // 🛑 Solo si la escuela TIENE folio propio publicado. Sin él la landing no
-      // pinta ese bloque, y prometerlo aquí sería un documento oficial que
-      // contradice a la plataforma.
-      d.folioVerificable
-        ? '<b>Verifícalo tú mismo</b> — folio de ejemplo y enlace directo al portal SIGED de la SEP'
-        : '<b>Enlace al portal oficial de la SEP</b> para que tu prospecto compruebe el respaldo por su cuenta',
+      // 🛑 SOLO si la escuela tiene folio propio publicado, y entonces va
+      // completo. Sin folio la landing NO pinta ese bloque —ni el folio ni el
+      // botón al portal— y no se promete nada: ni el folio, ni un enlace que
+      // tampoco existe. El conteo de arriba se ajusta con él.
+      d.folioVerificable &&
+        '<b>Verifícalo tú mismo</b> — folio de ejemplo y enlace directo al portal SIGED de la SEP',
     ])}
 <h2 class="mt2">Soporte técnico MEV</h2>` : '<h2>Soporte técnico MEV</h2>'}
 <div class="rule"></div>
@@ -545,6 +610,10 @@ export function construirHTML(d) {
   // titulación o el marco legal de los diplomados.
   if (d.licenciaturas?.activas) secciones.push(...[licenciaturas(d)].flat())
   secciones.push(cursos(d))
+  // «Personalizar mi página» va DESPUÉS del inventario de lo entregado y ANTES
+  // del soporte: es lo último que el cliente puede hacer por su cuenta antes de
+  // tener que escribirnos.
+  secciones.push(personalizar(d))
   secciones.push(soporte(d), cierre(d))
 
   const paginas = secciones.map((body, i) => `<div class="page">
@@ -561,4 +630,4 @@ ${paginas}
 </body></html>`
 }
 
-export { mxn, cap, dt, kv, ul, paleta, infraestructura, soporte }
+export { mxn, cap, dt, kv, ul, paleta, infraestructura, soporte, cursos, personalizar }
