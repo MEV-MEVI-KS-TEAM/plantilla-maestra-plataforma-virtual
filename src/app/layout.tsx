@@ -1,7 +1,10 @@
 import { colorLegibleSobre, oscurecerHasta } from '@/lib/contraste'
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Playfair_Display, Manrope } from "next/font/google";
 import "./globals.css";
+import "./landing-animada.css";
+import { landingAnimadaActiva } from "@/lib/landing-estilo";
 import { Providers } from "@/components/providers";
 import { SiteConfigProvider } from "@/components/site-config-provider";
 import { getSiteConfig, toPublicSiteConfig } from "@/lib/site-config";
@@ -15,6 +18,26 @@ const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+});
+
+// Tipografías de la portada ANIMADA: Playfair Display en los títulos —le da peso
+// editorial al nombre de la escuela— y Manrope en el cuerpo. La itálica de
+// Playfair se carga porque los remates de varios títulos van en cursiva.
+//
+// ⚠️ Sus variables solo se cuelgan del <body> con la portada animada encendida:
+// una escuela con la clásica sigue con las de siempre, letra por letra. Y las
+// reglas de `landing-animada.css` llevan respaldo dentro del `var()`, así que
+// sin las variables no queda ninguna declaración inválida.
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+  style: ["normal", "italic"],
+});
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
 });
 
 const description = "Estudia Secundaria o Preparatoria desde casa. Acompañamiento en la gestión de tu certificación con validez oficial. 100% en línea, a tu ritmo, sin examen final."
@@ -139,7 +162,7 @@ export default async function RootLayout({
   return (
     <html lang="es">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable}${landingAnimadaActiva() ? ` ${playfair.variable} ${manrope.variable}` : ""} antialiased`}
         style={cssVars}
       >
         <Providers>
