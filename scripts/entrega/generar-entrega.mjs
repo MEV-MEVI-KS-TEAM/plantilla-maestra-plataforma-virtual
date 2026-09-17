@@ -83,6 +83,28 @@ const URL_BASE = `https://${dominio}`
 // escuela. Se fija ANTES de construir nada.
 fijarMoneda(CONFIG.moneda)
 
+/**
+ * ¿La escuela tiene un folio de validación propio y publicado?
+ *
+ * 🛑 NO ES LO MISMO QUE `validez`. Esa bandera dice si la escuela vende su
+ * certificado con validez oficial; esto dice si además tiene un FOLIO que un
+ * prospecto pueda teclear en el portal SIGED. Son cosas distintas y la landing
+ * ya las separa: gatea el bloque «Verifícalo tú mismo» por `folio !== ''`.
+ *
+ * El documento no lo hacía, y anunciaba «con folio verificable en el portal
+ * SIGED de la SEP» en TODAS las escuelas. En una que entrega sin folio propio
+ * —AULA RAÍZ #208, cuya red comparte una acreditación que no es suya y que por
+ * eso NO se copia a su config— eso es un documento oficial que promete algo que
+ * su propia página no muestra: el cliente lo reenvía, un prospecto pide
+ * verificar y no hay nada que teclear.
+ *
+ * Sale de CONFIG, no del archivo de datos: es el mismo criterio del README —lo
+ * que ya está en el config no se captura dos veces— y así no se puede quedar
+ * desincronizado con la página.
+ */
+const FOLIO_VERIFICABLE =
+  String(CONFIG.landing?.validezOficial?.folio ?? '').trim() !== ''
+
 /* ── 2. Credenciales (fuera del repo) ────────────────────────────────────── */
 const rutaDatos = path.join(RAIZ, opt('datos', 'entrega.local.json'))
 if (!fs.existsSync(rutaDatos)) abortar(`No encuentro ${path.basename(rutaDatos)}`, [
@@ -592,6 +614,7 @@ const datos = {
   incluirCursos: true,
   cursosPublicados: INV.cursos || 0,
   validez: D.validez !== false,
+  folioVerificable: FOLIO_VERIFICABLE,
   soporte: D.soporte || SOPORTE,
   tutoriales: [
     `Playlist completa: ${TUTORIALES.playlist}`,
@@ -631,7 +654,9 @@ const datos = {
     `Registro público de alumnos con matrícula automática (prefijo ${CONFIG.prefijoMatricula}-)`,
     'Desbloqueo progresivo del contenido, mes a mes, a tu ritmo de cobro',
     'Video, quiz semanal y examen final en cada materia',
-    D.validez !== false && 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP',
+    D.validez !== false && (FOLIO_VERIFICABLE
+      ? 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP'
+      : 'Sección de Validez Oficial México + Estados Unidos, con los dos documentos oficiales que recibe el alumno'),
     'Módulo de pagos: recibo en PDF con tu marca y envío por WhatsApp',
     'Estado de cuenta por alumno',
     SEMANAL && 'Cobro semanal: calendario de pagos por alumno con la fecha de cada semana, «Mis Pagos» para el alumno y «Cobranza» para ti, con quién trae semanas vencidas',
@@ -928,7 +953,9 @@ if (!flag('solo-pdf')) {
   // el visitante ve. Son parte de lo entregado y el cliente tiene que saber
   // que existen para poder enseñarlas.
   const publicas = [
-    D.validez !== false && `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`,
+    D.validez !== false && (FOLIO_VERIFICABLE
+      ? `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`
+      : `• Validez oficial México y Estados Unidos, con los dos documentos oficiales que recibe el alumno: ${URL_BASE}/#validez`),
     PAGINA_INSTITUCIONAL && `• Manifiesto de tu marca, con una demostración de un curso real que se prueba sin registro: ${URL_BASE}${PAGINA_INSTITUCIONAL}`,
     FORMULARIO_DIAGNOSTICO && `• Formulario de diagnóstico para captar prospectos: ${URL_BASE}/#diagnostico`,
     OFERTA_INFORMATIVA?.personalizados.length && `• Planes con atención personalizada, que se contratan por WhatsApp: ${OFERTA_INFORMATIVA.personalizados.join(' · ')}${anclaEnLanding('planes') ? ` — ${URL_BASE}/#planes` : ''}`,

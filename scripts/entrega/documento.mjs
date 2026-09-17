@@ -484,7 +484,12 @@ prospecto: "¿esto es real?".</p>
 ${ul([
       '<b>Un certificado, dos países</b> — reconocimiento en México y Estados Unidos',
       '<b>Los dos documentos oficiales</b> que recibe el alumno al terminar, con imagen de cada uno',
-      '<b>Verifícalo tú mismo</b> — folio de ejemplo y enlace directo al portal SIGED de la SEP',
+      // 🛑 Solo si la escuela TIENE folio propio publicado. Sin él la landing no
+      // pinta ese bloque, y prometerlo aquí sería un documento oficial que
+      // contradice a la plataforma.
+      d.folioVerificable
+        ? '<b>Verifícalo tú mismo</b> — folio de ejemplo y enlace directo al portal SIGED de la SEP'
+        : '<b>Enlace al portal oficial de la SEP</b> para que tu prospecto compruebe el respaldo por su cuenta',
     ])}
 <h2 class="mt2">Soporte técnico MEV</h2>` : '<h2>Soporte técnico MEV</h2>'}
 <div class="rule"></div>
@@ -556,4 +561,4 @@ ${paginas}
 </body></html>`
 }
 
-export { mxn, cap, dt, kv, ul, paleta, infraestructura }
+export { mxn, cap, dt, kv, ul, paleta, infraestructura, soporte }
