@@ -32,6 +32,9 @@ import {
   frasesSemanales, lineasPreciosWhatsApp, ofertaInformativa,
 } from './planes.mjs'
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
+import {
+  unirConY, soloLicenciaturas, desglosesLicenciatura, porcentajeTitulacionTexto, nombrarProgramas,
+} from './licenciaturas.mjs'
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -276,10 +279,23 @@ const PAGINAS_LEGALES = [
 // se LEE de la landing en vez de darlo por hecho: estaba escrito '#programas' y
 // el id real es 'diplomados', asi que el enlace del PDF no llevaba a ninguna
 // parte. Si no se encuentra ninguno, no se promete el enlace.
+// El texto de TODA la landing, no solo `LandingClient.tsx`: una landing propia
+// pinta sus secciones desde sus propios componentes (UVEP #209 tiene
+// `id="licenciaturas"` en `landing/uvep/Licenciaturas.tsx`), y buscar en un solo
+// archivo dejaba el PDF y el mensaje sin el enlace a la sección.
+const TEXTO_LANDING = (() => {
+  const leer = (dir) => fs.readdirSync(dir, { withFileTypes: true }).map(e => {
+    const abs = path.join(dir, e.name)
+    if (e.isDirectory()) return leer(abs)
+    return /\.(tsx?|jsx?)$/.test(e.name) ? fs.readFileSync(abs, 'utf8') : ''
+  }).join('\n')
+  try { return leer(path.join(RAIZ, 'src/components/landing')) } catch { return '' }
+})()
+
 const anclaProgramas = (() => {
   if (!CARRERAS.length) return null
   try {
-    const landing = fs.readFileSync(new URL('../../src/components/landing/LandingClient.tsx', import.meta.url), 'utf8')
+    const landing = TEXTO_LANDING
     // Solo la sección de los programas. `diplomados` NO sirve: es el catálogo
     // de cursos propios del cliente y se renderiza únicamente si publicó
     // alguno, así que enlazar ahí manda al vacío.
@@ -300,9 +316,12 @@ const ETIQUETA_PROGRAMAS = TIPOS.length === 0 ? 'Programas'
       .map(t => NOMBRE_TIPO[t])
       .join(' y ')
 // 🛑 «Cuatrimestre» no se le dice al cliente ni al alumno: es palabra prohibida
-// en todo material de entrega. La llave del JSON del banco se llama así porque
-// la consume el seeder; en pantalla y en papel se dice «módulos».
-const PALABRA_BLOQUE = 'Módulos'
+// en todo material de entrega. La llave `cuatrimestres` del banco la consume el
+// seeder y ninguna pantalla la enseña, así que el documento tampoco la nombra
+// (se decía «8 módulos», que el cliente no encuentra en su panel).
+
+// Titulación con precio propio: cada plan con su costo completo. `[]` si no aplica.
+const DESGLOSES_LIC = CONFIG.licenciaturas?.activas ? desglosesLicenciatura(CONFIG.licenciaturas, CARRERAS) : []
 
 const nivelesPrograma = CONFIG.niveles.filter(n => n !== 'licenciatura')
 const modalidadesActivas = (CONFIG.modalidades || []).filter(m => m && typeof m === 'object' && m.activa)
@@ -372,11 +391,7 @@ const FRASES_SEMANALES = SEMANAL ? frasesSemanales(PLANES_SEMANALES, nivelesProg
 // Lo que la página anuncia sin venderlo en línea (planes por WhatsApp, catálogo
 // informativo). Solo existe en los clones que lo declaran en CONFIG.ofertaPublica.
 const OFERTA_INFORMATIVA = ofertaInformativa(CONFIG)
-const anclaEnLanding = (id) => {
-  try {
-    return fs.readFileSync(path.join(RAIZ, 'src/components/landing/LandingClient.tsx'), 'utf8').includes(`id="${id}"`)
-  } catch { return false }
-}
+const anclaEnLanding = (id) => TEXTO_LANDING.includes(`id="${id}"`)
 
 // Tabla de precios: una columna por nivel, una fila por concepto.
 const preciosCols = ['Concepto', ...nivelesPrograma.map(cap)]
@@ -567,9 +582,9 @@ const datos = {
   // instituto, centro— en lugar de "instituto" en duro, y nombra también los
   // programas de pago único: son parte de lo que se le está entregando.
   frasePrograma: `tu ${D.palabraInstitucion || 'instituto'} en línea — ${listaNiveles}${
-    CARRERAS.length ? `, ${CARRERAS.map(c => c.nombre).join(' y ')}` : ''}`,
+    CARRERAS.length ? `, ${unirConY(CARRERAS.map(c => c.nombre))}` : ''}`,
   fraseIntro: `Una sola plataforma que atiende tus ${nivelesPrograma.length === 1 ? 'alumnos' : `${nivelesPrograma.length} niveles`}: ${listaNiveles}${
-    CARRERAS.length ? `, más ${CARRERAS.length === 1 ? 'tu programa' : `tus ${CARRERAS.length} programas`} de pago único` : ''
+    CARRERAS.length ? `, más ${nombrarProgramas(CARRERAS)}` : ''
   }. El alumno se registra, elige ${CARRERAS.length ? 'qué quiere estudiar' : 'su nivel'} y avanza mes a mes; tú lo administras todo desde un único panel.`,
   frasePrecios: SEMANAL ? FRASES_SEMANALES.frasePrecios : modalidadesActivas.length === 1
     ? `Tu escuela opera con un plan único de ${modalidadesActivas[0].meses} meses${inscDistinta ? ' y una inscripción diferenciada por nivel' : ''}. Así quedó cargado en la plataforma:`
@@ -588,7 +603,6 @@ const datos = {
     : CONFIG.licenciaturas,
   anclaProgramas,
   etiquetaProgramas: ETIQUETA_PROGRAMAS,
-  palabraBloque: PALABRA_BLOQUE,
   incluirCursos: true,
   cursosPublicados: INV.cursos || 0,
   validez: D.validez !== false,
@@ -616,7 +630,7 @@ const datos = {
     // acaba de comprar y lo primero que quiere ver confirmado.
     ...(CARRERAS.length ? [CARRERAS.length === 1
       ? `${CARRERAS[0].nombre}, con su contenido cargado`
-      : `${CARRERAS.length} programas ya cargados: ${CARRERAS.map(c => c.nombre).join(' y ')}`] : []),
+      : `${CARRERAS.length} ${soloLicenciaturas(CARRERAS) ? 'licenciaturas ya cargadas' : 'programas ya cargados'}: ${unirConY(CARRERAS.map(c => c.nombre))}`] : []),
     'Módulo de Cursos y Diplomados listo para tu propio contenido',
     D.validez !== false && 'Sección de Validez Oficial México + Estados Unidos',
     'Panel de pagos, reportes y estado de cuenta',
@@ -638,7 +652,7 @@ const datos = {
     'Reportes de ingresos por semana y por mes, con descarga',
     'Gestión de documentos del alumno con validación del administrador',
     ...(CARRERAS.length ? [
-      `${ETIQUETA_PROGRAMAS} ya cargados y listos para inscribir: ${CARRERAS.map(c => c.nombre).join(' y ')}`,
+      `${ETIQUETA_PROGRAMAS} ya ${soloLicenciaturas(CARRERAS) ? 'cargadas y listas' : 'cargados y listos'} para inscribir: ${unirConY(CARRERAS.map(c => c.nombre))}`,
     ] : []),
     'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
     'Rol de secretario con accesos delimitados',
@@ -843,7 +857,6 @@ if (!flag('solo-pdf')) {
     for (const c of carreras) {
       const partes = []
       if (c.inv?.materias) partes.push(`${c.inv.materias} materias`)
-      if (c.cuatrimestres) partes.push(`${c.cuatrimestres} módulos`)
       const reactivos = (c.inv?.preguntas || 0) + (c.inv?.quiz || 0)
       if (reactivos) partes.push(`${reactivos} reactivos`)
       L.push(`• ${c.nombre}${partes.length ? ` — ${partes.join(' · ')}` : ''}`)
@@ -854,6 +867,9 @@ if (!flag('solo-pdf')) {
     // es justo lo que el cliente tiene que poder explicar a un prospecto.
     const RUTAS = (CONFIG.licenciaturas.rutas || []).filter(r => r.activa !== false)
     const esDip = titulo === 'DIPLOMADOS'
+    // El desglose con titulación es de las licenciaturas, no de los cursos de
+    // preparación que comparten los mismos rieles.
+    const desgloses = carreras.every(c => c.tipo === 'licenciatura') ? DESGLOSES_LIC : []
 
     if (esDip) {
       // El diplomado tiene su propio plan y su propio precio, y ninguno de los
@@ -893,13 +909,21 @@ if (!flag('solo-pdf')) {
         // igual que lo explica su página, y este es el papel al que va a volver.
         if (r.disclaimer) L.push(`   ⚠️ ${r.disclaimer}`)
       }
+    } else if (desgloses.length) {
+      // El costo completo, igual que la página y el registro del cliente:
+      // «$2,200/mes» sin la titulación dejaba fuera más de la mitad de lo que
+      // paga el alumno (INSPIRA #203, UVEP #209).
+      for (const p of desgloses)
+        L.push(`${p.label}: ${mxn(p.inscripcion)} de inscripción + ${p.meses} × ${mxn(p.mensualidad)} + ${mxn(p.titulacion)} de titulación = ${mxn(p.total)}`)
+      L.push(`La titulación se paga al concluir y es ${porcentajeTitulacionTexto(desgloses)} del costo total.`)
     } else if (modsLic.length) {
       const precios = modsLic.map(m => `${m.label || m.id}: ${mxn(m.mensualidad)}/mes`).join(' · ')
       L.push(`Precio: ${precios}`)
     }
 
     const inscLic = CONFIG.licenciaturas.inscripcion
-    if (!esDip) L.push(inscLic ? `Inscripción: ${mxn(inscLic)}` : 'Sin inscripción adicional.')
+    // Con el desglose, la inscripción ya va dentro de cada plan.
+    if (!esDip && !desgloses.length) L.push(inscLic ? `Inscripción: ${mxn(inscLic)}` : 'Sin inscripción adicional.')
     L.push('Se inscriben desde tu misma página, eligiendo el programa al registrarse.', '')
     }
   }
@@ -933,6 +957,10 @@ if (!flag('solo-pdf')) {
     FORMULARIO_DIAGNOSTICO && `• Formulario de diagnóstico para captar prospectos: ${URL_BASE}/#diagnostico`,
     OFERTA_INFORMATIVA?.personalizados.length && `• Planes con atención personalizada, que se contratan por WhatsApp: ${OFERTA_INFORMATIVA.personalizados.join(' · ')}${anclaEnLanding('planes') ? ` — ${URL_BASE}/#planes` : ''}`,
     OFERTA_INFORMATIVA?.programas && `• Catálogo informativo de ${OFERTA_INFORMATIVA.programas} licenciaturas, sin registro en línea${anclaEnLanding('licenciaturas') ? `: ${URL_BASE}/#licenciaturas` : ''}`,
+    // Las secciones de la oferta, si la landing las tiene: el cliente las enseña
+    // a sus prospectos y el mensaje solo nombraba la validez.
+    !OFERTA_INFORMATIVA?.personalizados.length && anclaEnLanding('planes') && `• Tus niveles y planes, con sus precios: ${URL_BASE}/#planes`,
+    CARRERAS.length && !OFERTA_INFORMATIVA?.programas && anclaProgramas && `• ${ETIQUETA_PROGRAMAS}${DESGLOSES_LIC.length ? ', con su costo completo y la titulación desglosada' : ''}: ${URL_BASE}/#${anclaProgramas}`,
     PAGINAS_LEGALES.length && `• ${PAGINAS_LEGALES.join(', ')}, redactados y publicados`,
   ].filter(Boolean)
   if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')
