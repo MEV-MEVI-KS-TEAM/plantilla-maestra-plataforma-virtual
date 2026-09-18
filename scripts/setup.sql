@@ -16,7 +16,7 @@
 --   [seed-materias-ejemplo.sql eliminado — ver nota más abajo]
 --   4. seed-crear-evaluaciones.sql               — INSERT 1 evaluación por materia (Bug 21)
 --   [seed-evaluaciones-y-quiz.sql DEPRECATED — ver nota Bug 33 abajo]
---   5. seed-preguntas-evaluaciones-universal.sql — 265 preguntas reales (canónico, cierra Bug C)
+--   5. seed-preguntas-evaluaciones-universal.sql — 265 INSERT de preguntas reales (canónico, cierra Bug C)
 --
 -- Pasos manuales POSTERIORES a este script:
 --   - create-admin.sql            — Crear usuario administrador (requiere UUID real)
@@ -72,7 +72,11 @@
 -- ============================================================================
 
 \echo '=== PASO 5/5: seed-preguntas-evaluaciones-universal.sql ==='
-\echo '── Sembrando 265 preguntas reales por evaluación (cierra Bug C, canónico) ──'
+\echo '── Sembrando preguntas reales por evaluación (cierra Bug C, canónico) ──'
+\echo '   El archivo trae 265 INSERT ... SELECT, y cada uno entra SOLO si este'
+\echo '   cliente tiene esa evaluación: el total sembrado depende de su catálogo.'
+\echo '   Cliente nuevo estándar (medido en #208 y #212): 240 universales + 26 del'
+\echo '   seed demo = 266 filas en la tabla preguntas. Ese es el número a comparar, no 265.'
 \i seed-preguntas-evaluaciones-universal.sql
 
 \echo '============================================================'
@@ -118,6 +122,8 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 -- ============================================================================
 \echo '=== PASO 6: seed-quiz-semanal-universal.sql ==='
 \echo '── Sembrando 576 preguntas pedagógicas (3/semana × 8 semanas × 24 materias) ──'
+\echo '   288 preparatoria + 288 secundaria. Con las 16 del seed demo, un cliente'
+\echo '   nuevo termina con 592 filas en la tabla quiz_semana.'
 \i seed-quiz-semanal-universal.sql
 
 -- ============================================================================

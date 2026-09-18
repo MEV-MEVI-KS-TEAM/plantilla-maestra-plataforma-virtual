@@ -45,6 +45,27 @@ Combina vía `\i` los seeds esenciales:
 
 Más constraints adicionales y limpieza (NOTIFY pgrst, DROP TRIGGER).
 
+#### Totales esperados de un cliente NUEVO recién sembrado
+
+Lo que hay que comparar al cerrar la instalación. Los números que imprimen los
+`\echo` de cada seed son las filas de ESE archivo; el total de la tabla incluye
+además el seed demo, y por eso no coinciden — el operador que comparaba contra
+el `\echo` creía que le sobraban filas.
+
+| tabla         | total | universal | demo |
+|---------------|-------|-----------|------|
+| `preguntas`   |   266 | 240 (120 + 120) |   26 |
+| `quiz_semana` |   592 | 576 (288 + 288) |   16 |
+
+Medido en dos clientes nuevos independientes (#208 y #212) con el catálogo
+estándar de 24 materias + tutorial demo.
+
+`seed-preguntas-evaluaciones-universal.sql` trae 265 `INSERT ... SELECT`, no 265
+filas garantizadas: cada uno lleva `WHERE m.nombre = …` y entra solo si el
+cliente tiene esa evaluación, así que una escuela con otro catálogo de materias
+siembra menos. `post-setup-check.sql` lo verifica con `>=`, no con `=`, por lo
+mismo.
+
 ## Archivos NO incluidos automáticamente
 
 | Archivo | Razón |

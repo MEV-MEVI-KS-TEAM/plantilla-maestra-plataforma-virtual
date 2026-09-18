@@ -25,7 +25,7 @@
 -- Name: public; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA public;
+CREATE SCHEMA IF NOT EXISTS public;
 
 --
 -- Name: actualizar_racha(); Type: FUNCTION; Schema: public; Owner: -
@@ -2166,11 +2166,13 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.calendario_pagos FROM authenti
 GRANT  SELECT ON public.calendario_pagos TO authenticated;
 GRANT  ALL    ON public.calendario_pagos TO service_role;
 
--- ⚠️ Este bloque debe correr DESPUÉS de los GRANT genéricos del esquema. Si se
--- recrea `public` (scripts/schema.sql trae CREATE SCHEMA sin IF NOT EXISTS, así
--- que obliga a un DROP SCHEMA previo), hay que restaurar antes los privilegios
--- de fábrica de Supabase o la aplicación entera responde "permission denied":
--- esta plantilla protege con RLS, no quitando privilegios.
+-- ⚠️ Este bloque debe correr DESPUÉS de los GRANT genéricos del esquema. Si
+-- alguien recrea `public` a mano (DROP SCHEMA + volver a pasar este archivo),
+-- hay que restaurar antes los privilegios de fábrica de Supabase o la aplicación
+-- entera responde "permission denied": esta plantilla protege con RLS, no
+-- quitando privilegios. Re-ejecutar este archivo sobre un esquema que ya existe
+-- NO necesita ese DROP — el `CREATE SCHEMA IF NOT EXISTS` de arriba lo deja
+-- pasar y los GRANT de fábrica siguen en su sitio.
 
 -- ── 3. Guardia común: ¿quién puede escribir el calendario? ──────────────────
 -- Permitido: (a) el service_role del servidor, (b) un usuario con rol

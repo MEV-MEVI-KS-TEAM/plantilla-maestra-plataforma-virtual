@@ -61,21 +61,45 @@ SELECT
 FROM evaluaciones
 WHERE id = 'bb000000-0000-4000-a000-000000000001';
 
--- ─── CHECK 6: 15 preguntas tutorial ─────────────────────────
+-- ─── CHECK 6: preguntas del tutorial (>= 15) ────────────────
+-- Era `= 15` y el seed demo creció: hoy siembra 26 preguntas reales y distintas
+-- (VARK, Pomodoro, Active Recall, Eisenhower, SMART, Feynman…), así que TODO
+-- cliente nuevo terminaba con un ❌ falso aquí. Se pasa a `>=`, como ya hacen
+-- los checks 9 y 10: lo que este check protege es que la evaluación del tutorial
+-- NO nazca vacía ni a medias, no que tenga un número exacto que el seed puede
+-- volver a mover mañana.
 SELECT
-  'Preguntas evaluación tutorial (15)' AS check_name,
+  'Preguntas evaluación tutorial (>=15)' AS check_name,
   COUNT(*) AS valor,
-  CASE WHEN COUNT(*) = 15 THEN '✅ OK' ELSE '❌ FAIL' END AS resultado
+  CASE WHEN COUNT(*) >= 15 THEN '✅ OK' ELSE '❌ FAIL' END AS resultado
 FROM preguntas
 WHERE evaluacion_id = 'bb000000-0000-4000-a000-000000000001';
 
 -- ─── CHECK 7: Constraint UNIQUE calificaciones ──────────────
+-- 🛑 SE BUSCA POR DEFINICIÓN, NO POR NOMBRE (Bug 96b).
+-- Buscaba `conname = 'calificaciones_alumno_materia_unique'`, un nombre que
+-- scripts/schema.sql NO usa: crea ese mismo UNIQUE (alumno_id, materia_id) con
+-- el nombre que Postgres genera solo, `calificaciones_alumno_id_materia_id_key`.
+-- La semántica estaba cumplida y el check salía ❌ en todo cliente nuevo. El
+-- peligro no era el ❌ sino la reacción: que el operador lo "arregle" agregando
+-- un segundo constraint idéntico, y con él un índice redundante sobre las mismas
+-- dos columnas.
 SELECT
   'Constraint UNIQUE calificaciones' AS check_name,
   COUNT(*)::text AS valor,
-  CASE WHEN COUNT(*) = 1 THEN '✅ OK' ELSE '❌ FAIL' END AS resultado
-FROM pg_constraint
-WHERE conname = 'calificaciones_alumno_materia_unique';
+  CASE WHEN COUNT(*) >= 1 THEN '✅ OK' ELSE '❌ FAIL' END AS resultado
+FROM pg_constraint c
+WHERE c.conrelid = 'public.calificaciones'::regclass
+  AND c.contype  = 'u'
+  -- Las columnas del constraint, por NOMBRE y ordenadas: así da igual en qué
+  -- orden se declararan (`UNIQUE (alumno_id, materia_id)` o al revés) y da igual
+  -- cómo se llame el constraint.
+  AND (
+    SELECT array_agg(a.attname::text ORDER BY a.attname)
+    FROM pg_attribute a
+    WHERE a.attrelid = c.conrelid
+      AND a.attnum = ANY (c.conkey)
+  ) = ARRAY['alumno_id', 'materia_id'];
 
 -- ─── CHECK 8: Admin user creado ─────────────────────────────
 SELECT
@@ -140,14 +164,37 @@ WHERE n.nspname = 'public' AND p.proname = 'is_admin';
 -- ─── CHECK 13: Cobertura de SELECT policies en todas las tablas ─
 -- Detecta el bug historico donde el setup aplica politicas incompletas.
 -- Afecto a Santa Barbara (28-abr-2026): 10 tablas con RLS sin SELECT.
+--
+-- Dos correcciones, las dos por falsos positivos medidos en clientes SANOS:
+--
+-- 1. `polcmd IN ('r','*')`. Una política `FOR ALL` (`polcmd = '*'`) cubre SELECT
+--    igual que una `FOR SELECT`, y el filtro contaba solo las segundas. Con eso,
+--    `curso_examen_preguntas` —que tiene una sola política `ALL` con
+--    `is_admin()`, correcta por diseño: el alumno no debe leer las claves del
+--    examen— salía como tabla sin lectura.
+--
+-- 2. `ajustes` se excluye igual que `keep_alive_log`. Tiene RLS sin políticas A
+--    PROPÓSITO (deny-all): todo acceso real va por service role
+--    (`sincronizarPrefijoMatricula`, `sincronizarPlanSemanal`,
+--    `/api/admin/cobranza`) o por `generar_matricula()`, que es SECURITY
+--    DEFINER. Lo documenta la propia plantilla en src/lib/matricula.ts. El check
+--    excluía solo a keep_alive_log, así que `ajustes` aparecía como defecto en
+--    TODO cliente nuevo.
+--
+-- Las dos juntas eran los 2 ❌ que cerraban cada FASE 2 de la flota. Un script
+-- de verificación que miente a favor del error entrena al operador a ignorarlo,
+-- que es justo lo que este script existe para evitar.
 WITH tablas_sin_policy AS (
   SELECT c.relname AS tabla
   FROM pg_class c
-  LEFT JOIN pg_policy p ON p.polrelid = c.oid AND p.polcmd = 'r'
+  LEFT JOIN pg_policy p ON p.polrelid = c.oid AND p.polcmd IN ('r', '*')
   WHERE c.relnamespace = 'public'::regnamespace
     AND c.relkind = 'r'
     AND c.relrowsecurity = true
-    AND c.relname <> 'keep_alive_log'  -- keep_alive_log: solo anon INSERT, sin SELECT por diseño (keep-alive Bug 46)
+    -- RLS deny-all POR DISEÑO: el acceso va por service role o SECURITY DEFINER.
+    --   keep_alive_log → solo anon INSERT, sin SELECT (keep-alive, Bug 46)
+    --   ajustes        → ver src/lib/matricula.ts
+    AND c.relname NOT IN ('keep_alive_log', 'ajustes')
   GROUP BY c.relname
   HAVING COUNT(p.oid) = 0
 )
