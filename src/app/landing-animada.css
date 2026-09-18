@@ -30,13 +30,34 @@
  *    clásica no ve ni un cambio.
  */
 
-body {
+/* 🛑 ACOTADAS A LA PORTADA (Bug P-9).
+ *
+ * Estas dos reglas eran `body` y `h1, h2, h3` A SECAS, y este archivo lo importa
+ * layout.tsx SIEMPRE. O sea que las tipografías de DISPLAY de la portada salían
+ * por toda la plataforma, contradiciendo la promesa de la cabecera de este mismo
+ * archivo («todo cuelga de .la-landing… una escuela con la landing clásica no ve
+ * ni un cambio»). Medido sobre el build:
+ *
+ *   portada animada encendida → los h1-h3 del PANEL en Playfair Display, una
+ *                               serif de titular, y el cuerpo en Manrope;
+ *   portada clásica           → las variables no se cuelgan del <body>, así que
+ *                               los h1-h3 del panel caían en el respaldo:
+ *                               GEORGIA. Serif en las ~30 pantallas de gestión.
+ *
+ * Y en los dos casos ganaban a globals.css por orden de importación, así que la
+ * tipografía de la app no llegaba a aplicarse nunca. Con el ámbito puesto, la
+ * portada conserva sus fuentes y la app se viste desde globals.css.
+ *
+ * `body:has(.la-landing)` y no `.la-landing`: el `font-family` del cuerpo lo
+ * hereda todo lo de dentro, y `body` no se puede acotar por una clase que vive en
+ * un descendiente. Es el mismo idioma que ya usa `html:has(.la-landing)` abajo. */
+body:has(.la-landing) {
   /* Con respaldo DENTRO del var(): sin las tipografías cargadas la regla se
    * invalidaría entera y el cuerpo quedaría con la fuente del navegador. */
   font-family: var(--font-body, system-ui), -apple-system, 'Segoe UI', sans-serif;
 }
 
-h1, h2, h3 {
+.la-landing h1, .la-landing h2, .la-landing h3 {
   font-family: var(--font-heading, Georgia), Georgia, 'Times New Roman', serif;
 }
 
