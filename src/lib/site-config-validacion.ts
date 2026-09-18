@@ -277,9 +277,38 @@ function validarTelefono(valor: unknown, etiqueta: string): Limpio<string> | Fal
 
 const esquemaEmail = z.email()
 
-function validarEmail(valor: unknown, etiqueta: string, max: number): Limpio<string> | Fallo {
+/**
+ * Correo del cliente.
+ *
+ * 🛑 EL VACÍO ES UNA RESPUESTA, NO UN ERROR — cuando el `config.ts` de la escuela
+ * ya lo trae vacío. Hay escuelas que solo atienden por WhatsApp y no publican
+ * ningún correo, y para ellas `''` es el dato correcto: el pie de página,
+ * `/contacto` y las dos páginas legales gatean por él y no pintan ningún enlace
+ * `mailto:` sin destinatario.
+ *
+ * Sin esta puerta el validador rechazaba ese `''`, y el efecto no era que el
+ * correo quedara sin editar: era que NINGÚN cambio podía guardarse desde
+ * "Personalizar mi página", porque el editor manda el formulario ENTERO y un
+ * solo campo inválido tumba el guardado completo. La escuela no podía cambiar ni
+ * un color, y el mensaje que veía hablaba de un correo que nunca quiso llenar.
+ *
+ * Es el mismo defecto que el Bug 179 en `validarTelefono` (una escuela sin
+ * WhatsApp), en el campo de al lado.
+ *
+ * Se usa el criterio que la plantilla ya aplica en `validarTexto`
+ * (`admiteVacio: defaultBase === ''`): se admite vaciarlo solo si la base lo trae
+ * vacío. Una escuela que SÍ publica correo no puede borrarlo por accidente desde
+ * el panel.
+ */
+function validarEmail(
+  valor: unknown,
+  etiqueta: string,
+  max: number,
+  admiteVacio: boolean,
+): Limpio<string> | Fallo {
   if (typeof valor !== 'string') return fallo(`El campo ${etiqueta} debe ser texto`)
   const v = valor.trim()
+  if (v === '' && admiteVacio) return { ok: true, valor: '' }
   if (v.length > max) return fallo(`El campo ${etiqueta} supera los ${max} caracteres`)
   if (!esquemaEmail.safeParse(v).success) return fallo(`El campo ${etiqueta} no es un correo válido`)
   return { ok: true, valor: v }
@@ -629,7 +658,7 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
     case 'telefono':
       return validarTelefono(valor, campo.etiqueta)
     case 'email':
-      return validarEmail(valor, campo.etiqueta, max)
+      return validarEmail(valor, campo.etiqueta, max, defaultBase === '')
     case 'entero':
       return validarEntero(valor, campo.etiqueta, campo.min ?? 0, campo.max ?? Number.MAX_SAFE_INTEGER)
     case 'decimal':

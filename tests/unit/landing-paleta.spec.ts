@@ -58,8 +58,19 @@ function alphaReal(ice: string, refOscuro: string, pedido = 0.45): number {
   return 1
 }
 
-/** Una config de colores completa: los 6 de la paleta + los 6 que no se derivan. */
-function colores(paleta: Partial<typeof CONFIG.colores>) {
+/**
+ * Una config de colores completa: los 6 tokens de la paleta + los 6 que no se
+ * derivan (texto, fondo, superficie, borde...).
+ *
+ * El parametro NO es `Partial<typeof CONFIG.colores>`: `CONFIG` lleva `as const`,
+ * asi que ese tipo exige los hex LITERALES de la plantilla y rechaza cualquier
+ * otro color — que es justo lo que estas pruebas necesitan pasar. Se relaja a
+ * `string` por clave, que es lo que `paletaLanding` recibe en produccion desde
+ * la config fusionada con los overrides de la base.
+ */
+type Colores = Record<keyof typeof CONFIG.colores, string>
+
+function colores(paleta: Partial<Colores>): Colores {
   return { ...CONFIG.colores, ...COLORES_DE_FABRICA, ...paleta }
 }
 

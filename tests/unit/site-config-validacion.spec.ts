@@ -113,12 +113,53 @@ test('8. cadena vacía: error donde el default NO es vacío; ok donde sí lo es'
   error(v({ nombre: '' }), 'nombre', /no puede quedar vacío/)
   error(v({ nombre: '   ' }), 'nombre', /no puede quedar vacío/)
   error(v({ landing: { hero_titulo: '' } }), 'landing.hero_titulo', /no puede quedar vacío/)
-  error(v({ email: '' }), 'email')
+  // `email` sigue la MISMA regla que anuncia el titulo de esta prueba, pero la
+  // linea estaba escrita al reves: fijaba "error" a mano, dando por hecho que
+  // toda escuela publica un correo. Hay escuelas que solo atienden por WhatsApp
+  // y lo traen vacio en su config.ts; para ellas el vacio es el dato correcto, y
+  // rechazarlo dejaba inservible el panel ENTERO de "Personalizar mi pagina",
+  // porque el editor manda el formulario completo y un campo invalido tumba el
+  // guardado. Se deriva de CONFIG, igual que dos lineas mas abajo con `ciudad`.
+  // Es el mismo defecto que el Bug 179 en `whatsapp`, en el campo de al lado.
+  // Se ensancha a `string` a proposito: `CONFIG` lleva `as const`, asi que
+  // `CONFIG.email` tiene el tipo LITERAL del correo de este repo y `tsc` marca la
+  // comparacion como imposible... justo en la suite que tambien corre en el clon
+  // de un cliente, donde el valor es otro.
+  const correoBase: string = CONFIG.email
+  if (correoBase === '') {
+    expect(ok(v({ email: '' }))).toEqual({ email: '' })
+  } else {
+    error(v({ email: '' }), 'email')
+  }
   expect(CONFIG.landing.ciudad).toBe('')
   expect(ok(v({ landing: { ciudad: '' } }))).toEqual({ landing: { ciudad: '' } })
   expect(ok(v({ cct: '' }))).toEqual({ cct: '' })
   expect(ok(v({ landing: { cct: '' } }))).toEqual({ landing: { cct: '' } })
   expect(ok(v({ redes: { facebook: '', instagram: '' } }))).toEqual({ redes: { facebook: '', instagram: '' } })
+})
+
+test('8b. correo: el vacío se admite solo si la BASE lo trae vacío, y el formato se sigue exigiendo', () => {
+  // La regla entera, sin depender de lo que traiga el CONFIG de este repo — esta
+  // suite corre también en el clon de cada cliente, y ahí el dato cambia.
+  const baseSinCorreo = mergeSiteConfig(CONFIG, { email: '', contactoEmail: '' })
+  const vv = (body: Record<string, unknown>) => validarOverrides(body, baseSinCorreo)
+
+  // Base vacía → vaciarlo es una respuesta válida, y el trim la normaliza.
+  expect(ok(vv({ email: '' }))).toEqual({ email: '' })
+  expect(ok(vv({ email: '   ' }))).toEqual({ email: '' })
+  expect(ok(vv({ contactoEmail: '' }))).toEqual({ contactoEmail: '' })
+
+  // Pero admitir el vacío NO es dejar de validar: un correo mal escrito sigue
+  // siendo un error, con base vacía o sin ella.
+  error(vv({ email: 'no-es-correo' }), 'email')
+  error(vv({ email: 'a@' }), 'email')
+  error(vv({ email: 42 as unknown as string }), 'email')
+  expect(ok(vv({ email: 'hola@escuela.mx' }))).toEqual({ email: 'hola@escuela.mx' })
+
+  // Y con una base que SÍ trae correo, vaciarlo sigue siendo un error: una
+  // escuela que publica correo no puede borrarlo por accidente desde el panel.
+  const baseConCorreo = mergeSiteConfig(CONFIG, { email: 'hola@escuela.mx' })
+  error(validarOverrides({ email: '' }, baseConCorreo), 'email')
 })
 
 test('9. null elimina la clave (vuelve al default) y los intermedios vacíos desaparecen', () => {

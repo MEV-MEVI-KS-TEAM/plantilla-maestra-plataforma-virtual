@@ -21,6 +21,37 @@ export default async function AvisoPrivacidadPage() {
   const cfg = await getSiteConfig()
   const RAZON_SOCIAL = cfg.nombreCompleto
   const EMAIL        = cfg.contactoEmail
+  const WHATSAPP_URL = cfg.whatsappUrl
+
+  /**
+   * ¿Esta escuela gestiona certificación oficial? (Bug P-8)
+   *
+   * Este documento declaraba una TRANSFERENCIA de datos a «Autoridades
+   * educativas (SEP / instituciones convenio)» y dos finalidades de
+   * acreditación, sin gatear. En una escuela que no realiza ningún trámite esa
+   * transferencia NO OCURRE, y declarar un destinatario al que no se le envía
+   * nada es exactamente lo que la LFPDPPP pide no hacer — en un documento que se
+   * presenta a sí mismo como el cumplimiento de esa ley.
+   *
+   * Con la bandera en `true` —el default— el texto visible es el de siempre,
+   * palabra por palabra.
+   */
+  const CERTIFICA = CONFIG.ofreceCertificacion
+
+  /**
+   * 🛑 EL CORREO, GATEADO POR EL DATO (Bug P-8c). Un aviso de privacidad tiene
+   * que decir CÓMO se ejercen los derechos ARCO. Aquí se pintaba siempre
+   * `mailto:{EMAIL}`, así que en una escuela sin correo público los TRES enlaces
+   * —contacto del responsable, oposición a finalidades secundarias y ejercicio
+   * de derechos ARCO— quedaban sin destinatario y con el texto visible vacío: el
+   * titular no tenía por dónde ejercer dos derechos con plazo legal.
+   *
+   * Con correo devuelve el MISMO <a> de antes, byte a byte.
+   */
+  const Contacto = ({ size }: { size?: string }) => EMAIL
+    ? <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA', fontSize: size }}>{EMAIL}</a>
+    : <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#60A5FA', fontSize: size }}>WhatsApp ({cfg.whatsappDisplay})</a>
+
   return (
     <div style={{ minHeight: '100vh', background: '#0A0A0F', color: 'rgba(224,235,255,0.85)' }}>
       {/* Header */}
@@ -58,7 +89,7 @@ export default async function AvisoPrivacidadPage() {
             </p>
             <p>
               Para cualquier asunto relacionado con este Aviso de Privacidad, puede
-              contactarnos en: <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA' }}>{EMAIL}</a>
+              contactarnos {EMAIL ? 'en' : 'por'}: <Contacto />
             </p>
           </Section>
 
@@ -83,9 +114,18 @@ export default async function AvisoPrivacidadPage() {
             <ul>
               <li>Crear y administrar tu cuenta de alumno en la plataforma.</li>
               <li>Gestionar tu inscripción al programa de Secundaria o Preparatoria.</li>
-              <li>Verificar y validar documentos académicos requeridos por las autoridades educativas.</li>
-              <li>Brindar acompañamiento durante el proceso de acreditación ante la SEP.</li>
-              <li>Emitir constancias de avance académico y gestionar el certificado oficial.</li>
+              {CERTIFICA ? (
+                <>
+                  <li>Verificar y validar documentos académicos requeridos por las autoridades educativas.</li>
+                  <li>Brindar acompañamiento durante el proceso de acreditación ante la SEP.</li>
+                  <li>Emitir constancias de avance académico y gestionar el certificado oficial.</li>
+                </>
+              ) : (
+                <>
+                  <li>Verificar que la documentación académica que subes esté completa y sea legible.</li>
+                  <li>Registrar tu avance académico y emitir tus constancias de avance.</li>
+                </>
+              )}
               <li>Procesar pagos y gestionar cobranza.</li>
               <li>Atender solicitudes, aclaraciones y soporte técnico.</li>
             </ul>
@@ -96,8 +136,11 @@ export default async function AvisoPrivacidadPage() {
               <li>Generación de estadísticas internas con fines de mejora.</li>
             </ul>
             <p>
-              Si no deseas que tus datos sean tratados para finalidades secundarias, envíanos un correo
-              a <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA' }}>{EMAIL}</a> con el asunto
+              {/* Sin correo la frase cambia de verbo: "envíanos un correo a WhatsApp"
+                  no se sostiene, y por WhatsApp tampoco hay asunto. */}
+              Si no deseas que tus datos sean tratados para finalidades secundarias, {EMAIL
+                ? <>envíanos un correo a <Contacto /> con el asunto</>
+                : <>escríbenos por <Contacto /> indicando</>}{' '}
               &quot;Oposición finalidades secundarias&quot;.
             </p>
           </Section>
@@ -110,7 +153,9 @@ export default async function AvisoPrivacidadPage() {
             <ul>
               <li><strong style={{ color: '#fff' }}>Supabase Inc.</strong> — infraestructura de base de datos y autenticación (servidores en EE.UU.). Cumple con el marco SCCs / adecuación GDPR.</li>
               <li><strong style={{ color: '#fff' }}>Vercel Inc.</strong> — plataforma de hospedaje y distribución del sitio web.</li>
-              <li><strong style={{ color: '#fff' }}>Autoridades educativas (SEP / instituciones convenio)</strong> — exclusivamente los datos necesarios para el trámite de certificación oficial.</li>
+              {CERTIFICA && (
+                <li><strong style={{ color: '#fff' }}>Autoridades educativas (SEP / instituciones convenio)</strong> — exclusivamente los datos necesarios para el trámite de certificación oficial.</li>
+              )}
               <li><strong style={{ color: '#fff' }}>Proveedores de pago</strong> — datos de transacción para procesar pagos de inscripción y mensualidades.</li>
             </ul>
             <p>
@@ -118,6 +163,14 @@ export default async function AvisoPrivacidadPage() {
               al artículo 37 de la LFPDPPP, por ser necesarias para la relación jurídica o estar
               previstas en otras leyes.
             </p>
+            {!CERTIFICA && (
+              <p>
+                <strong style={{ color: '#fff' }}>No transferimos tus datos a autoridades educativas.</strong>{' '}
+                {RAZON_SOCIAL} no realiza trámites de acreditación ni de certificación ante la Secretaría
+                de Educación Pública ni ante ninguna otra autoridad, de modo que tu documentación académica
+                no sale de la plataforma con ese fin.
+              </p>
+            )}
           </Section>
 
           <Section title="5. Derechos ARCO y Cómo Ejercerlos">
@@ -131,8 +184,8 @@ export default async function AvisoPrivacidadPage() {
             </p>
             <p>Para ejercer sus derechos ARCO, envíe su solicitud a:</p>
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '20px 24px', margin: '12px 0' }}>
-              <p style={{ margin: 0, color: '#fff', fontWeight: 600 }}>Correo electrónico:</p>
-              <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA', fontSize: '1rem' }}>{EMAIL}</a>
+              <p style={{ margin: 0, color: '#fff', fontWeight: 600 }}>{EMAIL ? 'Correo electrónico:' : 'WhatsApp:'}</p>
+              <Contacto size="1rem" />
               <p style={{ margin: '12px 0 4px', color: '#fff', fontWeight: 600 }}>Asunto:</p>
               <p style={{ margin: 0, color: 'rgba(224,235,255,0.7)' }}>Ejercicio de Derechos ARCO — [Acceso / Rectificación / Cancelación / Oposición]</p>
               <p style={{ margin: '12px 0 4px', color: '#fff', fontWeight: 600 }}>Incluir en la solicitud:</p>

@@ -1,8 +1,9 @@
 'use client'
 
 /**
- * Pestaña "Precios": inscripción, mensualidad de cada plan y las dos
- * certificaciones.
+ * Pestaña "Precios": inscripción y mensualidad de cada plan. La tarjeta de las
+ * dos certificaciones solo aparece si la escuela las ofrece
+ * (`CONFIG.ofreceCertificacion`, que nace en `true`).
  *
  * DE UN PLAN SOLO SE EDITAN DOS COSAS: la mensualidad y si está activo. La
  * duración y las materias por mes definen el PRODUCTO (cuántas materias se
@@ -244,10 +245,24 @@ export function PestanaPrecios({
         )}
       </Tarjeta>
 
-      <Tarjeta titulo="Certificación" icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
-        {campoPrecio('precios.certificacionSecundaria')}
-        {campoPrecio('precios.certificacionPreparatoria')}
-      </Tarjeta>
+      {/* 🛑 GATEADA POR `ofreceCertificacion` (Bug P-8). Una escuela que no
+          certifica no debe ver en su panel una tarjeta que le pide ponerle
+          precio a la certificación: es la vía más corta para que alguien teclee
+          una cifra y dé por hecho que el servicio existe.
+
+          Las DOS CLAVES siguen en `CLAVES_EDITABLES` y en el catálogo de
+          `site-config-campos.ts` a propósito — quitarlas de ahí dejaría huérfano
+          cualquier override ya guardado y rompería "Restaurar diseño original".
+          Lo único que cambia es que esta tarjeta no se dibuja.
+
+          Con la bandera en `true`, que es el default, la pestaña se ve
+          exactamente igual que antes de este cambio. */}
+      {CONFIG.ofreceCertificacion && (
+        <Tarjeta titulo="Certificación" icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
+          {campoPrecio('precios.certificacionSecundaria')}
+          {campoPrecio('precios.certificacionPreparatoria')}
+        </Tarjeta>
+      )}
 
       <div className="px-4 py-3 rounded-xl text-xs leading-relaxed"
         style={{ background: 'rgba(21,101,192,0.08)', border: `1px solid rgba(21,101,192,0.2)`, color: TXT_SUAVE }}>

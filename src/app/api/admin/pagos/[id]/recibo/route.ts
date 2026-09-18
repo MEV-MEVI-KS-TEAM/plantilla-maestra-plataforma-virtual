@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { renderReciboPdf } from '@/lib/pdf/recibo-pago'
-import { waUrl } from '@/lib/whatsapp'
+import { mensajeRecibo, waUrl } from '@/lib/whatsapp'
 
 // Misma ventana que las constancias (86400s = 24h): el alumno abre el link
 // desde WhatsApp, a veces horas después de recibirlo.
@@ -133,7 +133,12 @@ export async function GET(
         : `Semana ${pago.numero_semana}`
     }
     const montoFmt = formatearMoneda(Number(pago.monto), CONFIG, { decimales: 2, conCodigo: true })
-    const mensaje = `Hola ${alumnoNombre}, aquí está tu recibo de pago de ${conceptoLabel} por ${montoFmt}: ${signed.signedUrl}`
+    const mensaje = mensajeRecibo({
+      alumnoNombre,
+      conceptoLabel,
+      montoFmt,
+      url: signed.signedUrl,
+    })
     const whatsappUrl = waUrl(alumnoUsuario?.telefono, mensaje)
 
     return NextResponse.json({
