@@ -31,17 +31,57 @@
   --color-borde:              #E5E7EB;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* 🛑 EL BLOQUE `prefers-color-scheme: dark` SE QUITÓ A PROPÓSITO (Bug P-6).
+   Repintaba solo `--background` y `--foreground`, y esas dos variables las lee
+   únicamente `body`. Las ~30 pantallas del panel y del dashboard leen
+   `--color-superficie` y `--color-texto`, que NO se repintaban: en un teléfono
+   con el sistema en oscuro el papel se volvía negro y las tarjetas seguían
+   blancas con letra negra flotando encima. La plataforma no tiene tema oscuro;
+   declarar MEDIO tema es peor que no declarar ninguno, porque lo que produce no
+   es una app oscura sino una app rota.
+
+   Si algún día hay tema oscuro de verdad, el trabajo es repintar el juego
+   completo de `--color-*` de arriba, no estas dos. */
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+
+  /* ── Tipografía de la APLICACIÓN (Bug P-9) ────────────────────────────────
+     Esta regla decía `font-family: Arial, Helvetica, sans-serif` y PISABA a
+     next/font: el layout declaraba la variable, el navegador descargaba el
+     .woff… y la página se pintaba en Arial igual. Una tipografía completa bajada
+     en cada visita, sin usar, en toda la flota.
+
+     🛑 LOS DOS STACKS SE DECLARAN AQUÍ, EN `body`, NO EN `:root`.
+     `--font-geist-sans` la cuelga next/font de la className del <body>, y una
+     custom property se SUSTITUYE en el elemento que la declara, no donde se usa:
+     declarada en `:root` (= <html>), su `var(--font-geist-sans)` no resuelve
+     nada —ahí esa variable no existe—, la propiedad entera queda
+     *guaranteed-invalid* y hereda vacía. El `font-family` de abajo se volvería
+     inválido y el cuerpo caería en la fuente por defecto del navegador. Medido
+     en el build: `getComputedStyle(html).getPropertyValue('--font-body-stack')`
+     devolvía la cadena vacía.
+
+     🛑 NO son `--font-heading` / `--font-body`. Esas dos son las tipografías de
+     DISPLAY de la portada (Playfair + Manrope): ponerlas aquí vestiría cada
+     h1-h6 del panel con una serif de titular, y en una escuela con la portada
+     clásica ni se cuelgan. La app se viste con Geist, que es la que el layout ya
+     descarga en TODAS las rutas.
+
+     Están como variables, y no en duro, para que una escuela que quiera otra
+     tipografía cargue su fuente en layout.tsx y repunte solo estas dos. */
+  --font-body-stack:    var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-heading-stack: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+
+  font-family: var(--font-body-stack);
+}
+
+/* Los títulos, aquí y no en cada componente, porque así lo heredan también las
+   ~30 rutas de panel y dashboard: sus h1-h6 son de Tailwind y no llevan ninguna
+   className de fuente. Heredan los stacks de `body`. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading-stack);
 }
 
 @layer utilities {
