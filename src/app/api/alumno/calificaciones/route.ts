@@ -66,7 +66,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
     }
 
-    const filas = armarBoletin(alumno, catalogo, normalizarCalificaciones(califs), acreditadas)
+    // `incluirBloqueadas`: aquí SÍ se listan las materias del plan que quedan
+    // fuera de la ventana pagada, como 'Bloqueada'. Omitirlas las hacía
+    // DESAPARECER de la pantalla en cuanto bajaba `meses_desbloqueados`, y el
+    // alumno lo leía como "me borraron la materia". La constancia se queda con
+    // el default (false): ahí una materia sin calificar no existe.
+    const filas = armarBoletin(alumno, catalogo, normalizarCalificaciones(califs), acreditadas, true)
 
     return NextResponse.json({
       materias: filas.map(f => ({

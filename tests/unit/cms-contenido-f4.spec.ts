@@ -432,15 +432,17 @@ test('el gate de la semana NO filtra activa: lo comparte el ENVÍO del quiz', ()
   expect(post, 'el envío del quiz ya no usa el gate común').toContain('tieneAccesoSemana')
 })
 
-test('cerrar-mes recoge TODOS los meses y semanas, también los archivados', () => {
-  // Estos ids son para BORRAR datos del alumno: filtrar dejaría huérfanos el
-  // progreso y las respuestas de lo archivado.
+test('cerrar-mes ya NO recoge meses ni semanas: dejó de borrar (Bug 200)', () => {
+  // Antes recogía esos ids SIN filtro de `activa` porque eran para BORRAR datos
+  // del alumno, y filtrar habría dejado huérfanos el progreso y las respuestas
+  // de lo archivado. La ruta dejó de borrar, así que ya no los recoge; el guard
+  // útil ahora es que no vuelva a tocar esas tablas.
+  // Candado completo en tests/unit/cerrar-mes-no-borra.spec.ts.
   const src = leer('src/app/api/admin/alumnos/[id]/cerrar-mes/route.ts')
-  for (const t of ['meses_contenido', 'semanas']) {
-    const i = src.indexOf(`from('${t}')`)
-    expect(i, `no encontré el select de ${t}`).toBeGreaterThan(-1)
-    expect(src.slice(i, i + 220), `cerrar-mes filtra activa en ${t}`).not.toContain(".eq('activa'")
+  for (const t of ['meses_contenido', 'semanas', 'quiz_semana', 'evaluaciones']) {
+    expect(src, `cerrar-mes volvió a tocar ${t}`).not.toContain(`from('${t}')`)
   }
+  expect(src, 'cerrar-mes volvió a borrar').not.toContain('.delete(')
 })
 
 test('el avance del admin cuenta lo que el alumno YA hizo, archivado o no', () => {
@@ -467,7 +469,8 @@ test('el PATCH y el DELETE de una semana operan por id, archivada o no', () => {
 test('los que NO filtran lo dicen por escrito', () => {
   for (const r of [
     'src/app/api/admin/alumnos/[id]/avance/route.ts',
-    'src/app/api/admin/alumnos/[id]/cerrar-mes/route.ts',
+    // cerrar-mes salió de esta lista: ya no recoge ids de contenido porque ya
+    // no borra nada (Bug 200). No le queda ningún select que explicar.
     'src/app/api/admin/contenido/[id]/route.ts',
     'src/app/api/admin/semanas/[id]/route.ts',
   ]) {

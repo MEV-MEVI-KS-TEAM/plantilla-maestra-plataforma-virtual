@@ -424,13 +424,15 @@ test('CALIFICAR nunca filtra activa: archivar a mitad no puede cambiar la nota',
   expect(quiz.slice(j - 200, j + 100), 'el calificador del quiz filtra activa').not.toContain(".eq('activa'")
 })
 
-test('cerrar-mes recoge TODOS los ids de quiz, tambien los archivados', () => {
+test('cerrar-mes ya NO recoge ids de quiz: dejo de borrar (Bug 200)', () => {
+  // Antes recogia los ids de quiz_semana SIN filtro de `activa` porque eran para
+  // BORRAR las respuestas del alumno, y filtrar habria dejado huerfanas las de
+  // preguntas archivadas. La ruta dejo de borrar, asi que ya no los recoge; el
+  // guard util ahora es que no vuelva a tocar la tabla.
+  // Candado completo en tests/unit/cerrar-mes-no-borra.spec.ts.
   const cerrar = leer('src/app/api/admin/alumnos/[id]/cerrar-mes/route.ts')
-  const i = cerrar.indexOf("from('quiz_semana')")
-  expect(i).toBeGreaterThan(-1)
-  const query = cerrar.slice(i, i + 250)
-  // Filtrar aqui dejaria huerfanas las respuestas de preguntas archivadas
-  expect(query, 'cerrar-mes filtra activa').not.toContain(".eq('activa'")
+  expect(cerrar, 'cerrar-mes volvio a tocar quiz_semana').not.toContain("from('quiz_semana')")
+  expect(cerrar, 'cerrar-mes volvio a borrar').not.toContain('.delete(')
 })
 
 test('el avance del admin cuenta lo que el alumno respondio, archivado o no', () => {
