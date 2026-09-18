@@ -21,6 +21,46 @@ export default async function TerminosCondicionesPage() {
   const cfg = await getSiteConfig()
   const RAZON_SOCIAL = cfg.nombreCompleto
   const EMAIL        = cfg.contactoEmail
+  const WHATSAPP_URL = cfg.whatsappUrl
+
+  /**
+   * ¿Esta escuela gestiona certificación oficial? (Bug P-8)
+   *
+   * 🛑 ESTE DOCUMENTO ES UN CONTRATO, NO TEXTO DE MARKETING. Las secciones 2 y 3
+   * describían el servicio como la obtención de certificados avalados por la SEP
+   * mediante convenio con instituciones incorporadas, y ofrecían una «Garantía de
+   * Certificación» con sus condiciones detalladas. Venían SIN GATEAR, así que se
+   * publicaban en toda escuela que despliegue la plantilla, certifique o no: a
+   * una que no tiene ese convenio el contrato la obligaba a entregar un documento
+   * que no puede entregar, y encima detallaba las condiciones de la garantía, que
+   * es lo que un alumno citaría para reclamarla.
+   *
+   * Con la bandera en `true` —el default, y lo que tiene toda la flota— el texto
+   * visible es el de siempre, palabra por palabra. La rama `false` describe el
+   * alcance REAL en vez de dejar un hueco: quien no certifica tiene que decir que
+   * no certifica, no callarlo.
+   *
+   * La numeración de las secciones NO cambia entre las dos ramas: la sección 3
+   * sigue siendo la 3, con otro título y otro cuerpo. Un contrato con las
+   * secciones 2, 4, 5 se lee como un documento al que le falta una página.
+   */
+  const CERTIFICA = CONFIG.ofreceCertificacion
+
+  /**
+   * 🛑 EL CORREO, GATEADO POR EL DATO (Bug P-8c). Aquí se pintaba siempre
+   * `mailto:{EMAIL}`, así que una escuela sin correo público —hay escuelas que
+   * solo atienden por WhatsApp— publicaba en su contrato dos enlaces `mailto:`
+   * SIN destinatario y con el texto visible vacío. No es un adorno roto: uno de
+   * los dos es la única vía que el documento ofrece para pedir un REEMBOLSO
+   * dentro del plazo.
+   *
+   * Con correo devuelve el MISMO <a> de antes, byte a byte, para no mover el
+   * texto de las escuelas que sí lo publican.
+   */
+  const Contacto = () => EMAIL
+    ? <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA' }}>{EMAIL}</a>
+    : <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#60A5FA' }}>WhatsApp ({cfg.whatsappDisplay})</a>
+
   return (
     <div style={{ minHeight: '100vh', background: '#0A0A0F', color: 'rgba(224,235,255,0.85)' }}>
       {/* Header */}
@@ -64,38 +104,88 @@ export default async function TerminosCondicionesPage() {
           </Section>
 
           <Section title="2. Descripción del Servicio">
-            <p>
-              {RAZON_SOCIAL} ofrece programas de educación a distancia para la obtención de certificados
-              oficiales de <strong style={{ color: '#fff' }}>Secundaria</strong> y{' '}
-              <strong style={{ color: '#fff' }}>Preparatoria</strong> avalados por la Secretaría de Educación
-              Pública (SEP) de México, mediante convenio con instituciones incorporadas. Nuestros servicios incluyen:
-            </p>
-            <ul>
-              <li>Acceso a la plataforma de aprendizaje en línea.</li>
-              <li>Acompañamiento académico y seguimiento personalizado.</li>
-              <li>Gestión y trámite del proceso de acreditación ante la SEP.</li>
-              <li>Emisión de constancias de avance y certificado oficial al término del programa.</li>
-              <li>Soporte técnico y atención al alumno.</li>
-            </ul>
+            {CERTIFICA ? (
+              <>
+                <p>
+                  {RAZON_SOCIAL} ofrece programas de educación a distancia para la obtención de certificados
+                  oficiales de <strong style={{ color: '#fff' }}>Secundaria</strong> y{' '}
+                  <strong style={{ color: '#fff' }}>Preparatoria</strong> avalados por la Secretaría de Educación
+                  Pública (SEP) de México, mediante convenio con instituciones incorporadas. Nuestros servicios incluyen:
+                </p>
+                <ul>
+                  <li>Acceso a la plataforma de aprendizaje en línea.</li>
+                  <li>Acompañamiento académico y seguimiento personalizado.</li>
+                  <li>Gestión y trámite del proceso de acreditación ante la SEP.</li>
+                  <li>Emisión de constancias de avance y certificado oficial al término del programa.</li>
+                  <li>Soporte técnico y atención al alumno.</li>
+                </ul>
+              </>
+            ) : (
+              <>
+                <p>
+                  {RAZON_SOCIAL} ofrece programas de <strong style={{ color: '#fff' }}>estudio en línea</strong> de
+                  nivel <strong style={{ color: '#fff' }}>Secundaria</strong> y{' '}
+                  <strong style={{ color: '#fff' }}>Preparatoria</strong>, con material organizado por meses y
+                  acompañamiento académico. Nuestros servicios incluyen:
+                </p>
+                <ul>
+                  <li>Acceso a la plataforma de aprendizaje en línea durante la vigencia del plan contratado.</li>
+                  <li>Material de estudio, evaluaciones y seguimiento de tu avance.</li>
+                  <li>Acompañamiento académico y atención al alumno.</li>
+                  <li>Emisión de constancias de avance dentro de la plataforma.</li>
+                  <li>Soporte técnico.</li>
+                </ul>
+                <p>
+                  <strong style={{ color: '#fff' }}>Alcance del servicio.</strong> {RAZON_SOCIAL} presta un
+                  servicio educativo y de acompañamiento. No emite certificados con validez oficial, no realiza
+                  trámites de acreditación ante la Secretaría de Educación Pública ni ante ninguna otra
+                  autoridad educativa, y no ofrece equivalencias, revalidaciones ni apostillas. Las constancias
+                  que emite la plataforma acreditan el <strong style={{ color: '#fff' }}>avance del alumno
+                  dentro del programa</strong> y no sustituyen a ningún documento oficial.
+                </p>
+              </>
+            )}
           </Section>
 
-          <Section title="3. Garantía de Certificación">
-            <p>
-              {RAZON_SOCIAL} ofrece una <strong style={{ color: '#fff' }}>garantía de certificación</strong>:
-              si el alumno cumple con todos los requisitos del programa, se compromete a gestionar la obtención
-              del certificado oficial hasta su entrega. Esta garantía aplica bajo las siguientes condiciones:
-            </p>
-            <ul>
-              <li>El alumno debe completar el <strong style={{ color: '#fff' }}>100% de las actividades</strong> y evaluaciones de su programa.</li>
-              <li>La documentación requerida por la SEP debe ser entregada correcta y oportunamente.</li>
-              <li>El alumno debe estar al corriente en sus pagos durante todo el programa.</li>
-              <li>La información proporcionada al inscribirse debe ser veraz y auténtica.</li>
-            </ul>
-            <p>
-              Los tiempos de emisión del certificado oficial dependen de los plazos administrativos de la SEP
-              y las instituciones de convenio, los cuales están fuera del control directo de {RAZON_SOCIAL}.
-              Nuestro compromiso es el acompañamiento completo del proceso hasta la entrega.
-            </p>
+          <Section title={CERTIFICA ? '3. Garantía de Certificación' : '3. Compromiso Académico'}>
+            {CERTIFICA ? (
+              <>
+                <p>
+                  {RAZON_SOCIAL} ofrece una <strong style={{ color: '#fff' }}>garantía de certificación</strong>:
+                  si el alumno cumple con todos los requisitos del programa, se compromete a gestionar la obtención
+                  del certificado oficial hasta su entrega. Esta garantía aplica bajo las siguientes condiciones:
+                </p>
+                <ul>
+                  <li>El alumno debe completar el <strong style={{ color: '#fff' }}>100% de las actividades</strong> y evaluaciones de su programa.</li>
+                  <li>La documentación requerida por la SEP debe ser entregada correcta y oportunamente.</li>
+                  <li>El alumno debe estar al corriente en sus pagos durante todo el programa.</li>
+                  <li>La información proporcionada al inscribirse debe ser veraz y auténtica.</li>
+                </ul>
+                <p>
+                  Los tiempos de emisión del certificado oficial dependen de los plazos administrativos de la SEP
+                  y las instituciones de convenio, los cuales están fuera del control directo de {RAZON_SOCIAL}.
+                  Nuestro compromiso es el acompañamiento completo del proceso hasta la entrega.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  {RAZON_SOCIAL} se compromete a mantener disponible la plataforma, el material del plan
+                  contratado y el canal de acompañamiento durante toda la vigencia del programa. Para que el
+                  alumno conserve ese acceso:
+                </p>
+                <ul>
+                  <li>Debe completar las actividades y evaluaciones de cada mes para desbloquear el siguiente.</li>
+                  <li>Debe estar al corriente en sus pagos durante todo el programa.</li>
+                  <li>La información proporcionada al inscribirse debe ser veraz y auténtica.</li>
+                </ul>
+                <p>
+                  El avance académico es responsabilidad del alumno: la escuela pone el material, la plataforma
+                  y el acompañamiento, pero no puede garantizar un resultado que depende del trabajo de cada
+                  persona.
+                </p>
+              </>
+            )}
           </Section>
 
           <Section title="4. Inscripción y Cuenta de Usuario">
@@ -137,8 +227,11 @@ export default async function TerminosCondicionesPage() {
               </li>
             </ul>
             <p>
-              Para solicitudes de reembolso, contáctenos en{' '}
-              <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA' }}>{EMAIL}</a> con el asunto
+              {/* Con correo, la frase es la de siempre; sin correo cambia el verbo y la
+                  preposición, porque "contáctenos en WhatsApp (...) con el asunto" no se
+                  sostiene: por WhatsApp no hay asunto. */}
+              Para solicitudes de reembolso, contáctenos {EMAIL ? 'en' : 'por'}{' '}
+              <Contacto /> {EMAIL ? 'con el asunto' : 'indicando'}{' '}
               &quot;Solicitud de Reembolso&quot; dentro de los plazos indicados.
             </p>
           </Section>
@@ -180,10 +273,17 @@ export default async function TerminosCondicionesPage() {
             </p>
             <ul>
               <li>Interrupciones del servicio por mantenimiento, fuerza mayor o fallas de terceros.</li>
-              <li>
-                Demoras en la emisión del certificado oficial causadas por los plazos de la SEP
-                o instituciones de convenio.
-              </li>
+              {CERTIFICA ? (
+                <li>
+                  Demoras en la emisión del certificado oficial causadas por los plazos de la SEP
+                  o instituciones de convenio.
+                </li>
+              ) : (
+                <li>
+                  Decisiones de terceros —instituciones, empleadores o autoridades— sobre el valor que
+                  den a las constancias de avance emitidas por la Plataforma.
+                </li>
+              )}
               <li>Pérdida de datos causada por el usuario o por circunstancias fuera de nuestro control.</li>
               <li>Daños indirectos, incidentales o consecuentes derivados del uso de la Plataforma.</li>
             </ul>
@@ -226,8 +326,8 @@ export default async function TerminosCondicionesPage() {
               a cualquier otro fuero que pudiera corresponderles.
             </p>
             <p>
-              Para consultas o aclaraciones sobre estos Términos, contáctenos en:{' '}
-              <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA' }}>{EMAIL}</a>
+              Para consultas o aclaraciones sobre estos Términos, contáctenos {EMAIL ? 'en' : 'por'}:{' '}
+              <Contacto />
             </p>
           </Section>
 

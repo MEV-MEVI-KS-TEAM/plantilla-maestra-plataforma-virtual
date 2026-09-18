@@ -158,6 +158,49 @@ export const CONFIG = {
   // actualizarlo no reescriba los recibos ya emitidos.
   tipoCambioMXN:   0 as number,
 
+  // === ¿ESTA ESCUELA OFRECE CERTIFICACIÓN? ================================
+  //
+  // Nace en `true`: es lo que hace y lo que promete la plantilla de fábrica, y
+  // con `true` los documentos legales y el panel salen EXACTAMENTE como salían
+  // antes de que esta clave existiera. Ninguna escuela ya entregada cambia.
+  //
+  // En `false` la escuela NO ofrece ni menciona certificados, validez oficial,
+  // SEP, CENEVAL ni apostilla: vende acompañamiento académico en línea y
+  // constancias de AVANCE. Lo que cambia con la bandera apagada:
+  //   · Términos y Condiciones — la sección 2 describe el alcance real y la 3
+  //     pasa de «Garantía de Certificación» a «Compromiso Académico». Es un
+  //     CONTRATO: tal como venía, obligaba a la escuela a entregar un documento
+  //     que no puede entregar.
+  //   · Aviso de Privacidad — desaparecen las finalidades de acreditación y la
+  //     transferencia a autoridades educativas, y se declara expresamente que no
+  //     ocurre. Declarar un destinatario al que no se le envía nada es lo que la
+  //     LFPDPPP pide no hacer.
+  //   · Panel → «Personalizar mi página» — se deja de pedir el precio de las dos
+  //     certificaciones.
+  //
+  // 🛑 NO SE EDITA DESDE EL PANEL, y por eso no está en `CLAVES_EDITABLES`. Va
+  // con `landing.validezOficial`, `landing.mostrarCatalogoCursos` y `diploma.*`
+  // en la lista de claves que quedan FUERA de «Personalizar mi página»: encender
+  // desde un panel una certificación que la escuela no gestiona es afirmar algo
+  // falso en su nombre, y quien lo pulse no tiene forma de saber que lo está
+  // haciendo.
+  //
+  // ⚠️ NO CONFUNDIR CON `landing.validezOficial.activa`, que está más abajo y
+  // nace en `false`. Son dos preguntas distintas y NO se combinan:
+  //   ofreceCertificacion          → ¿la escuela gestiona certificación? Gatea el
+  //                                  CONTRATO y el aviso de privacidad.
+  //   validezOficial.activa        → ¿acredita su propio convenio con documentos
+  //                                  verificables? Gatea una SECCIÓN de la
+  //                                  portada donde se enseñan esos documentos.
+  // Una escuela que certifica pero no publica su convenio tiene la primera en
+  // `true` y la segunda en `false`, que es el caso por defecto de la flota.
+  //
+  // Los precios de certificación SIGUEN EXISTIENDO más abajo —el módulo de pagos
+  // y los reportes los leen, y borrarlos rompería el estado de cuenta de
+  // cualquier escuela que sí certifique—, pero con la bandera en `false` no se
+  // pinta ni una cifra ni una palabra.
+  ofreceCertificacion: true,
+
   // === PRECIOS ===
   precios: {
     inscripcion:                       599,
