@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Loader2, Lock } from 'lucide-react'
 import FadeIn from '@/components/ui/FadeIn'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 
 gsap.registerPlugin(useGSAP)
 
-type Estado = 'Acreditada' | 'No acreditada' | 'Pendiente'
+/** 'Bloqueada': del plan, sin calificar y fuera de la ventana pagada. Se lista
+ *  bajo su encabezado "Mes N" en vez de desaparecer de la pantalla. */
+type Estado = 'Acreditada' | 'No acreditada' | 'Pendiente' | 'Bloqueada'
 
 interface MateriaCalif {
   materia_id: string
@@ -23,6 +25,7 @@ interface Resumen {
   materias_acreditadas: number
   materias_no_acreditadas: number
   materias_pendientes: number
+  materias_bloqueadas?: number
 }
 
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
@@ -31,29 +34,34 @@ const BADGE: Record<Estado, React.CSSProperties> = {
   'Acreditada':    { background: 'rgba(16,185,129,0.15)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' },
   'No acreditada': { background: 'rgba(239,68,68,0.15)',  color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' },
   'Pendiente':     { background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' },
+  'Bloqueada':     { background: 'rgba(148,163,184,0.12)', color: '#94A3B8', border: '1px solid #2A2F3E' },
 }
 
 const BORDER_COLOR: Record<Estado, string> = {
   'Acreditada':    '#10B981',
   'No acreditada': '#EF4444',
   'Pendiente':     '#F59E0B',
+  'Bloqueada':     '#475569',
 }
 
 const ICON_BG: Record<Estado, string> = {
   'Acreditada':    'rgba(16,185,129,0.15)',
   'No acreditada': 'rgba(239,68,68,0.15)',
   'Pendiente':     'rgba(245,158,11,0.15)',
+  'Bloqueada':     'rgba(148,163,184,0.12)',
 }
 
 const ESTADO_LABEL: Record<Estado, string> = {
   'Acreditada':    'Acreditada',
   'No acreditada': 'No acreditada',
   'Pendiente':     'Pendiente',
+  'Bloqueada':     'Bloqueada',
 }
 
 function EstadoIcon({ estado }: { estado: Estado }) {
   if (estado === 'Acreditada')    return <CheckCircle className="w-4 h-4" style={{ color: '#10B981' }} />
   if (estado === 'No acreditada') return <XCircle    className="w-4 h-4" style={{ color: '#EF4444' }} />
+  if (estado === 'Bloqueada')     return <Lock       className="w-4 h-4" style={{ color: '#94A3B8' }} />
   return <Clock className="w-4 h-4" style={{ color: '#F59E0B' }} />
 }
 

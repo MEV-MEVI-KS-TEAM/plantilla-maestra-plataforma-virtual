@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -132,6 +132,26 @@ export default function AlumnoDashboard() {
     }
   }, [searchParams, router, showToast])
 
+  // Logros + racha. Vive fuera del efecto de carga para que la carga inicial
+  // pueda esperarlo (ver abajo) y el evento de refresco lo reutilice.
+  const cargarLogrosYRacha = useCallback(async (alumnoId: string) => {
+    const sb = createClient()
+    const { data, error: logrosErr } = await sb
+      .from('logros_alumno')
+      .select('tipo_logro, fecha_obtenido')
+      .eq('alumno_id', alumnoId)
+    if (logrosErr) console.error('[alumno/dashboard] logros_alumno:', logrosErr)
+    if (data) setLogros(data as Array<{ tipo_logro: string; fecha_obtenido: string }>)
+
+    const { data: rachaData, error: rachaErr } = await sb
+      .from('racha_actividad')
+      .select('racha_actual')
+      .eq('alumno_id', alumnoId)
+      .maybeSingle()
+    if (rachaErr) console.error('[alumno/dashboard] racha_actividad:', rachaErr)
+    if (rachaData) setDiasRacha((rachaData as { racha_actual: number }).racha_actual ?? 0)
+  }, [])
+
   // Fetch data
   useEffect(() => {
     // Un solo endpoint que falle NO debe borrar el dashboard entero. Con
@@ -147,7 +167,7 @@ export default function AlumnoDashboard() {
       pedir('/api/alumno/meses'),
       pedir('/api/alumno/calificaciones'),
       pedir('/api/alumno/materias'),
-    ]).then(([p, m, c, mat]) => {
+    ]).then(async ([p, m, c, mat]) => {
       setPerfil(p)
       if (m?.demo === true) {
         setDemo(true); setMeses([])
@@ -168,39 +188,21 @@ export default function AlumnoDashboard() {
         .filter(x => x.disponible)
         .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))[0]
       setPrimeraMateriaId(primera?.id ?? null)
-    }).finally(() => setLoading(false))
-  }, [])
 
-  // Logros + racha (y refresco al completar semana en otra vista vía evento)
+      // Se espera ANTES de apagar el skeleton: colgado de un segundo useEffect
+      // dependiente de `perfil`, la tarjeta se pintaba con `logros = []` y el
+      // contador saltaba a la vista (0/8 → 2/8) en cuanto llegaba la consulta.
+      if (p?.id) await cargarLogrosYRacha(p.id)
+    }).finally(() => setLoading(false))
+  }, [cargarLogrosYRacha])
+
+  // Refresco al completar una semana en otra vista (evento propio)
   useEffect(() => {
     if (!perfil) return
-
-    const fetchLogrosYRacha = async () => {
-      const sb = createClient()
-      const { data, error: logrosErr } = await sb
-        .from('logros_alumno')
-        .select('tipo_logro, fecha_obtenido')
-        .eq('alumno_id', perfil.id)
-      if (logrosErr) console.error('[alumno/dashboard] logros_alumno:', logrosErr)
-      if (data) setLogros(data as Array<{ tipo_logro: string; fecha_obtenido: string }>)
-
-      const { data: rachaData, error: rachaErr } = await sb
-        .from('racha_actividad')
-        .select('racha_actual')
-        .eq('alumno_id', perfil.id)
-        .maybeSingle()
-      if (rachaErr) console.error('[alumno/dashboard] racha_actividad:', rachaErr)
-      if (rachaData) setDiasRacha((rachaData as { racha_actual: number }).racha_actual ?? 0)
-    }
-
-    void fetchLogrosYRacha()
-
-    const onLogrosUpdate = () => {
-      void fetchLogrosYRacha()
-    }
+    const onLogrosUpdate = () => { void cargarLogrosYRacha(perfil.id) }
     window.addEventListener('logros-update', onLogrosUpdate)
     return () => window.removeEventListener('logros-update', onLogrosUpdate)
-  }, [perfil])
+  }, [perfil, cargarLogrosYRacha])
 
   // ── Loading skeletons ──────────────────────────────────────────────────────
   if (loading) return (

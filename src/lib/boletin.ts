@@ -53,7 +53,14 @@ import {
  *     página).
  */
 
-export type EstadoBoletin = 'Acreditada' | 'No acreditada' | 'Pendiente'
+/**
+ * 'Bloqueada' es OPT-IN (ver `incluirBloqueadas` en `armarBoletin`): materia
+ * del plan, sin calificación y fuera de la ventana pagada. Solo la pide la
+ * pantalla de calificaciones del alumno; la CONSTANCIA no la incluye — ahí una
+ * materia sin calificar no existe (canon Bug 54, mismo motivo por el que la
+ * demo tampoco entra).
+ */
+export type EstadoBoletin = 'Acreditada' | 'No acreditada' | 'Pendiente' | 'Bloqueada'
 
 /**
  * `carrera` solo la trae la ficha embebida en la calificación (licenciatura):
@@ -144,12 +151,19 @@ export function normalizarCalificaciones(rows: unknown): CalificacionConMateria[
  * @param acreditadas    cargarContextoAcceso().acreditadas — el MISMO set con el
  *                       que los gates calculan la ventana (Bug 61: las
  *                       acreditadas consumen su posición)
+ * @param incluirBloqueadas
+ *   false (default, y lo que usa la constancia): una materia del plan sin
+ *   calificación y fuera de la ventana NO se lista.
+ *   true (pantalla de calificaciones): se lista como 'Bloqueada'. Omitirla la
+ *   hacía DESAPARECER de la lista cuando el admin bajaba `meses_desbloqueados`,
+ *   y el alumno lo leía como "me borraron la materia".
  */
 export function armarBoletin(
   alumno: AlumnoAcceso,
   catalogo: MateriaVentana[],
   calificaciones: CalificacionConMateria[],
-  acreditadas: Set<string>
+  acreditadas: Set<string>,
+  incluirBloqueadas = false
 ): FilaBoletin[] {
   const disponibilidad = calcularDisponibilidad(alumno, catalogo, acreditadas)
 
@@ -188,7 +202,11 @@ export function armarBoletin(
     }
     if (disponibilidad.get(materia.id) !== true) {
       // Fuera de ventana y sin calificación: tampoco se ve en Mis Materias.
-      return []
+      // La constancia la omite (default). La pantalla de calificaciones la pide
+      // como 'Bloqueada' para que no DESAPAREZCA al bajar meses_desbloqueados.
+      return incluirBloqueadas
+        ? [{ materia, mes_numero: materia.numero_mes ?? 0, estado: 'Bloqueada' }]
+        : []
     }
     return [{ materia, mes_numero: materia.numero_mes ?? 0, estado: 'Pendiente' }]
   })
@@ -199,6 +217,7 @@ export function resumirBoletin(filas: FilaBoletin[]): {
   materias_acreditadas:    number
   materias_no_acreditadas: number
   materias_pendientes:     number
+  materias_bloqueadas:     number
 } {
   const cuenta = (estado: EstadoBoletin) => filas.filter(f => f.estado === estado).length
   return {
@@ -206,5 +225,6 @@ export function resumirBoletin(filas: FilaBoletin[]): {
     materias_acreditadas:    cuenta('Acreditada'),
     materias_no_acreditadas: cuenta('No acreditada'),
     materias_pendientes:     cuenta('Pendiente'),
+    materias_bloqueadas:     cuenta('Bloqueada'),
   }
 }
