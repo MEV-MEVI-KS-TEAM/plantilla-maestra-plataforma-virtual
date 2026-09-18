@@ -10,7 +10,19 @@
 --   4. Ejecutar (tarda ~10-30 segundos)
 --   5. Después ejecutar scripts/setup.sql para datos seed
 --
--- ESTE ARCHIVO ES IDEMPOTENTE: puede re-ejecutarse sin romper.
+-- SE PUEDE APLICAR SOBRE UN PROYECTO SUPABASE RECIÉN CREADO con
+-- `psql -v ON_ERROR_STOP=1`: el `CREATE SCHEMA IF NOT EXISTS` de abajo tolera el
+-- esquema `public` que Supabase ya trae hecho.
+--
+-- ⚠️ NO es idempotente de punta a punta: RE-EJECUTARLO sobre un esquema YA
+-- instalado aborta. La cabecera decía "ESTE ARCHIVO ES IDEMPOTENTE: puede
+-- re-ejecutarse sin romper" y era falso — medido el 17-sep-2026 sobre un
+-- Postgres 18 limpio, la segunda pasada se detiene en la línea 82:
+--   ERROR: function "actualizar_racha" already exists with same argument types
+-- porque las funciones van con `CREATE FUNCTION` y no con `CREATE OR REPLACE`.
+-- Para reinstalar de cero hace falta un DROP SCHEMA previo (y restaurar después
+-- los GRANT de fábrica de Supabase; ver la nota del bloque de periodicidad
+-- semanal, al final del archivo).
 -- 
 -- Tablas creadas: 19
 -- Constraints: 72
