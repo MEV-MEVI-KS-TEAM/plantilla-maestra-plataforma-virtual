@@ -117,12 +117,14 @@ export const PALETA_ORIGINAL: Paleta = {
  *   dolorInicio ← oscurecer(navy, 0.48)   #0a1020 ≈ navy a la mitad
  *   prepaFin    ← oscurecer(navy, 0.22)   #091830 ≈ navy un quinto más oscuro
  *   footer      ← oscurecer(navy, 0.68)   #050a14 ≈ navy a un tercio
- *   aurora3     ← oscurecer(royal, 0.50)  #0d2060 ≈ royal a la mitad
- *   conFin      ← oscurecer(royal, 0.61)  #0a1f4a ≈ royal a dos quintos
- *   ctaFin      ← oscurecer(royal, 0.33)  #0d3080 ≈ royal a dos tercios
- * Los tres oscuros que hoy rondan el navy (dolor, prepa, footer) se derivan
- * de navy y los tres más azules (aurora, con, cta) de royal: cada uno queda
- * del lado del tono al que hoy se parece.
+ *   aurora3     ← oscurecer(navy, 0.50)   tercer blob de aurora del hero
+ *   conFin      ← oscurecer(navy, 0.61)   cierre de la columna "Con"
+ *   ctaFin      ← oscurecer(navy, 0.33)   cierre del CTA final
+ * Los SEIS fondos oscuros salen del NEUTRO (Bug P-4). Antes los tres de arriba
+ * salían de `royal`, lo que solo daba un tono oscuro si el acento ya era oscuro:
+ * con un acento claro devolvían un tono medio y rompían `ice`. Con la paleta de
+ * fábrica no se nota nada, porque ahí no se deriva nada — `esPaletaPersonalizada`
+ * es `false` y se devuelve `PALETA_ORIGINAL` literal.
  * Los rgba sueltos (rgba(21,101,192,…), (66,165,245,…), (227,242,253,…),
  * (8,15,30,…)) van por `conAlpha` sobre royal / azure / ice / hero.
  * Los alfas por concatenación (`${C.royal}55`) siguen valiendo: aclarar /
@@ -184,7 +186,37 @@ export function paletaLanding(colores: LandingConfig['colores']): Paleta {
   // sobre `navy` y las secciones intermedias acaban bastante más claras que el
   // hero (medido: hasta un 20 % por encima). Se calibra contra ese peor caso o
   // el texto cumple en la portada y falla tres secciones más abajo.
-  const candidatosOscuros = [aclarar(navy, 0.22), oscurecer(royal, 0.33), oscurecer(royal, 0.61)]
+  // 🛑 UN ACENTO CLARO NO SE "OSCURECE" HASTA DAR UN FONDO OSCURO (Bug P-4).
+  //
+  // Los tres tonos oscuros de la landing —`aurora3`, `conFin`, `ctaFin`— salían
+  // de `oscurecer(royal, k)`. Con el azul de fábrica eso funciona: #1565C0
+  // bajado dos tercios sigue siendo azul marino. Con un acento CLARO y cálido es
+  // falso — el amarillo #F5C400 bajado un tercio da #A48300, un dorado MEDIO.
+  //
+  // Y el daño no era estético. `fondoOscuroMasClaro` (abajo) es el fondo contra
+  // el que se calibra `ice`, el color de TODO el texto claro de las secciones
+  // oscuras. Con un candidato dorado, `luminanciaRelativa` lo clasificaba como
+  // fondo CLARO (0.24 > 0.18), así que `colorLegibleConAlpha` oscurecía el tono
+  // en vez de aclararlo, no llegaba nunca a 4.5 y devolvía su último recurso:
+  // #000000. Medido en un cliente real antes del arreglo: `--landing-ice` en
+  // negro, y con él ilegibles los títulos de las tarjetas de Dolor, las de
+  // Beneficios, el icono `+` del FAQ (círculo negro sobre sección negra) y los
+  // subtítulos de las tres.
+  //
+  // Que el original saliera del acento funcionaba por una COINCIDENCIA de la
+  // paleta de fábrica —su acento y su neutro son los dos azules, así que
+  // oscurecer cualquiera de los dos caía en la misma familia—, no por diseño. En
+  // cuanto el acento cambia de familia deja de cumplirse por partida doble:
+  //   · luminancia — el amarillo bajado un tercio no es un fondo oscuro, y eso
+  //     es lo que rompía `ice`;
+  //   · tono — bajado dos tercios SÍ es oscuro (#604C00) pero es oliva, y en una
+  //     paleta de blanco, negro y amarillo esa tarjeta entra como un color de
+  //     marca que nadie eligió.
+  //
+  // Un FONDO oscuro es trabajo del neutro; el acento acentúa.
+  const oscuroDeMarca = (factor: number): string => oscurecer(navy, factor)
+
+  const candidatosOscuros = [aclarar(navy, 0.22), oscuroDeMarca(0.33), oscuroDeMarca(0.61)]
   const fondoOscuroMasClaro = candidatosOscuros.reduce((a, b) =>
     luminanciaRelativa(a) >= luminanciaRelativa(b) ? a : b)
   const ice = colorLegibleConAlpha(colores.acentoClaro, fondoOscuroMasClaro, 0.45, 4.5)
@@ -193,11 +225,13 @@ export function paletaLanding(colores: LandingConfig['colores']): Paleta {
     hero: colores.primario, navy, royal,
     bright, azure, ice, white,
     textoClaro: aclarar(azure, 0.45),
-    aurora3: oscurecer(royal, 0.5),
+    // Los tres que dependían del acento pasan por `oscuroDeMarca`. Los otros
+    // tres ya salían del neutro y no se tocan.
+    aurora3: oscuroDeMarca(0.5),
     dolorInicio: oscurecer(navy, 0.48),
     prepaFin: oscurecer(navy, 0.22),
-    conFin: oscurecer(royal, 0.61),
-    ctaFin: oscurecer(royal, 0.33),
+    conFin: oscuroDeMarca(0.61),
+    ctaFin: oscuroDeMarca(0.33),
     footer: oscurecer(navy, 0.68),
     sobreAcento: colores.textoSobreAcento,
     royalTexto,
