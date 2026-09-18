@@ -1,5 +1,16 @@
 {
   "compilerOptions": {
+    // Sin `target`, TypeScript asume ES5 y `pnpm exec tsc --noEmit` fallaba con
+    // TS1501 en corregir-plan.spec.ts por la bandera /s de una expresión regular
+    // (es2018+). Un solo error bastaba para que nadie corriera el chequeo de
+    // tipos, y sin él se colaron a main dos errores en tests que `next build` no
+    // ve: solo type-chequea lo que entra en su grafo, y los specs no entran.
+    //
+    // ES2022 es lo que el runtime ya soporta —Node 20+ en Vercel y el
+    // `browserslist` del proyecto— y NO cambia la salida de `next build`: quien
+    // compila el código que se sirve es SWC con su propio target, no tsc, que
+    // aquí corre con `noEmit`. Verificado comparando el build antes y después.
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
