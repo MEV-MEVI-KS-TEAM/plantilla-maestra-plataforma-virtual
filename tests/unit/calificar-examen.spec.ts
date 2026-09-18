@@ -17,6 +17,22 @@ import type { PreguntaExamen, RespuestaEnviada } from '@/types/cursos-examen'
  * importa es lo que sale por el cable. Una propiedad con valor `undefined`
  * desaparece al serializar, pero una con `null` no — y `null` seguiría delatando
  * la posición de la clave.
+ *
+ * ── Los DOS candados ────────────────────────────────────────────────────────
+ *
+ * Desde el TICKET-2026-09-07-51 (Búfalo) `calificar()` tiene un segundo candado,
+ * `revelarClaves`, que la ruta pone en `true` SOLO cuando el alumno ya no puede
+ * volver a presentar. El banco es único por curso y se sirve sin barajar, así
+ * que revelando la clave al fallar el intento 2 no evaluaba nada: bastaba copiar
+ * las respuestas de la pantalla anterior.
+ *
+ *   candado 1  la clave viaja solo de las preguntas CONTESTADAS en ese envío
+ *   candado 2  y solo cuando ya no quedan reintentos (`revelarClaves`)
+ *
+ * ⚠️ Las pruebas del candado 1 tienen que pasar `revelarClaves: true`, o no
+ * prueban nada: con el default en `false` no viaja ninguna clave y el `expect`
+ * de «esta sí viaja» falla aunque el código esté bien. Se quedaron sin ese
+ * argumento al añadir el candado 2 y la suite llevaba desde entonces en rojo.
  */
 
 const LETRAS = ['a', 'b', 'c', 'd'] as const
@@ -83,7 +99,10 @@ test('envío parcial (3 de 10): la clave viaja solo de esas 3', () => {
     respuesta: contestadasIds.includes(p.id) ? 'a' : null,
   }))
 
-  const r = calificar(preguntas, enviadas)
+  // `revelarClaves: true` = el alumno ya gastó su último intento. Es el único
+  // escenario en que alguna clave puede viajar, y lo que se prueba aquí es que
+  // incluso entonces solo viajan las de las contestadas.
+  const r = calificar(preguntas, enviadas, true)
   expect(r.contestadas).toBe(3)
 
   const revision = porElCable(r.revision)
@@ -101,8 +120,9 @@ test('envío parcial (3 de 10): la clave viaja solo de esas 3', () => {
 
 test('una respuesta incorrecta también revela su clave: contestar es el precio', () => {
   const preguntas = banco(4) // claves: a, b, c, d
-  // Contesta la 2 (clave 'b') con 'a' — incorrecta, pero contestada.
-  const r = calificar(preguntas, [{ pregunta_id: 'p2', respuesta: 'a' }])
+  // Contesta la 2 (clave 'b') con 'a' — incorrecta, pero contestada. Y sin
+  // reintentos por proteger, que es cuando la retroalimentación se abre.
+  const r = calificar(preguntas, [{ pregunta_id: 'p2', respuesta: 'a' }], true)
 
   expect(r.contestadas).toBe(1)
   expect(r.aciertos).toBe(0)
@@ -140,7 +160,7 @@ test('examen contestado completo: la revisión sí trae todo', () => {
     respuesta: p.respuesta_correcta,
   }))
 
-  const r = calificar(preguntas, enviadas)
+  const r = calificar(preguntas, enviadas, true)
 
   expect(r.contestadas).toBe(4)
   expect(r.aciertos).toBe(4)
@@ -151,6 +171,28 @@ test('examen contestado completo: la revisión sí trae todo', () => {
     expect(item).toHaveProperty('respuesta_correcta')
     expect(item.es_correcta).toBe(true)
   }
+})
+
+test('candado 2: mientras queden reintentos, NI UNA clave viaja aunque conteste todo', () => {
+  // El default de `revelarClaves` es `false` y esto es lo que protege: el banco
+  // es el mismo en el intento siguiente, así que ver la clave al fallar
+  // convertiría el reintento en copiar la pantalla anterior.
+  const preguntas = banco(4)
+  const enviadas: RespuestaEnviada[] = preguntas.map(p => ({ pregunta_id: p.id, respuesta: 'a' }))
+
+  const r = calificar(preguntas, enviadas)
+
+  expect(r.contestadas).toBe(4)
+  // Sigue habiendo retroalimentación: el alumno ve QUÉ falló y su desglose.
+  const revision = porElCable(r.revision)
+  for (const item of revision) {
+    expect(item).not.toHaveProperty('respuesta_correcta')
+    expect(item).not.toHaveProperty('explicacion')
+    expect(item).toHaveProperty('es_correcta')
+  }
+  const crudo = JSON.stringify(revision)
+  expect(crudo).not.toContain('respuesta_correcta')
+  expect(crudo).not.toContain('explicacion')
 })
 
 test('el denominador no cambia: no contestar sigue contando como incorrecta', () => {
