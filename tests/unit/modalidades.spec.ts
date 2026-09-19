@@ -15,6 +15,7 @@ import {
   getPlanLabelPublico,
   getPlanLabelConDuracion,
   getTotalPlan,
+  getNivelLabel,
   type ModalidadPrograma,
 } from '@/lib/modalidades'
 
@@ -281,4 +282,47 @@ test('getPlanLabelConDuracion: INVARIANTE — sin nombre comercial no añade nad
 test('getPlanLabelConDuracion: singular cuando el plan dura un mes', () => {
   const mods = [{ id: '1_mes', label: '1 Mes', labelPublico: 'Intensivo', meses: 1, mensualidad: 900, materiasPorMes: 8, activa: true }]
   expect(getPlanLabelConDuracion(mods[0], mods)).toBe('Intensivo · 1 mes')
+})
+
+/**
+ * `getNivelLabel` — la frase de niveles del pie del portal.
+ *
+ * Se pinta en `components/layout/footer.tsx`, o sea al pie de TODAS las
+ * pantallas del portal del alumno y del admin. Tenía un caso especial escrito a
+ * mano para la pareja secundaria + preparatoria que devolvía «Prepa o
+ * Secundaria»: abreviaba el nombre del nivel —cosa que no hace ningún otro
+ * texto de la plataforma— y lo hacía en orden invertido respecto al que declara
+ * el cliente. Lo encontró AULA RAÍZ (#208), que vende esos dos niveles.
+ */
+
+test('getNivelLabel: un solo nivel, capitalizado', () => {
+  expect(getNivelLabel(['preparatoria'])).toBe('Preparatoria')
+  expect(getNivelLabel(['secundaria'])).toBe('Secundaria')
+})
+
+test('getNivelLabel: secundaria + preparatoria NO se abrevia y respeta el orden declarado', () => {
+  // 🛑 El caso que estaba mal. Ni «Prepa», ni el orden al revés.
+  expect(getNivelLabel(['secundaria', 'preparatoria'])).toBe('Secundaria o Preparatoria')
+  expect(getNivelLabel(['secundaria', 'preparatoria'])).not.toContain('Prepa ')
+  // Y si el cliente los declara al revés, sale al revés: el orden es suyo.
+  expect(getNivelLabel(['preparatoria', 'secundaria'])).toBe('Preparatoria o Secundaria')
+})
+
+test('getNivelLabel: tres o más niveles se enumeran con comas y la última con «o»', () => {
+  expect(getNivelLabel(['secundaria', 'preparatoria', 'licenciatura']))
+    .toBe('Secundaria, Preparatoria o Licenciatura')
+})
+
+test('getNivelLabel: sin niveles devuelve cadena vacía, no una frase a medias', () => {
+  // El pie concatena esto: un « o » colgando se vería en todas las pantallas.
+  expect(getNivelLabel([])).toBe('')
+  expect(getNivelLabel(['', ''])).toBe('')
+})
+
+test('getNivelLabel: sin argumento lee CONFIG y no abrevia ningún nivel del cliente', () => {
+  const frase = getNivelLabel()
+  for (const nivel of CONFIG.niveles as readonly string[]) {
+    // Cada nivel declarado aparece con su nombre COMPLETO.
+    expect(frase.toLowerCase()).toContain(nivel.toLowerCase())
+  }
 })

@@ -83,6 +83,28 @@ const URL_BASE = `https://${dominio}`
 // escuela. Se fija ANTES de construir nada.
 fijarMoneda(CONFIG.moneda)
 
+/**
+ * ¿La escuela tiene un folio de validación propio y publicado?
+ *
+ * 🛑 NO ES LO MISMO QUE `validez`. Esa bandera dice si la escuela vende su
+ * certificado con validez oficial; esto dice si además tiene un FOLIO que un
+ * prospecto pueda teclear en el portal SIGED. Son cosas distintas y la landing
+ * ya las separa: gatea el bloque «Verifícalo tú mismo» por `folio !== ''`.
+ *
+ * El documento no lo hacía, y anunciaba «con folio verificable en el portal
+ * SIGED de la SEP» en TODAS las escuelas. En una que entrega sin folio propio
+ * —AULA RAÍZ #208, cuya red comparte una acreditación que no es suya y que por
+ * eso NO se copia a su config— eso es un documento oficial que promete algo que
+ * su propia página no muestra: el cliente lo reenvía, un prospecto pide
+ * verificar y no hay nada que teclear.
+ *
+ * Sale de CONFIG, no del archivo de datos: es el mismo criterio del README —lo
+ * que ya está en el config no se captura dos veces— y así no se puede quedar
+ * desincronizado con la página.
+ */
+const FOLIO_VERIFICABLE =
+  String(CONFIG.landing?.validezOficial?.folio ?? '').trim() !== ''
+
 /* ── 2. Credenciales (fuera del repo) ────────────────────────────────────── */
 const rutaDatos = path.join(RAIZ, opt('datos', 'entrega.local.json'))
 if (!fs.existsSync(rutaDatos)) abortar(`No encuentro ${path.basename(rutaDatos)}`, [
@@ -191,6 +213,35 @@ async function inventario() {
   inv.preguntas = await n('preguntas')
   inv.quiz = await n('quiz_semana')
   inv.cursos = await n('cursos', q => q.eq('estado', 'publicado'))
+  /**
+   * Los cursos publicados, con nombre y precio.
+   *
+   * ⚠️ NO BASTA EL CONTEADOR. Un cliente que compró el add-on de Cursos de
+   * Ingreso los tiene publicados y a la venta el día de la entrega, y el
+   * documento decía «módulo vacío, crea tu primer curso»: el papel contradecía
+   * lo que el cliente acababa de pagar y lo que su propia página ya mostraba.
+   *
+   * `precio_inscripcion`, `duracion_meses` y compañía las añade la migración B1,
+   * así que el select va en dos pasos: si esas columnas no existen en este clon,
+   * se cae al nombre y el tipo, que sí están desde la primera migración.
+   */
+  inv.cursosLista = []
+  {
+    const campos = 'nombre, tipo, precio_inscripcion, precio_mensualidad, duracion_meses, orden'
+    let { data, error } = await sb.from('cursos').select(campos)
+      .eq('estado', 'publicado').order('orden')
+    if (error) {
+      ;({ data } = await sb.from('cursos').select('nombre, tipo')
+        .eq('estado', 'publicado').order('nombre'))
+    }
+    inv.cursosLista = (data || []).map(c => ({
+      nombre: c.nombre,
+      tipo: c.tipo,
+      inscripcion: Number(c.precio_inscripcion ?? 0),
+      mensualidad: Number(c.precio_mensualidad ?? 0),
+      meses: Number(c.duracion_meses ?? 0),
+    }))
+  }
   const { data: al } = await sb.from('alumnos').select('matricula')
     .not('matricula', 'is', null).order('created_at').limit(1)
   inv.matricula = al?.[0]?.matricula ?? null
@@ -208,6 +259,28 @@ async function inventario() {
 }
 log('· Leyendo inventario de contenido…')
 const INV = await inventario()
+
+/**
+ * Los cursos que el cliente YA TIENE publicados y a la venta el día de la
+ * entrega. Vacío en un combo normal; con contenido cuando compró el add-on de
+ * Cursos de Ingreso, y entonces el documento y el mensaje los nombran con su
+ * precio en vez de invitarle a crear su primer curso.
+ */
+const CURSOS_PUBLICADOS = INV.cursosLista || []
+
+/** «$1,500 de pago único», «$800 al mes × 3 meses» o '' si no hay precio. */
+function precioDeCurso(c) {
+  const partes = []
+  if (c.inscripcion > 0) {
+    // Un curso sin mensualidad se cobra una sola vez: decirlo evita la duda de
+    // si además hay algo mensual. Es la objeción que trae el prospecto.
+    partes.push(c.mensualidad > 0 ? `${mxn(c.inscripcion)} de inscripción` : `${mxn(c.inscripcion)} de pago único`)
+  }
+  if (c.mensualidad > 0) {
+    partes.push(c.meses > 0 ? `${mxn(c.mensualidad)} al mes × ${c.meses} ${c.meses === 1 ? 'mes' : 'meses'}` : `${mxn(c.mensualidad)} al mes`)
+  }
+  return partes.join(' + ')
+}
 
 /* ── 4. Modalidades y precios, adaptados a lo CONTRATADO ─────────────────── */
 /**
@@ -470,7 +543,15 @@ if (CARRERAS.length) {
 }
 // El módulo para que el cliente cargue SUS propios cursos, distinto de los
 // programas ya entregados: se etiqueta para que no se confundan.
-modalidadesFilas.push(['Cursos propios (módulo vacío)', 'La define cada curso', 'Por curso', 'Por módulos'])
+//
+// 🛑 «módulo vacío» solo si LO ESTÁ. Con el add-on de Cursos de Ingreso el
+// cliente entrega con cursos publicados y a la venta, y ponerle «vacío» en la
+// tabla resumen le niega por escrito lo que acaba de comprar.
+modalidadesFilas.push([
+  CURSOS_PUBLICADOS.length
+    ? `Cursos propios (${CURSOS_PUBLICADOS.length} publicado${CURSOS_PUBLICADOS.length === 1 ? '' : 's'})`
+    : 'Cursos propios (módulo vacío)',
+  'La define cada curso', 'Por curso', 'Por módulos'])
 
 /* ── Infraestructura (dominio, registrador, proyecto de Supabase) ──────── */
 // Solo direcciones e identificadores públicos: de .env.local se toma únicamente
@@ -558,6 +639,12 @@ const datos = {
     ? ALUMNOS_PRUEBA.map(a => ({ ...a, ...(INV.alumnos?.[a.email] || {}) }))
     : null,
   whatsappDisplay: CONFIG.whatsappDisplay,
+  // Una escuela puede entregar SIN WhatsApp a propósito (el intake no trajo
+  // número, o trajo un placeholder que no existe). En ese caso la página se
+  // entrega con los botones apagados y la única forma de encenderlos es que el
+  // cliente capture el suyo en «Personalizar mi página»: el documento se lo
+  // dice, porque si no se queda sin su canal principal sin saber por qué.
+  sinWhatsApp: !String(CONFIG.whatsapp ?? '').trim(),
   infra,
   cuentas: CUENTAS_CLIENTE,
   registrador: REGISTRADOR,
@@ -591,7 +678,9 @@ const datos = {
   palabraBloque: PALABRA_BLOQUE,
   incluirCursos: true,
   cursosPublicados: INV.cursos || 0,
+  cursosLista: CURSOS_PUBLICADOS.map(c => ({ ...c, precio: precioDeCurso(c) })),
   validez: D.validez !== false,
+  folioVerificable: FOLIO_VERIFICABLE,
   soporte: D.soporte || SOPORTE,
   tutoriales: [
     `Playlist completa: ${TUTORIALES.playlist}`,
@@ -631,7 +720,9 @@ const datos = {
     `Registro público de alumnos con matrícula automática (prefijo ${CONFIG.prefijoMatricula}-)`,
     'Desbloqueo progresivo del contenido, mes a mes, a tu ritmo de cobro',
     'Video, quiz semanal y examen final en cada materia',
-    D.validez !== false && 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP',
+    D.validez !== false && (FOLIO_VERIFICABLE
+      ? 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP'
+      : 'Sección de Validez Oficial México + Estados Unidos, con los dos documentos oficiales que recibe el alumno'),
     'Módulo de pagos: recibo en PDF con tu marca y envío por WhatsApp',
     'Estado de cuenta por alumno',
     SEMANAL && 'Cobro semanal: calendario de pagos por alumno con la fecha de cada semana, «Mis Pagos» para el alumno y «Cobranza» para ti, con quién trae semanas vencidas',
@@ -910,7 +1001,9 @@ if (!flag('solo-pdf')) {
     '• Ver el estado de cuenta de cada alumno',
     '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
-    '• Crear tus propios Cursos y Diplomados cuando quieras',
+    CURSOS_PUBLICADOS.length
+      ? `• Inscribir alumnos a tus ${CURSOS_PUBLICADOS.length} curso${CURSOS_PUBLICADOS.length === 1 ? '' : 's'}, seguir su avance y crear todos los que quieras`
+      : '• Crear tus propios Cursos y Diplomados cuando quieras',
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
       : []),
@@ -928,14 +1021,34 @@ if (!flag('solo-pdf')) {
   // el visitante ve. Son parte de lo entregado y el cliente tiene que saber
   // que existen para poder enseñarlas.
   const publicas = [
-    D.validez !== false && `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`,
+    D.validez !== false && (FOLIO_VERIFICABLE
+      ? `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`
+      : `• Validez oficial México y Estados Unidos, con los dos documentos oficiales que recibe el alumno: ${URL_BASE}/#validez`),
     PAGINA_INSTITUCIONAL && `• Manifiesto de tu marca, con una demostración de un curso real que se prueba sin registro: ${URL_BASE}${PAGINA_INSTITUCIONAL}`,
     FORMULARIO_DIAGNOSTICO && `• Formulario de diagnóstico para captar prospectos: ${URL_BASE}/#diagnostico`,
     OFERTA_INFORMATIVA?.personalizados.length && `• Planes con atención personalizada, que se contratan por WhatsApp: ${OFERTA_INFORMATIVA.personalizados.join(' · ')}${anclaEnLanding('planes') ? ` — ${URL_BASE}/#planes` : ''}`,
     OFERTA_INFORMATIVA?.programas && `• Catálogo informativo de ${OFERTA_INFORMATIVA.programas} licenciaturas, sin registro en línea${anclaEnLanding('licenciaturas') ? `: ${URL_BASE}/#licenciaturas` : ''}`,
     PAGINAS_LEGALES.length && `• ${PAGINAS_LEGALES.join(', ')}, redactados y publicados`,
+    // 🛑 Los cursos que el cliente compró y que YA están a la venta se nombran
+    // con su precio. Sin esto, el mensaje de entrega del add-on de Cursos de
+    // Ingreso no mencionaba en ninguna línea lo que el cliente acababa de pagar.
+    ...CURSOS_PUBLICADOS.map(c => {
+      const p = precioDeCurso(c)
+      return `• ${c.nombre}${p ? ` — ${p}` : ''}: ${URL_BASE}/diplomados`
+    }),
   ].filter(Boolean)
   if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')
+  // ── El módulo que el cliente opera solo ────────────────────────────────
+  // ⚠️ El mensaje no lo mencionaba. Es lo único que el cliente puede cambiar
+  // sin pedirnos nada, y en una escuela sin WhatsApp es además el camino para
+  // encender sus propios botones: callarlo le cuesta su canal principal.
+  L.push('🎨 TU PÁGINA LA CAMBIAS TÚ',
+    `Desde «Personalizar mi página» en tu panel (${URL_BASE}/admin/configuracion) cambias tus textos, tu eslogan, tus colores y tu logo, y se publican al instante. «Restaurar diseño original» devuelve todo a como se te entregó, así que puedes probar sin miedo.`, '')
+  if (!String(CONFIG.whatsapp ?? '').trim()) {
+    L.push('⭐ LO PRIMERO QUE TE RECOMIENDO HACER',
+      'Tu página se entregó *sin botones de WhatsApp* porque no tenemos tu número, y preferimos no publicar uno que no lleve a ningún lado.',
+      'Entra a «Personalizar mi página», escribe tu WhatsApp y pulsa Publicar: los botones *aparecen solos* en tu portada, en tus planes y en el pie. Es el cambio de más impacto que puedes hacer hoy.', '')
+  }
   L.push('📄 Te adjunto el Documento de Entrega Oficial con todo el detalle.',
     // Las contraseñas de las cuentas van SOLO en el PDF: el mensaje dice que están ahí.
     CUENTAS_CLIENTE

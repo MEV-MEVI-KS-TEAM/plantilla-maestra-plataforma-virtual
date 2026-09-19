@@ -30,6 +30,31 @@ export function sanitizeFilename(nombre: string): string {
   return ext ? `${clean(base)}.${clean(ext)}` : clean(base)
 }
 
+/**
+ * El nombre de una escuela convertido en slug para un nombre de archivo.
+ *
+ * ⚠️ NORMALIZA LOS ACENTOS ANTES DE LIMPIAR. Sin el paso NFD, un
+ * `replace(/[^a-z0-9]+/g, '-')` no convierte la «í» en «i»: la BORRA, y el
+ * Excel de «Aula Raíz» se descargaba como `reportes-aula-ra-z-…xlsx`. El
+ * cliente lo ve cada vez que baja su reporte.
+ *
+ * Es el mismo criterio de normalización que ya usaba `sanitizeFilename` para
+ * los archivos que sube el alumno, extraído para que quien necesite un slug de
+ * nombre de escuela no se vuelva a escribir el suyo. Lo que cambia respecto a
+ * aquél: aquí no hay extensión que conservar, así que el punto también es
+ * separador, y un nombre que se queda sin nada usable cae en `escuela` para no
+ * producir `reportes--2026-09-15.xlsx`.
+ */
+export function slugDeNombre(nombre: string): string {
+  return nombre
+    .normalize('NFD')
+    // quitar diacríticos combinantes (acentos) tras NFD
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'escuela'
+}
+
 export function extensionDe(nombre: string): string {
   const dot = nombre.lastIndexOf('.')
   return dot > 0 ? nombre.slice(dot + 1).toLowerCase() : ''

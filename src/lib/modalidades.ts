@@ -436,37 +436,41 @@ export function getDuracionLabel(
 }
 
 /**
- * Construye una frase legible con los niveles académicos del cliente.
- * Capitaliza la primera letra y maneja singular/plural.
+ * Construye una frase legible con los niveles académicos del cliente, en el
+ * ORDEN en que el cliente los declara en `CONFIG.niveles`.
+ *
+ * ⚠️ TENÍA UN CASO ESPECIAL codificado a mano que devolvía «Prepa o Secundaria»
+ * para la pareja secundaria + preparatoria, con dos problemas a la vez:
+ *
+ *   1. abreviaba el nombre del nivel. «Prepa» no es como se llama el producto
+ *      en ningún otro sitio de la plataforma —ni en el registro, ni en el
+ *      catálogo, ni en el PDF de entrega—, y esta frase se pinta al pie de
+ *      TODAS las pantallas del portal (`components/layout/footer.tsx`), así que
+ *      era la única abreviatura visible y salía en todas las páginas;
+ *   2. invertía el orden. El cliente declara `['secundaria','preparatoria']`
+ *      —de menor a mayor, como se vende— y el pie decía «Prepa o Secundaria».
+ *
+ * Ninguna de las dos cosas pedía un caso especial: el camino general ya
+ * producía «Secundaria o Preparatoria».
+ *
+ * El parámetro sigue el criterio del resto del módulo: sin él se leen los
+ * niveles de `CONFIG` y nada cambia para los ~144 clones; con él se puede
+ * probar cada combinación sin tocar el config del repo.
  *
  * @example
  *   niveles ['preparatoria'] → "Preparatoria"
  *   niveles ['secundaria'] → "Secundaria"
- *   niveles ['secundaria', 'preparatoria'] → "Prepa o Secundaria"
+ *   niveles ['secundaria', 'preparatoria'] → "Secundaria o Preparatoria"
+ *   niveles ['secundaria', 'preparatoria', 'licenciatura'] → "Secundaria, Preparatoria o Licenciatura"
  *   niveles vacíos → ""
  */
-export function getNivelLabel(): string {
-  const niveles = CONFIG.niveles as readonly string[]
-  if (niveles.length === 0) return ''
-
+export function getNivelLabel(niveles: readonly string[] = CONFIG.niveles as readonly string[]): string {
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+  const nombres = niveles.filter(Boolean).map(capitalize)
 
-  if (niveles.length === 1) {
-    return capitalize(niveles[0])
-  }
-
-  const tienePrepa = niveles.includes('preparatoria')
-  const tieneSecu  = niveles.includes('secundaria')
-  if (tienePrepa && tieneSecu && niveles.length === 2) {
-    return 'Prepa o Secundaria'
-  }
-
-  const capitalizadas = niveles.map(capitalize)
-  if (capitalizadas.length === 2) return `${capitalizadas[0]} o ${capitalizadas[1]}`
-
-  const ultimo = capitalizadas[capitalizadas.length - 1]
-  const resto = capitalizadas.slice(0, -1).join(', ')
-  return `${resto} o ${ultimo}`
+  if (nombres.length === 0) return ''
+  if (nombres.length === 1) return nombres[0]
+  return `${nombres.slice(0, -1).join(', ')} o ${nombres[nombres.length - 1]}`
 }
 
 /**

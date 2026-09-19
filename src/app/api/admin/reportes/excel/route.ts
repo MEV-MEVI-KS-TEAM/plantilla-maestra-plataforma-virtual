@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { slugDeNombre } from '@/lib/archivos-comunes'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -206,7 +207,7 @@ export async function GET() {
     XLSX.utils.book_append_sheet(wb, hoja(hojaSemana,      ['Semana del', COL_PROGRAMA, COL_DIPLOMADOS, COL_TOTAL]), 'Ingresos semanal')
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
-    const slug = cfg.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const slug = slugDeNombre(cfg.nombre)
     const fecha = new Date().toISOString().slice(0, 10)
 
     return new NextResponse(new Uint8Array(buffer), {
