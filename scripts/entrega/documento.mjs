@@ -9,6 +9,7 @@
  * tiene contratado: el número de páginas cambia según haya licenciaturas, cursos
  * de ingreso o modo Solo-Cursos.
  */
+import { desglosesLicenciatura, porcentajeTitulacionTexto } from './licenciaturas.mjs'
 
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
 
@@ -367,7 +368,6 @@ function licenciaturas(d) {
   // El cliente puede vender un curso, un diplomado o una licenciatura por los
   // mismos rieles. El documento usa la palabra que corresponde a lo que compró.
   const titulo  = d.etiquetaProgramas || 'Licenciaturas'
-  const bloque  = d.palabraBloque || 'Cuatrimestres'
   const conInv  = L.carreras.some(c => c.inv?.materias)
   // Materias: el conteo REAL de la base cuando lo hay; si no, lo declarado.
   const mats    = c => c.inv?.materias ?? c.totalMaterias ?? 0
@@ -375,11 +375,15 @@ function licenciaturas(d) {
   const totalM  = L.carreras.reduce((a, c) => a + mats(c), 0)
   const totalR  = L.carreras.reduce((a, c) => a + react(c), 0)
 
-  const cols = ['Programa', bloque, 'Materias', ...(conInv ? ['Reactivos'] : [])]
+  // Sin columna de bloques: `cuatrimestres` es una clave interna del banco que
+  // ninguna pantalla de la plataforma enseña. La columna decía «Módulos 8» (o
+  // «Cuatrimestres», palabra prohibida de cara al cliente) sobre algo que el
+  // cliente no va a encontrar en su panel; lo que sí ve son materias y meses.
+  const cols = ['Programa', 'Materias', ...(conInv ? ['Reactivos'] : [])]
   const tabla = (cs) => dt(cols, cs.map(c => [
-    c.nombre, c.cuatrimestres, mats(c), ...(conInv ? [react(c) || '—'] : []),
+    c.nombre, mats(c), ...(conInv ? [react(c) || '—'] : []),
   ]).concat(cs.length > 1
-    ? [{ celdas: ['Total', '', cs.reduce((a, c) => a + mats(c), 0),
+    ? [{ celdas: ['Total', cs.reduce((a, c) => a + mats(c), 0),
         ...(conInv ? [cs.reduce((a, c) => a + react(c), 0)] : [])], total: true }]
     : []))
 
@@ -395,6 +399,10 @@ function licenciaturas(d) {
 
   const RUTAS = (L.rutas || []).filter(r => r.activa !== false)
   const hayDip = grupos.some(([r]) => r === 'Diplomados')
+  // Titulación con precio propio: el costo de cada plan se cuenta completo
+  // (inscripción + mensualidades + titulación). Vacío en cualquier otro caso,
+  // y entonces la tabla de siempre sigue diciendo la verdad.
+  const DESGLOSES = desglosesLicenciatura(L, L.carreras)
 
   // Devuelve UNA o DOS páginas. `.page` recorta en silencio lo que no cabe en
   // once pulgadas, así que una sección que crece —rutas de titulación, marco
@@ -416,11 +424,14 @@ ${kv([
     L.inscripcion ? ['Inscripción', mxn(L.inscripcion)] : ['Inscripción', 'Sin inscripción adicional'],
     // La certificación suelta solo se anuncia si NO hay rutas: con varias,
     // cada una tiene la suya y ponerla aquí arriba induce a error.
-    (!RUTAS.length && L.certificacion) ? ['Certificación profesional', mxn(L.certificacion)] : null,
+    DESGLOSES.length
+      ? ['Titulación (se paga al concluir)', mxn(L.certificacion)]
+      : (!RUTAS.length && L.certificacion) ? ['Certificación profesional', mxn(L.certificacion)] : null,
   ])}
 ${grupos.map(([rotulo, cs]) =>
     `<h3>${grupos.length > 1 ? rotulo : 'Catálogo'}</h3>${tabla(cs)}`).join('')}
-${!RUTAS.length && L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
+${DESGLOSES.length ? planesConTitulacion(DESGLOSES) : ''}
+${!RUTAS.length && !DESGLOSES.length && L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
       L.modalidades.map(m => [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
         mxn((m.mensualidad || 0) * (m.meses || 0))]))}` : ''}
 ${L.carreras.some(c => c.desc) && !RUTAS.length ? descripciones(L) : ''}
@@ -457,6 +468,21 @@ ${L.disclaimerDiplomado ? `<div class="note"><b>Texto legal obligatorio</b><p>${
 ${L.carreras.some(c => c.desc) ? descripciones(L) : ''}
 ` : null,
   ].filter(Boolean)
+}
+
+/**
+ * Los planes con su costo completo. «Total del plan» sin la titulación era una
+ * cifra que el alumno no paga: la de la página del cliente (y la del registro)
+ * sí la incluye, y el documento tiene que decir lo mismo.
+ */
+function planesConTitulacion(planes) {
+  return `<h3>Planes y costo total</h3>${dt(
+    ['Plan', 'Mensualidad', 'Inscripción', 'Colegiatura', 'Titulación', 'Costo total'],
+    planes.map(p => [p.label, `${p.meses} × ${mxn(p.mensualidad)}`, mxn(p.inscripcion),
+      mxn(p.colegiatura), mxn(p.titulacion), mxn(p.total)]))}
+<p class="small">La titulación se paga al concluir y es ${porcentajeTitulacionTexto(planes)}
+del costo total. Por eso se publica con su precio y con este mismo desglose: que
+ningún prospecto la descubra al final.</p>`
 }
 
 /** Ficha de cada programa: precio si lo tiene, descripción y qué incluye. */
