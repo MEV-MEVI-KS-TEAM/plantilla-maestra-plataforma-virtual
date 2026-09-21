@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rolStaff } from '@/lib/rol-staff'
 
 /**
  * Avance intra-materia de un alumno, para la ficha del panel admin.
@@ -28,8 +29,10 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     // Mismo criterio que la ficha de alumno: staff (ADMIN o SECRETARIO)
-    const { data: usuarioStaff } = await supabase.from('usuarios').select('rol').eq('id', user.id).single()
-    const viewerRol = (usuarioStaff?.rol as string | undefined)?.toUpperCase()
+    // El rol se lee con el service role (src/lib/rol-staff.ts). Leerlo con la
+    // sesión lo dejaba sujeto a RLS: un fallo transitorio devolvía 403/404 a
+    // un administrador legítimo, y al recargar funcionaba.
+    const viewerRol = await rolStaff(user.id)
     if (viewerRol !== 'ADMIN' && viewerRol !== 'SECRETARIO') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }

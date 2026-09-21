@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMateriasPorMesByModalidad, getMateriasPorMesLicenciatura } from '@/lib/modalidades'
 import { rangoMateriasDelMes } from '@/lib/acceso-materias'
+import { esAdmin } from '@/lib/rol-staff'
 
 /**
  * Quita el último mes desbloqueado del alumno.
@@ -35,14 +36,13 @@ export async function POST(
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     // ── Verificar rol ADMIN (case-insensitive, igual que desbloquear-mes) ─────
-    const { data: usuarioAdmin } = await supabase
-      .from('usuarios')
-      .select('rol')
-      .eq('id', user.id)
-      .single()
+    // El rol se lee con el service role (src/lib/rol-staff.ts). Leerlo con la
+    // sesión lo dejaba sujeto a RLS: un fallo transitorio devolvía 403/404 a
+    // un administrador legítimo, y al recargar funcionaba.
 
-    const esAdmin = (usuarioAdmin?.rol as string | undefined)?.toLowerCase() === 'admin'
-    if (!esAdmin) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    if (!(await esAdmin(user.id))) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    }
 
     // ── Admin client con service role (bypassa RLS) ───────────────────────────
     const admin = createAdminClient()
