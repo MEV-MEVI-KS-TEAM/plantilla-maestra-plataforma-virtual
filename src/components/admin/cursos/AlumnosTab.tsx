@@ -330,12 +330,26 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
                   </span>
                 )}
 
-                {/* Ventana de pago: lo que el alumno ve hoy */}
-                <span className="text-xs font-semibold flex-shrink-0 tabular-nums"
-                  style={{ color: 'var(--color-primario)' }}
-                  title="Meses abiertos de esta inscripción">
-                  {i.meses_desbloqueados} {i.meses_desbloqueados === 1 ? 'mes' : 'meses'}
-                </span>
+                {/* Ventana de pago: lo que el alumno ve hoy.
+                    ⚠️ CON CERO MESES EL ALUMNO NO VE NADA, y un «0 meses» a secas
+                    no lo dice. Cinthia y Ericka (EDUHCO, 17-sep) inscribieron a su
+                    gente al curso de EXANI-II, entraron a comprobar, no vieron
+                    contenido y reportaron que «la página tiene un error o no está
+                    cargada» — con los 10 módulos del curso sembrados y cuatro
+                    personas más en espera. Lo que faltaba era abrirles el Mes 1. */}
+                {i.meses_desbloqueados === 0 ? (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0"
+                    style={{ background: 'rgba(245,158,11,0.15)', color: '#B45309' }}
+                    title="El alumno todavía no ve ninguna lección. Abre su Mes 1 cuando tengas registrado el pago.">
+                    Sin acceso — abre su Mes 1
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold flex-shrink-0 tabular-nums"
+                    style={{ color: 'var(--color-primario)' }}
+                    title="Meses abiertos de esta inscripción">
+                    {i.meses_desbloqueados} {i.meses_desbloqueados === 1 ? 'mes' : 'meses'}
+                  </span>
+                )}
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
