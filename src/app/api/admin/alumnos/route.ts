@@ -10,16 +10,12 @@ import { nivelesPermitidos } from '@/lib/niveles'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
+import { esAdmin } from '@/lib/rol-staff'
 
 // ─── Verificar rol ADMIN (normaliza mayúsculas) ───────────────────────────────
 async function checkAdmin(userId: string): Promise<boolean> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('usuarios')
-    .select('rol')
-    .eq('id', userId)
-    .single()
-  return (data?.rol as string | undefined)?.toUpperCase() === 'ADMIN'
+  // Service role, no la sesión: ver src/lib/rol-staff.ts.
+  return esAdmin(userId)
 }
 
 /**

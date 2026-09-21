@@ -5,6 +5,7 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { CONFIG } from '@/lib/config'
+import { rolStaff } from '@/lib/rol-staff'
 
 export async function GET(
   _request: NextRequest,
@@ -17,8 +18,10 @@ export async function GET(
 
     // Detalle básico: staff (ADMIN o SECRETARIO). El secretario recibe la
     // respuesta SIN notas internas ni documentos (solo lectura básica).
-    const { data: usuarioStaff } = await supabase.from('usuarios').select('rol').eq('id', user.id).single()
-    const viewerRol = (usuarioStaff?.rol as string | undefined)?.toUpperCase()
+    // El rol se lee con el service role (src/lib/rol-staff.ts). Leerlo con la
+    // sesión lo dejaba sujeto a RLS: un fallo transitorio devolvía 403/404 a
+    // un administrador legítimo, y al recargar funcionaba.
+    const viewerRol = await rolStaff(user.id)
     if (viewerRol !== 'ADMIN' && viewerRol !== 'SECRETARIO') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }

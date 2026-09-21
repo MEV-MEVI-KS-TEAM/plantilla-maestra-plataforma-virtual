@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getMesesByModalidad } from '@/lib/modalidades'
+import { esAdmin } from '@/lib/rol-staff'
 
 export async function POST(
   _request: NextRequest,
@@ -14,14 +15,13 @@ export async function POST(
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     // ── Verificar rol ADMIN (case-insensitive) ────────────────────────────────
-    const { data: usuarioAdmin } = await supabase
-      .from('usuarios')
-      .select('rol')
-      .eq('id', user.id)
-      .single()
+    // El rol se lee con el service role (src/lib/rol-staff.ts). Leerlo con la
+    // sesión lo dejaba sujeto a RLS: un fallo transitorio devolvía 403/404 a
+    // un administrador legítimo, y al recargar funcionaba.
 
-    const esAdmin = (usuarioAdmin?.rol as string | undefined)?.toLowerCase() === 'admin'
-    if (!esAdmin) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    if (!(await esAdmin(user.id))) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    }
 
     // ── Usar service role para saltarse RLS ───────────────────────────────────
     const admin = createServiceClient(
