@@ -235,9 +235,29 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         {busqueda.trim() && (
           <div className="space-y-1.5">
             {resultados.length === 0 && (
-              <p className="text-xs px-1" style={{ color: '#9CA3AF' }}>
-                Sin resultados (los ya asignados no aparecen aquí).
-              </p>
+              /* ⚠️ ESTE BUSCADOR SOLO ASIGNA ALUMNOS QUE YA EXISTEN. Es el
+                 tercer cliente que reporta «no aparece la opción para dar de
+                 alta a un alumno en el curso»: Christian (Campus Digital) el
+                 11-sep, Elda (RHEMA) el 10, 16 y 17-sep —tres veces dada por
+                 resuelta— y Kevin preguntando por Instituto Elite el 19-sep.
+                 No es que el alta falte: vive en /admin/alumnos, con la opción
+                 «Curso o diplomado» del selector de nivel. Lo que pasa es que
+                 el admin entra por la pestaña del curso, busca a alguien que
+                 todavía no está registrado, lee «Sin resultados» y se queda
+                 sin salida. Se enlaza el alta en vez de dejar el callejón. */
+              <div className="px-1 space-y-1.5">
+                <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                  Sin resultados (los ya asignados no aparecen aquí).
+                </p>
+                <a
+                  href="/admin/alumnos"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-2"
+                  style={{ color: 'var(--color-acento)' }}
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  ¿El alumno todavía no existe? Dalo de alta aquí
+                </a>
+              </div>
             )}
             {resultados.map(a => (
               <div
@@ -310,12 +330,26 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
                   </span>
                 )}
 
-                {/* Ventana de pago: lo que el alumno ve hoy */}
-                <span className="text-xs font-semibold flex-shrink-0 tabular-nums"
-                  style={{ color: 'var(--color-primario)' }}
-                  title="Meses abiertos de esta inscripción">
-                  {i.meses_desbloqueados} {i.meses_desbloqueados === 1 ? 'mes' : 'meses'}
-                </span>
+                {/* Ventana de pago: lo que el alumno ve hoy.
+                    ⚠️ CON CERO MESES EL ALUMNO NO VE NADA, y un «0 meses» a secas
+                    no lo dice. Cinthia y Ericka (EDUHCO, 17-sep) inscribieron a su
+                    gente al curso de EXANI-II, entraron a comprobar, no vieron
+                    contenido y reportaron que «la página tiene un error o no está
+                    cargada» — con los 10 módulos del curso sembrados y cuatro
+                    personas más en espera. Lo que faltaba era abrirles el Mes 1. */}
+                {i.meses_desbloqueados === 0 ? (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0"
+                    style={{ background: 'rgba(245,158,11,0.15)', color: '#B45309' }}
+                    title="El alumno todavía no ve ninguna lección. Abre su Mes 1 cuando tengas registrado el pago.">
+                    Sin acceso — abre su Mes 1
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold flex-shrink-0 tabular-nums"
+                    style={{ color: 'var(--color-primario)' }}
+                    title="Meses abiertos de esta inscripción">
+                    {i.meses_desbloqueados} {i.meses_desbloqueados === 1 ? 'mes' : 'meses'}
+                  </span>
+                )}
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
