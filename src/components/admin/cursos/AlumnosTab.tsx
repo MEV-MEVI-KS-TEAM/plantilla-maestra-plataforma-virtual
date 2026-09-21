@@ -235,9 +235,29 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         {busqueda.trim() && (
           <div className="space-y-1.5">
             {resultados.length === 0 && (
-              <p className="text-xs px-1" style={{ color: '#9CA3AF' }}>
-                Sin resultados (los ya asignados no aparecen aquí).
-              </p>
+              /* ⚠️ ESTE BUSCADOR SOLO ASIGNA ALUMNOS QUE YA EXISTEN. Es el
+                 tercer cliente que reporta «no aparece la opción para dar de
+                 alta a un alumno en el curso»: Christian (Campus Digital) el
+                 11-sep, Elda (RHEMA) el 10, 16 y 17-sep —tres veces dada por
+                 resuelta— y Kevin preguntando por Instituto Elite el 19-sep.
+                 No es que el alta falte: vive en /admin/alumnos, con la opción
+                 «Curso o diplomado» del selector de nivel. Lo que pasa es que
+                 el admin entra por la pestaña del curso, busca a alguien que
+                 todavía no está registrado, lee «Sin resultados» y se queda
+                 sin salida. Se enlaza el alta en vez de dejar el callejón. */
+              <div className="px-1 space-y-1.5">
+                <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                  Sin resultados (los ya asignados no aparecen aquí).
+                </p>
+                <a
+                  href="/admin/alumnos"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-2"
+                  style={{ color: 'var(--color-acento)' }}
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  ¿El alumno todavía no existe? Dalo de alta aquí
+                </a>
+              </div>
             )}
             {resultados.map(a => (
               <div
