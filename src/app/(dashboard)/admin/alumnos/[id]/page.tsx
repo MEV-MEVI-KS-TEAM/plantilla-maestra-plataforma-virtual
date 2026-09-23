@@ -13,6 +13,7 @@ import { useSiteConfig } from '@/components/site-config-provider'
 // Mismos catálogos que el select de alta: el modal de corrección ofrece
 // exactamente lo que el alta ofrece, ni más ni menos.
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { inscripcionDe } from '@/lib/precios-ui'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
 
@@ -1654,7 +1655,7 @@ export default function AlumnoDetallePage() {
               <p className="text-4xl mb-2">💳</p>
               <p className="text-sm font-medium text-gray-100">
                 ¿Confirmas que el alumno pagó su inscripción de{' '}
-                <span style={{ color: 'var(--color-acento)' }}>${cfg.precios.inscripcion}</span>?
+                <span style={{ color: 'var(--color-acento)' }}>${inscripcionDe(alumno.nivel, cfg.precios)}</span>?
               </p>
               <p className="text-sm font-bold mt-0.5 text-gray-100">
                 {alumno.usuario.nombre_completo}

@@ -16,7 +16,7 @@ import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 import { precioPublico } from '@/lib/cursos/catalogo'
-import { varsInscripcionPorNivel } from '@/lib/precios-ui'
+import { inscripcionDe, mensualidadPropiaDe, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
 const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
@@ -546,17 +546,17 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     <span className="text-xs font-semibold px-3 py-1 rounded-full"
                       style={{ background: `${C.bright}22`, color: C.azure, border: `1px solid ${C.azure}30` }}>{texto(L.programas_popular)}</span>
                   </div>
-                  <p className="text-xs font-semibold mb-6" style={{ color: C.azure }}>Inscripción: {fmt(p.inscripcion)}</p>
+                  <p className="text-xs font-semibold mb-6" style={{ color: C.azure }}>Inscripción: {fmt(inscripcionDe('preparatoria', p))}</p>
                   <div className="space-y-3 flex-1">
                     {[
                       // Rótulo PÚBLICO: la escuela puede vender "Express" lo que por
                       // dentro es "3 Meses". El registro y la constancia siguen con el interno.
-                      ...planesPrepa.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: cuotaDe(m), unit: unidad })),
+                      ...planesPrepa.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: cuotaDe(m, mensualidadPropiaDe('preparatoria', m, p) ?? undefined), unit: unidad })),
                       // Total del plan: apagado por defecto en toda la flota (ver
                       // landing.mostrarTotalPlan). Encendido, es lo que deja ver que dos
                       // planes de ritmos distintos pueden costar exactamente lo mismo.
                       ...(CONFIG.landing.mostrarTotalPlan
-                        ? planesPrepa.map(m => ({ label: `Total ${getPlanLabelConDuracion(m, mods)}`, price: getTotalPlan(m, p.inscripcion), unit: '' }))
+                        ? planesPrepa.map(m => ({ label: `Total ${getPlanLabelConDuracion(m, mods)}`, price: getTotalPlan({ ...m, mensualidad: mensualidadPropiaDe('preparatoria', m, p) ?? m.mensualidad }, inscripcionDe('preparatoria', p)), unit: '' }))
                         : []),
                       { label: 'Certificación', price: p.certificacionPreparatoria, unit: ' único' },
                     ].map(row => (
@@ -584,13 +584,13 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="mb-5">
                     <h3 className={`text-2xl font-bold ${playfair.className}`} style={{ color: C.navy }}>Secundaria</h3>
                   </div>
-                  <p className="text-xs font-semibold mb-6" style={{ color: C.royalTexto }}>Inscripción: {fmt(p.inscripcion)}</p>
+                  <p className="text-xs font-semibold mb-6" style={{ color: C.royalTexto }}>Inscripción: {fmt(inscripcionDe('secundaria', p))}</p>
                   <div className="space-y-3 flex-1">
                     {[
                       // Alias legacy a propósito: el merge los deriva de la mensualidad cuando el admin la cambia.
                       // 🛑 Los alias SON mensualidades: en una escuela semanal no
                       // aplican y `cuotaDe` los ignora en favor de la cuota real.
-                      ...planesSec.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: cuotaDe(m, m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal), unit: unidad })),
+                      ...planesSec.map(m => ({ label: `Plan ${getPlanLabelConDuracion(m, mods)}`, price: cuotaDe(m, mensualidadPropiaDe('secundaria', m, p) ?? (m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal)), unit: unidad })),
                       ...(CONFIG.landing.mostrarTotalPlan
                         ? planesSec.map(m => ({
                             label: `Total ${getPlanLabelConDuracion(m, mods)}`,
@@ -598,8 +598,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                               // En semanal el total lo da `semanas × cuotaSemanal`, así que
                               // pisar la mensualidad con el alias no altera nada; en mensual
                               // es el precio de secundaria de siempre.
-                              { ...m, mensualidad: m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal },
-                              p.inscripcion,
+                              { ...m, mensualidad: mensualidadPropiaDe('secundaria', m, p) ?? (m.id === '3_meses' ? p.secundaria_3meses_normal : p.secundaria_6meses_normal) },
+                              inscripcionDe('secundaria', p),
                             ),
                             unit: '',
                           }))
