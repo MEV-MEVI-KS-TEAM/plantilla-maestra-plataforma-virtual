@@ -51,7 +51,9 @@ export async function sincronizarPlanSemanal(admin: SupabaseClient): Promise<voi
   // Nunca lanza: si no puede leer site_config, devuelve config.ts tal cual.
   const cfg = await getSiteConfig()
   const ahora = new Date().toISOString()
-  const filas = filasPlanSemanal(CONFIG.niveles as readonly string[], cfg.modalidades, ahora)
+  // El plan de cada nivel sale de config.ts y la cuota de lo publicado (ver
+  // plan-semanal-core.ts: el interruptor `activa` no decide lo que se cobra).
+  const filas = filasPlanSemanal(CONFIG.niveles as readonly string[], CONFIG.modalidades, cfg.modalidades, ahora)
 
   if (filas.length === 0) return
 

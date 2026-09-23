@@ -66,7 +66,7 @@ const valor = (filas: FilaAjuste[], clave: string) => filas.find(f => f.clave ==
 
 test('1. con la cuota de un nivel publicada, plan_cuota_<nivel> lleva la publicada', () => {
   const mods = publicado(SEMANAL, { modalidades: { '3_meses': { cuotaSemanal: 300 } } })
-  const filas = filasPlanSemanal(NIVELES, mods, AHORA)
+  const filas = filasPlanSemanal(NIVELES, SEMANAL, mods, AHORA)
 
   expect(valor(filas, 'plan_cuota_secundaria')).toBe('300')
   // `semanas` no es editable desde el panel: sigue la de config.ts.
@@ -79,14 +79,14 @@ test('1. con la cuota de un nivel publicada, plan_cuota_<nivel> lleva la publica
 test('1b. contraste: con los planes sin fusionar sale la cuota de config.ts', () => {
   // Solo documenta el contraste con la prueba 1: es la cifra que cobraba el
   // calendario antes del arreglo. Quien vigila la regresión son 1, 4 y 4b.
-  const filas = filasPlanSemanal(NIVELES, SEMANAL, AHORA)
+  const filas = filasPlanSemanal(NIVELES, SEMANAL, SEMANAL, AHORA)
   expect(valor(filas, 'plan_cuota_secundaria')).toBe('250')
 })
 
 // ─── 2. Sin override, lo mismo que hoy ───────────────────────────────────────
 
 test('2. sin override se escriben exactamente las mismas filas que hoy', () => {
-  expect(filasPlanSemanal(NIVELES, publicado(SEMANAL, {}), AHORA)).toEqual([
+  expect(filasPlanSemanal(NIVELES, SEMANAL, publicado(SEMANAL, {}), AHORA)).toEqual([
     { clave: 'plan_semanas_secundaria',   valor: '12',  updated_at: AHORA },
     { clave: 'plan_cuota_secundaria',     valor: '250', updated_at: AHORA },
     { clave: 'plan_semanas_preparatoria', valor: '24',  updated_at: AHORA },
@@ -97,8 +97,8 @@ test('2. sin override se escriben exactamente las mismas filas que hoy', () => {
 test('2b. con el config de ESTE repo y sin override, igual que con config.ts', () => {
   // "Hoy" = los planes de config.ts. Vale en el clon que sea, semanal o mensual.
   const niveles = CONFIG.niveles as readonly string[]
-  const hoy = filasPlanSemanal(niveles, CONFIG.modalidades, AHORA)
-  const ahora = filasPlanSemanal(niveles, mergeSiteConfig(CONFIG, {}).modalidades, AHORA)
+  const hoy = filasPlanSemanal(niveles, CONFIG.modalidades, CONFIG.modalidades, AHORA)
+  const ahora = filasPlanSemanal(niveles, CONFIG.modalidades, mergeSiteConfig(CONFIG, {}).modalidades, AHORA)
   expect(ahora).toEqual(hoy)
 })
 
@@ -109,7 +109,7 @@ test('3. en una escuela mensual no se escribe nada, aunque se publique una cuota
   // haría un plan híbrido que `subtotalCuotas()` cobraría por semanas.
   const mods = publicado(MENSUAL, { modalidades: { '3_meses': { cuotaSemanal: 300 }, '6_meses': { cuotaSemanal: 300 } } })
   expect(mods.map(m => m.cuotaSemanal)).toEqual([undefined, undefined])
-  expect(filasPlanSemanal(NIVELES, mods, AHORA)).toEqual([])
+  expect(filasPlanSemanal(NIVELES, MENSUAL, mods, AHORA)).toEqual([])
 })
 
 test('3b. en una escuela mensual ni siquiera se lee site_config', () => {
@@ -133,15 +133,49 @@ test('4. sincronizarPlanSemanal lee la misma fuente que /api/alumno/pagos', () =
   // Y lo que se lee es lo que se le pasa a la parte pura.
   const lectura = plan.match(/const (\w+) = await getSiteConfig\(\)/)
   expect(lectura, 'sincronizarPlanSemanal ya no lee getSiteConfig()').not.toBeNull()
-  expect(plan).toMatch(new RegExp(`filasPlanSemanal\\([^)]*\\b${lectura![1]}\\.modalidades\\b`))
+  // El plan con la tabla de fábrica y la cuota con la publicada, en ese orden:
+  // cruzarlos devolvería el interruptor `activa` a la elección del plan.
+  expect(plan).toMatch(
+    new RegExp(`filasPlanSemanal\\([^,]+,\\s*CONFIG\\.modalidades\\s*,\\s*${lectura![1]}\\.modalidades\\s*,`),
+  )
 })
 
 test('4b. nadie vuelve a pedir el plan de un nivel sin pasarle los planes', () => {
   for (const archivo of ['src/lib/plan-semanal.ts', 'src/lib/plan-semanal-core.ts']) {
     expect(sinComentarios(leer(archivo)), archivo).not.toMatch(/modalidadPorNivel\(\s*nivel\s*\)/)
   }
-  // Y la parte pura sí se los pasa.
-  expect(sinComentarios(leer('src/lib/plan-semanal-core.ts'))).toContain('modalidadPorNivel(nivel, mods)')
+  // Y la parte pura elige el plan con la tabla de fábrica.
+  expect(sinComentarios(leer('src/lib/plan-semanal-core.ts'))).toContain('modalidadPorNivel(nivel, fabrica)')
+})
+
+// ─── 5. El interruptor `activa` no decide lo que se cobra ───────────────────
+
+/** Dos planes semanales para todos los niveles: la forma de RHEMA #193. */
+const SIMETRICA: ModalidadPrograma[] = [
+  { id: '3_meses', label: '3 Meses', meses: 3, semanas: 13, cuotaSemanal: 470, mensualidad: 470, materiasPorMes: 4, activa: true },
+  { id: '6_meses', label: '6 Meses', meses: 6, semanas: 26, cuotaSemanal: 250, mensualidad: 250, materiasPorMes: 2, activa: true },
+]
+
+test('5. apagar uno de dos planes no hace que un nivel empiece a llevar calendario', () => {
+  // Con la tabla publicada, el nivel quedaría con UN plan y se escribirían sus
+  // filas; al volver a encenderlo nadie las borraría (el upsert no borra) y
+  // cada alta nueva recibiría 13 × $470 aunque eligiera el de 6 meses.
+  const mods = publicado(SIMETRICA, { modalidades: { '6_meses': { activa: false } } })
+  expect(mods.map(m => m.activa)).toEqual([true, false])
+  expect(filasPlanSemanal(NIVELES, SIMETRICA, mods, AHORA)).toEqual(
+    filasPlanSemanal(NIVELES, SIMETRICA, SIMETRICA, AHORA),
+  )
+  expect(filasPlanSemanal(NIVELES, SIMETRICA, mods, AHORA)).toEqual([])
+})
+
+test('5b. apagar el plan de un nivel no deja de sincronizar su cuota', () => {
+  // Apagarlo lo saca del catálogo (REGLA DE ALCANCE de modalidades.ts), no del
+  // cobro: el nivel sigue con su plan y con la cuota que se haya publicado.
+  const mods = publicado(SEMANAL, { modalidades: { '3_meses': { activa: false, cuotaSemanal: 300 } } })
+  const filas = filasPlanSemanal(NIVELES, SEMANAL, mods, AHORA)
+  expect(valor(filas, 'plan_semanas_secundaria')).toBe('12')
+  expect(valor(filas, 'plan_cuota_secundaria')).toBe('300')
+  expect(valor(filas, 'plan_cuota_preparatoria')).toBe('350')
 })
 
 test('4c. la parte pura no arrastra código de servidor', () => {
