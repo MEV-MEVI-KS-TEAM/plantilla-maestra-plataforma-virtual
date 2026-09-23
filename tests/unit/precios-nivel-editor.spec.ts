@@ -20,6 +20,7 @@ import {
   precioNivelSobrescrito,
   preciosPorNivelVisibles,
   restaurarPlan,
+  textoVacioError,
   textoVacioNivel,
 } from '@/lib/site-config-editor'
 import {
@@ -85,6 +86,11 @@ test('1. campo vacío (clave ausente o null en el clon): «usa la general $599»
   expect(textoVacioNivel(1200, 'MXN', 'fabrica')).toBe(`Vacío: usa el de fábrica, ${formatoDinero(1200, 'MXN')}`)
   // SAMEX: la secundaria vacía sigue su alias, no la «Mensualidad general» del plan.
   expect(textoVacioNivel(2700, 'MXN', 'hoy')).toBe(`Vacío: usa la de hoy, ${formatoDinero(2700, 'MXN')}`)
+  // El error del campo (la única guía cuando está en rojo): la general solo si vacío la da.
+  expect(textoVacioError(599, 'MXN', 'general')).toBe('el precio general')
+  expect(textoVacioError(2700, 'MXN', 'hoy')).toBe(`la de hoy, ${formatoDinero(2700, 'MXN')}`)
+  expect(textoVacioError(1500, 'MXN', 'fabrica')).toBe(`el de fábrica, ${formatoDinero(1500, 'MXN')}`)
+  expect(textoVacioError(0, 'MXN', 'hoy')).toBe('la de hoy, sin costo')
   expect(conPrecio('inscripcionSecundaria', 1200, () =>
     precioNivelEfectivo(ov, { clave: 'precios.inscripcionSecundaria', nivel: 'secundaria' }, { vacio: true }))).toBe(1200)
 })
@@ -277,7 +283,9 @@ test('9. PestanaPrecios pinta un campo por clave nueva, y sigue con tipo de camb
   expect(campo).toContain('valor={valorEfectivo({}, overrides, clave)}')
   expect(campo).toContain('sobrescrito={precioNivelSobrescrito(overrides, clave)}')
   expect(campo).toContain("plan && siVacio !== plan.mensualidad ? 'hoy' : 'general'")
-  expect(campo).toContain("ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA : campo?.ayuda}")
+  expect(campo).toContain("ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA")
+  expect(campo).toContain(": origen === 'hoy' ? `${campo?.ayuda ?? ''} ${AYUDA_NIVEL_CIFRA_PROPIA}`.trim()")
+  expect(campo).toContain('vacioError={textoVacioError(siVacio, CONFIG.moneda, origen)}')
   expect(campo).toContain("const origen = Number(valorEfectivo(defaults, {}, clave)) > 0 ? 'fabrica'")
   expect(campo).toContain('resaltado={claveConError === clave}')
   expect(campo).not.toMatch(/escribirRuta\(prev, clave, (null|0)\)/)
@@ -302,7 +310,15 @@ test('10. el campo por nivel: vacío es válido, 0 no, y el error dice que se pu
   expect(campo).toContain("const invalido = limpio !== '' && (numero === null || numero < min || numero > max)")
   expect(campo).toContain("if (t === '') return onVaciar()")
   expect(campo).toContain('placeholder={vacio}')
-  expect(campo).toContain("Escribe un entero entre {min.toLocaleString('es-MX')} y {max.toLocaleString('es-MX')}, o déjalo vacío para usar el precio general.")
+  expect(campo).toContain("Escribe un entero entre {min.toLocaleString('es-MX')} y {max.toLocaleString('es-MX')}, o déjalo vacío para usar {vacioError}.")
+  expect(campo).toContain("vacioError = 'el precio general',")
+  // «1,500» tecleado: sin comas ni espacios ni $ antes de validar y propagar.
+  expect(fuente).toContain("const normalizar = (s: string) => s.replace(/[\\s,$]/g, '')")
+  expect(campo).toContain('const limpio = normalizar(texto)')
+  expect(campo).toContain('const t = normalizar(e.target.value)')
+  // Con basura al salir se repone lo que había AL ENTRAR, no el último prefijo.
+  expect(campo).toContain('alEntrar.current = valor')
+  expect(campo).toContain('const previo = alEntrar.current')
   expect(`${(1).toLocaleString('es-MX')} y ${LIMITES.precioMax.toLocaleString('es-MX')}`).toBe('1 y 50,000')
   // Un 0 escrito a mano se pinta (no se esconde como «vacío») y sale «Restaurar».
   expect(campo).toContain('useState(textoDe(valor))')
@@ -369,7 +385,10 @@ test('14. mensualidadQA: si 2500 rompe el escalón (Búfalo: 6 meses a 2800), el
     const conClavesVacias = <T>(fn: () => T): T =>
       ['mensualidadSecundaria3Meses', 'mensualidadSecundaria6Meses', 'mensualidadPreparatoria3Meses', 'mensualidadPreparatoria6Meses']
         .reduce<() => T>((f, k) => () => conPrecio(k, null, f), fn)()
-    conClavesVacias(() => {
+    // Los alias de secundaria de ESTE repo (CEIJ los tiene en 2500) tampoco cuentan aquí.
+    const sinAlias = <T>(fn: () => T): T =>
+      conPrecio('secundaria_3meses_normal', null, () => conPrecio('secundaria_6meses_normal', null, fn))
+    sinAlias(() => conClavesVacias(() => {
       const base = mergeSiteConfig(CONFIG, {})
       const pasa = (v: number) => validarOverrides({ modalidades: { '3_meses': { mensualidad: v } } }, base).ok
       expect(pasa(2500)).toBe(false) // el 2500 fijo de antes: 400
@@ -381,7 +400,14 @@ test('14. mensualidadQA: si 2500 rompe el escalón (Búfalo: 6 meses a 2800), el
       // Donde 2500 sí cumple, se queda 2500.
       C.modalidades = [{ ...plan, id: '3_meses', meses: 3, mensualidad: 2000 }, { ...plan, id: '6_meses', meses: 6, mensualidad: 1000 }]
       expect(mensualidadQA('3_meses')).toBe(2500)
-    })
+      // Si 2500 ya se ve en la landing por el alias de secundaria (CEIJ, AULA
+      // RAÍZ), no sirve de prueba: se elige otra que tampoco se vea.
+      conPrecio('secundaria_3meses_normal', 2500, () => {
+        const qa2 = mensualidadQA('3_meses')
+        expect(qa2).not.toBe(2500)
+        expect(validarOverrides({ modalidades: { '3_meses': { mensualidad: qa2 } } }, mergeSiteConfig(CONFIG, {})).ok).toBe(true)
+      })
+    }))
   } finally {
     C.modalidades = antes.modalidades
     C.niveles = antes.niveles

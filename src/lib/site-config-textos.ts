@@ -101,6 +101,13 @@ export const NOTA_PRECIOS_POR_NIVEL = 'Un nivel sin precio propio usa el general
  */
 export const AYUDA_NIVEL_DE_FABRICA = 'Vacío = vuelve al precio que trae la configuración de tu escuela para este nivel.'
 
+/**
+ * Se añade a la ayuda de un campo por nivel cuando «la general de hoy» de ese
+ * nivel NO es la «Mensualidad general» de la misma tarjeta: la secundaria de
+ * SAMEX, AULA RAÍZ, CEIJ o Búfalo vive en su alias (2,700 frente a 3,000).
+ */
+export const AYUDA_NIVEL_CIFRA_PROPIA = 'Este nivel ya cobra hoy una cifra distinta de la «Mensualidad general»: vacío la conserva.'
+
 /** Nota al pie de la pestaña Precios. */
 export const NOTA_PRECIOS =
   'Estos precios se muestran en tu página pública. Cambiarlos no modifica los pagos ya registrados. El precio de cada curso o diplomado se edita en su propia ficha.'

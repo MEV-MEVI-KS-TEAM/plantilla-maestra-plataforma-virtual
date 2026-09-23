@@ -32,7 +32,13 @@ import { esSoloCursos } from '@/lib/modo'
 import { esSemanal } from '@/lib/periodicidad'
 import { equivalenteMXN, type Moneda } from '@/lib/moneda'
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
-import { AYUDA_CUOTA_SEMANAL, AYUDA_NIVEL_DE_FABRICA, NOTA_PRECIOS, NOTA_PRECIOS_POR_NIVEL } from '@/lib/site-config-textos'
+import {
+  AYUDA_CUOTA_SEMANAL,
+  AYUDA_NIVEL_CIFRA_PROPIA,
+  AYUDA_NIVEL_DE_FABRICA,
+  NOTA_PRECIOS,
+  NOTA_PRECIOS_POR_NIVEL,
+} from '@/lib/site-config-textos'
 import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
   clavesPorNivelDePlan,
@@ -48,6 +54,7 @@ import {
   puedeDesactivar,
   quitarRuta,
   restaurarPlan,
+  textoVacioError,
   textoVacioNivel,
   valorEfectivo,
 } from '@/lib/site-config-editor'
@@ -190,9 +197,12 @@ export function PestanaPrecios({
         key={clave}
         clave={clave}
         etiqueta={campo?.etiqueta ?? clave}
-        ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA : campo?.ayuda}
+        ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA
+          : origen === 'hoy' ? `${campo?.ayuda ?? ''} ${AYUDA_NIVEL_CIFRA_PROPIA}`.trim()
+          : campo?.ayuda}
         valor={valorEfectivo({}, overrides, clave)}
         vacio={textoVacioNivel(siVacio, CONFIG.moneda, origen)}
+        vacioError={textoVacioError(siVacio, CONFIG.moneda, origen)}
         min={campo?.min ?? LIMITES.precioNivelMin}
         max={campo?.max ?? LIMITES.precioMax}
         sufijo={<EnPesos valor={cobra} moneda={CONFIG.moneda} />}
@@ -258,7 +268,6 @@ export function PestanaPrecios({
         <div className="space-y-3">
           {mods.map((m) => {
             const claveMensualidad = `modalidades.${m.id}.mensualidad`
-            const override = overrides.modalidades?.[m.id]
             const sePuedeApagar = puedeDesactivar(mods, m.id)
             // El servidor rechaza los planes con la clave `modalidades.<id>`
             // (ver validarModalidades), así que ESA es la que hay que poder

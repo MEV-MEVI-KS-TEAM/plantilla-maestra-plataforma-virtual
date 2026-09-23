@@ -9,7 +9,7 @@
  * `placeholder` lleva el default, que es lo que se verá si el admin borra el
  * campo y pulsa "Restaurar".
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { parseDecimal } from '@/lib/site-config-validacion'
 import {
   BotonRestaurar,
@@ -261,6 +261,12 @@ export interface CampoPrecioNivelProps extends Base {
   valor: unknown
   /** El marcador del campo vacío: lo que cobraría el nivel sin precio propio. */
   vacio: string
+  /**
+   * Cómo termina el error «…o déjalo vacío para usar ___.». Por defecto «el
+   * precio general»; donde vacío NO da la general (alias de secundaria, clave
+   * sembrada en config.ts) la pestaña pasa la cifra real.
+   */
+  vacioError?: string
   min: number
   max: number
   /** Se pinta a la derecha del input: el precio que de verdad cobra el nivel. */
@@ -271,6 +277,13 @@ export interface CampoPrecioNivelProps extends Base {
 }
 
 const textoDe = (v: unknown): string => (v === undefined || v === null ? '' : String(v))
+
+/**
+ * Quita lo que el admin ve en pantalla y teclea por costumbre: espacios,
+ * comas de miles y el signo de pesos. Sin esto, «1,500» tecleado carácter a
+ * carácter dejaba en el borrador el prefijo válido «1» (y se publicaba $1).
+ */
+const normalizar = (s: string) => s.replace(/[\s,$]/g, '')
 
 /**
  * Precio por nivel (Fase 2, F2-9): un entero OPCIONAL.
@@ -286,6 +299,7 @@ export function CampoPrecioNivel({
   ayuda,
   valor,
   vacio,
+  vacioError = 'el precio general',
   min,
   max,
   sufijo,
@@ -298,18 +312,20 @@ export function CampoPrecioNivel({
 }: CampoPrecioNivelProps) {
   const id = idDeCampo(clave)
   const [texto, setTexto] = useState(textoDe(valor))
+  /** Lo que valía el campo al entrar: es lo que se repone si sale con basura. */
+  const alEntrar = useRef<unknown>(valor)
 
   // Como en CampoEntero: se sigue el valor de fuera (Restaurar, recarga tras
   // publicar), pero no se pisa lo que el admin teclea si ya equivale a lo mismo.
   useEffect(() => {
     setTexto((actual) => {
-      const limpio = actual.trim()
+      const limpio = normalizar(actual)
       if (limpio === '' && (valor === undefined || valor === null)) return actual
       return /^\d+$/.test(limpio) && Number(limpio) === valor ? actual : textoDe(valor)
     })
   }, [valor])
 
-  const limpio = texto.trim()
+  const limpio = normalizar(texto)
   const numero = /^\d+$/.test(limpio) ? Number(limpio) : null
   const invalido = limpio !== '' && (numero === null || numero < min || numero > max)
   const foco = focoHandlers(resaltado || invalido)
@@ -336,16 +352,38 @@ export function CampoPrecioNivel({
           aria-invalid={invalido}
           onChange={(e) => {
             setTexto(e.target.value)
-            const t = e.target.value.trim()
+            const t = normalizar(e.target.value)
             if (t === '') return onVaciar()
             const n = /^\d+$/.test(t) ? Number(t) : null
             if (n !== null && n >= min && n <= max) onChange(n)
           }}
           onBlur={(e) => {
-            if (invalido) setTexto(textoDe(valor))
+            // Con basura, se repone lo que había AL ENTRAR (y se devuelve al
+            // borrador), no el último prefijo válido que se propagó al teclear.
+            if (invalido) {
+              const previo = alEntrar.current
+              const previoValido = typeof previo === 'number' && Number.isInteger(previo) && previo >= min && previo <= max
+              if (previo === undefined || previo === null) {
+                onVaciar()
+                setTexto('')
+              } else if (previoValido) {
+                onChange(previo)
+                setTexto(String(previo))
+              } else {
+                // Entró con algo inválido (un 0 escrito a mano): se pinta lo que
+                // quedó en el borrador, para que pantalla y borrador digan lo mismo.
+                setTexto(textoDe(valor))
+              }
+            } else if (limpio === '' && texto !== '') {
+              // Solo espacios o «$»: ya es vacío; se limpia para que se vea el marcador.
+              setTexto('')
+            }
             foco.onBlur(e)
           }}
-          onFocus={foco.onFocus}
+          onFocus={(e) => {
+            alEntrar.current = valor
+            foco.onFocus(e)
+          }}
           className="w-56 px-3 py-2.5 rounded-lg text-sm outline-none transition-all tabular-nums"
           style={{
             ...INPUT_STYLE,
@@ -357,7 +395,7 @@ export function CampoPrecioNivel({
       </div>
       {invalido && (
         <p className="text-xs" style={{ color: ROJO }}>
-          Escribe un entero entre {min.toLocaleString('es-MX')} y {max.toLocaleString('es-MX')}, o déjalo vacío para usar el precio general.
+          Escribe un entero entre {min.toLocaleString('es-MX')} y {max.toLocaleString('es-MX')}, o déjalo vacío para usar {vacioError}.
         </p>
       )}
       {ayuda && !invalido && <p className="text-xs" style={{ color: TXT_TENUE }}>{ayuda}</p>}

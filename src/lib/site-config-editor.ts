@@ -688,6 +688,17 @@ export function textoVacioNivel(monto: number, moneda: Moneda = CONFIG.moneda, o
 }
 
 /**
+ * El final del error del campo: «…o déjalo vacío para usar ___.». Con origen
+ * 'general' es el texto del diseño (§7.3); con 'hoy' o 'fabrica' dice la
+ * cifra, porque vacío NO da la general y, con el campo en rojo, el marcador
+ * y la ayuda no se ven: el error es la única guía.
+ */
+export function textoVacioError(monto: number, moneda: Moneda = CONFIG.moneda, origen: OrigenVacio = 'general'): string {
+  if (origen === 'general') return 'el precio general'
+  return textoVacioNivel(monto, moneda, origen).replace(/^Vacío: usa /, '')
+}
+
+/**
  * El plan cuya caja lleva el campo de una clave por nivel de mensualidad: el
  * primero de esa duración sin `nivel` o con el mismo nivel. `null` si no es
  * una clave de mensualidad por nivel o si ningún plan dura eso.
