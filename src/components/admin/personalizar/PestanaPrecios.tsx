@@ -45,16 +45,6 @@ import {
 const ICONO = { className: 'w-4 h-4', style: { color: 'var(--color-acento)' } }
 
 /**
- * Tope de la cuota SEMANAL. No es el de la mensualidad: una cuota semanal es
- * del orden de una cuarta parte, y el techo pensado para mensualidades deja
- * pasar cifras que solo pueden ser un tecleo mal dado — multiplicado después
- * por 12 o 24 semanas. Debe coincidir con `LIMITE_CUOTA_SEMANAL` del validador,
- * que es quien manda: esto solo evita que el admin descubra el límite después
- * de escribir.
- */
-const MAX_CUOTA_SEMANAL = 15000
-
-/**
  * Las cifras semanales de un plan.
  *
  * Se leen con un cast porque `SiteConfig` se deriva del `CONFIG` de FÁBRICA,
@@ -208,8 +198,10 @@ export function PestanaPrecios({
                     clave={semanal ? `modalidades.${m.id}.cuotaSemanal` : claveMensualidad}
                     etiqueta={semanal ? 'Cuota semanal' : 'Mensualidad'}
                     valor={semanal ? cuotaDe(m) : m.mensualidad}
-                    min={LIMITES.precioMin}
-                    max={semanal ? MAX_CUOTA_SEMANAL : LIMITES.precioMax}
+                    // La cuota semanal tiene sus propios límites
+                    // (`LIMITES.cuotaSemanalMin/Max`), los mismos que usa el validador.
+                    min={semanal ? LIMITES.cuotaSemanalMin : LIMITES.precioMin}
+                    max={semanal ? LIMITES.cuotaSemanalMax : LIMITES.precioMax}
                     sufijo={<EnPesos valor={semanal ? cuotaDe(m) : m.mensualidad} moneda={CONFIG.moneda} />}
                     deshabilitado={!puedeEditar}
                     resaltado={errorAqui}

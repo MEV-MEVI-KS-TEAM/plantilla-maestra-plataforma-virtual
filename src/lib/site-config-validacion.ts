@@ -33,7 +33,7 @@ import {
   type SiteConfig,
   type SiteConfigOverrides,
 } from '@/lib/site-config-core'
-import { campoPorClave, type Campo, type Subcampo } from '@/lib/site-config-campos'
+import { LIMITES, campoPorClave, type Campo, type Subcampo } from '@/lib/site-config-campos'
 
 // ─── Tipos públicos ──────────────────────────────────────────────────────────
 
@@ -536,8 +536,12 @@ const LIMITE_MENSUALIDAD = { min: 0, max: 50000 }
  * que el techo de $50,000 pensado para mensualidades deja pasar cifras que en
  * una escuela semanal solo pueden ser un error de tecleo — y un error ahí se
  * multiplica por 12 o por 24 semanas antes de que nadie lo note.
+ *
+ * El mínimo es 1 (una cuota de 0 no genera calendario: ver `LIMITES` en
+ * site-config-campos.ts). Los dos números viven allí para que el campo del
+ * editor y este validador no puedan divergir.
  */
-const LIMITE_CUOTA_SEMANAL = { min: 0, max: 15000 }
+const LIMITE_CUOTA_SEMANAL = { min: LIMITES.cuotaSemanalMin, max: LIMITES.cuotaSemanalMax }
 
 /**
  * `null` en `mensualidad` / `cuotaSemanal` / `activa` = quitar ese override.
