@@ -42,12 +42,27 @@ test('2. la tarjeta de Preparatoria antepone su clave a la mensualidad del plan'
   if (!ES_PLANTILLA && !fuente.includes('planesPrepa.map')) test.skip()
   expect(fuente).toContain("cuotaDe(m, mensualidadPropiaDe('preparatoria', m, p) ?? undefined)")
   expect(fuente).toContain("{ ...m, mensualidad: mensualidadPropiaDe('preparatoria', m, p) ?? m.mensualidad }")
-  // Cada tarjeta, la inscripción de SU nivel, en la fila y en el total.
-  for (const nivel of ['preparatoria', 'secundaria']) {
-    expect(fuente).toContain(`Inscripción: {fmt(inscripcionDe('${nivel}', p))}`)
-  }
   expect(fuente).toContain("inscripcionDe('preparatoria', p)), unit: '' }))")
   expect(fuente).toContain("inscripcionDe('secundaria', p),\n")
+  // Cada tarjeta, los precios de SU nivel: se corta el fuente (sin comentarios)
+  // por tarjeta. Cruzar Prepa y Secundaria no se nota con las claves vacías
+  // —las dos valen la general—, así que solo lo puede ver esta guarda.
+  const src = sinComentarios(fuente)
+  const iPrepa = src.indexOf('>Preparatoria</h3>')
+  const iSec = src.indexOf('>Secundaria</h3>')
+  const fin = src.indexOf('</section>', iSec)
+  expect(iPrepa).toBeGreaterThan(-1)
+  expect(iSec).toBeGreaterThan(iPrepa)
+  expect(fin).toBeGreaterThan(iSec)
+  const tarjetas = { preparatoria: src.slice(iPrepa, iSec), secundaria: src.slice(iSec, fin) }
+  for (const [nivel, bloque] of Object.entries(tarjetas)) {
+    const otro = nivel === 'preparatoria' ? 'secundaria' : 'preparatoria'
+    expect(bloque, nivel).toContain(`Inscripción: {fmt(inscripcionDe('${nivel}', p))}`)
+    expect(bloque.split(`inscripcionDe('${nivel}', p)`).length - 1, nivel).toBe(2)
+    expect(bloque.split(`mensualidadPropiaDe('${nivel}', m, p)`).length - 1, nivel).toBe(2)
+    expect(bloque, nivel).not.toContain(`inscripcionDe('${otro}'`)
+    expect(bloque, nivel).not.toContain(`mensualidadPropiaDe('${otro}'`)
+  }
 })
 
 test('3. ningún consumidor lee la inscripción general a pelo, salvo el comodín {inscripcion}', () => {
