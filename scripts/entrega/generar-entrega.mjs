@@ -441,7 +441,7 @@ const PRECIOS = { insc, mens, cert }
 // saldría vacía. (La semanal ya se detiene más abajo si no hay planes semanales.)
 const SIN_PLANES = esSemanal(CONFIG) || !modalidadesActivas.length ? [] : nivelesSinPlanes(CONFIG, nivelesPrograma)
 if (SIN_PLANES.length)
-  abortar(`${SIN_PLANES.map(cap).join(' y ')} no vende ningún plan: ninguna modalidad activa aplica a ese nivel.`,
+  abortar(`${SIN_PLANES.map(cap).join(' y ')} no ${SIN_PLANES.length > 1 ? 'venden' : 'vende'} ningún plan: ninguna modalidad activa aplica a ${SIN_PLANES.length > 1 ? 'esos niveles' : 'ese nivel'}.`,
     'Una modalidad sin `nivel` aplica a todos los niveles; con `nivel`, solo a ese (secundaria, preparatoria o licenciatura).\n' +
     "Un valor que no es un nivel del programa (p. ej. nivel: 'media') deja al nivel sin planes.")
 
