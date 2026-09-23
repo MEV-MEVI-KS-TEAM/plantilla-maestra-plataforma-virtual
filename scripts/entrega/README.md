@@ -51,7 +51,7 @@ que no tenerlo.
 |---|---|
 | Nombre, dominio, colores, logo | `src/lib/config.ts` |
 | Niveles, modalidades, precios | `src/lib/config.ts` |
-| Inscripción y mensualidad **por nivel** | `precios.inscripcion<Nivel>` y `precios.<nivel>_<n>meses_normal`, las mismas claves que usa el registro. Un cliente con precios diferenciados los cobra bien en la plataforma; sin consultarlas, el documento anunciaba otra cosa |
+| Inscripción y mensualidad **por nivel** | El MISMO resolver de la plataforma (`src/lib/precios-nivel.ts`), con las mismas claves que leen la landing, el estado de cuenta y la ficha del alumno: `precios.inscripcionSecundaria` / `precios.inscripcionPreparatoria` y `precios.mensualidadSecundaria3Meses`, `…6Meses`, `precios.mensualidadPreparatoria3Meses`, `…6Meses`. Vacías (`null`) = la general. Sin mensualidad propia, Secundaria usa su alias `precios.secundaria_<n>meses_normal` si es mayor que 0 y Preparatoria, la del plan. Solo refleja `config.ts`: lo que el admin publica después en «Personalizar mi página» no llega al papel |
 | Licenciaturas, cursos de ingreso | `src/lib/config.ts` |
 | Materias, semanas, preguntas, matrícula | consulta real a Supabase vía `.env.local` |
 | Nombre del admin y contraseñas | `entrega.local.json` (ignorado por git) |
@@ -93,8 +93,13 @@ El documento **no es una plantilla fija**: cambia según lo que el cliente compr
 
 - **Una modalidad** → "plan único de N meses", y el registro no ofrece selector.
 - **Varias modalidades** → una fila de precio y una de costo total por plan.
-- **Inscripción por nivel** (`inscripcion: {secundaria, preparatoria}`) → una
-  columna por nivel. También acepta el número plano de siempre.
+- **Precio por nivel** (`precios.inscripcionSecundaria`, `precios.mensualidadSecundaria3Meses`…)
+  → cada columna con la cifra de su nivel. `precios.inscripcion` tiene que ser un
+  número (la general), y también la `mensualidad` de cada plan mensual: la forma
+  de objeto `{ secundaria, preparatoria }` ya no se lee y el script se detiene
+  diciendo qué claves usar. También se detiene si un nivel no vende ningún plan.
+- **Oferta asimétrica** (planes con `nivel`, p. ej. Secundaria solo 3 meses y
+  Preparatoria solo 6) → cada nivel con SUS planes; nunca combinaciones que nadie vende.
 - **Licenciaturas activas** → se añade una página con carreras y planes.
 - **Varias rutas de titulación** (`licenciaturas.rutas`) → cada una con su
   bloque: quién otorga el documento, para quién es, sus planes con el total, su

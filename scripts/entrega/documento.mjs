@@ -400,7 +400,7 @@ function personalizar(d) {
 <h2><span class="num">Tu marca ·</span> Personalizar mi página</h2>
 <div class="rule"></div>
 <p class="lead">Tu página pública no está congelada. Desde tu propio panel
-cambias los textos, los colores y el logo, y los ves publicados al instante —sin
+cambias los textos, los colores y el logo, y los ves publicados en unos segundos —sin
 pedirnos nada y sin esperar a nadie.</p>
 ${kv([
     ['Dónde está', `${d.url}/admin/configuracion`],

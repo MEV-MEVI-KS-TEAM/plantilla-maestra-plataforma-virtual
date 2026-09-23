@@ -31,6 +31,8 @@ import { repartirPaginas } from './paginar.mjs'
 import {
   esSemanal, planesSemanales, tablaPrecios, colsModalidades, filasModalidades,
   frasesSemanales, lineasPreciosWhatsApp, ofertaInformativa,
+  problemaDePrecios, nivelesSinPlanes, tablaPreciosMensual, filasModalidadesMensual, frasesMensuales,
+  lineasPreciosMensualWhatsApp,
 } from './planes.mjs'
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
 import {
@@ -74,6 +76,11 @@ const HOSTS_PROVISIONALES = ['vercel.app', 'netlify.app', 'localhost', '127.0.0.
 
 /* ── 1. Config del cliente ───────────────────────────────────────────────── */
 const { CONFIG } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/config.ts')).href)
+// El precio de cada NIVEL sale del mismo resolver que usa la plataforma
+// (landing, estado de cuenta, ficha). Es puro —solo un `import type`— y por eso
+// se importa igual que config.ts. Ver la Fase 2 en precios-nivel.ts.
+const { inscripcionDe, mensualidadDe, certificacionDe } =
+  await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-nivel.ts')).href)
 
 
 const dominio = String(CONFIG.dominio || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -415,52 +422,29 @@ if (!modalidadesActivas.length && CONFIG.modo !== 'solo_cursos')
   abortar('CONFIG.modalidades no tiene ninguna modalidad activa.',
     'Revisa que sea un array de OBJETOS completos ({id,label,meses,mensualidad,materiasPorMes,activa}),\nno un array de cadenas.')
 
-/** Resuelve un precio que puede ser número o {nivel: monto}. */
-const porNivel = (v, nivel) => {
-  if (v == null) return 0
-  if (typeof v === 'number') return v
-  const k = String(nivel || '').toLowerCase()
-  if (k in v) return v[k]
-  const vals = Object.values(v).filter(x => typeof x === 'number')
-  return vals.length ? Math.max(...vals) : 0
-}
-/**
- * Inscripción de un nivel.
- *
- * 🐞 Leía solo `precios.inscripcion`, que es UN número, así que en un cliente
- * con inscripción diferenciada por nivel imprimía la misma cifra para todos.
- * En SÉNDERI el documento oficial de entrega anunciaba Preparatoria a $399
- * cuando cuesta $499: la plataforma cobra bien y el papel decía otra cosa.
- *
- * Las claves por nivel son las mismas que usa `inscripcionPara()` en el config,
- * que es de donde lee el registro. Se consultan primero, en sus dos grafías.
+/*
+ * 🛑 UN SOLO RESOLVER DE PRECIOS: el de la plataforma. Aquí vivían `porNivel`,
+ * `insc`, `cert` y `mens` propios, sin pruebas, que leían cosas que la app no
+ * lee: la forma de objeto de `inscripcion`, la grafía `inscripcion_<nivel>`, el
+ * alias `<nivel>_<n>meses_normal` de CUALQUIER nivel (preparatoria incluida) y
+ * hasta un 0. El papel podía anunciar una cifra que la plataforma no cobra.
+ * (SÉNDERI, que motivó la lectura por nivel, usa `inscripcionSecundaria` e
+ * `inscripcionPreparatoria`: son justo las claves del resolver.)
  */
-const insc = (nivel) => {
-  const n = String(nivel || '')
-  const porClave = CONFIG.precios?.[`inscripcion${cap(n)}`]
-    ?? CONFIG.precios?.[`inscripcion_${n.toLowerCase()}`]
-  if (typeof porClave === 'number') return porClave
-  return porNivel(CONFIG.precios?.inscripcion, nivel)
-}
-const cert = (nivel) => CONFIG.precios?.[`certificacion${cap(nivel)}`]
-  ?? CONFIG.precios?.[`certificacion_${nivel}`] ?? 0
-/**
- * Mensualidad de una modalidad para un nivel.
- *
- * ⚠️ `modalidades[].mensualidad` es UN SOLO número, así que en un cliente con
- * precios diferenciados por nivel devuelve el mismo para todos. La plantilla ya
- * resuelve esa diferencia con las claves `precios.<nivel>_<n>meses_normal`, que
- * es de donde lee la landing (ver LandingClient, tarjeta de Secundaria). Sin
- * consultarlas, el documento de entrega contradecía a la propia plataforma:
- * anunciaba la mensualidad de preparatoria como si fuera la de secundaria.
- */
-const mens = (m, nivel) => {
-  const meses = m?.meses
-  const clave = nivel && meses ? `${String(nivel).toLowerCase()}_${meses}meses_normal` : null
-  const porClave = clave ? CONFIG.precios?.[clave] : undefined
-  if (typeof porClave === 'number') return porClave
-  return porNivel(m.mensualidad, nivel)
-}
+const problemaPrecios = nivelesPrograma.length ? problemaDePrecios(CONFIG.precios, esSemanal(CONFIG) ? [] : modalidadesActivas) : null
+if (problemaPrecios) abortar(problemaPrecios)
+const insc = (nivel) => inscripcionDe(nivel, CONFIG.precios)
+const cert = (nivel) => certificacionDe(nivel, CONFIG.precios)
+const mens = (nivel, m) => mensualidadDe(nivel, m, CONFIG.precios)
+const PRECIOS = { insc, mens, cert }
+// Un nivel del programa sin NINGÚN plan mensual no se puede contar: la tabla
+// saldría vacía. (La semanal ya se detiene más abajo si no hay planes semanales.)
+const SIN_PLANES = esSemanal(CONFIG) || !modalidadesActivas.length ? [] : nivelesSinPlanes(CONFIG, nivelesPrograma)
+if (SIN_PLANES.length)
+  abortar(`${SIN_PLANES.map(cap).join(' y ')} no ${SIN_PLANES.length > 1 ? 'venden' : 'vende'} ningún plan: ninguna modalidad activa aplica a ${SIN_PLANES.length > 1 ? 'esos niveles' : 'ese nivel'}.`,
+    'Una modalidad sin `nivel` aplica a todos los niveles; con `nivel`, solo a ese (secundaria, preparatoria o licenciatura).\n' +
+    "Un valor que no es un nivel del programa (p. ej. nivel: 'media') deja al nivel sin planes.")
+
 
 /* ── Cobro SEMANAL ───────────────────────────────────────────────────────────
  * Todo lo de arriba es mensual y cruza niveles × modalidades. En una escuela que
@@ -479,35 +463,12 @@ const FRASES_SEMANALES = SEMANAL ? frasesSemanales(PLANES_SEMANALES, nivelesProg
 const OFERTA_INFORMATIVA = ofertaInformativa(CONFIG)
 const anclaEnLanding = (id) => TEXTO_LANDING.includes(`id="${id}"`)
 
-// Tabla de precios: una columna por nivel, una fila por concepto.
-const preciosCols = ['Concepto', ...nivelesPrograma.map(cap)]
-const preciosFilas = []
-const inscDistinta = new Set(nivelesPrograma.map(insc)).size > 1
-preciosFilas.push(['Inscripción (pago único)', ...nivelesPrograma.map(n => mxn(insc(n)))])
-for (const m of modalidadesActivas)
-  preciosFilas.push([`Plan ${m.label || m.id} · ${m.meses} ${m.meses === 1 ? 'mes' : 'meses'}`,
-    ...nivelesPrograma.map(n => `${mxn(mens(m, n))}/mes`)])
-// El total del PLAN, sin certificación: es la cifra con la que el alumno decide.
-for (const m of modalidadesActivas)
-  preciosFilas.push([`Total del plan ${m.label || m.id}`,
-    ...nivelesPrograma.map(n => mxn(insc(n) + mens(m, n) * (m.meses || 0)))])
-if (nivelesPrograma.some(n => cert(n)))
-  preciosFilas.push(['Certificación', ...nivelesPrograma.map(n => mxn(cert(n)))])
-for (const m of modalidadesActivas) {
-  // El total INCLUYE la certificación (lo dice `notaPrecios`), pero la etiqueta
-  // decía solo "Costo total — plan X" y se leía como el total del plan. En una
-  // escuela cuyos dos planes suman lo mismo, la diferencia entre $950 y $1,400
-  // es justo lo que el cliente va a repetirle a sus alumnos.
-  const conCert = nivelesPrograma.some(n => cert(n))
-  const sufijo = conCert ? ' (con certificación)' : ''
-  const etiqueta = modalidadesActivas.length > 1
-    ? `Costo total — plan ${m.label || m.id}${sufijo}`
-    : `Costo total del programa completo${sufijo}`
-  preciosFilas.push({
-    total: true,
-    celdas: [etiqueta, ...nivelesPrograma.map(n => mxn(insc(n) + mens(m, n) * (m.meses || 0) + cert(n)))],
-  })
-}
+// Tabla de precios. La mensual sale de planes.mjs (pura y probada): cada nivel
+// con SUS planes; en la oferta simétrica, fila por fila la de siempre.
+const FRASES_MENSUALES = SEMANAL ? null : frasesMensuales(CONFIG, nivelesPrograma, PRECIOS)
+const tablaMensual = SEMANAL ? null : tablaPreciosMensual(CONFIG, nivelesPrograma, PRECIOS)
+const preciosCols = SEMANAL ? [] : [...tablaMensual.cols]
+const preciosFilas = SEMANAL ? [] : [...tablaMensual.filas]
 
 // En una escuela semanal, la tabla de arriba se sustituye entera por la de sus
 // planes reales: con un plan por nivel, una columna por nivel; con varios, una
@@ -518,17 +479,9 @@ if (SEMANAL) {
   preciosFilas.splice(0, preciosFilas.length, ...t.filas)
 }
 
-// Tabla de modalidades contratadas.
-const rango = (m) => {
-  const v = [...new Set(nivelesPrograma.map(n => mens(m, n)))].sort((a, b) => a - b)
-  return v.length === 1 ? `${mxn(v[0])}/mes` : `${mxn(v[0])} — ${mxn(v[v.length - 1])}/mes`
-}
+// Tabla de modalidades contratadas: una fila por plan que el nivel VENDE.
 const modalidadesCols = ['Modalidad', 'Duración', 'Mensualidad', 'Ritmo de apertura']
-const modalidadesFilas = []
-for (const n of nivelesPrograma)
-  for (const m of modalidadesActivas)
-    modalidadesFilas.push([`${cap(n)} — plan ${m.label || m.id}`, `${m.meses} meses`,
-      `${mxn(mens(m, n))}/mes`, ritmoDeApertura(m.materiasPorMes)])
+const modalidadesFilas = SEMANAL ? [] : filasModalidadesMensual(CONFIG, nivelesPrograma, { mens, ritmo: ritmoDeApertura })
 // Escuela semanal: una fila por plan REAL, con su cuota a la semana.
 if (SEMANAL) {
   modalidadesCols.splice(0, modalidadesCols.length, ...colsModalidades)
@@ -643,7 +596,6 @@ for (const c of CARRERAS) {
 }
 
 const listaNiveles = nivelesPrograma.map(cap).join(' y ')
-const dur = modalidadesActivas.map(m => `${m.meses}`).join(' o ')
 
 const datos = {
   nombre: CONFIG.nombre,
@@ -686,15 +638,11 @@ const datos = {
   fraseIntro: `Una sola plataforma que atiende tus ${nivelesPrograma.length === 1 ? 'alumnos' : `${nivelesPrograma.length} niveles`}: ${listaNiveles}${
     CARRERAS.length ? `, más ${nombrarProgramas(CARRERAS)}` : ''
   }. El alumno se registra, elige ${CARRERAS.length ? 'qué quiere estudiar' : 'su nivel'} y avanza mes a mes; tú lo administras todo desde un único panel.`,
-  frasePrecios: SEMANAL ? FRASES_SEMANALES.frasePrecios : modalidadesActivas.length === 1
-    ? `Tu escuela opera con un plan único de ${modalidadesActivas[0].meses} meses${inscDistinta ? ' y una inscripción diferenciada por nivel' : ''}. Así quedó cargado en la plataforma:`
-    : `Tu escuela ofrece ${modalidadesActivas.length} planes de ${dur} meses${inscDistinta ? ', con inscripción diferenciada por nivel' : ''}. Así quedaron cargados:`,
-  notaPrecios: SEMANAL ? FRASES_SEMANALES.notaPrecios : 'El total suma inscripción + mensualidades del plan + certificación. Los montos se muestran solos en la página pública y en el registro, y el panel te sugiere el monto correcto según el nivel del alumno al capturar un pago.',
+  frasePrecios: (SEMANAL ? FRASES_SEMANALES : FRASES_MENSUALES).frasePrecios,
+  notaPrecios: (SEMANAL ? FRASES_SEMANALES : FRASES_MENSUALES).notaPrecios,
   contenido,
   preciosCols, preciosFilas, modalidadesCols, modalidadesFilas,
-  notaModalidades: SEMANAL ? FRASES_SEMANALES.notaModalidades : modalidadesActivas.length === 1
-    ? 'Tu plataforma ofrece un solo plan, así que el alumno no elige duración al registrarse: se le asigna automáticamente.'
-    : 'El alumno elige su plan al registrarse, y el ritmo de apertura de materias se ajusta solo.',
+  notaModalidades: (SEMANAL ? FRASES_SEMANALES : FRASES_MENSUALES).notaModalidades,
   // Se enriquece con el conteo REAL de la base y con el tipo de cada programa,
   // para que el documento no repita el `totalMaterias` declarado en el config
   // sin comprobarlo, ni llame "licenciatura" a un curso de preparación.
@@ -725,9 +673,7 @@ const datos = {
   ].filter(Boolean),
   incluye: [
     `Programa académico de ${listaNiveles}`,
-    SEMANAL ? FRASES_SEMANALES.incluye : modalidadesActivas.length === 1
-      ? `Plan único de ${modalidadesActivas[0].meses} meses`
-      : `${modalidadesActivas.length} planes de estudio (${dur} meses)`,
+    (SEMANAL ? FRASES_SEMANALES : FRASES_MENSUALES).incluye,
     // Lo que el cliente ya tiene cargado va ANTES del módulo vacío: es lo que
     // acaba de comprar y lo primero que quiere ver confirmado.
     ...(CARRERAS.length ? [CARRERAS.length === 1
@@ -849,17 +795,8 @@ if (!flag('solo-pdf')) {
     // una cuarta parte de lo que vende.
     L.push(...lineasPreciosWhatsApp(PLANES_SEMANALES, nivelesPrograma))
   } else {
-    for (const n of nivelesPrograma) {
-      const partes = [`inscripción ${mxn(insc(n))}`]
-      for (const m of modalidadesActivas)
-        partes.push(modalidadesActivas.length > 1
-          ? `${m.label || m.id}: ${mxn(mens(m, n))}/mes` : `${mxn(mens(m, n))}/mes`)
-      if (cert(n)) partes.push(`certificación ${mxn(cert(n))}`)
-      L.push(`${cap(n)}: ${partes.join(' · ')}`)
-    }
-    L.push(modalidadesActivas.length === 1
-      ? `Plan único de ${modalidadesActivas[0].meses} meses.`
-      : `Planes disponibles: ${modalidadesActivas.map(m => m.label || m.id).join(' y ')}.`, '')
+    // Cada nivel con SUS planes: en una oferta asimétrica no se inventan combinaciones.
+    L.push(...lineasPreciosMensualWhatsApp(CONFIG, nivelesPrograma, PRECIOS))
   }
 
   // Los programas de pago único van con su propio bloque: son otro producto,
@@ -1013,7 +950,7 @@ if (!flag('solo-pdf')) {
   // sin pedirnos nada, y en una escuela sin WhatsApp es además el camino para
   // encender sus propios botones: callarlo le cuesta su canal principal.
   L.push('🎨 TU PÁGINA LA CAMBIAS TÚ',
-    `Desde «Personalizar mi página» en tu panel (${URL_BASE}/admin/configuracion) cambias tus textos, tu eslogan, tus colores y tu logo, y se publican al instante. «Restaurar diseño original» devuelve todo a como se te entregó, así que puedes probar sin miedo.`, '')
+    `Desde «Personalizar mi página» en tu panel (${URL_BASE}/admin/configuracion) cambias tus textos, tu eslogan, tus colores y tu logo, y se publican en unos segundos. «Restaurar diseño original» devuelve todo a como se te entregó, así que puedes probar sin miedo.`, '')
   if (!String(CONFIG.whatsapp ?? '').trim()) {
     L.push('⭐ LO PRIMERO QUE TE RECOMIENDO HACER',
       'Tu página se entregó *sin botones de WhatsApp* porque no tenemos tu número, y preferimos no publicar uno que no lleve a ningún lado.',
