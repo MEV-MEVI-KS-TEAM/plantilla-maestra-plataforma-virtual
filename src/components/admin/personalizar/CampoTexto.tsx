@@ -252,6 +252,119 @@ export function CampoEntero({
   )
 }
 
+export interface CampoPrecioNivelProps extends Base {
+  /**
+   * El override TAL CUAL: `undefined` = vacío. Puede no ser un entero válido
+   * (un 0 escrito a mano en la fila): se pinta, se marca inválido y el botón
+   * "Restaurar" queda a la vista para quitarlo.
+   */
+  valor: unknown
+  /** El marcador del campo vacío: lo que cobraría el nivel sin precio propio. */
+  vacio: string
+  min: number
+  max: number
+  /** Se pinta a la derecha del input: el precio que de verdad cobra el nivel. */
+  sufijo?: React.ReactNode
+  onChange: (v: number) => void
+  /** El admin dejó el campo vacío: se quita la clave del borrador. */
+  onVaciar: () => void
+}
+
+const textoDe = (v: unknown): string => (v === undefined || v === null ? '' : String(v))
+
+/**
+ * Precio por nivel (Fase 2, F2-9): un entero OPCIONAL.
+ *
+ * Mismo contrato que `CampoEntero`, con una diferencia: VACÍO ES VÁLIDO y
+ * significa «sin precio propio» (el nivel sigue la general de hoy). Por eso
+ * no escribe `null` ni `0` en el borrador: quita la clave, que es lo único que
+ * hace que el merge caiga al valor de fábrica (ver `quitarRuta`).
+ */
+export function CampoPrecioNivel({
+  clave,
+  etiqueta,
+  ayuda,
+  valor,
+  vacio,
+  min,
+  max,
+  sufijo,
+  deshabilitado = false,
+  sobrescrito = false,
+  resaltado = false,
+  onChange,
+  onVaciar,
+  onRestaurar,
+}: CampoPrecioNivelProps) {
+  const id = idDeCampo(clave)
+  const [texto, setTexto] = useState(textoDe(valor))
+
+  // Como en CampoEntero: se sigue el valor de fuera (Restaurar, recarga tras
+  // publicar), pero no se pisa lo que el admin teclea si ya equivale a lo mismo.
+  useEffect(() => {
+    setTexto((actual) => {
+      const limpio = actual.trim()
+      if (limpio === '' && (valor === undefined || valor === null)) return actual
+      return /^\d+$/.test(limpio) && Number(limpio) === valor ? actual : textoDe(valor)
+    })
+  }, [valor])
+
+  const limpio = texto.trim()
+  const numero = /^\d+$/.test(limpio) ? Number(limpio) : null
+  const invalido = limpio !== '' && (numero === null || numero < min || numero > max)
+  const foco = focoHandlers(resaltado || invalido)
+
+  return (
+    <div className="space-y-1.5">
+      <Cabecera
+        clave={clave}
+        etiqueta={etiqueta}
+        derecha={
+          sobrescrito && onRestaurar && !deshabilitado ? (
+            <BotonRestaurar onClick={onRestaurar} etiqueta={etiqueta} />
+          ) : null
+        }
+      />
+      <div className="flex items-center gap-3">
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          value={texto}
+          placeholder={vacio}
+          disabled={deshabilitado}
+          aria-invalid={invalido}
+          onChange={(e) => {
+            setTexto(e.target.value)
+            const t = e.target.value.trim()
+            if (t === '') return onVaciar()
+            const n = /^\d+$/.test(t) ? Number(t) : null
+            if (n !== null && n >= min && n <= max) onChange(n)
+          }}
+          onBlur={(e) => {
+            if (invalido) setTexto(textoDe(valor))
+            foco.onBlur(e)
+          }}
+          onFocus={foco.onFocus}
+          className="w-56 px-3 py-2.5 rounded-lg text-sm outline-none transition-all tabular-nums"
+          style={{
+            ...INPUT_STYLE,
+            ...(resaltado || invalido ? { border: `1px solid ${ROJO}` } : {}),
+            ...(deshabilitado ? { opacity: 0.6 } : {}),
+          }}
+        />
+        {sufijo}
+      </div>
+      {invalido && (
+        <p className="text-xs" style={{ color: ROJO }}>
+          Escribe un entero entre {min.toLocaleString('es-MX')} y {max.toLocaleString('es-MX')}, o déjalo vacío para usar el precio general.
+        </p>
+      )}
+      {ayuda && !invalido && <p className="text-xs" style={{ color: TXT_TENUE }}>{ayuda}</p>}
+    </div>
+  )
+}
+
 export interface CampoDecimalProps extends Base {
   valor: number
   min: number

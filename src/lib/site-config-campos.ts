@@ -442,9 +442,9 @@ export const CAMPOS: ReadonlyArray<Campo> = [
     ayuda: 'Sin centavos, en la moneda de cobro de la escuela. Es la cifra de {inscripcion} y la que se muestra en el nivel que no tenga la suya.' },
   // Por nivel (Fase 2): nacen vacíos (`null`) = se usa el precio general.
   { clave: 'precios.inscripcionSecundaria', seccion: 'precios', etiqueta: 'Inscripción de Secundaria', tipo: 'entero',
-    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general. Es la cifra de {inscripcionSecundaria}.' },
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = sigue la general de hoy. Es la cifra de {inscripcionSecundaria}.' },
   { clave: 'precios.inscripcionPreparatoria', seccion: 'precios', etiqueta: 'Inscripción de Preparatoria', tipo: 'entero',
-    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general. Es la cifra de {inscripcionPreparatoria}.' },
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = sigue la general de hoy. Es la cifra de {inscripcionPreparatoria}.' },
   { clave: 'precios.certificacionSecundaria', seccion: 'precios', etiqueta: 'Certificación de Secundaria', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax },
   { clave: 'precios.certificacionPreparatoria', seccion: 'precios', etiqueta: 'Certificación de Preparatoria', tipo: 'entero',
@@ -454,16 +454,16 @@ export const CAMPOS: ReadonlyArray<Campo> = [
   // caja de cada plan, y tres coincidencias romperían su modo estricto.
   { clave: 'precios.mensualidadSecundaria3Meses', seccion: 'precios', etiqueta: 'Secundaria · 3 meses', tipo: 'entero',
     min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
-    ayuda: 'Vacío = la mensualidad de hoy para Secundaria en este plan.' },
+    ayuda: 'Vacío = sigue la general de hoy para Secundaria en este plan.' },
   { clave: 'precios.mensualidadSecundaria6Meses', seccion: 'precios', etiqueta: 'Secundaria · 6 meses', tipo: 'entero',
     min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
-    ayuda: 'Vacío = la mensualidad de hoy para Secundaria en este plan.' },
+    ayuda: 'Vacío = sigue la general de hoy para Secundaria en este plan.' },
   { clave: 'precios.mensualidadPreparatoria3Meses', seccion: 'precios', etiqueta: 'Preparatoria · 3 meses', tipo: 'entero',
     min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
-    ayuda: 'Vacío = la mensualidad de hoy para Preparatoria en este plan.' },
+    ayuda: 'Vacío = sigue la general de hoy para Preparatoria en este plan.' },
   { clave: 'precios.mensualidadPreparatoria6Meses', seccion: 'precios', etiqueta: 'Preparatoria · 6 meses', tipo: 'entero',
     min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
-    ayuda: 'Vacío = la mensualidad de hoy para Preparatoria en este plan.' },
+    ayuda: 'Vacío = sigue la general de hoy para Preparatoria en este plan.' },
 
   // ── Tipo de cambio (solo se pinta si la escuela NO cobra en pesos) ──
   { clave: 'tipoCambioMXN', seccion: 'precios', etiqueta: 'Tipo de cambio (pesos por dólar)', tipo: 'decimal',

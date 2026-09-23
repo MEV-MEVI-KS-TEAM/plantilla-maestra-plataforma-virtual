@@ -24,8 +24,10 @@
  */
 import type { Moneda } from './moneda'
 import { CONFIG } from '@/lib/config'
-import { inscripcionDe } from '@/lib/precios-nivel'
-import type { OverrideModalidad, SiteConfigOverrides } from '@/lib/site-config-core'
+import { CLAVE_MENSUALIDAD_POR_NIVEL, inscripcionDe, mensualidadDe, type NivelConPrecio } from '@/lib/precios-nivel'
+import { mergeSiteConfig, type OverrideModalidad, type SiteConfigOverrides } from '@/lib/site-config-core'
+import { esSoloCursos } from '@/lib/modo'
+import type { ModalidadPrograma } from '@/lib/modalidades'
 import {
   PALETAS,
   PARES_CONTRASTE,
@@ -55,6 +57,8 @@ export interface ModalidadEditable {
    */
   semanas?: number
   cuotaSemanal?: number
+  /** Solo en una oferta asimétrica: el nivel al que aplica el plan (ver `planesPorNivel`). */
+  nivel?: string
   materiasPorMes: number
   activa: boolean
 }
@@ -562,6 +566,139 @@ export function hayCambiosDePreciosOPlanes(antes: SiteConfigOverrides, despues: 
     !mismoContenido(antes.precios, despues.precios) ||
     !mismoContenido(antes.modalidades, despues.modalidades)
   )
+}
+
+// ─── Precios por nivel (Fase 2, F2-9) ────────────────────────────────────────
+
+/**
+ * ¿La pestaña Precios enseña los campos por nivel? Solo si la escuela vende
+ * Secundaria Y Preparatoria y no es de solo cursos: con un solo nivel, «por
+ * nivel» y «general» son lo mismo, y el campo sobraría.
+ */
+export function preciosPorNivelVisibles(niveles: readonly string[] = CONFIG.niveles): boolean {
+  return ['secundaria', 'preparatoria'].every((n) => niveles.includes(n)) && !esSoloCursos()
+}
+
+type PlanDelEditor = { id: string; meses: number; nivel?: string | null }
+
+/**
+ * Las claves por nivel de la mensualidad de un plan: solo los planes de 3 y 6
+ * meses tienen precio por nivel (los demás usan el general), y un plan con
+ * `nivel` solo toca la de su nivel.
+ *
+ * ⚠️ La clave se indexa por DURACIÓN, no por plan: si dos planes duran lo
+ * mismo (Habsburgo: «6 Meses» y «Acceso completo»), comparten la clave. Con
+ * `modalidades`, solo el PRIMERO de su duración la edita y la restaura; los
+ * demás devuelven `[]` (un solo campo por clave: sin ids repetidos en la
+ * pestaña, y el «Restaurar plan» de uno no borra en silencio lo del otro).
+ */
+export function clavesPorNivelDePlan(
+  plan: PlanDelEditor,
+  modalidades?: ReadonlyArray<PlanDelEditor>,
+): string[] {
+  if (plan.meses !== 3 && plan.meses !== 6) return []
+  if (modalidades) {
+    const primero = modalidades.find((p) => p.meses === plan.meses && (p.nivel ?? null) === (plan.nivel ?? null))
+    if (primero && primero.id !== plan.id) return []
+  }
+  const niveles: NivelConPrecio[] = !plan.nivel
+    ? ['secundaria', 'preparatoria']
+    : plan.nivel === 'secundaria' || plan.nivel === 'preparatoria' ? [plan.nivel] : []
+  return niveles.map((n) => `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[n][plan.meses as 3 | 6]}`)
+}
+
+/**
+ * «Restaurar plan»: quita los overrides del plan (mensualidad, cuota semanal,
+ * activa) Y las claves por nivel de su duración. Sin esto, una mensualidad
+ * por nivel guardada seguiría mandando sobre el plan «restaurado».
+ */
+export function restaurarPlan(
+  overrides: SiteConfigOverrides,
+  plan: PlanDelEditor,
+  modalidades?: ReadonlyArray<PlanDelEditor>,
+): SiteConfigOverrides {
+  let r = escribirModalidad(overrides, plan.id, { mensualidad: null, cuotaSemanal: null, activa: null })
+  for (const clave of clavesPorNivelDePlan(plan, modalidades)) r = quitarRuta(r, clave)
+  return r
+}
+
+/**
+ * ¿Hay algo que «Restaurar plan» deshaga? El plan, o una de sus claves por
+ * nivel: el botón sale aunque solo esté sobrescrita una de ellas.
+ */
+export function planSobrescrito(
+  overrides: SiteConfigOverrides,
+  plan: PlanDelEditor,
+  modalidades?: ReadonlyArray<PlanDelEditor>,
+): boolean {
+  return overrides.modalidades?.[plan.id] !== undefined
+    || clavesPorNivelDePlan(plan, modalidades).some((clave) => estaSobrescrito(overrides, clave))
+}
+
+/**
+ * El precio de un nivel en el BORRADOR, con el mismo resolver que la landing:
+ * `mergeSiteConfig(CONFIG, …)` y después `inscripcionDe` o `mensualidadDe`.
+ * Con `vacio`, sin la clave del campo: es lo que cobraría el nivel si el admin
+ * lo deja vacío (la general de hoy).
+ *
+ * 🛑 No sale de `defaults` (no trae los alias de secundaria, que deciden la
+ * «general» de ese nivel) ni de `valorEfectivo` (no aplica el merge).
+ */
+export function precioNivelEfectivo(
+  overrides: SiteConfigOverrides,
+  campo: { clave: string; nivel: NivelConPrecio; planId?: string },
+  { vacio = false }: { vacio?: boolean } = {},
+): number {
+  const efectivo = mergeSiteConfig(CONFIG, prepararParaPublicar(vacio ? quitarRuta(overrides, campo.clave) : overrides))
+  const precios = efectivo.precios as unknown as Record<string, unknown>
+  if (!campo.planId) return inscripcionDe(campo.nivel, precios)
+  const planes = efectivo.modalidades as unknown as readonly ModalidadPrograma[] | undefined
+  const plan = Array.isArray(planes) ? planes.find((m) => m.id === campo.planId) : undefined
+  return plan ? mensualidadDe(campo.nivel, plan, precios) : 0
+}
+
+/**
+ * El marcador de un campo por nivel vacío: «Vacío: usa la general, $599».
+ * Nunca «$0»: una general en 0 se dice «sin costo». `deFabrica` es para el
+ * clon cuyo config.ts ya trae la clave con cifra: vaciar el campo vuelve a
+ * ESA cifra, no a la general, y el marcador no puede prometer otra cosa.
+ */
+export function textoVacioNivel(monto: number, moneda: Moneda = CONFIG.moneda, deFabrica = false): string {
+  const cifra = monto > 0 ? formatoDinero(monto, moneda) : 'sin costo'
+  return deFabrica ? `Vacío: usa el de fábrica, ${cifra}` : `Vacío: usa la general, ${cifra}`
+}
+
+/**
+ * El plan cuya caja lleva el campo de una clave por nivel de mensualidad: el
+ * primero de esa duración sin `nivel` o con el mismo nivel. `null` si no es
+ * una clave de mensualidad por nivel o si ningún plan dura eso.
+ */
+export function planDeClaveNivel(clave: string, modalidades: ReadonlyArray<PlanDelEditor>): string | null {
+  const m = /^precios\.mensualidad(Secundaria|Preparatoria)(3|6)Meses$/.exec(clave)
+  if (!m) return null
+  const nivel = m[1].toLowerCase()
+  const meses = Number(m[2])
+  return modalidades.find((p) => p.meses === meses && (!p.nivel || p.nivel === nivel))?.id ?? null
+}
+
+/**
+ * La clave que hay que señalar en la pestaña Precios para un error del
+ * servidor (F2-7). El escalón puede culpar a una clave por nivel de
+ * mensualidad; si en la pestaña no hay campo para ella (plan con `nivel`,
+ * escuela semanal o de un solo nivel), se señala la caja de su plan, cuyo
+ * «Restaurar plan» la limpia. Cualquier otra clave pasa tal cual.
+ */
+export function claveASenalar(
+  clave: string,
+  modalidades: ReadonlyArray<PlanDelEditor> | undefined,
+  { semanal, porNivel }: { semanal: boolean; porNivel: boolean },
+): string {
+  const planes = Array.isArray(modalidades) ? modalidades : []
+  const id = planDeClaveNivel(clave, planes)
+  if (id === null) return clave
+  const plan = planes.find((p) => p.id === id)
+  const tieneCampo = !semanal && porNivel && !!plan && !plan.nivel
+  return tieneCampo ? clave : `modalidades.${id}`
 }
 
 /** ¿Cambió el tipo de cambio? El modal de precios lo menciona aparte. */

@@ -46,6 +46,7 @@ import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } fro
 import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
+  claveASenalar,
   coloresEfectivos,
   hayCambioDeTipoCambio,
   hayCambiosDePrecio,
@@ -54,6 +55,7 @@ import {
   mismoContenido,
   modalidadesEfectivas,
   prepararParaPublicar,
+  preciosPorNivelVisibles,
   sincronizarLogos,
   valorEfectivo,
 } from '@/lib/site-config-editor'
@@ -212,7 +214,15 @@ export default function PersonalizarPage() {
   // ─── Errores del servidor ──────────────────────────────────────────────────
 
   /** Lleva al admin al campo que falló: cambia de pestaña, enfoca y desplaza. */
-  const irAlCampo = useCallback((clave: string) => {
+  const irAlCampo = useCallback((claveDelError: string) => {
+    // El escalón (F2-7) puede culpar a una mensualidad por nivel que en la
+    // pestaña no tiene campo (plan con `nivel`, escuela semanal): entonces se
+    // señala la caja de su plan, cuyo «Restaurar plan» la limpia. Sin esto el
+    // admin aterrizaba en Precios sin nada en rojo que corregir.
+    const clave = claveASenalar(claveDelError, mergeSiteConfig(CONFIG, {}).modalidades, {
+      semanal: esSemanal(),
+      porNivel: preciosPorNivelVisibles(),
+    })
     setClaveConError(clave)
     setPestana(pestanaDeClave(clave))
     // Los doce colores sueltos viven detrás de un acordeón cerrado: sin abrirlo
@@ -523,6 +533,7 @@ export default function PersonalizarPage() {
           semanal: esSemanal(),
           cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides),
           cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
+          porNivel: preciosPorNivelVisibles(),
         })}
         etiquetaConfirmar="Publicar cambios"
         ocupado={publicando}

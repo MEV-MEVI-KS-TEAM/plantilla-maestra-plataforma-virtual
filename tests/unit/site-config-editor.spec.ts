@@ -300,6 +300,8 @@ test('hayCambiosDePrecio detecta precios y modalidades, no los textos', () => {
   expect(hayCambiosDePrecio(base, escribirRuta(base, 'precios.inscripcion', 799))).toBe(true)
   // Apagar un plan lo saca de la landing y del registro: cuenta como cambio.
   expect(hayCambiosDePrecio(base, escribirModalidad(base, '3_meses', { activa: false }))).toBe(true)
+  // Un precio por nivel (F2-9) también es un cambio de precio: pide el modal.
+  expect(hayCambiosDePrecio(base, escribirRuta(base, 'precios.mensualidadSecundaria3Meses', 2500))).toBe(true)
 })
 
 test('prepararParaPublicar quita logo, logoOscuro y whatsappUrl', () => {

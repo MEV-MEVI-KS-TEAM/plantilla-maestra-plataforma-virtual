@@ -30,6 +30,7 @@ import sharp from 'sharp'
 import { svc, mintSession, storageStateFromSession, ALUMNO_EMAIL, SUPABASE_URL, ANON_KEY } from './_helpers'
 import { CONFIG } from '@/lib/config'
 import { mergeSiteConfig } from '@/lib/site-config-core'
+import { mensualidadQA } from './_precios-qa'
 
 // ─── Constantes de entorno ───────────────────────────────────────────────────
 
@@ -89,7 +90,8 @@ interface ConfigEditable {
   logoOscuro: string
   colores: Record<string, string>
   landing: Record<string, unknown>
-  precios: Record<string, number>
+  // Las seis claves por nivel (Fase 2) viajan en `null` mientras están vacías.
+  precios: Record<string, number | null>
   modalidades: ModalidadEditable[]
 }
 
@@ -224,6 +226,12 @@ let DEFAULTS: ConfigEditable
 let filaOriginal: { data: unknown; updated_by: string | null } | null = null
 /** Ids de modalidad reales del cliente (no se asume '3_meses' / '6_meses'). */
 let PLAN_3M = '3_meses'
+/**
+ * La mensualidad que b3 y c-api publican en PLAN_3M: la calcula `mensualidadQA`
+ * con la config de la escuela para que cumpla el escalón (F2-7). Un 2500 fijo
+ * daba 400 donde el plan de 6 meses cobra más.
+ */
+let MENSUALIDAD_QA = 0
 let TODOS_LOS_PLANES: string[] = []
 /** PNG 64×64 generado con sharp (el logo "de verdad" de las pruebas). */
 let PNG_64: Buffer
@@ -272,6 +280,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     DEFAULTS = g.defaults
     TODOS_LOS_PLANES = DEFAULTS.modalidades.map((m) => m.id)
     PLAN_3M = DEFAULTS.modalidades.find((m) => m.meses === 3)?.id ?? TODOS_LOS_PLANES[0]
+    MENSUALIDAD_QA = mensualidadQA(PLAN_3M)
 
     PNG_64 = await sharp({
       create: { width: 64, height: 64, channels: 4, background: { r: 4, g: 120, b: 87, alpha: 1 } },
@@ -408,7 +417,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
       nombre: 'Escuela QA',
       colores: { acento: '#047857' },
       landing: { hero_titulo: 'Título QA' },
-      modalidades: { [PLAN_3M]: { mensualidad: 2500 } },
+      modalidades: { [PLAN_3M]: { mensualidad: MENSUALIDAD_QA } },
       precios: { inscripcion: 750 },
     }
 
@@ -422,7 +431,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     expect(put.merged.landing.hero_titulo, 'Texto del hero').toBe('Título QA')
 
     const plan3Merged = put.merged.modalidades.find((m) => m.id === PLAN_3M)
-    expect(plan3Merged?.mensualidad, `Mensualidad del plan ${PLAN_3M} en el merge`).toBe(2500)
+    expect(plan3Merged?.mensualidad, `Mensualidad del plan ${PLAN_3M} en el merge`).toBe(MENSUALIDAD_QA)
 
     // ── ALIAS LEGACY (plan3mMensualidad, secundaria_3meses_normal…) ──
     // OJO: la respuesta de la API viene RECORTADA a CLAVES_EDITABLES
@@ -437,13 +446,23 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
       'La API recorta a la lista blanca: los alias NO deben viajar en merged.precios',
     ).toBeUndefined()
     const completo = mergeSiteConfig(CONFIG, put.overrides)
-    expect(completo.precios.plan3mMensualidad, 'Alias legacy plan3mMensualidad').toBe(2500)
+    // Un alias solo sigue al plan si ya valía lo mismo que él (ver
+    // `derivarAliasPrecios`): SAMEX o AULA RAÍZ tienen su secundaria aparte a
+    // propósito y el merge no la pisa. Se compara contra la base de ESTA escuela.
+    const base = mergeSiteConfig(CONFIG, {})
+    const plan3Base = base.modalidades.find((m) => m.id === PLAN_3M)
+    const seguiaAlPlan = (alias: 'plan3mMensualidad' | 'secundaria_3meses_normal') =>
+      plan3Base?.meses === 3
+      && Number((base.precios as unknown as Record<string, unknown>)[alias]) === Number(plan3Base.mensualidad)
+    if (seguiaAlPlan('plan3mMensualidad')) {
+      expect(completo.precios.plan3mMensualidad, 'Alias legacy plan3mMensualidad').toBe(MENSUALIDAD_QA)
+    }
     // Un cliente con mensualidad de secundaria PROPIA (Fase 2, sembrada en su
     // config.ts) no deja que el plan arrastre ese alias: en ese caso el alias
     // conserva su cifra y esta afirmación no aplica.
     const secundariaPropia = Number(CONFIG.precios.mensualidadSecundaria3Meses) > 0
-    if (!secundariaPropia) {
-      expect(completo.precios.secundaria_3meses_normal, 'Alias legacy secundaria_3meses_normal').toBe(2500)
+    if (!secundariaPropia && seguiaAlPlan('secundaria_3meses_normal')) {
+      expect(completo.precios.secundaria_3meses_normal, 'Alias legacy secundaria_3meses_normal').toBe(MENSUALIDAD_QA)
     }
     expect(completo.precios.inscripcion, 'El canónico sigue en el merge completo').toBe(750)
 
@@ -454,7 +473,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
       nombre: 'Escuela QA',
       colores: { acento: '#047857' },
       landing: { hero_titulo: 'Título QA' },
-      modalidades: { [PLAN_3M]: { mensualidad: 2500 } },
+      modalidades: { [PLAN_3M]: { mensualidad: MENSUALIDAD_QA } },
       precios: { inscripcion: 750 },
     })
     expect(get.merged, 'El merge del GET es idéntico al del PUT').toEqual(put.merged)
@@ -695,7 +714,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     const res = await admin.put('/api/admin/configuracion', {
       data: {
         landing: { hero_titulo: TITULO },
-        modalidades: { [PLAN_3M]: { mensualidad: 2500 } },
+        modalidades: { [PLAN_3M]: { mensualidad: MENSUALIDAD_QA } },
       },
     })
     const put = await json<RespuestaPut>(res)
@@ -727,7 +746,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
           intervals: [1000],
         },
       )
-      .toBe(2500)
+      .toBe(MENSUALIDAD_QA)
 
     // Captura: es el único sitio donde el resultado se ve, no se deduce.
     await page.goto('/')
