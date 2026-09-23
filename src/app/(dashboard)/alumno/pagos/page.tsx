@@ -13,7 +13,8 @@
 
 import { useEffect, useState } from 'react'
 import { CONFIG } from '@/lib/config'
-import { formatoMXN, formatoPrecio } from '@/lib/formato'
+import { formatoMXN } from '@/lib/formato'
+import { textoInscripcion } from '@/lib/precios-ui'
 
 type Estado = 'pendiente' | 'pagado' | 'vencido' | 'condonado'
 
@@ -32,6 +33,12 @@ type Datos = {
   semanas_total: number
   cuota: number
   total_plan: number
+  /**
+   * La inscripción del NIVEL del alumno, de la config PUBLICADA (la propia del
+   * nivel o, si no, la general). Antes se pintaba `CONFIG.precios.inscripcion`,
+   * la de fábrica: lo que el admin publicaba en su panel no llegaba aquí.
+   */
+  inscripcion: number
   certificacion: number
   inscripcion_pagada: boolean
   resumen: {
@@ -152,7 +159,7 @@ export default function MisPagosPage() {
           <span style={{ color: C.textoSecundario }}>
             Inscripción:{' '}
             <strong style={{ color: datos.inscripcion_pagada ? C.primario : C.texto }}>
-              {formatoPrecio(CONFIG.precios.inscripcion)}
+              {textoInscripcion(datos.inscripcion)}
             </strong>
           </span>
           <span style={{ color: C.textoSecundario }}>
