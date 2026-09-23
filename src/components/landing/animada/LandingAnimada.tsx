@@ -63,7 +63,10 @@ import {
 } from './animacion'
 import { BOTON, CONTENEDOR, Encabezado, estiloBoton, sinFlecha } from './piezas'
 import { SeccionLicenciaturas } from './Licenciaturas'
-import { pluralEtiqueta, preguntasLicenciatura, unirConO } from './textos-licenciatura'
+import {
+  pluralEtiqueta, preguntasLicenciatura, resolverTextosLicenciaturas, textosAutoLicenciaturas, unirConO,
+  type OverridesLicenciaturasLanding,
+} from './textos-licenciatura'
 import {
   paletaDesde, secuenciaSecciones, tokensDe,
   type IdSeccion, type SeccionOpcional, type TokensSeccion,
@@ -249,6 +252,16 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const programasTexto = hayLicenciaturas
     ? `${niveles.map(etiquetaNivel).join(', ')} y ${carrerasLic.length > 1 ? 'Licenciaturas' : 'Licenciatura'}`
     : nivelesTexto(niveles)
+  // Textos de la sección: los automáticos de siempre, con lo que la escuela
+  // haya escrito en "Textos de mi página" encima, campo por campo
+  // (TICKET-2026-09-22-08). Las cifras del panel del costo no se editan.
+  const textosLic = hayLicenciaturas
+    ? resolverTextosLicenciaturas(
+        textosAutoLicenciaturas(carrerasLic, planesLic, getEtiquetaLicenciatura(), dinero),
+        config.landing as unknown as OverridesLicenciaturasLanding,
+        texto,
+      )
+    : null
   // «Resolver una duda» de la sección: WhatsApp si la escuela tiene número real,
   // si no el correo. 🛑 Nunca un wa.me armado a mano.
   const canal = canalEscuela(config, 'Tengo una duda sobre las licenciaturas')
@@ -889,8 +902,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
         </section>
 
         {/* ── LICENCIATURAS (claro, con panel oscuro dentro) — add-on ────── */}
-        {hayLicenciaturas && (
-          <SeccionLicenciaturas t={tLic} tOscuro={tOscuro} fmt={dinero} canal={canal} variante={seccion('licenciaturas').variante} />
+        {hayLicenciaturas && textosLic && (
+          <SeccionLicenciaturas t={tLic} tOscuro={tOscuro} fmt={dinero} canal={canal} variante={seccion('licenciaturas').variante} textos={textosLic} />
         )}
 
         {/* ── 6. VALIDEZ OFICIAL MX + USA (oscuro) ────────────────────────────

@@ -24,6 +24,11 @@
  *      acento: va FUERA, sobre el fondo claro de la sección.
  *   4. «Resolver una duda» sale de `canalEscuela()`: WhatsApp si la escuela
  *      tiene número real, correo si no. 🛑 Nunca un wa.me armado a mano.
+ *   5. LOS TEXTOS SE EDITAN desde "Textos de mi página" (TICKET-2026-09-22-08):
+ *      encabezado, título, bajada, nombre visible y descripción de cada
+ *      carrera y los 4 pasos llegan ya resueltos en `textos`
+ *      (`resolverTextosLicenciaturas`). Vacío = el texto automático de siempre.
+ *      Las cifras del panel del costo NO son editables: salen del desglose.
  *
  * 🛑 CERO HEXADECIMALES: los colores salen de tokens.ts.
  * 🛑 Nunca la palabra del periodo de cuatro meses: la ficha habla de materias y
@@ -41,13 +46,12 @@ import type { CanalEscuela } from '@/lib/contacto-ui'
 import {
   getCarrerasLicenciatura,
   getDesglosesLicenciatura,
-  getEtiquetaLicenciatura,
   porcentajeTitulacion,
   type DesgloseLicenciatura,
 } from '@/lib/licenciatura-utils'
 import { retraso } from './animacion'
 import { BOTON, CONTENEDOR, Encabezado, estiloBoton } from './piezas'
-import { comparacionPlanes, diferenciasTexto, pluralEtiqueta, titulacionEsLaMayor, unirConO } from './textos-licenciatura'
+import { comparacionPlanes, diferenciasTexto, titulacionEsLaMayor, unirConO, type TextosLicenciaturas } from './textos-licenciatura'
 import type { TokensSeccion } from './tokens'
 
 type Dinero = (n: number) => string
@@ -75,7 +79,7 @@ const REQUISITOS = ['Certificado de Bachillerato o Preparatoria', 'CURP', 'Acta 
 /** Clases estáticas (Tailwind no ve clases armadas al vuelo). */
 const COLUMNAS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'sm:grid-cols-2 lg:grid-cols-4' }
 
-export function SeccionLicenciaturas({ t, tOscuro, fmt, canal, variante }: {
+export function SeccionLicenciaturas({ t, tOscuro, fmt, canal, variante, textos }: {
   /** Tokens de la sección (clara). */
   t: TokensSeccion
   /** Tokens oscuros para el panel del costo. */
@@ -84,34 +88,27 @@ export function SeccionLicenciaturas({ t, tOscuro, fmt, canal, variante }: {
   /** El canal real de la escuela para «Resolver una duda»: WhatsApp o correo. */
   canal: CanalEscuela | null
   variante: string
+  /** Textos ya resueltos (automáticos + los que escribió la escuela). */
+  textos: TextosLicenciaturas
 }) {
   const carreras = getCarrerasLicenciatura()
   const planes = getDesglosesLicenciatura()
   if (carreras.length === 0 || planes.length === 0) return null
 
-  const etiqueta = getEtiquetaLicenciatura()
   const ritmos = `${unirConO(planes.map(p => String(p.meses)))} meses`
   const incluye = Array.from(new Set(carreras.flatMap(c => c.incluye)))
-  const pasos = [
-    { titulo: 'Inscríbete', desc: `Inscripción única de ${fmt(planes[0].inscripcion)}.` },
-    { titulo: 'Elige tu plan', desc: `${ritmos}, según tu ritmo.` },
-    { titulo: 'Acredita tus materias', desc: 'Video, quiz y examen final en cada materia.' },
-    { titulo: 'Titúlate', desc: 'Título y cédula profesional.' },
-  ]
-  const nCarreras = carreras.length === 1 ? 'Una carrera' : carreras.length === 2 ? 'Dos carreras' : carreras.length === 3 ? 'Tres carreras' : `${carreras.length} carreras`
+  const pasos = textos.pasos
 
   return (
     <section id="licenciaturas" data-variant={variante} style={{ background: t.fondo, color: t.texto, scrollMarginTop: 80 }}>
       <div className={CONTENEDOR}>
-        <Encabezado t={t} kicker="Nivel superior"
-          titulo={carreras.length > 1 ? pluralEtiqueta(etiqueta) : etiqueta}
-          bajada={`${nCarreras} con título y cédula profesional, 100% en línea, con planes de ${ritmos}.`} />
+        <Encabezado t={t} kicker={textos.kicker} titulo={textos.titulo} bajada={textos.bajada} />
 
         {/* Las carreras */}
         <div className={`grid gap-6 mt-12 max-w-4xl mx-auto ${COLUMNAS[carreras.length] ?? COLUMNAS[3]}`}>
           {carreras.map((c, i) => (
             <div key={c.slug} data-la-reveal="sube" style={retraso(i, 100)}>
-              <FichaCarrera t={t} carrera={c} ritmos={ritmos} />
+              <FichaCarrera t={t} carrera={c} ritmos={ritmos} visible={textos.carreras[c.slug]} />
             </div>
           ))}
         </div>
@@ -119,7 +116,7 @@ export function SeccionLicenciaturas({ t, tOscuro, fmt, canal, variante }: {
         {/* Cómo funciona. El número va en el color de marca con su letra encima. */}
         <ol aria-label="Cómo funciona" className={`grid gap-5 mt-8 ${COLUMNAS[pasos.length]}`}>
           {pasos.map((paso, i) => (
-            <li key={paso.titulo} data-la-reveal="sube" className="rounded-2xl p-6 flex gap-4 items-start"
+            <li key={i} data-la-reveal="sube" className="rounded-2xl p-6 flex gap-4 items-start"
               style={{ ...retraso(i, 90), background: t.superficie, border: `1px solid ${t.borde}` }}>
               <span aria-hidden className="flex items-center justify-center rounded-full font-bold flex-shrink-0"
                 style={{ width: 40, height: 40, background: t.btn2Fondo, color: t.btn2Texto }}>
@@ -265,7 +262,11 @@ function Fila({ t, etiqueta, monto }: { t: TokensSeccion; etiqueta: string; mont
   )
 }
 
-function FichaCarrera({ t, carrera, ritmos }: { t: TokensSeccion; carrera: Carrera; ritmos: string }) {
+function FichaCarrera({ t, carrera, ritmos, visible }: {
+  t: TokensSeccion; carrera: Carrera; ritmos: string
+  /** Nombre y descripción que se PINTAN (editables); el slug y el nombre real no cambian. */
+  visible?: { nombre: string; desc: string }
+}) {
   const Icono = ICONOS[carrera.icono] ?? GraduationCap
   return (
     <article className="la-card rounded-2xl flex flex-col h-full overflow-hidden"
@@ -276,8 +277,8 @@ function FichaCarrera({ t, carrera, ritmos }: { t: TokensSeccion; carrera: Carre
           style={{ width: 52, height: 52, background: t.btn2Fondo, color: t.btn2Texto }}>
           <Icono size={24} />
         </span>
-        <h3 className="mt-5 text-xl font-bold" style={{ color: t.titulo }}>{carrera.nombre}</h3>
-        <p className="mt-2 text-base leading-relaxed flex-1" style={{ color: t.textoSuave }}>{carrera.desc}</p>
+        <h3 className="mt-5 text-xl font-bold" style={{ color: t.titulo }}>{visible?.nombre ?? carrera.nombre}</h3>
+        <p className="mt-2 text-base leading-relaxed flex-1" style={{ color: t.textoSuave }}>{visible?.desc ?? carrera.desc}</p>
         <ul aria-label="En resumen" className="mt-5 flex flex-wrap gap-2">
           {[`${carrera.totalMaterias} materias`, ritmos, '100% en línea'].map(x => (
             <li key={x} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ border: `1px solid ${t.titulo}`, color: t.titulo }}>{x}</li>

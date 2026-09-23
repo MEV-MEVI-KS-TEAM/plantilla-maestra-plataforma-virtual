@@ -514,7 +514,7 @@ function validarListaObjetos(valor: unknown, campo: Campo, listaBase: unknown): 
           etiqueta: `${donde} · ${c.etiqueta}`,
           max: c.max,
           multilinea: c.tipo === 'textarea',
-          admiteVacio: subcampoAdmiteVacio(listaBase, c.clave),
+          admiteVacio: c.opcional === true || subcampoAdmiteVacio(listaBase, c.clave),
         })
         if (!r.ok) return r
         limpio[c.clave] = r.valor

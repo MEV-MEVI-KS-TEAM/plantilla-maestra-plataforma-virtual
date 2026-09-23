@@ -391,6 +391,8 @@ test('toda ruta editable que sea arreglo en CONFIG tiene normalizador (fail-clos
     'landing.dolor_items',
     'landing.faq_items',
     'landing.hero_badges',
+    'landing.licenciaturas_carreras',
+    'landing.licenciaturas_pasos',
     'landing.proceso_pasos',
     'landing.respaldo_badges',
     'landing.testimonios',

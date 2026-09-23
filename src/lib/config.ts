@@ -463,6 +463,20 @@ export const CONFIG = {
     cta_subtitulo:              'Registro en minutos. Equipo listo para orientarte.',
     cta_boton:                  'Crear cuenta gratis →',
     cta_whatsapp:               'WhatsApp',
+
+    // — Licenciaturas (add-on; solo se ven con CONFIG.licenciaturas activo) —
+    // TICKET-2026-09-22-08. TODO VACÍO A PROPÓSITO: vacío = el texto automático
+    // de la sección (que ya calcula precios y ritmos del config). La escuela los
+    // escribe desde "Textos de mi página"; aquí no se rellenan.
+    //   · licenciaturas_carreras: una entrada por carrera, casada por `slug`.
+    //     `nombre` es solo el nombre VISIBLE en la tarjeta de la landing; el
+    //     nombre real (registro, admin, constancias) sigue en `licenciaturas`.
+    //   · licenciaturas_pasos: hasta 4, en orden; un campo vacío = automático.
+    licenciaturas_kicker:       '',
+    licenciaturas_titulo:       '',
+    licenciaturas_subtitulo:    '',
+    licenciaturas_carreras:     [] as Array<{ slug: string; nombre: string; desc: string }>,
+    licenciaturas_pasos:        [] as Array<{ titulo: string; desc: string }>,
   },
 
   cct: '',

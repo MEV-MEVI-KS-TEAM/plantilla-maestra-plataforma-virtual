@@ -65,6 +65,12 @@ export interface Subcampo {
   max: number
   /** entero: valor mínimo (default 0). */
   min?: number
+  /**
+   * texto/textarea: se admite VACÍO aunque el default de la lista no traiga un
+   * ejemplo vacío. Para las listas donde vacío significa "usa el automático"
+   * (`licenciaturas_carreras`, `licenciaturas_pasos`).
+   */
+  opcional?: boolean
 }
 
 export interface Campo {
@@ -164,6 +170,12 @@ export const LIMITES = {
   maxProcesoPasos: 6,
   maxBeneficios: 6,
   maxFaq: 8,
+  // Sección de licenciaturas (TICKET-2026-09-22-08).
+  slugCarrera: 60,
+  nombreCarrera: 80,
+  descCarrera: 300,
+  maxLicCarreras: 12,
+  maxLicPasos: 4,
 } as const
 
 /** Los textos de la landing admiten todos los placeholders; el resto ninguno. */
@@ -375,6 +387,30 @@ export const CAMPOS: ReadonlyArray<Campo> = [
     max: LIMITES.boton, placeholders: TODOS },
   { clave: 'landing.cta_whatsapp', seccion: 'landing', etiqueta: 'Cierre: botón de WhatsApp', tipo: 'texto',
     max: LIMITES.boton, placeholders: TODOS },
+
+  // ── Landing: licenciaturas (add-on; el editor solo las enseña con
+  //    CONFIG.licenciaturas activo). Vacío = el texto automático de la sección.
+  { clave: 'landing.licenciaturas_kicker', seccion: 'landing', etiqueta: 'Licenciaturas: encabezado', tipo: 'texto',
+    max: LIMITES.kicker, placeholders: TODOS, ayuda: 'Vacío = "Nivel superior".' },
+  { clave: 'landing.licenciaturas_titulo', seccion: 'landing', etiqueta: 'Licenciaturas: título', tipo: 'texto',
+    max: LIMITES.tituloSeccion, placeholders: TODOS, ayuda: 'Vacío = el nombre de tu oferta de licenciatura.' },
+  { clave: 'landing.licenciaturas_subtitulo', seccion: 'landing', etiqueta: 'Licenciaturas: bajada', tipo: 'textarea',
+    max: LIMITES.subtituloSeccion, placeholders: TODOS, ayuda: 'Vacío = el texto automático con tus planes.' },
+  { clave: 'landing.licenciaturas_carreras', seccion: 'landing', etiqueta: 'Licenciaturas: tarjetas de carrera', tipo: 'lista-objetos',
+    maxItems: LIMITES.maxLicCarreras, placeholders: TODOS,
+    ayuda: 'Solo cambia lo que se ve en la tarjeta de la página. El nombre real de la carrera (registro, panel, constancias) no cambia.',
+    campos: [
+      { clave: 'slug', etiqueta: 'Carrera', tipo: 'texto', max: LIMITES.slugCarrera },
+      { clave: 'nombre', etiqueta: 'Nombre visible', tipo: 'texto', max: LIMITES.nombreCarrera, opcional: true },
+      { clave: 'desc', etiqueta: 'Descripción', tipo: 'textarea', max: LIMITES.descCarrera, opcional: true },
+    ] },
+  { clave: 'landing.licenciaturas_pasos', seccion: 'landing', etiqueta: 'Licenciaturas: cómo funciona', tipo: 'lista-objetos',
+    maxItems: LIMITES.maxLicPasos, placeholders: TODOS,
+    ayuda: 'Los 4 pasos, en orden. Un campo vacío usa el texto automático (con tu precio de inscripción).',
+    campos: [
+      { clave: 'titulo', etiqueta: 'Título', tipo: 'texto', max: LIMITES.tituloItem, opcional: true },
+      { clave: 'desc', etiqueta: 'Texto', tipo: 'textarea', max: LIMITES.descItem, opcional: true },
+    ] },
 
   // ── Precios (canónicos; los alias legacy se derivan en el merge) ──
   { clave: 'precios.inscripcion', seccion: 'precios', etiqueta: 'Inscripción', tipo: 'entero',

@@ -4,7 +4,7 @@
  * Pestaña "Textos de mi página": todos los campos de la sección `landing` del
  * catálogo, en el orden en que se ven bajando por la página.
  *
- * Son los campos con `seccion: 'landing'` del catálogo (hoy 45), NO todas las
+ * Son los campos con `seccion: 'landing'` del catálogo, NO todas las
  * claves `landing.*`: `landing.cct` está catalogada en `identidad` y se edita
  * en esa pestaña, junto al CCT del sistema, porque son el mismo dato.
  *
@@ -14,6 +14,11 @@
  * catálogo, aparece solo en su tarjeta y en su sitio, sin tocar este archivo.
  * Un campo con un prefijo que no reconozcamos cae en "Otros textos" en vez de
  * desaparecer, que es el fallo silencioso que sí importaría.
+ *
+ * LICENCIATURAS (TICKET-2026-09-22-08): la tarjeta solo existe si la escuela
+ * tiene el add-on activo (`licenciaturasActivas()`). Sus tres textos sueltos se
+ * pintan como cualquier otro, con el texto AUTOMÁTICO de placeholder; las
+ * carreras y los 4 pasos tienen filas fijas (`ListasLicenciaturas`).
  */
 import type { Campo } from '@/lib/site-config-campos'
 import { CAMPOS_POR_SECCION } from '@/lib/site-config-campos'
@@ -22,6 +27,8 @@ import { escribirRuta, estaSobrescrito, quitarRuta, valorEfectivo } from '@/lib/
 import { CampoEntero, CampoTexto } from './CampoTexto'
 import { ListaObjetos, ListaTexto } from './ListaEditable'
 import { Aviso, TXT_SUAVE, TXT_TENUE, Tarjeta, type PropsPestana } from './Comunes'
+import { licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { ListasLicenciaturas, autoLicenciaturas } from './TextosLicenciaturas'
 
 type Elemento = Record<string, string | number>
 
@@ -38,6 +45,7 @@ const GRUPOS: ReadonlyArray<{ id: string; titulo: string; prefijos: string[] }> 
   { id: 'respaldo', titulo: 'Respaldo', prefijos: ['respaldo'] },
   { id: 'dolor', titulo: 'Situaciones', prefijos: ['dolor_'] },
   { id: 'programas', titulo: 'Programas', prefijos: ['programas_'] },
+  { id: 'licenciaturas', titulo: 'Licenciaturas', prefijos: ['licenciaturas_'] },
   { id: 'transformacion', titulo: 'Antes y después', prefijos: ['transformacion_'] },
   { id: 'proceso', titulo: 'Cómo funciona', prefijos: ['proceso_'] },
   { id: 'testimonios', titulo: 'Testimonios', prefijos: ['testimonios'] },
@@ -75,7 +83,21 @@ function esListaObjetos(v: unknown): v is Elemento[] {
 export function PestanaTextos({
   defaults, overrides, actualizar, puedeEditar, claveConError,
 }: PropsPestana) {
-  const grupos = agrupar(CAMPOS_POR_SECCION.landing)
+  // Sin el add-on, los textos de licenciaturas no se enseñan: la sección no
+  // existe en su página.
+  const conLicenciaturas = licenciaturasActivas()
+  const grupos = agrupar(
+    CAMPOS_POR_SECCION.landing.filter((c) => conLicenciaturas || !c.clave.startsWith('landing.licenciaturas_')),
+  )
+  const autoLic = conLicenciaturas ? autoLicenciaturas() : null
+  /** Placeholder = el texto automático que se ve hoy, para los tres sueltos. */
+  const placeholderLic: Record<string, string | undefined> = {
+    'landing.licenciaturas_kicker': autoLic?.kicker,
+    'landing.licenciaturas_titulo': autoLic?.titulo,
+    'landing.licenciaturas_subtitulo': autoLic?.bajada,
+  }
+  const campoCarreras = CAMPOS_POR_SECCION.landing.find((c) => c.clave === 'landing.licenciaturas_carreras')
+  const campoPasos = CAMPOS_POR_SECCION.landing.find((c) => c.clave === 'landing.licenciaturas_pasos')
 
   function pintar(campo: Campo) {
     const clave = campo.clave
@@ -91,6 +113,24 @@ export function PestanaTextos({
     const ayuda = [campo.ayuda, campo.noVisibleEnLanding ? '(no se muestra en el diseño actual de la página)' : '']
       .filter(Boolean)
       .join(' ')
+
+    // Filas fijas (una por carrera, 4 pasos): se pintan juntas al llegar a la
+    // primera de las dos listas.
+    if (clave === 'landing.licenciaturas_pasos') return null
+    if (clave === 'landing.licenciaturas_carreras') {
+      return (
+        <ListasLicenciaturas
+          key={clave}
+          defaults={defaults}
+          overrides={overrides}
+          actualizar={actualizar}
+          puedeEditar={puedeEditar}
+          claveConError={claveConError}
+          campoCarreras={campoCarreras}
+          campoPasos={campoPasos}
+        />
+      )
+    }
 
     switch (campo.tipo) {
       case 'lista-texto':
@@ -150,7 +190,7 @@ export function PestanaTextos({
                 : ayuda || undefined
             }
             valor={typeof efectivo === 'string' ? efectivo : ''}
-            placeholder={typeof porDefecto === 'string' ? porDefecto : undefined}
+            placeholder={placeholderLic[clave] ?? (typeof porDefecto === 'string' ? porDefecto : undefined)}
             max={campo.max ?? 200}
             multilinea={campo.tipo === 'textarea'}
             deshabilitado={!puedeEditar}
