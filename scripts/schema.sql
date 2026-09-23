@@ -1945,7 +1945,7 @@ LANGUAGE sql
 IMMUTABLE
 AS $$
   SELECT COALESCE(p_nivel = 'demo', false)
-      OR COALESCE(p_nombre ILIKE '%tutor%', false);
+      OR COALESCE(p_nombre ~* '\mtutor[ií]a', false);
 $$;
 
 -- Devuelve NULL si los seis candados están en cero, o el código del primero
