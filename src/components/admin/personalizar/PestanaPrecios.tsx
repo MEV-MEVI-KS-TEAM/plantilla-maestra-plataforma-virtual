@@ -331,8 +331,15 @@ export function PestanaPrecios({
                     sufijo={<EnPesos valor={semanal ? cuotaDe(m) : m.mensualidad} moneda={CONFIG.moneda} />}
                     deshabilitado={!puedeEditar}
                     resaltado={errorAqui}
+                    // Sin botón propio (la caja ya tiene «Restaurar plan»), pero
+                    // al salir con basura de un campo sin override se quita SU
+                    // clave en vez de fijar la cifra de fábrica como override.
+                    sobrescrito={overrides.modalidades?.[m.id]?.[semanal ? 'cuotaSemanal' : 'mensualidad'] !== undefined}
                     onChange={(n) => actualizar((prev) => escribirModalidad(
                       prev, m.id, semanal ? { cuotaSemanal: n } : { mensualidad: n },
+                    ))}
+                    onDescartar={() => actualizar((prev) => escribirModalidad(
+                      prev, m.id, semanal ? { cuotaSemanal: null } : { mensualidad: null },
                     ))}
                   />
                   {/* Sale aunque solo haya una clave por nivel sobrescrita: sin

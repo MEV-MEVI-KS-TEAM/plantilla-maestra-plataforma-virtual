@@ -7,12 +7,13 @@ import { mergeSiteConfig, type SiteConfigOverrides } from '@/lib/site-config-cor
 import { campoPorClave, LIMITES } from '@/lib/site-config-campos'
 import { mensualidadGeneralDe, inscripcionGeneral } from '@/lib/precios-nivel'
 import { fraseMensualidades } from '@/lib/precios-ui'
-import { listaConY, nivelesTexto } from '@/lib/niveles-ui'
+import { etiquetaNivel, listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { mensualidadQA } from '../../e2e/_precios-qa'
 import {
   claveASenalar,
   clavesPorNivelDePlan,
+  alSalirConBasura,
   escribirRuta,
   formatoDinero,
   parseEntero,
@@ -321,7 +322,7 @@ test('10. el campo por nivel: vacío es válido, 0 no, y el error dice que se pu
   expect(campo).toContain('const t = normalizar(e.target.value)')
   // Con basura al salir se repone lo que había AL ENTRAR, no el último prefijo.
   expect(campo).toContain('alEntrar.current = valor')
-  expect(campo).toContain('const previo = alEntrar.current')
+  expect(campo).toContain('const r = alSalirConBasura({')
   expect(`${(1).toLocaleString('es-MX')} y ${LIMITES.precioMax.toLocaleString('es-MX')}`).toBe('1 y 50,000')
   // Un 0 escrito a mano se pinta (no se esconde como «vacío») y sale «Restaurar».
   expect(campo).toContain('useState(textoDe(valor))')
@@ -427,23 +428,37 @@ test('14. mensualidadQA: si 2500 rompe el escalón (Búfalo: 6 meses a 2800), el
 const P3 = { id: '3_meses', label: '3 meses — Express', meses: 3, mensualidad: 3000 }
 const P6 = { id: '6_meses', label: '6 meses — Estándar', meses: 6, mensualidad: 1500 }
 const dineroEn = (n: number) => `$${n.toLocaleString('en-US')}`
-const argsFrase = (precios: Record<string, unknown>, planesIguales: boolean, niveles = ['secundaria', 'preparatoria']) => ({
-  niveles, planes: [P3, P6], planesDe: () => [P3, P6], nivelReferencia: 'preparatoria',
+const argsFrase = (
+  precios: Record<string, unknown>,
+  planesIguales: boolean,
+  niveles = ['secundaria', 'preparatoria'],
+  planesDe: (n: string) => ReadonlyArray<typeof P3> = () => [P3, P6],
+) => ({
+  niveles, planes: [P3, P6], planesDe, nivelReferencia: 'preparatoria',
   precios, nombrePlan: (m: { label: string }) => m.label, dinero: dineroEn, planesIguales,
 })
+// Los nombres de nivel salen de `etiquetaNivel` (un clon puede llamar
+// «Bachillerato» a la preparatoria, como INEDI): la prueba corre en los clones.
+const SEC = etiquetaNivel('secundaria')
+const PREPA = etiquetaNivel('preparatoria')
 
 test('15. animada: con mensualidades distintas por nivel, una frase correcta por nivel (Sec 2500/1250, Prepa 3000/1500)', () => {
   const porNivel = { mensualidadSecundaria3Meses: 2500, mensualidadSecundaria6Meses: 1250 }
   const frase = fraseMensualidades(argsFrase(porNivel, false))
   expect(frase).toBe(
-    'En Secundaria, la mensualidad es de $2,500 al mes en 3 meses — Express y $1,250 al mes en 6 meses — Estándar. ' +
-    'En Preparatoria, la mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.')
+    `En ${SEC}, la mensualidad es de $2,500 al mes en 3 meses — Express y $1,250 al mes en 6 meses — Estándar. ` +
+    `En ${PREPA}, la mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.`)
   expect(frase).not.toMatch(/es de en /)
   // SAMEX: la misma forma con la secundaria en su alias (claves por nivel vacías).
   const samex = fraseMensualidades(argsFrase({ secundaria_3meses_normal: 2700, secundaria_6meses_normal: 1400 }, false))
   expect(samex).toBe(
-    'En Secundaria, la mensualidad es de $2,700 al mes en 3 meses — Express y $1,400 al mes en 6 meses — Estándar. ' +
-    'En Preparatoria, la mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.')
+    `En ${SEC}, la mensualidad es de $2,700 al mes en 3 meses — Express y $1,400 al mes en 6 meses — Estándar. ` +
+    `En ${PREPA}, la mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.`)
+  // Un nivel sin planes activos (apagó el único que tenía) no escribe «es de .».
+  const sinPlanesSec = fraseMensualidades(argsFrase({}, false, ['secundaria', 'preparatoria'],
+    (n) => (n === 'secundaria' ? [] : [P6])))
+  expect(sinPlanesSec).toBe(`En ${PREPA}, la mensualidad es de $1,500 al mes en 6 meses — Estándar.`)
+  expect(sinPlanesSec).not.toMatch(/es de \./)
 })
 
 test('16. animada: con las mismas mensualidades la frase es la de siempre, byte por byte', () => {
@@ -452,7 +467,7 @@ test('16. animada: con las mismas mensualidades la frase es la de siempre, byte 
   const antes = `La mensualidad es de ${listaConY([P3, P6].map((m) => `${dineroEn(m.mensualidad)} al mes en ${m.label}`))}` +
     `${niveles.length > 1 ? `, igual en ${nivelesTexto(niveles)}` : ''}.`
   expect(fraseMensualidades(argsFrase({}, true, niveles))).toBe(antes)
-  expect(antes).toBe('La mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar, igual en Secundaria y Preparatoria.')
+  expect(antes).toBe(`La mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar, igual en ${nivelesTexto(niveles)}.`)
   // Un solo nivel: sin «igual en».
   expect(fraseMensualidades(argsFrase({}, true, ['preparatoria'])))
     .toBe('La mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.')
@@ -465,33 +480,111 @@ test('16. animada: con las mismas mensualidades la frase es la de siempre, byte 
   expect(animada).not.toContain('mensualidadesTexto')
 })
 
-test('17. CampoEntero lee con parseEntero: «1,500» es 1500 y «60000» se rechaza, nunca se trunca', () => {
-  // La lectura: lo que el admin ve en pantalla (espacios, comas, $) se tolera;
-  // decimales y negativos no.
+test('17. parseEntero: la coma solo como separador de miles («1,500» sí; «499,00» y «4,5» no)', () => {
   expect(parseEntero('1,500')).toBe(1500)
   expect(parseEntero('$1 500')).toBe(1500)
   expect(parseEntero(' 2,000 ')).toBe(2000)
+  expect(parseEntero('12,345,678')).toBe(12345678)
+  // Coma DECIMAL (así se escribe en México): antes 499,00 → 49900 sin rojo.
+  for (const t of ['499,00', '150,00', '1,50', '4,5', '1,5000', ',500', '1,,500', '1500,']) {
+    expect(parseEntero(t), t).toBeNull()
+  }
   expect(parseEntero('1.500')).toBeNull()
   expect(parseEntero('-100')).toBeNull()
-  expect(parseEntero('60000')).toBe(60000) // > 50,000: fuera de rango → inválido, no 6000
+  expect(parseEntero('abc')).toBeNull()
+})
+
+/**
+ * Simula lo que hace el campo con el borrador: `valor` es lo que tiene el
+ * borrador, cada tecla válida lo propaga (como `onChange`) y al salir se aplica
+ * `alSalirConBasura`. Devuelve lo que queda en el borrador y en pantalla.
+ */
+function teclearYSalir(
+  { valor: inicial, sobrescrito, puedeDescartar, min, max }:
+    { valor: number | undefined; sobrescrito: boolean; puedeDescartar: boolean; min: number; max: number },
+  tecleo: string,
+) {
+  let valor: number | undefined = inicial
+  let borradorTieneClave = sobrescrito
+  const alEntrar = inicial // se toma al ENFOCAR, nunca después
+  for (let i = 1; i <= tecleo.length; i++) {
+    const n = parseEntero(tecleo.slice(0, i))
+    if (n !== null && n >= min && n <= max) { valor = n; borradorTieneClave = true }
+  }
+  const final = parseEntero(tecleo)
+  const invalido = final === null || final < min || final > max
+  if (!invalido) return { borrador: valor, tieneClave: borradorTieneClave, pantalla: tecleo }
+  const r = alSalirConBasura({ alEntrar, actual: valor, sobrescritoAlEntrar: sobrescrito, puedeDescartar })
+  if (r.accion === 'descartar') { valor = inicial; borradorTieneClave = false }
+  if (r.accion === 'escribir') { valor = r.valor; borradorTieneClave = true }
+  return { borrador: valor, tieneClave: borradorTieneClave, pantalla: r.texto, accion: r.accion }
+}
+
+test('18. al salir con basura, el borrador vuelve a como estaba AL ENTRAR (nunca el último prefijo)', () => {
+  const lim = { min: 0, max: 50000 }
+  // Con override al entrar: «60000» (6, 60, 600, 6000 se propagan) → vuelve 1200, no 6000.
+  expect(teclearYSalir({ valor: 1200, sobrescrito: true, puedeDescartar: true, ...lim }, '60000'))
+    .toEqual({ borrador: 1200, tieneClave: true, pantalla: '1200', accion: 'escribir' })
+  expect(teclearYSalir({ valor: 1200, sobrescrito: true, puedeDescartar: true, ...lim }, '15a'))
+    .toEqual({ borrador: 1200, tieneClave: true, pantalla: '1200', accion: 'escribir' })
+  expect(teclearYSalir({ valor: 1200, sobrescrito: true, puedeDescartar: true, ...lim }, '499,00'))
+    .toEqual({ borrador: 1200, tieneClave: true, pantalla: '1200', accion: 'escribir' })
+  // Sin override al entrar: se QUITA la clave (no se fija la cifra de fábrica).
+  expect(teclearYSalir({ valor: 599, sobrescrito: false, puedeDescartar: true, ...lim }, '60000'))
+    .toEqual({ borrador: 599, tieneClave: false, pantalla: '599', accion: 'descartar' })
+  // Nada se propagó (vaciar, pegar basura): no se toca el borrador.
+  expect(teclearYSalir({ valor: 599, sobrescrito: false, puedeDescartar: false, ...lim }, '-5'))
+    .toEqual({ borrador: 599, tieneClave: false, pantalla: '599', accion: 'nada' })
+  // Sin forma de quitar la clave (contadores): se reescribe lo de al entrar.
+  expect(teclearYSalir({ valor: 2, sobrescrito: false, puedeDescartar: false, min: 0, max: 99999 }, '4,5'))
+    .toEqual({ borrador: 2, tieneClave: true, pantalla: '2', accion: 'escribir' })
+  // Entró FUERA de rango (mensualidad decimal de CIEB, fila de BD mal escrita):
+  // se repone tal cual, en rojo, en vez de publicar el prefijo.
+  expect(alSalirConBasura({ alEntrar: 8666.67, actual: 6000, sobrescritoAlEntrar: true, puedeDescartar: false }))
+    .toEqual({ accion: 'escribir', valor: 8666.67, texto: '8666.67' })
+  expect(alSalirConBasura({ alEntrar: 8666.67, actual: 6000, sobrescritoAlEntrar: false, puedeDescartar: true }))
+    .toEqual({ accion: 'descartar', texto: '8666.67' })
+  // Campo por nivel vacío al entrar: se vacía otra vez.
+  expect(alSalirConBasura({ alEntrar: undefined, actual: 15, sobrescritoAlEntrar: false, puedeDescartar: true }))
+    .toEqual({ accion: 'descartar', texto: '' })
+  // Un 0 escrito a mano al entrar: vuelve el 0 (rojo, con «Restaurar»).
+  expect(alSalirConBasura({ alEntrar: 0, actual: 15, sobrescritoAlEntrar: true, puedeDescartar: true }))
+    .toEqual({ accion: 'escribir', valor: 0, texto: '0' })
+})
+
+test('19. CampoEntero y CampoPrecioNivel: leen con parseEntero y usan alSalirConBasura con lo tomado AL ENFOCAR', () => {
   const fuente = sinComentarios(leer('src/components/admin/personalizar/CampoTexto.tsx'))
-  const i = fuente.indexOf('export function CampoEntero(')
-  const campo = fuente.slice(i, fuente.indexOf('export interface CampoPrecioNivelProps', i))
-  expect(campo).toContain('const numero = parseEntero(texto)')
-  expect(campo).toContain('const invalido = numero === null || numero < min || numero > max')
-  expect(campo).toContain('const n = parseEntero(e.target.value)')
-  expect(campo).toContain('setTexto((actual) => (parseEntero(actual) === valor ? actual : String(valor)))')
-  // Con basura al salir: lo que había AL ENTRAR, devuelto también al borrador.
-  expect(campo).toContain('alEntrar.current = valor')
-  expect(campo).toContain('const previo = alEntrar.current')
-  expect(campo).toContain('sobrescritoAlEntrar.current = sobrescrito')
-  // Sin override al entrar, reponer es QUITAR la clave (no escribir el default).
-  expect(campo).toMatch(/if \(!sobrescritoAlEntrar\.current && onRestaurar\) \{\s*onRestaurar\(\)/)
-  expect(campo).toMatch(/else if \(Number\.isInteger\(previo\) && previo >= min && previo <= max\) \{\s*onChange\(previo\)\s*setTexto\(String\(previo\)\)/)
-  expect(campo).not.toMatch(/\/\^\\d\+\$\/\.test/)
-  // CampoPrecioNivel lee el número igual.
-  const j = fuente.indexOf('export function CampoPrecioNivel(')
-  const nivel = fuente.slice(j, fuente.indexOf('export interface CampoDecimalProps', j))
-  expect(nivel).toContain('const numero = parseEntero(texto)')
-  expect(nivel).toContain('const n = parseEntero(e.target.value)')
+  const tramo = (desde: string, hasta: string) => {
+    const i = fuente.indexOf(desde)
+    expect(i, desde).toBeGreaterThan(-1)
+    return fuente.slice(i, fuente.indexOf(hasta, i))
+  }
+  const entero = tramo('export function CampoEntero(', 'export interface CampoPrecioNivelProps')
+  const nivel = tramo('export function CampoPrecioNivel(', 'export interface CampoDecimalProps')
+  for (const [nombre, campo] of [['CampoEntero', entero], ['CampoPrecioNivel', nivel]] as const) {
+    expect(campo, nombre).toContain('const numero = parseEntero(texto)')
+    expect(campo, nombre).toContain('const n = parseEntero(e.target.value)')
+    expect(campo, nombre).not.toMatch(/\/\^\\d\+\$\/\.test/)
+    expect(campo, nombre).toContain('const r = alSalirConBasura({')
+    expect(campo, nombre).toContain('alEntrar: alEntrar.current,')
+    expect(campo, nombre).toContain('actual: valor,')
+    expect(campo, nombre).toContain('setTexto(r.texto)')
+    // Lo de «al entrar» se toma SOLO al enfocar: si el efecto de `valor` lo
+    // actualizara, al salir se repondría el último prefijo (6000).
+    expect(campo.match(/alEntrar\.current =/g), nombre).toHaveLength(1)
+    expect(campo, nombre).toMatch(/onFocus=\{\(e\) => \{\s*alEntrar\.current = valor/)
+    const efecto = campo.slice(campo.indexOf('useEffect('), campo.indexOf('}, [valor])'))
+    expect(efecto, nombre).not.toContain('alEntrar')
+  }
+  expect(entero).toContain('const descartar = onDescartar ?? onRestaurar')
+  expect(entero).toContain('puedeDescartar: Boolean(descartar),')
+  expect(entero).toContain("if (r.accion === 'descartar') descartar?.()")
+  expect(entero).toContain("else if (r.accion === 'escribir' && r.valor !== undefined) onChange(r.valor)")
+  expect(entero).toMatch(/onFocus=\{\(e\) => \{\s*alEntrar\.current = valor\s*sobrescritoAlEntrar\.current = sobrescrito/)
+  expect(nivel).toContain('sobrescritoAlEntrar: alEntrar.current !== undefined && alEntrar.current !== null,')
+  expect(nivel).toContain("if (r.accion === 'descartar') onVaciar()")
+  // La mensualidad o cuota del plan sabe quitar SU clave sin pintar un botón más.
+  const pestana = sinComentarios(leer(PESTANA))
+  expect(pestana).toContain("sobrescrito={overrides.modalidades?.[m.id]?.[semanal ? 'cuotaSemanal' : 'mensualidad'] !== undefined}")
+  expect(pestana).toMatch(/onDescartar=\{\(\) => actualizar\(\(prev\) => escribirModalidad\(\s*prev, m\.id, semanal \? \{ cuotaSemanal: null \} : \{ mensualidad: null \},/)
 })

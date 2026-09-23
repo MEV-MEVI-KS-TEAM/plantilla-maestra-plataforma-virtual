@@ -203,7 +203,12 @@ export function fraseMensualidades<P extends PlanMinimo>({
   if (planesIguales) {
     return `La mensualidad es de ${lista(nivelReferencia, planes)}${niveles.length > 1 ? `, igual en ${nivelesTexto(niveles)}` : ''}.`
   }
-  return niveles.map((n) => `En ${etiquetaNivel(n)}, la mensualidad es de ${lista(n, planesDe(n))}.`).join(' ')
+  // Un nivel sin planes activos (el admin apagó el único que tenía) no tiene
+  // mensualidad que decir: se omite en vez de escribir «es de .».
+  return niveles
+    .filter((n) => planesDe(n).length > 0)
+    .map((n) => `En ${etiquetaNivel(n)}, la mensualidad es de ${lista(n, planesDe(n))}.`)
+    .join(' ')
 }
 
 /** Lo que es verdad de cada plan. 🛑 Ni «ahorro» ni «recomendado». */

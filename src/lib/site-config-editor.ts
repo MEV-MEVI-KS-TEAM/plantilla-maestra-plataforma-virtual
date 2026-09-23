@@ -523,13 +523,55 @@ export function formatoDinero(n: number, moneda: Moneda = 'MXN'): string {
  * toleran los separadores que él mismo ve en pantalla ('$2,000' pegado desde
  * otro lado); nada más. Negativos y decimales devuelven `null` en vez de
  * redondear: un precio mal capturado tiene que verse rojo, no arreglarse solo.
+ *
+ * 🛑 La coma SOLO vale como separador de miles bien formado («1,500»,
+ * «12,345»). «499,00» o «4,5» son una coma DECIMAL —así se escribe en
+ * México, y el tipo de cambio de la misma pestaña la acepta— y quitarla
+ * multiplicaba el precio por 100 sin marcar nada en rojo (499,00 → 49900).
  */
 export function parseEntero(texto: string): number | null {
   if (typeof texto !== 'string') return null
-  const limpio = texto.replace(/[\s,$]/g, '')
+  const sinEspacios = texto.replace(/[\s$]/g, '')
+  if (sinEspacios.includes(',') && !/^\d{1,3}(,\d{3})+$/.test(sinEspacios)) return null
+  const limpio = sinEspacios.replace(/,/g, '')
   if (!/^\d+$/.test(limpio)) return null
   const n = Number(limpio)
   return Number.isSafeInteger(n) ? n : null
+}
+
+/**
+ * Qué hace un campo de entero cuando pierde el foco con basura (texto que no
+ * es un entero en rango). Regla: el BORRADOR vuelve a como estaba AL ENTRAR,
+ * y la pantalla también. Nunca se queda el último prefijo válido que se
+ * propagó al teclear («60000» con tope 50,000 no deja 6000).
+ *
+ * - Si nada se propagó (`actual === alEntrar`), no se toca el borrador:
+ *   salir de un campo vaciado no crea «Cambios sin publicar».
+ * - Si al entrar NO tenía override y el campo sabe quitar su clave
+ *   (`puedeDescartar`), se quita: escribir la cifra de fábrica dejaría un
+ *   override fijo que ya no sigue al config.ts.
+ * - Si no, se vuelve a escribir lo de al entrar, AUNQUE ya no quepa en el
+ *   rango (la mensualidad decimal de CIEB, una fila fuera de rango): el
+ *   campo sigue en rojo y el validador lo señala, en vez de publicar un
+ *   prefijo que nadie quiso.
+ */
+export function alSalirConBasura({
+  alEntrar, actual, sobrescritoAlEntrar, puedeDescartar,
+}: {
+  alEntrar: unknown
+  actual: unknown
+  sobrescritoAlEntrar: boolean
+  puedeDescartar: boolean
+}): { accion: 'nada' | 'descartar' | 'escribir'; valor?: number; texto: string } {
+  const textoDe = (v: unknown) => (v === undefined || v === null ? '' : String(v))
+  if (Object.is(actual, alEntrar)) return { accion: 'nada', texto: textoDe(alEntrar) }
+  if ((!sobrescritoAlEntrar || alEntrar === undefined || alEntrar === null) && puedeDescartar) {
+    return { accion: 'descartar', texto: textoDe(alEntrar) }
+  }
+  if (typeof alEntrar === 'number' && Number.isFinite(alEntrar)) {
+    return { accion: 'escribir', valor: alEntrar, texto: String(alEntrar) }
+  }
+  return { accion: 'nada', texto: textoDe(actual) }
 }
 
 // ─── Publicar ────────────────────────────────────────────────────────────────

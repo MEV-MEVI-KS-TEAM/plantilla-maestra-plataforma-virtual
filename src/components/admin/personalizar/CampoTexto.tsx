@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { parseDecimal } from '@/lib/site-config-validacion'
-import { parseEntero } from '@/lib/site-config-editor'
+import { alSalirConBasura, parseEntero } from '@/lib/site-config-editor'
 import {
   BotonRestaurar,
   Contador,
@@ -167,6 +167,13 @@ export interface CampoEnteroProps extends Base {
   /** Se pinta a la derecha del input (p. ej. el mismo número en pesos). */
   sufijo?: React.ReactNode
   onChange: (v: number) => void
+  /**
+   * Quita la clave del borrador SIN pintar un botón «Restaurar» (la
+   * mensualidad de un plan ya tiene el «Restaurar plan» de su caja). Se usa
+   * al salir con basura de un campo que no tenía override al entrar; si no
+   * se pasa, se usa `onRestaurar`.
+   */
+  onDescartar?: () => void
 }
 
 /**
@@ -199,6 +206,7 @@ export function CampoEntero({
   resaltado = false,
   onChange,
   onRestaurar,
+  onDescartar,
 }: CampoEnteroProps) {
   const id = idDeCampo(clave)
   const [texto, setTexto] = useState(String(valor))
@@ -242,21 +250,19 @@ export function CampoEntero({
             if (n !== null && n >= min && n <= max) onChange(n)
           }}
           onBlur={(e) => {
+            // Con basura: el borrador y la pantalla vuelven a como estaban AL
+            // ENTRAR (ver `alSalirConBasura`).
             if (invalido) {
-              const previo = alEntrar.current
-              if (!sobrescritoAlEntrar.current && onRestaurar) {
-                // Sin override al entrar: el borrador vuelve a no tenerlo (sin
-                // «Cambios sin publicar» por una cifra igual a la de fábrica).
-                onRestaurar()
-                setTexto(String(previo))
-              } else if (Number.isInteger(previo) && previo >= min && previo <= max) {
-                onChange(previo)
-                setTexto(String(previo))
-              } else {
-                // Entró con algo que ya no cabe (un config.ts viejo): se pinta
-                // lo que quedó en el borrador, para que pantalla y borrador coincidan.
-                setTexto(String(valor))
-              }
+              const descartar = onDescartar ?? onRestaurar
+              const r = alSalirConBasura({
+                alEntrar: alEntrar.current,
+                actual: valor,
+                sobrescritoAlEntrar: sobrescritoAlEntrar.current,
+                puedeDescartar: Boolean(descartar),
+              })
+              if (r.accion === 'descartar') descartar?.()
+              else if (r.accion === 'escribir' && r.valor !== undefined) onChange(r.valor)
+              setTexto(r.texto)
             }
             foco.onBlur(e)
           }}
@@ -394,20 +400,17 @@ export function CampoPrecioNivel({
           onBlur={(e) => {
             // Con basura, se repone lo que había AL ENTRAR (y se devuelve al
             // borrador), no el último prefijo válido que se propagó al teclear.
+            // Vacío al entrar = sin override: reponer es quitar la clave.
             if (invalido) {
-              const previo = alEntrar.current
-              const previoValido = typeof previo === 'number' && Number.isInteger(previo) && previo >= min && previo <= max
-              if (previo === undefined || previo === null) {
-                onVaciar()
-                setTexto('')
-              } else if (previoValido) {
-                onChange(previo)
-                setTexto(String(previo))
-              } else {
-                // Entró con algo inválido (un 0 escrito a mano): se pinta lo que
-                // quedó en el borrador, para que pantalla y borrador digan lo mismo.
-                setTexto(textoDe(valor))
-              }
+              const r = alSalirConBasura({
+                alEntrar: alEntrar.current,
+                actual: valor,
+                sobrescritoAlEntrar: alEntrar.current !== undefined && alEntrar.current !== null,
+                puedeDescartar: true,
+              })
+              if (r.accion === 'descartar') onVaciar()
+              else if (r.accion === 'escribir' && r.valor !== undefined) onChange(r.valor)
+              setTexto(r.texto)
             } else if (limpio === '' && texto !== '') {
               // Solo espacios o «$»: ya es vacío; se limpia para que se vea el marcador.
               setTexto('')
