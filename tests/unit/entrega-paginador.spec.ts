@@ -40,7 +40,7 @@ class Nodo {
   get firstChild() { return this.children[0] ?? null }
   get firstElementChild() { return this.children[0] ?? null }
   get lastElementChild() { return this.children[this.children.length - 1] ?? null }
-  get nextSibling() {
+  get nextSibling(): Nodo | null {
     if (!this.parent) return null
     const hermanos = this.parent.children
     return hermanos[hermanos.indexOf(this) + 1] ?? null
