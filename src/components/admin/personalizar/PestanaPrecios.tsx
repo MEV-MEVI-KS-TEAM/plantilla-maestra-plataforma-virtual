@@ -211,6 +211,7 @@ export function PestanaPrecios({
         resaltado={claveConError === clave}
         onChange={(n) => actualizar((prev) => escribirRuta(prev, clave, n))}
         onVaciar={() => actualizar((prev) => quitarRuta(prev, clave))}
+        onReponer={(crudo) => actualizar((prev) => escribirRuta(prev, clave, crudo))}
         onRestaurar={() => actualizar((prev) => quitarRuta(prev, clave))}
       />
     )

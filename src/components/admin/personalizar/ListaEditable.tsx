@@ -277,7 +277,13 @@ export function ListaObjetos({
                 min={sub.min ?? 0}
                 max={sub.max}
                 deshabilitado={!puedeEditar}
+                // Al salir con basura (ver `alSalirConBasura`): si la LISTA no
+                // tenía override al enfocar, lo único que cambió desde entonces
+                // es este campo, así que quitar la lista la deja como estaba.
+                // Sin botón propio: el «Restaurar» es el de la lista.
+                sobrescrito={sobrescrito}
                 onChange={(n) => editar(i, sub.clave, n)}
+                onDescartar={onRestaurar}
               />
             ) : (
               <CampoTexto

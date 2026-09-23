@@ -261,7 +261,7 @@ export function CampoEntero({
                 puedeDescartar: Boolean(descartar),
               })
               if (r.accion === 'descartar') descartar?.()
-              else if (r.accion === 'escribir' && r.valor !== undefined) onChange(r.valor)
+              else if (r.accion === 'escribir' && typeof r.valor === 'number') onChange(r.valor)
               setTexto(r.texto)
             }
             foco.onBlur(e)
@@ -312,6 +312,11 @@ export interface CampoPrecioNivelProps extends Base {
   onChange: (v: number) => void
   /** El admin dejó el campo vacío: se quita la clave del borrador. */
   onVaciar: () => void
+  /**
+   * Devuelve al borrador lo que el campo tenía AL ENTRAR, tal cual (puede no
+   * ser un número: una fila escrita a mano). Se usa al salir con basura.
+   */
+  onReponer: (crudo: unknown) => void
 }
 
 const textoDe = (v: unknown): string => (v === undefined || v === null ? '' : String(v))
@@ -348,6 +353,7 @@ export function CampoPrecioNivel({
   resaltado = false,
   onChange,
   onVaciar,
+  onReponer,
   onRestaurar,
 }: CampoPrecioNivelProps) {
   const id = idDeCampo(clave)
@@ -409,7 +415,7 @@ export function CampoPrecioNivel({
                 puedeDescartar: true,
               })
               if (r.accion === 'descartar') onVaciar()
-              else if (r.accion === 'escribir' && r.valor !== undefined) onChange(r.valor)
+              else if (r.accion === 'escribir') onReponer(r.valor)
               setTexto(r.texto)
             } else if (limpio === '' && texto !== '') {
               // Solo espacios o «$»: ya es vacío; se limpia para que se vea el marcador.

@@ -516,7 +516,7 @@ function teclearYSalir(
   if (!invalido) return { borrador: valor, tieneClave: borradorTieneClave, pantalla: tecleo }
   const r = alSalirConBasura({ alEntrar, actual: valor, sobrescritoAlEntrar: sobrescrito, puedeDescartar })
   if (r.accion === 'descartar') { valor = inicial; borradorTieneClave = false }
-  if (r.accion === 'escribir') { valor = r.valor; borradorTieneClave = true }
+  if (r.accion === 'escribir') { valor = r.valor as number; borradorTieneClave = true }
   return { borrador: valor, tieneClave: borradorTieneClave, pantalla: r.texto, accion: r.accion }
 }
 
@@ -529,21 +529,34 @@ test('18. al salir con basura, el borrador vuelve a como estaba AL ENTRAR (nunca
     .toEqual({ borrador: 1200, tieneClave: true, pantalla: '1200', accion: 'escribir' })
   expect(teclearYSalir({ valor: 1200, sobrescrito: true, puedeDescartar: true, ...lim }, '499,00'))
     .toEqual({ borrador: 1200, tieneClave: true, pantalla: '1200', accion: 'escribir' })
+  // Con override y sin nada propagado: no se toca.
+  expect(teclearYSalir({ valor: 1200, sobrescrito: true, puedeDescartar: true, ...lim }, '-5'))
+    .toEqual({ borrador: 1200, tieneClave: true, pantalla: '1200', accion: 'nada' })
   // Sin override al entrar: se QUITA la clave (no se fija la cifra de fábrica).
   expect(teclearYSalir({ valor: 599, sobrescrito: false, puedeDescartar: true, ...lim }, '60000'))
     .toEqual({ borrador: 599, tieneClave: false, pantalla: '599', accion: 'descartar' })
-  // Nada se propagó (vaciar, pegar basura): no se toca el borrador.
+  // …también si el tecleo pasó por SU propia cifra («599,00» sobre 599: se
+  // propagan 5, 59 y 599 y el valor acaba igual, pero la clave ya existe).
+  expect(teclearYSalir({ valor: 599, sobrescrito: false, puedeDescartar: true, ...lim }, '599,00'))
+    .toEqual({ borrador: 599, tieneClave: false, pantalla: '599', accion: 'descartar' })
+  expect(teclearYSalir({ valor: 5900, sobrescrito: false, puedeDescartar: true, ...lim }, '59000'))
+    .toEqual({ borrador: 5900, tieneClave: false, pantalla: '5900', accion: 'descartar' })
+  // Contadores: la lista sin override al enfocar se quita entera (ListaObjetos
+  // pasa `onDescartar={onRestaurar}`).
+  expect(teclearYSalir({ valor: 2, sobrescrito: false, puedeDescartar: true, min: 0, max: 99999 }, '4,5'))
+    .toEqual({ borrador: 2, tieneClave: false, pantalla: '2', accion: 'descartar' })
+  // Sin forma de quitar la clave y sin nada propagado: no se toca.
   expect(teclearYSalir({ valor: 599, sobrescrito: false, puedeDescartar: false, ...lim }, '-5'))
     .toEqual({ borrador: 599, tieneClave: false, pantalla: '599', accion: 'nada' })
-  // Sin forma de quitar la clave (contadores): se reescribe lo de al entrar.
-  expect(teclearYSalir({ valor: 2, sobrescrito: false, puedeDescartar: false, min: 0, max: 99999 }, '4,5'))
-    .toEqual({ borrador: 2, tieneClave: true, pantalla: '2', accion: 'escribir' })
   // Entró FUERA de rango (mensualidad decimal de CIEB, fila de BD mal escrita):
   // se repone tal cual, en rojo, en vez de publicar el prefijo.
   expect(alSalirConBasura({ alEntrar: 8666.67, actual: 6000, sobrescritoAlEntrar: true, puedeDescartar: false }))
     .toEqual({ accion: 'escribir', valor: 8666.67, texto: '8666.67' })
   expect(alSalirConBasura({ alEntrar: 8666.67, actual: 6000, sobrescritoAlEntrar: false, puedeDescartar: true }))
     .toEqual({ accion: 'descartar', texto: '8666.67' })
+  // Ni siquiera un número (una cadena escrita a mano en la fila): se repone tal cual.
+  expect(alSalirConBasura({ alEntrar: '1500', actual: 15, sobrescritoAlEntrar: true, puedeDescartar: true }))
+    .toEqual({ accion: 'escribir', valor: '1500', texto: '1500' })
   // Campo por nivel vacío al entrar: se vacía otra vez.
   expect(alSalirConBasura({ alEntrar: undefined, actual: 15, sobrescritoAlEntrar: false, puedeDescartar: true }))
     .toEqual({ accion: 'descartar', texto: '' })
@@ -564,6 +577,7 @@ test('19. CampoEntero y CampoPrecioNivel: leen con parseEntero y usan alSalirCon
   for (const [nombre, campo] of [['CampoEntero', entero], ['CampoPrecioNivel', nivel]] as const) {
     expect(campo, nombre).toContain('const numero = parseEntero(texto)')
     expect(campo, nombre).toContain('const n = parseEntero(e.target.value)')
+    expect(campo, nombre).toContain('if (n !== null && n >= min && n <= max) onChange(n)')
     expect(campo, nombre).not.toMatch(/\/\^\\d\+\$\/\.test/)
     expect(campo, nombre).toContain('const r = alSalirConBasura({')
     expect(campo, nombre).toContain('alEntrar: alEntrar.current,')
@@ -573,18 +587,38 @@ test('19. CampoEntero y CampoPrecioNivel: leen con parseEntero y usan alSalirCon
     // actualizara, al salir se repondría el último prefijo (6000).
     expect(campo.match(/alEntrar\.current =/g), nombre).toHaveLength(1)
     expect(campo, nombre).toMatch(/onFocus=\{\(e\) => \{\s*alEntrar\.current = valor/)
-    const efecto = campo.slice(campo.indexOf('useEffect('), campo.indexOf('}, [valor])'))
-    expect(efecto, nombre).not.toContain('alEntrar')
+    const i = campo.indexOf('useEffect(')
+    expect(i, `${nombre}: sin efecto de valor`).toBeGreaterThan(-1)
+    const efecto = campo.slice(i, campo.indexOf('}, [valor])', i))
+    expect(efecto.length, nombre).toBeGreaterThan(0)
+    // Ni `alEntrar` ni `sobrescritoAlEntrar` (sin distinguir mayúsculas).
+    expect(efecto, nombre).not.toMatch(/alentrar/i)
   }
+  // El rango de CampoEntero: sin el tope, «60000» sería válido y se publicaría 6000.
+  expect(entero).toContain('const invalido = numero === null || numero < min || numero > max')
+  expect(entero).toContain('setTexto((actual) => (parseEntero(actual) === valor ? actual : String(valor)))')
+  expect(nivel).toContain("const invalido = limpio !== '' && (numero === null || numero < min || numero > max)")
+  expect(nivel).toContain('return parseEntero(actual) === valor ? actual : textoDe(valor)')
+  // CampoEntero: el override de ENTRADA, no el de ahora.
+  expect(entero).toContain('sobrescritoAlEntrar: sobrescritoAlEntrar.current,')
+  expect(entero.match(/sobrescritoAlEntrar\.current =/g)).toHaveLength(1)
+  expect(entero).toMatch(/onFocus=\{\(e\) => \{\s*alEntrar\.current = valor\s*sobrescritoAlEntrar\.current = sobrescrito/)
   expect(entero).toContain('const descartar = onDescartar ?? onRestaurar')
   expect(entero).toContain('puedeDescartar: Boolean(descartar),')
   expect(entero).toContain("if (r.accion === 'descartar') descartar?.()")
-  expect(entero).toContain("else if (r.accion === 'escribir' && r.valor !== undefined) onChange(r.valor)")
-  expect(entero).toMatch(/onFocus=\{\(e\) => \{\s*alEntrar\.current = valor\s*sobrescritoAlEntrar\.current = sobrescrito/)
+  expect(entero).toContain("else if (r.accion === 'escribir' && typeof r.valor === 'number') onChange(r.valor)")
   expect(nivel).toContain('sobrescritoAlEntrar: alEntrar.current !== undefined && alEntrar.current !== null,')
   expect(nivel).toContain("if (r.accion === 'descartar') onVaciar()")
+  expect(nivel).toContain("else if (r.accion === 'escribir') onReponer(r.valor)")
   // La mensualidad o cuota del plan sabe quitar SU clave sin pintar un botón más.
   const pestana = sinComentarios(leer(PESTANA))
   expect(pestana).toContain("sobrescrito={overrides.modalidades?.[m.id]?.[semanal ? 'cuotaSemanal' : 'mensualidad'] !== undefined}")
   expect(pestana).toMatch(/onDescartar=\{\(\) => actualizar\(\(prev\) => escribirModalidad\(\s*prev, m\.id, semanal \? \{ cuotaSemanal: null \} : \{ mensualidad: null \},/)
+  expect(pestana).toContain('onReponer={(crudo) => actualizar((prev) => escribirRuta(prev, clave, crudo))}')
+  // Los contadores: la lista se quita si no tenía override al enfocar.
+  const lista = sinComentarios(leer('src/components/admin/personalizar/ListaEditable.tsx'))
+  const obj = lista.slice(lista.indexOf('export function ListaObjetos('))
+  const ent = obj.slice(obj.indexOf('<CampoEntero'), obj.indexOf('/>', obj.indexOf('<CampoEntero')))
+  expect(ent).toContain('sobrescrito={sobrescrito}')
+  expect(ent).toContain('onDescartar={onRestaurar}')
 })

@@ -545,15 +545,17 @@ export function parseEntero(texto: string): number | null {
  * y la pantalla también. Nunca se queda el último prefijo válido que se
  * propagó al teclear («60000» con tope 50,000 no deja 6000).
  *
- * - Si nada se propagó (`actual === alEntrar`), no se toca el borrador:
- *   salir de un campo vaciado no crea «Cambios sin publicar».
  * - Si al entrar NO tenía override y el campo sabe quitar su clave
- *   (`puedeDescartar`), se quita: escribir la cifra de fábrica dejaría un
- *   override fijo que ya no sigue al config.ts.
- * - Si no, se vuelve a escribir lo de al entrar, AUNQUE ya no quepa en el
- *   rango (la mensualidad decimal de CIEB, una fila fuera de rango): el
- *   campo sigue en rojo y el validador lo señala, en vez de publicar un
- *   prefijo que nadie quiso.
+ *   (`puedeDescartar`), se quita SIEMPRE: escribir la cifra de fábrica
+ *   dejaría un override fijo que ya no sigue al config.ts. Va ANTES del
+ *   atajo de abajo: teclear «599,00» sobre un 599 de fábrica propaga 5, 59
+ *   y 599, así que el valor acaba igual al de entrada pero la clave ya
+ *   existe. Quitar una clave que no está no cambia nada.
+ * - Si tenía override y el valor quedó igual, no se toca el borrador.
+ * - Si no, se vuelve a escribir lo de al entrar TAL CUAL, aunque ya no
+ *   quepa en el rango o ni siquiera sea número (la mensualidad decimal de
+ *   CIEB, una fila de BD escrita a mano): el campo sigue en rojo y el
+ *   validador lo señala, en vez de publicar un prefijo que nadie quiso.
  */
 export function alSalirConBasura({
   alEntrar, actual, sobrescritoAlEntrar, puedeDescartar,
@@ -562,16 +564,14 @@ export function alSalirConBasura({
   actual: unknown
   sobrescritoAlEntrar: boolean
   puedeDescartar: boolean
-}): { accion: 'nada' | 'descartar' | 'escribir'; valor?: number; texto: string } {
+}): { accion: 'nada' | 'descartar' | 'escribir'; valor?: unknown; texto: string } {
   const textoDe = (v: unknown) => (v === undefined || v === null ? '' : String(v))
-  if (Object.is(actual, alEntrar)) return { accion: 'nada', texto: textoDe(alEntrar) }
-  if ((!sobrescritoAlEntrar || alEntrar === undefined || alEntrar === null) && puedeDescartar) {
+  const vacioAlEntrar = alEntrar === undefined || alEntrar === null
+  if ((!sobrescritoAlEntrar || vacioAlEntrar) && puedeDescartar) {
     return { accion: 'descartar', texto: textoDe(alEntrar) }
   }
-  if (typeof alEntrar === 'number' && Number.isFinite(alEntrar)) {
-    return { accion: 'escribir', valor: alEntrar, texto: String(alEntrar) }
-  }
-  return { accion: 'nada', texto: textoDe(actual) }
+  if (Object.is(actual, alEntrar) || vacioAlEntrar) return { accion: 'nada', texto: textoDe(alEntrar) }
+  return { accion: 'escribir', valor: alEntrar, texto: textoDe(alEntrar) }
 }
 
 // ─── Publicar ────────────────────────────────────────────────────────────────
