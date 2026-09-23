@@ -29,8 +29,15 @@ test('1. «Mis pagos» pinta la inscripción que devuelve la API, con el formato
   expect(pagina).toMatch(/\n\s+inscripcion: number\n/)
   // Ya no lee la de fábrica (ni ninguna otra del config).
   expect(sinComentarios(pagina)).not.toMatch(/\bprecios\.inscripcion\b/)
-  // Y la API sigue dándole ese campo: la del nivel, de lo publicado (F2-6).
-  expect(leer('src/app/api/alumno/pagos/route.ts')).toContain('inscripcion:   inscripcionDe(nivel, precios),')
+  // Y la API sigue dándole ese campo: la del nivel, de lo PUBLICADO (F2-6). Se
+  // fija de dónde sale `precios`: si volviera a ser el config de fábrica, «Mis
+  // pagos» regresaría al defecto que F2-6b cierra (K5 del diseño).
+  const ruta = sinComentarios(leer('src/app/api/alumno/pagos/route.ts'))
+  expect(ruta).toContain('inscripcion:   inscripcionDe(nivel, precios),')
+  expect(ruta).toMatch(/const cfg = await getSiteConfig\(\)/)
+  expect(ruta).toContain('const precios = cfg.precios as unknown as Record<string, unknown>')
+  expect(ruta.match(/\bprecios\s*=/g)).toHaveLength(1)
+  expect(ruta).not.toMatch(/\bCONFIG\.precios\b/)
   // El formato de la plataforma: 0 es «Sin costo» (antes, «Gratis»).
   expect(textoInscripcion(0)).toBe('Sin costo')
   expect(textoInscripcion(750)).not.toBe('Sin costo')
@@ -67,6 +74,10 @@ test('4. clásica con inscripciones distintas: una frase por nivel, en el orden 
   // La general en 0 y un nivel con la suya: «sin costo», nunca «$0» ni «de sin costo».
   const cero = subtitulo({ inscripcion: 0, inscripcionPreparatoria: 1500 })
   expect(cero).toBe(`Inscripción de $1,500 en ${etiquetaNivel('preparatoria')} y sin costo en ${etiquetaNivel('secundaria')} · Elige tu nivel y plan`)
+  // El PRIMER nivel de las tarjetas paga la general y el otro tiene la suya: tampoco
+  // es una inscripción única (iguales entre sí NO; y aunque la primera sea la general).
+  expect(subtitulo({ inscripcion: 599, inscripcionSecundaria: 1000, inscripcionPreparatoria: null })).toBe(
+    `Inscripción de $599 en ${etiquetaNivel('preparatoria')} y de $1,000 en ${etiquetaNivel('secundaria')} · Elige tu nivel y plan`)
   // Un subtítulo propio que no afirma una inscripción única se respeta.
   expect(subtitulo(p, 'Prepa {inscripcionPreparatoria} · Sec {inscripcionSecundaria}'))
     .toBe('Prepa {inscripcionPreparatoria} · Sec {inscripcionSecundaria}') // (aquí sin vars por nivel: solo se mide que no se reemplace)

@@ -67,8 +67,8 @@ test('2. la tarjeta de Preparatoria antepone su clave a la mensualidad del plan'
 
 test('3. ningún consumidor lee la inscripción general a pelo, salvo el comodín {inscripcion}', () => {
   // Las lecturas permitidas son las que ALIMENTAN `vars.inscripcion` (la general,
-  // a propósito). "Mis pagos" (alumno/pagos/page.tsx:155) sigue con la de
-  // fábrica hasta F2-6b y no entra en esta lista.
+  // a propósito). «Mis pagos» pinta la del nivel que le da la API (F2-6b) y no
+  // lee ninguna del config.
   const permitidas: Record<string, string[]> = {
     [LANDING]: ['inscripcion: fmt(p.inscripcion),'],
     'src/components/landing/animada/LandingAnimada.tsx': [
@@ -76,6 +76,7 @@ test('3. ningún consumidor lee la inscripción general a pelo, salvo el comodí
     ],
     'src/app/api/alumno/pagos/route.ts': [],
     'src/app/(dashboard)/admin/alumnos/[id]/page.tsx': [],
+    'src/app/(dashboard)/alumno/pagos/page.tsx': [],
   }
   const lectura = /\b(?:p|precios|cfg\.precios|config\.precios)\.inscripcion\b(?!\w)|\bprecios\.inscripcion\b(?!\w)/
   for (const [archivo, lista] of Object.entries(permitidas)) {
