@@ -94,6 +94,13 @@ export const AYUDA_CUOTA_SEMANAL =
  */
 export const NOTA_PRECIOS_POR_NIVEL = 'Un nivel sin precio propio usa el general.'
 
+/**
+ * Ayuda de un campo por nivel cuando el config.ts de la escuela YA trae esa
+ * clave con cifra (Moreta): vaciar el campo no vuelve a la general sino a esa
+ * cifra, y la ayuda de siempre («sigue la general de hoy») mentiría.
+ */
+export const AYUDA_NIVEL_DE_FABRICA = 'Vacío = vuelve al precio que trae la configuración de tu escuela para este nivel.'
+
 /** Nota al pie de la pestaña Precios. */
 export const NOTA_PRECIOS =
   'Estos precios se muestran en tu página pública. Cambiarlos no modifica los pagos ya registrados. El precio de cada curso o diplomado se edita en su propia ficha.'

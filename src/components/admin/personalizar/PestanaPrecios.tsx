@@ -32,7 +32,7 @@ import { esSoloCursos } from '@/lib/modo'
 import { esSemanal } from '@/lib/periodicidad'
 import { equivalenteMXN, type Moneda } from '@/lib/moneda'
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
-import { AYUDA_CUOTA_SEMANAL, NOTA_PRECIOS, NOTA_PRECIOS_POR_NIVEL } from '@/lib/site-config-textos'
+import { AYUDA_CUOTA_SEMANAL, AYUDA_NIVEL_DE_FABRICA, NOTA_PRECIOS, NOTA_PRECIOS_POR_NIVEL } from '@/lib/site-config-textos'
 import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
   clavesPorNivelDePlan,
@@ -43,6 +43,7 @@ import {
   modalidadesEfectivas,
   planSobrescrito,
   precioNivelEfectivo,
+  precioNivelSobrescrito,
   preciosPorNivelVisibles,
   puedeDesactivar,
   quitarRuta,
@@ -174,27 +175,29 @@ export function PestanaPrecios({
    * landing, así que dicen lo que el nivel cobraría de verdad (incluido el
    * alias de secundaria de SAMEX o AULA RAÍZ, que `defaults` no trae).
    */
-  function campoNivel(clave: string, nivel: NivelConPrecio, planId?: string) {
+  function campoNivel(clave: string, nivel: NivelConPrecio, plan?: { id: string; mensualidad: number }) {
     const campo = campoPorClave(clave)
-    const destino = { clave, nivel, planId }
+    const destino = { clave, nivel, planId: plan?.id }
     const siVacio = precioNivelEfectivo(overrides, destino, { vacio: true })
     const cobra = precioNivelEfectivo(overrides, destino)
     // Un clon cuyo config.ts ya trae la clave con cifra: vaciar el campo
-    // vuelve a esa cifra, no a la general.
-    const deFabrica = Number(valorEfectivo(defaults, {}, clave)) > 0
+    // vuelve a esa cifra, no a la general. Y la secundaria de SAMEX o AULA
+    // RAÍZ no sigue la «Mensualidad general» del plan sino su alias.
+    const origen = Number(valorEfectivo(defaults, {}, clave)) > 0 ? 'fabrica'
+      : plan && siVacio !== plan.mensualidad ? 'hoy' : 'general'
     return (
       <CampoPrecioNivel
         key={clave}
         clave={clave}
         etiqueta={campo?.etiqueta ?? clave}
-        ayuda={campo?.ayuda}
+        ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA : campo?.ayuda}
         valor={valorEfectivo({}, overrides, clave)}
-        vacio={textoVacioNivel(siVacio, CONFIG.moneda, deFabrica)}
+        vacio={textoVacioNivel(siVacio, CONFIG.moneda, origen)}
         min={campo?.min ?? LIMITES.precioNivelMin}
         max={campo?.max ?? LIMITES.precioMax}
         sufijo={<EnPesos valor={cobra} moneda={CONFIG.moneda} />}
         deshabilitado={!puedeEditar}
-        sobrescrito={estaSobrescrito(overrides, clave)}
+        sobrescrito={precioNivelSobrescrito(overrides, clave)}
         resaltado={claveConError === clave}
         onChange={(n) => actualizar((prev) => escribirRuta(prev, clave, n))}
         onVaciar={() => actualizar((prev) => quitarRuta(prev, clave))}
@@ -338,7 +341,7 @@ export function PestanaPrecios({
                   <div className="space-y-3">
                     <Subtitulo>Precio por nivel (opcional)</Subtitulo>
                     {NIVELES_CON_PRECIO.map((n) => campoNivel(
-                      `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[n][m.meses as 3 | 6]}`, n, m.id,
+                      `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[n][m.meses as 3 | 6]}`, n, m,
                     ))}
                   </div>
                 )}

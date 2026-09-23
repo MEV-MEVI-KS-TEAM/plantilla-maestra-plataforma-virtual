@@ -623,6 +623,17 @@ export function restaurarPlan(
 }
 
 /**
+ * ¿Tiene precio propio este campo por nivel en el borrador? `null` cuenta
+ * como VACÍO, no como override: el validador lo descarta al publicar y la
+ * fila nunca lo guarda. Un 0 escrito a mano SÍ cuenta (es inválido y el
+ * admin necesita el «Restaurar» para quitarlo).
+ */
+export function precioNivelSobrescrito(overrides: SiteConfigOverrides, clave: string): boolean {
+  const v = valorEfectivo({}, overrides, clave)
+  return v !== undefined && v !== null
+}
+
+/**
  * ¿Hay algo que «Restaurar plan» deshaga? El plan, o una de sus claves por
  * nivel: el botón sale aunque solo esté sobrescrita una de ellas.
  */
@@ -632,7 +643,7 @@ export function planSobrescrito(
   modalidades?: ReadonlyArray<PlanDelEditor>,
 ): boolean {
   return overrides.modalidades?.[plan.id] !== undefined
-    || clavesPorNivelDePlan(plan, modalidades).some((clave) => estaSobrescrito(overrides, clave))
+    || clavesPorNivelDePlan(plan, modalidades).some((clave) => precioNivelSobrescrito(overrides, clave))
 }
 
 /**
@@ -658,14 +669,22 @@ export function precioNivelEfectivo(
 }
 
 /**
- * El marcador de un campo por nivel vacío: «Vacío: usa la general, $599».
- * Nunca «$0»: una general en 0 se dice «sin costo». `deFabrica` es para el
- * clon cuyo config.ts ya trae la clave con cifra: vaciar el campo vuelve a
- * ESA cifra, no a la general, y el marcador no puede prometer otra cosa.
+ * De dónde sale lo que cobra un nivel con el campo vacío:
+ *   - 'general': la general que se ve en la misma tarjeta (inscripción
+ *     general o «Mensualidad general» del plan);
+ *   - 'hoy': la de hoy del nivel, que NO es esa general — la secundaria de
+ *     SAMEX o AULA RAÍZ vive en su alias (2,700 frente a 3,000 del plan) y
+ *     decir «la general» junto a otra cifra sería contradecirse;
+ *   - 'fabrica': el clon cuyo config.ts ya trae la clave con cifra; vaciar
+ *     el campo vuelve a ESA cifra.
  */
-export function textoVacioNivel(monto: number, moneda: Moneda = CONFIG.moneda, deFabrica = false): string {
+export type OrigenVacio = 'general' | 'hoy' | 'fabrica'
+
+/** El marcador de un campo por nivel vacío: «Vacío: usa la general, $599». Nunca «$0». */
+export function textoVacioNivel(monto: number, moneda: Moneda = CONFIG.moneda, origen: OrigenVacio = 'general'): string {
   const cifra = monto > 0 ? formatoDinero(monto, moneda) : 'sin costo'
-  return deFabrica ? `Vacío: usa el de fábrica, ${cifra}` : `Vacío: usa la general, ${cifra}`
+  const cual = origen === 'fabrica' ? 'el de fábrica' : origen === 'hoy' ? 'la de hoy' : 'la general'
+  return `Vacío: usa ${cual}, ${cifra}`
 }
 
 /**

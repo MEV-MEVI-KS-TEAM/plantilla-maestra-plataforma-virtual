@@ -6,6 +6,8 @@ import { esSoloCursos } from '@/lib/modo'
 import { mergeSiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
 import { campoPorClave, LIMITES } from '@/lib/site-config-campos'
 import { mensualidadGeneralDe, inscripcionGeneral } from '@/lib/precios-nivel'
+import { validarOverrides } from '@/lib/site-config-validacion'
+import { mensualidadQA } from '../../e2e/_precios-qa'
 import {
   claveASenalar,
   clavesPorNivelDePlan,
@@ -15,6 +17,7 @@ import {
   planDeClaveNivel,
   planSobrescrito,
   precioNivelEfectivo,
+  precioNivelSobrescrito,
   preciosPorNivelVisibles,
   restaurarPlan,
   textoVacioNivel,
@@ -79,7 +82,9 @@ test('1. campo vacío (clave ausente o null en el clon): «usa la general $599»
   // Una general en 0 se dice «sin costo», no «$0».
   expect(textoVacioNivel(0, 'MXN')).toBe('Vacío: usa la general, sin costo')
   // El clon que ya trae la clave con cifra en su config.ts: vaciar vuelve a ESA.
-  expect(textoVacioNivel(1200, 'MXN', true)).toBe(`Vacío: usa el de fábrica, ${formatoDinero(1200, 'MXN')}`)
+  expect(textoVacioNivel(1200, 'MXN', 'fabrica')).toBe(`Vacío: usa el de fábrica, ${formatoDinero(1200, 'MXN')}`)
+  // SAMEX: la secundaria vacía sigue su alias, no la «Mensualidad general» del plan.
+  expect(textoVacioNivel(2700, 'MXN', 'hoy')).toBe(`Vacío: usa la de hoy, ${formatoDinero(2700, 'MXN')}`)
   expect(conPrecio('inscripcionSecundaria', 1200, () =>
     precioNivelEfectivo(ov, { clave: 'precios.inscripcionSecundaria', nivel: 'secundaria' }, { vacio: true }))).toBe(1200)
 })
@@ -165,6 +170,12 @@ test('4. «Restaurar plan» quita el plan y los precios por nivel de SU duració
   expect(planSobrescrito(soloUna, PLANES[0], PLANES)).toBe(true)
   expect(restaurarPlan(soloUna, PLANES[0], PLANES)).toEqual({})
   expect(planSobrescrito({}, PLANES[0], PLANES)).toBe(false)
+  // `null` es VACÍO (el validador lo descarta): ni «Restaurar plan» ni «Restaurar» del campo.
+  const nulo = escribirRuta({}, 'precios.mensualidadSecundaria3Meses', null)
+  expect(planSobrescrito(nulo, PLANES[0], PLANES)).toBe(false)
+  expect(precioNivelSobrescrito(nulo, 'precios.mensualidadSecundaria3Meses')).toBe(false)
+  // Un 0 escrito a mano SÍ: es inválido y hay que poder quitarlo.
+  expect(precioNivelSobrescrito(escribirRuta({}, 'precios.inscripcionSecundaria', 0), 'precios.inscripcionSecundaria')).toBe(true)
   expect(planSobrescrito(soloUna, PLANES[1], PLANES)).toBe(false)
 })
 
@@ -253,7 +264,7 @@ test('9. PestanaPrecios pinta un campo por clave nueva, y sigue con tipo de camb
   // Mensualidad: los dos niveles de la duración del plan, solo en el dueño de la clave.
   expect(codigo).toContain('const clavesNivel = clavesPorNivelDePlan(m, mods)')
   expect(codigo).toContain('const conSubbloque = !semanal && porNivel && !m.nivel && clavesNivel.length > 0')
-  expect(codigo).toContain('`precios.${CLAVE_MENSUALIDAD_POR_NIVEL[n][m.meses as 3 | 6]}`, n, m.id,')
+  expect(codigo).toContain('`precios.${CLAVE_MENSUALIDAD_POR_NIVEL[n][m.meses as 3 | 6]}`, n, m,')
   expect(codigo).toMatch(/\{conSubbloque && \(\s*<div className="space-y-3">\s*<Subtitulo>Precio por nivel \(opcional\)<\/Subtitulo>/)
   expect(codigo).toContain("etiqueta={semanal ? 'Cuota semanal' : conSubbloque ? 'Mensualidad general' : 'Mensualidad'}")
   expect(codigo.match(/campoNivel\(/g)).toHaveLength(3) // la definición + los dos usos
@@ -264,7 +275,10 @@ test('9. PestanaPrecios pinta un campo por clave nueva, y sigue con tipo de camb
   expect(campo).toContain('precioNivelEfectivo(overrides, destino)')
   expect(campo).toContain('onVaciar={() => actualizar((prev) => quitarRuta(prev, clave))}')
   expect(campo).toContain('valor={valorEfectivo({}, overrides, clave)}')
-  expect(campo).toContain('sobrescrito={estaSobrescrito(overrides, clave)}')
+  expect(campo).toContain('sobrescrito={precioNivelSobrescrito(overrides, clave)}')
+  expect(campo).toContain("plan && siVacio !== plan.mensualidad ? 'hoy' : 'general'")
+  expect(campo).toContain("ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA : campo?.ayuda}")
+  expect(campo).toContain("const origen = Number(valorEfectivo(defaults, {}, clave)) > 0 ? 'fabrica'")
   expect(campo).toContain('resaltado={claveConError === clave}')
   expect(campo).not.toMatch(/escribirRuta\(prev, clave, (null|0)\)/)
   // «Restaurar plan»: con las claves por nivel y aunque el plan no tenga override.
@@ -339,5 +353,39 @@ test('13. hayCambiosDePrecio ve cada clave por nivel', () => {
     'precios.mensualidadPreparatoria6Meses',
   ]) {
     expect(hayCambiosDePrecio({}, escribirRuta({}, clave, 1500), 'MXN'), clave).toBe(true)
+  }
+})
+
+// ─── 6. La cifra que publican las e2e (se editan, no se corren aquí) ─────────
+
+test('14. mensualidadQA: si 2500 rompe el escalón (Búfalo: 6 meses a 2800), elige una que el validador acepta', () => {
+  const C = CONFIG as unknown as { modalidades: unknown; niveles: unknown; periodicidad?: unknown }
+  const antes = { modalidades: C.modalidades, niveles: C.niveles, periodicidad: C.periodicidad }
+  const plan = { label: 'x', materiasPorMes: 4, activa: true }
+  try {
+    C.niveles = ['secundaria', 'preparatoria']
+    C.periodicidad = 'mensual'
+    C.modalidades = [{ ...plan, id: '3_meses', meses: 3, mensualidad: 3600 }, { ...plan, id: '6_meses', meses: 6, mensualidad: 2800 }]
+    const conClavesVacias = <T>(fn: () => T): T =>
+      ['mensualidadSecundaria3Meses', 'mensualidadSecundaria6Meses', 'mensualidadPreparatoria3Meses', 'mensualidadPreparatoria6Meses']
+        .reduce<() => T>((f, k) => () => conPrecio(k, null, f), fn)()
+    conClavesVacias(() => {
+      const base = mergeSiteConfig(CONFIG, {})
+      const pasa = (v: number) => validarOverrides({ modalidades: { '3_meses': { mensualidad: v } } }, base).ok
+      expect(pasa(2500)).toBe(false) // el 2500 fijo de antes: 400
+      const qa = mensualidadQA('3_meses')
+      expect(pasa(qa)).toBe(true)
+      expect(qa).toBeGreaterThanOrEqual(2800)
+      // Una cifra NUEVA: la landing prueba que llegó la publicada, no otra igual.
+      expect([3600, 2800]).not.toContain(qa)
+      // Donde 2500 sí cumple, se queda 2500.
+      C.modalidades = [{ ...plan, id: '3_meses', meses: 3, mensualidad: 2000 }, { ...plan, id: '6_meses', meses: 6, mensualidad: 1000 }]
+      expect(mensualidadQA('3_meses')).toBe(2500)
+    })
+  } finally {
+    C.modalidades = antes.modalidades
+    C.niveles = antes.niveles
+    if (antes.periodicidad === undefined) delete C.periodicidad
+    else C.periodicidad = antes.periodicidad
   }
 })
