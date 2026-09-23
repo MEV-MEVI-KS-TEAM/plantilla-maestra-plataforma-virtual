@@ -60,52 +60,32 @@ export function textoInscripcion(
   return formatearMoneda(Number(monto), CONFIG)
 }
 
-type PreciosPlanos = Readonly<Record<string, unknown>>
-type PlanMinimo = { readonly meses: number; readonly mensualidad: number | string }
-
-const numeroPositivo = (v: unknown): number | null => {
-  const n = Number(v)
-  return Number.isFinite(n) && n > 0 ? n : null
-}
-
 /**
- * La mensualidad REAL de un nivel en un plan.
- *
- * `modalidades[].mensualidad` guarda una sola cifra, la de preparatoria por
- * convención de la plantilla; la de secundaria vive en
- * `precios.secundaria_<meses>meses_normal`. Leer la del plan a secas le muestra
- * a secundaria la tarifa de preparatoria (SÉNDERI #194).
+ * El precio de cada NIVEL (mensualidad, total, inscripción y certificación)
+ * vive en `precios-nivel.ts`, que es puro para que también lo importe el PDF de
+ * entrega desde Node. Se reexporta aquí con las mismas firmas para que las
+ * pantallas sigan importando de `@/lib/precios-ui` (Fase 2, F2-4).
  *
  * ⚠️ EN AULA RAÍZ LOS DOS NIVELES CUESTAN DISTINTO —secundaria $2,500/$1,250 y
- *    preparatoria $3,000/$1,500— así que esto no es un detalle: sin este
- *    desvío, un alumno de secundaria vería $3,000 en el registro, en su estado
- *    de cuenta y en su recibo.
+ *    preparatoria $3,000/$1,500— así que `mensualidadDe` no es un detalle: sin
+ *    el desvío al alias de secundaria, un alumno de secundaria vería $3,000 en
+ *    el registro, en su estado de cuenta y en su recibo.
  */
-export function mensualidadDe(nivel: string, plan: PlanMinimo, precios: PreciosPlanos): number {
-  if (nivel === 'secundaria') {
-    const propia = numeroPositivo(precios[`secundaria_${plan.meses}meses_normal`])
-    if (propia !== null) return propia
-  }
-  return Number(plan.mensualidad) || 0
-}
-
-/** Certificación por nivel (pago único al concluir, fuera del total del plan). */
-export function certificacionDe(nivel: string, precios: PreciosPlanos): number {
-  const claves = nivel === 'secundaria'
-    ? ['certificacionSecundaria', 'certificacion_secundaria']
-    : ['certificacionPreparatoria', 'certificacion_preparatoria']
-  for (const clave of claves) {
-    const v = numeroPositivo(precios[clave])
-    if (v !== null) return v
-  }
-  return 0
-}
-
-/** Inscripción + todas las mensualidades del plan, para un nivel. */
-export function totalPlanDe(nivel: string, plan: PlanMinimo, precios: PreciosPlanos): number {
-  const inscripcion = numeroPositivo(precios.inscripcion) ?? 0
-  return inscripcion + plan.meses * mensualidadDe(nivel, plan, precios)
-}
+export {
+  CLAVE_INSCRIPCION_POR_NIVEL,
+  CLAVE_MENSUALIDAD_POR_NIVEL,
+  certificacionDe,
+  inscripcionDe,
+  inscripcionGeneral,
+  inscripcionPropiaDe,
+  mensualidadDe,
+  mensualidadGeneralDe,
+  mensualidadPropiaDe,
+  totalPlanDe,
+  type NivelConPrecio,
+  type PlanMinimo,
+  type Precios,
+} from './precios-nivel'
 
 /** Lo que es verdad de cada plan. 🛑 Ni «ahorro» ni «recomendado». */
 export const ETIQUETA_MAS_RAPIDO = 'Terminas más rápido'

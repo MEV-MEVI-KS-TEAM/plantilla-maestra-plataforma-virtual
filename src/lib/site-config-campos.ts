@@ -106,6 +106,12 @@ export interface Campo {
    * (hero_badges, respaldo_*). El editor la muestra con ese aviso o la esconde.
    */
   noVisibleEnLanding?: boolean
+  /**
+   * entero: el default de config.ts puede ser `null` = VACÍO (se usa el valor
+   * general). Un override, si llega, tiene que estar en [min, max]. Lo usan los
+   * precios por nivel (Fase 2), que nacen vacíos.
+   */
+  opcional?: boolean
 }
 
 // ─── Límites ─────────────────────────────────────────────────────────────────
@@ -152,6 +158,12 @@ export const LIMITES = {
   /** Precios y mensualidades, en MXN enteros. */
   precioMin: 0,
   precioMax: 50000,
+  /**
+   * Precio POR NIVEL (Fase 2): si se escribe, tiene que ser > 0. Vacío (`null`)
+   * no es 0: significa "usa el precio general". Un nivel "Sin costo" mientras el
+   * general cobra no se puede expresar a propósito (decisión 4 del diseño).
+   */
+  precioNivelMin: 1,
   /**
    * Cuota SEMANAL (escuelas con `periodicidad: 'semanal'`). Tope propio: una
    * cuota es del orden de una cuarta parte de una mensualidad, y el techo de las
@@ -427,10 +439,30 @@ export const CAMPOS: ReadonlyArray<Campo> = [
   // ── Precios (canónicos; los alias legacy se derivan en el merge) ──
   { clave: 'precios.inscripcion', seccion: 'precios', etiqueta: 'Inscripción', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax, ayuda: 'Sin centavos, en la moneda de cobro de la escuela.' },
+  // Por nivel (Fase 2): nacen vacíos (`null`) = se usa el precio general.
+  { clave: 'precios.inscripcionSecundaria', seccion: 'precios', etiqueta: 'Inscripción de Secundaria', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general.' },
+  { clave: 'precios.inscripcionPreparatoria', seccion: 'precios', etiqueta: 'Inscripción de Preparatoria', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general.' },
   { clave: 'precios.certificacionSecundaria', seccion: 'precios', etiqueta: 'Certificación de Secundaria', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax },
   { clave: 'precios.certificacionPreparatoria', seccion: 'precios', etiqueta: 'Certificación de Preparatoria', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax },
+  // Mensualidad por nivel y duración. La etiqueta NO lleva la palabra
+  // "Mensualidad": la e2e del editor busca ese rótulo por subcadena dentro de la
+  // caja de cada plan, y tres coincidencias romperían su modo estricto.
+  { clave: 'precios.mensualidadSecundaria3Meses', seccion: 'precios', etiqueta: 'Secundaria · 3 meses', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
+    ayuda: 'Vacío = la mensualidad de hoy para Secundaria en este plan.' },
+  { clave: 'precios.mensualidadSecundaria6Meses', seccion: 'precios', etiqueta: 'Secundaria · 6 meses', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
+    ayuda: 'Vacío = la mensualidad de hoy para Secundaria en este plan.' },
+  { clave: 'precios.mensualidadPreparatoria3Meses', seccion: 'precios', etiqueta: 'Preparatoria · 3 meses', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
+    ayuda: 'Vacío = la mensualidad de hoy para Preparatoria en este plan.' },
+  { clave: 'precios.mensualidadPreparatoria6Meses', seccion: 'precios', etiqueta: 'Preparatoria · 6 meses', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
+    ayuda: 'Vacío = la mensualidad de hoy para Preparatoria en este plan.' },
 
   // ── Tipo de cambio (solo se pinta si la escuela NO cobra en pesos) ──
   { clave: 'tipoCambioMXN', seccion: 'precios', etiqueta: 'Tipo de cambio (pesos por dólar)', tipo: 'decimal',
