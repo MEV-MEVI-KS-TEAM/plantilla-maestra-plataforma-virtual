@@ -17,6 +17,11 @@
  *   - "al instante": la propia barra de publicar dice que tarda unos segundos;
  *   - "cada alumno conserva la cuota con la que se inscribió": "Regenerar" en
  *     Cobranza rehace las semanas pendientes y vencidas con la cuota vigente.
+ *
+ * «Mis pagos» (api/alumno/pagos/route.ts) toma la cuota y el total del plan
+ * PUBLICADO, pero solo si el nivel del alumno tiene UN plan activo
+ * (`modalidadPorNivel`); con 0 o 2+ la pantalla dice que no hay calendario.
+ * Las filas de cada semana conservan su `monto` hasta que se regenera.
  */
 
 export interface OpcionesConfirmaPrecios {
@@ -29,12 +34,34 @@ export interface OpcionesConfirmaPrecios {
 /** El modal que sale al publicar un cambio de precios, planes o tipo de cambio. */
 export function textoConfirmaPrecios({ semanal, cambiaTipoCambio }: OpcionesConfirmaPrecios): string {
   const base = semanal
-    ? 'La cuota nueva se verá en tu página pública en unos segundos y se usará en el calendario de quien se inscriba a partir de ahora. Las semanas ya generadas conservan su monto; las pendientes y vencidas solo se recalculan si regeneras el calendario de un alumno en Cobranza.'
+    ? 'La cuota nueva se verá en tu página pública en unos segundos y se usará en el calendario de quien se inscriba a partir de ahora. Tus alumnos ya inscritos la verán como referencia en «Mis pagos» (si su nivel tiene un solo plan activo), pero sus semanas ya generadas conservan su monto hasta que regeneres su calendario en Cobranza (ahí se recalculan las pendientes y vencidas).'
     : 'Los precios nuevos se verán en tu página pública en unos segundos. Los pagos que ya registraste no cambian. Si apagaste o encendiste un plan, también cambia lo que se ofrece al registrarse.'
   const tipoCambio = cambiaTipoCambio
     ? ' El tipo de cambio nuevo solo cambia la equivalencia en pesos que se muestra; los pagos ya registrados conservan la suya.'
     : ''
   return `${base}${tipoCambio} ¿Publicar?`
+}
+
+export const TITULO_CONFIRMA_PRECIOS = 'Vas a cambiar precios'
+export const TITULO_CONFIRMA_TIPO_CAMBIO = 'Vas a cambiar el tipo de cambio'
+
+/** El modal cuando lo ÚNICO que cambia es el tipo de cambio: sin hablar de precios ni cuotas. */
+export const TEXTO_CONFIRMA_SOLO_TIPO_CAMBIO =
+  'El tipo de cambio nuevo solo cambia la equivalencia en pesos que se muestra; los pagos ya registrados conservan la suya. ¿Publicar?'
+
+/**
+ * Título y texto del modal de publicar, según lo que cambió. Si solo cambió el
+ * tipo de cambio, el modal no habla de precios ni de cuotas que nadie tocó.
+ */
+export function confirmacionDePrecios({
+  semanal,
+  cambiaPrecios,
+  cambiaTipoCambio,
+}: OpcionesConfirmaPrecios & { cambiaPrecios: boolean }): { titulo: string; mensaje: string } {
+  if (!cambiaPrecios && cambiaTipoCambio) {
+    return { titulo: TITULO_CONFIRMA_TIPO_CAMBIO, mensaje: TEXTO_CONFIRMA_SOLO_TIPO_CAMBIO }
+  }
+  return { titulo: TITULO_CONFIRMA_PRECIOS, mensaje: textoConfirmaPrecios({ semanal, cambiaTipoCambio }) }
 }
 
 /**
@@ -47,7 +74,7 @@ export const TEXTO_CONFIRMA_RESTAURAR =
 
 /** Ayuda bajo los planes de una escuela SEMANAL (pestaña Precios). */
 export const AYUDA_CUOTA_SEMANAL =
-  'Cambiar la cuota no modifica las semanas que ya se generaron. La cuota nueva se usa en el calendario de quien se inscriba a partir de ahora y en los que regeneres desde Cobranza, donde se recalculan las semanas pendientes y vencidas.'
+  'Cambiar la cuota no modifica las semanas que ya se generaron. La cuota nueva se usa en el calendario de quien se inscriba a partir de ahora y en los que regeneres desde Cobranza, donde se recalculan las semanas pendientes y vencidas. Tus alumnos ya inscritos la ven como referencia en «Mis pagos» (si su nivel tiene un solo plan activo), pero sus semanas conservan su monto hasta que regeneres su calendario.'
 
 /** Nota al pie de la pestaña Precios. */
 export const NOTA_PRECIOS =

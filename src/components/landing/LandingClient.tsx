@@ -11,11 +11,12 @@ import { CONFIG } from '@/lib/config'
 import { planesPorNivel, getDuracionLabel, getPlanLabelConDuracion, getTotalPlan,
   type ModalidadPrograma } from '@/lib/modalidades'
 import { esSemanal, unidadCuota } from '@/lib/periodicidad'
-import { interpolar, type LandingConfig } from '@/lib/site-config-core'
+import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 import { precioPublico } from '@/lib/cursos/catalogo'
+import { varsInscripcionPorNivel } from '@/lib/precios-ui'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
 const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
@@ -353,7 +354,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
     nombreCompleto: config.nombreCompleto,
     whatsapp: config.whatsapp,
     inscripcion: fmt(p.inscripcion),
-  }
+    // Con las claves por nivel vacías valen lo mismo que {inscripcion}.
+    ...varsInscripcionPorNivel(p, fmt),
+  } satisfies Record<Placeholder, string>
+  // `satisfies`: un comodín de PLACEHOLDERS sin su valor aquí no compila (saldría literal).
   // `s?: string` a propósito: `resolverLanding` ya garantiza las 42 claves,
   // pero DENTRO de las listas (`contadores[i].etiqueta`, `faq_items[i].a`…) los
   // campos siguen viniendo del config.ts del cliente. Un campo que falte pinta

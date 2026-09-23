@@ -216,8 +216,10 @@ export function PestanaTextos({
         ))}
         .{' '}
         <span style={{ color: TXT_TENUE }}>
-          Por ejemplo, <code>{'{duracion}'}</code> escribe los meses de tus planes activos y{' '}
-          <code>{'{inscripcion}'}</code> el precio de inscripción.
+          Por ejemplo, <code>{'{duracion}'}</code> escribe los meses de tus planes activos,{' '}
+          <code>{'{inscripcion}'}</code> el precio de inscripción general y{' '}
+          <code>{'{inscripcionSecundaria}'}</code> o <code>{'{inscripcionPreparatoria}'}</code> el de
+          ese nivel (si no tiene precio propio, el general).
         </span>
       </Aviso>
 

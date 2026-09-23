@@ -24,6 +24,7 @@
  */
 import type { Moneda } from './moneda'
 import { CONFIG } from '@/lib/config'
+import { inscripcionDe } from '@/lib/precios-nivel'
 import type { OverrideModalidad, SiteConfigOverrides } from '@/lib/site-config-core'
 import {
   PALETAS,
@@ -288,6 +289,31 @@ export function escribirModalidad(
 }
 
 /**
+ * Las tres inscripciones que pinta la vista previa, sobre el BORRADOR.
+ *
+ * La general sale como siempre (el número efectivo, o 0). La de cada nivel
+ * sigue la misma regla que la landing (`inscripcionDe`): la propia si la hay;
+ * si no, la general. Con las claves por nivel vacías, las tres valen lo mismo
+ * (Fase 2).
+ */
+export function inscripcionesDeBorrador(
+  base: unknown,
+  overrides: SiteConfigOverrides,
+): { inscripcion: number; inscripcionSecundaria: number; inscripcionPreparatoria: number } {
+  const general = valorEfectivo(base, overrides, 'precios.inscripcion')
+  const precios = {
+    inscripcion: general,
+    inscripcionSecundaria: valorEfectivo(base, overrides, 'precios.inscripcionSecundaria'),
+    inscripcionPreparatoria: valorEfectivo(base, overrides, 'precios.inscripcionPreparatoria'),
+  }
+  return {
+    inscripcion: typeof general === 'number' ? general : 0,
+    inscripcionSecundaria: inscripcionDe('secundaria', precios),
+    inscripcionPreparatoria: inscripcionDe('preparatoria', precios),
+  }
+}
+
+/**
  * Las modalidades como se verán publicadas: las de config.ts con la
  * mensualidad y el `activa` que el admin tenga sin publicar. Conserva orden y
  * longitud de la base — el editor no agrega ni quita planes, eso cambiaría el
@@ -521,9 +547,20 @@ export function hayCambiosDePrecio(
   moneda: Moneda = CONFIG.moneda,
 ): boolean {
   return (
-    !mismoContenido(antes.precios, despues.precios) ||
-    !mismoContenido(antes.modalidades, despues.modalidades) ||
+    hayCambiosDePreciosOPlanes(antes, despues) ||
     (moneda !== 'MXN' && hayCambioDeTipoCambio(antes, despues))
+  )
+}
+
+/**
+ * ¿Cambió un precio o un plan (incluido el `activa`)? Separado del tipo de
+ * cambio para que el modal sepa cuándo lo ÚNICO que cambia es la equivalencia
+ * en pesos y no hable de precios que nadie tocó.
+ */
+export function hayCambiosDePreciosOPlanes(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
+  return (
+    !mismoContenido(antes.precios, despues.precios) ||
+    !mismoContenido(antes.modalidades, despues.modalidades)
   )
 }
 

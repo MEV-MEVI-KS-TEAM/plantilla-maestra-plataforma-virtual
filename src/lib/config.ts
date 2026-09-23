@@ -361,9 +361,10 @@ export const CONFIG = {
     //
     // PLACEHOLDERS: {duracion} → getDuracionLabel() con las modalidades del
     // config fusionado; {nombre}, {nombreCompleto}, {whatsapp} → esas claves;
-    // {inscripcion} → precio de inscripción formateado como hoy (fmt). Se
-    // sustituyen al pintar con `interpolar()` (site-config-core.ts); un
-    // placeholder desconocido se deja tal cual.
+    // {inscripcion} → precio de inscripción formateado como hoy (fmt), la GENERAL;
+    // {inscripcionSecundaria} / {inscripcionPreparatoria} → la de ese nivel (si
+    // no tiene la suya, la general). Se sustituyen al pintar con `interpolar()`
+    // (site-config-core.ts); un placeholder desconocido se deja tal cual.
     //
     // Lo que NO está aquí se queda literal en la landing a propósito (etiquetas
     // de interfaz: nav, 'Preparatoria'/'Secundaria', 'Inscripción:', '/mes',

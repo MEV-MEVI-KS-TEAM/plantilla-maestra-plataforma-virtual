@@ -13,9 +13,10 @@
  * Se pinta con los valores del FORMULARIO, no con los publicados: es lo que se
  * verá al pulsar "Publicar cambios".
  */
-import { interpolar } from '@/lib/site-config-core'
+import { interpolar, type Placeholder } from '@/lib/site-config-core'
 import { getDuracionLabel } from '@/lib/modalidades'
 import { formatoDinero, type ModalidadEditable } from '@/lib/site-config-editor'
+import { varsInscripcionPorNivel } from '@/lib/precios-nivel'
 import type { Moneda } from '@/lib/moneda'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import { BORDE, TXT, TXT_SUAVE, TXT_TENUE } from './Comunes'
@@ -32,6 +33,9 @@ export interface VistaPreviaProps {
   heroSubtitulo: string
   heroCtaPrimario: string
   inscripcion: number
+  /** La inscripción EFECTIVA de cada nivel en el borrador (la propia o, si no, la general). */
+  inscripcionSecundaria: number
+  inscripcionPreparatoria: number
   modalidades: ModalidadEditable[]
   /** Moneda de cobro de la escuela: la previa tiene que enseñar lo que verá el alumno. */
   moneda: Moneda
@@ -39,7 +43,8 @@ export interface VistaPreviaProps {
 
 export function VistaPrevia({
   colores, logo, nombre, nombreCompleto, tagline, whatsapp,
-  heroTitulo, heroHighlight, heroSubtitulo, heroCtaPrimario, inscripcion, modalidades, moneda,
+  heroTitulo, heroHighlight, heroSubtitulo, heroCtaPrimario, inscripcion,
+  inscripcionSecundaria, inscripcionPreparatoria, modalidades, moneda,
 }: VistaPreviaProps) {
   // Los mismos placeholders y en el mismo orden que LandingClient: si aquí se
   // vieran las llaves sin sustituir, el admin creería que su texto está roto.
@@ -49,7 +54,11 @@ export function VistaPrevia({
     nombreCompleto,
     whatsapp,
     inscripcion: formatoDinero(inscripcion, moneda),
-  }
+    // Las cifras llegan ya resueltas por nivel (`inscripcionesDeBorrador`); el
+    // helper es el mismo de las dos landings.
+    ...varsInscripcionPorNivel({ inscripcion, inscripcionSecundaria, inscripcionPreparatoria }, (m) => formatoDinero(m, moneda)),
+  } satisfies Record<Placeholder, string>
+  // `satisfies`: un comodín de PLACEHOLDERS sin su valor aquí no compila (saldría literal).
   const t = (s: string) => interpolar(s, vars)
 
   return (
