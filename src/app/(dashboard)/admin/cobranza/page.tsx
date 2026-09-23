@@ -208,10 +208,16 @@ export default function CobranzaPage() {
                   <button
                     disabled={trabajando}
                     onClick={() => {
-                      const f = window.prompt('Fecha de inicio del calendario (AAAA-MM-DD). Vacío = hoy:')
+                      // Regenerar BORRA las semanas pendientes y vencidas y las recrea
+                      // con la cuota que haya en ese momento (generar_calendario_pagos,
+                      // migración 20260910130000). Se avisa ANTES, no después.
+                      if (!window.confirm(
+                        `Regenerar el calendario de ${a.nombre_completo}: las semanas PENDIENTES y VENCIDAS se borran y se vuelven a crear con la cuota semanal vigente de su nivel (la publicada en Personalizar mi página). Las semanas pagadas o condonadas no cambian. Si tenía un plan a medida, se sustituye por el plan de su nivel. ¿Continuar?`,
+                      )) return
+                      const f = window.prompt('Fecha de la SEMANA 1 (AAAA-MM-DD). Vacío = hoy. Si el alumno ya lleva semanas, una fecha posterior mueve sus semanas vencidas al futuro y dejan de contar como vencidas.')
                       if (f === null) return
                       accion(a.id, { accion: 'regenerar', fecha_inicio: f.trim() || undefined },
-                        'Calendario regenerado. Las semanas ya pagadas o condonadas se conservaron.')
+                        'Calendario regenerado: las semanas pendientes y vencidas quedaron con la cuota vigente. Las pagadas y condonadas no cambiaron.')
                     }}
                     style={{
                       padding: '6px 12px', borderRadius: 8, border: `1px solid ${C.borde}`,
