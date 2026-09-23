@@ -4,6 +4,7 @@ import { CONFIG } from '@/lib/config'
 import { getNivelLabel } from '@/lib/modalidades'
 import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { waUrl } from '@/lib/whatsapp'
 
 /**
  * Qué vende el cliente, leído de su config.
@@ -68,7 +69,7 @@ export function Footer() {
           <>
             <span style={{ color: '#2A2F3E' }}>·</span>
             <a
-              href={`https://wa.me/${cfg.contactoTelefono}`}
+              href={waUrl(cfg.contactoTelefono) ?? undefined}
               className="text-xs transition-colors"
               style={{ color: '#374151' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}

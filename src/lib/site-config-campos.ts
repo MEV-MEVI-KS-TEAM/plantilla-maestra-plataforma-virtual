@@ -193,7 +193,7 @@ export const CAMPOS: ReadonlyArray<Campo> = [
 
   // ── Contacto ──
   { clave: 'whatsapp', seccion: 'contacto', etiqueta: 'WhatsApp (número)', tipo: 'telefono', max: LIMITES.telefono,
-    ayuda: 'Solo dígitos con lada de país, p. ej. 5219991234567. Es lo que sale como {whatsapp}.' },
+    ayuda: 'Solo dígitos con lada de país, p. ej. 5219991234567 (un celular de 10 dígitos se guarda con 52 delante). Es lo que sale como {whatsapp}.' },
   { clave: 'whatsappUrl', seccion: 'contacto', etiqueta: 'Enlace de WhatsApp', tipo: 'url', max: LIMITES.url,
     ayuda: 'https://wa.me/… No puede quedar vacío.' },
   { clave: 'whatsappDisplay', seccion: 'contacto', etiqueta: 'WhatsApp (como se muestra)', tipo: 'texto', max: LIMITES.kicker },

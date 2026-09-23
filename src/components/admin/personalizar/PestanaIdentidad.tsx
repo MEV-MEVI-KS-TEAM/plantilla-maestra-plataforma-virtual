@@ -28,6 +28,7 @@ import {
 import { CampoTexto } from './CampoTexto'
 import { SubidaLogo, type RespuestaLogo } from './SubidaLogo'
 import { Ayuda, Tarjeta, TXT_SUAVE, type PropsPestana } from './Comunes'
+import { normalizarWhatsApp } from '@/lib/whatsapp'
 
 const ICONO = { className: 'w-4 h-4', style: { color: 'var(--color-acento)' } }
 
@@ -55,6 +56,9 @@ export function PestanaIdentidad({
 
   const whatsapp = txt('whatsapp')
   const whatsappValido = /^\d{10,13}$/.test(whatsapp)
+  // 10 dígitos = celular mexicano sin lada de país: el servidor lo guarda con
+  // 52 delante (normalizarWhatsApp). La vista previa enseña el enlace REAL.
+  const whatsappSinLada = whatsapp.length === 10
 
   return (
     <div className="space-y-5">
@@ -110,8 +114,9 @@ export function PestanaIdentidad({
           ayudaEsError={!whatsappValido}
           ayuda={
             whatsappValido
-              ? `Enlace: https://wa.me/${whatsapp}`
-              : 'Solo dígitos con lada de país (10 a 13), p. ej. 5219991234567.'
+              ? `Enlace: https://wa.me/${normalizarWhatsApp(whatsapp)}` +
+                (whatsappSinLada ? ' (se agrega 52 de México al guardar)' : '')
+              : 'Solo dígitos: 10 de un celular de México (se le agrega 52) o con lada de país (hasta 13), p. ej. 5219991234567.'
           }
           deshabilitado={!puedeEditar}
           resaltado={claveConError === 'whatsapp' || claveConError === 'contactoTelefono'}

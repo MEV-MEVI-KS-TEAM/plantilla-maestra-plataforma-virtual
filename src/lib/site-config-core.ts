@@ -22,6 +22,7 @@
  */
 import type { Moneda } from '@/lib/moneda'
 import { CONFIG } from '@/lib/config'
+import { normalizarWhatsApp, normalizarWhatsAppUrl } from '@/lib/whatsapp'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -721,6 +722,31 @@ export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteC
 }
 
 /**
+ * Normaliza AL LEER los números de WhatsApp de la escuela (`whatsapp`,
+ * `contactoTelefono`) y el `whatsappUrl` derivado: un celular mexicano de 10
+ * dígitos recibe el `52` que le falta (ver `normalizarWhatsApp`).
+ *
+ * Existe para los números que se guardaron ANTES de que el editor los
+ * normalizara al guardar (CONFIG de un cliente o fila de la BD con
+ * `5580803210`): sin esto seguirían publicando `https://wa.me/5580803210`, que
+ * no llega a nadie, y el botón de la escuela se escondía. Idempotente, y con
+ * un número ya completo (11–13 dígitos) no cambia nada: `mergeSiteConfig(CONFIG,
+ * {})` sigue deep-equal a la base de la plantilla.
+ */
+export function normalizarContactoWhatsApp(cfg: SiteConfig): SiteConfig {
+  // Solo se reescribe el caso roto (10 dígitos): cualquier otro valor —vacío,
+  // ya con lada, o con separadores que alguien quiso así— se deja intacto.
+  const diezDigitos = (v: unknown): v is string =>
+    typeof v === 'string' && v.replace(/\D/g, '').length === 10
+  if (diezDigitos(cfg.whatsapp)) cfg.whatsapp = normalizarWhatsApp(cfg.whatsapp)
+  if (diezDigitos(cfg.contactoTelefono)) cfg.contactoTelefono = normalizarWhatsApp(cfg.contactoTelefono)
+  if (typeof cfg.whatsappUrl === 'string' && cfg.whatsappUrl) {
+    cfg.whatsappUrl = normalizarWhatsAppUrl(cfg.whatsappUrl)
+  }
+  return cfg
+}
+
+/**
  * Fusiona los defaults de config.ts con los overrides de la BD.
  *
  *  - NUNCA muta `base`: devuelve un clon profundo nuevo.
@@ -751,7 +777,9 @@ export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteC
  */
 export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteConfig {
   const resultado = clonar(base) as SiteConfig
-  if (!esObjetoPlano(overrides)) return resolverLogos(resultado, { logo: false, logoOscuro: false })
+  if (!esObjetoPlano(overrides)) {
+    return normalizarContactoWhatsApp(resolverLogos(resultado, { logo: false, logoOscuro: false }))
+  }
 
   const aplicados: PreciosAplicados = {}
   const logos: LogosAplicados = { logo: false, logoOscuro: false }
@@ -777,6 +805,7 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
   }
 
   resolverLogos(resultado, logos)
+  normalizarContactoWhatsApp(resultado)
   aplicados.mensualidades = aplicarModalidades(resultado, overrides.modalidades)
 
   return derivarAliasPrecios(resultado, aplicados)

@@ -23,6 +23,7 @@
  * `whatsappUrl` derivado, nulls fuera), listo para el upsert. Nunca el cuerpo
  * tal cual: el cuerpo lo escribió el cliente.
  */
+import { normalizarWhatsApp } from '@/lib/whatsapp'
 import { z } from 'zod'
 import {
   CLAVES_EDITABLES,
@@ -272,7 +273,9 @@ function validarTelefono(valor: unknown, etiqueta: string): Limpio<string> | Fal
   if (typeof valor !== 'string' || !TELEFONO.test(valor.trim())) {
     return fallo(`El campo ${etiqueta} debe tener entre 10 y 13 dígitos, sin espacios ni signos`)
   }
-  return { ok: true, valor: valor.trim() }
+  // 10 dígitos = celular mexicano sin lada de país: se guarda con 52 delante,
+  // o el wa.me derivado no llega a nadie (CONECTM EDU, 22-sep-2026).
+  return { ok: true, valor: normalizarWhatsApp(valor.trim()) }
 }
 
 const esquemaEmail = z.email()

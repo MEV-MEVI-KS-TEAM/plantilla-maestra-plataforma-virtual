@@ -15,6 +15,7 @@ import { useSiteConfig } from '@/components/site-config-provider'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
+import { waUrl } from '@/lib/whatsapp'
 
 interface AlumnoDetalle {
   id: string
@@ -770,9 +771,7 @@ export default function AlumnoDetallePage() {
           <p style={{ color: '#94A3B8' }}>WhatsApp</p>
           {alumno.usuario.telefono ? (
             <a
-              href={`https://wa.me/${alumno.usuario.telefono.replace(/\D/g, '').length === 10
-                ? `52${alumno.usuario.telefono.replace(/\D/g, '')}`
-                : alumno.usuario.telefono.replace(/\D/g, '')}`}
+              href={waUrl(alumno.usuario.telefono) ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 mt-0.5 font-medium"

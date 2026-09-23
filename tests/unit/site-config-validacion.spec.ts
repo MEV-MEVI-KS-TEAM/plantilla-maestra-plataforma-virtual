@@ -375,7 +375,11 @@ test('23. whatsapp: dígitos 10-13; whatsappUrl SIEMPRE derivado', () => {
     whatsapp: '5212345678901',
     whatsappUrl: 'https://wa.me/5212345678901',
   })
-  expect(ok(v({ whatsapp: '5551234567' })).whatsappUrl).toBe('https://wa.me/5551234567')
+  // 10 dígitos (celular MX sin lada) → se guarda con 52 delante (CONECTM EDU)
+  expect(ok(v({ whatsapp: '5551234567' }))).toEqual({
+    whatsapp: '525551234567',
+    whatsappUrl: 'https://wa.me/525551234567',
+  })
   // whatsappUrl propio se ignora y se sobreescribe
   expect(ok(v({ whatsapp: '5212345678901', whatsappUrl: 'https://evil.com' })).whatsappUrl)
     .toBe('https://wa.me/5212345678901')

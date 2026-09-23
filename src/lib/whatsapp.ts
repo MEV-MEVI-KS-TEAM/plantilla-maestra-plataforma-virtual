@@ -1,12 +1,43 @@
 /**
+ * El número de WhatsApp listo para `wa.me`: solo dígitos y, si quedan
+ * EXACTAMENTE 10 (un celular mexicano capturado sin lada de país), con `52`
+ * delante. Cualquier otra longitud se devuelve tal cual (solo dígitos): no se
+ * adivina la lada de nadie más. Vacío → `''`.
+ *
+ * 🛑 Por qué existe (CONECTM EDU, 22-sep-2026): "Personalizar mi página"
+ * aceptaba 10 dígitos (`5580803210`) y los guardaba así; el enlace derivado
+ * salía `https://wa.me/5580803210` —WhatsApp lo interpreta con otra lada y no
+ * llega a nadie— y el botón de la escuela, que exige 11–13 dígitos, se
+ * escondía. Se normaliza al GUARDAR (validación del editor) y al LEER
+ * (`mergeSiteConfig`), así que también se corrigen los números que ya estaban
+ * guardados con 10 dígitos, sin tocar la BD.
+ *
+ * Idempotente: `normalizarWhatsApp(normalizarWhatsApp(x)) === normalizarWhatsApp(x)`.
+ */
+export function normalizarWhatsApp(telefono: string | null | undefined): string {
+  if (typeof telefono !== 'string') return ''
+  const limpio = telefono.replace(/\D/g, '')
+  return limpio.length === 10 ? `52${limpio}` : limpio
+}
+
+/**
  * Convención wa.me del proyecto (misma que waContactarUrl en admin/alumnos):
  * se limpian no-dígitos y a los números de 10 dígitos (MX) se les antepone 52.
  */
 export function waNumero(telefono: string | null | undefined): string | null {
-  if (!telefono) return null
-  const limpio = telefono.replace(/\D/g, '')
-  if (!limpio) return null
-  return limpio.length === 10 ? `52${limpio}` : limpio
+  return normalizarWhatsApp(telefono) || null
+}
+
+/**
+ * `https://wa.me/<número>` con el número ya normalizado, conservando lo que
+ * venga detrás del número (`?text=…`). Para arreglar un `whatsappUrl` guardado
+ * antes de la normalización. Si no es un enlace `wa.me/<dígitos>` se devuelve
+ * tal cual.
+ */
+export function normalizarWhatsAppUrl(url: string): string {
+  const m = /^(https?:\/\/wa\.me\/)(\d+)(.*)$/.exec(url.trim())
+  if (!m) return url
+  return `${m[1]}${normalizarWhatsApp(m[2])}${m[3]}`
 }
 
 /**

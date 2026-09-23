@@ -11,6 +11,7 @@ import { useSiteConfig } from '@/components/site-config-provider'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin, esOpcionCurso } from '@/lib/niveles'
 import { hayOfertasIngreso } from '@/lib/cursos/oferta'
+import { waUrl } from '@/lib/whatsapp'
 
 interface Alumno {
   id: string
@@ -48,10 +49,7 @@ const CARD_STYLE = {
 }
 
 function waContactarUrl(telefono: string | null): string | null {
-  if (!telefono) return null
-  const limpio = telefono.replace(/\D/g, '')
-  const numero = limpio.length === 10 ? `52${limpio}` : limpio
-  return `https://wa.me/${numero}`
+  return waUrl(telefono)
 }
 
 function tiempoRelativo(dateStr: string) {

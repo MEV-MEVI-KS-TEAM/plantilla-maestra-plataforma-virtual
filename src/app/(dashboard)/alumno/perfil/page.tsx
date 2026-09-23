@@ -5,6 +5,7 @@ import { Loader2, Eye, EyeOff, User, Lock, GraduationCap, Mail, Phone, Camera } 
 import Image from 'next/image'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { waUrl } from '@/lib/whatsapp'
 
 interface Perfil {
   id: string
@@ -323,7 +324,7 @@ export default function PerfilPage() {
               <div>
                 <p className="text-xs" style={{ color: '#64748B' }}>Teléfono / WhatsApp</p>
                 <a
-                  href={`https://wa.me/${cfg.contactoTelefono}`}
+                  href={waUrl(cfg.contactoTelefono) ?? undefined}
                   className="text-sm transition-colors"
                   style={{ color: 'var(--color-acento)' }}
                 >
