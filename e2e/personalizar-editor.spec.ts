@@ -465,7 +465,7 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await expect(modal).toBeVisible()
     // Texto EXACTO: es la promesa que se le hace al admin (página pública en
     // unos segundos, pagos ya registrados intactos y, con los dos niveles, que
-    // un nivel sin precio propio usa el general).
+    // un nivel sin precio propio conserva lo que cobra hoy).
     await expect(modal.getByText(CONFIRMA_PRECIOS, { exact: true })).toBeVisible()
 
     await modal.getByRole('button', { name: 'Publicar cambios' }).click()

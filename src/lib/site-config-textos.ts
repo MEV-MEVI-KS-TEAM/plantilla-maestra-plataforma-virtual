@@ -51,7 +51,7 @@ export function textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel = fal
 }
 
 /** La frase del modal mensual cuando la escuela puede fijar precios por nivel (F2-9). */
-export const AVISO_PRECIO_POR_NIVEL = 'Un nivel sin precio propio usa el precio general.'
+export const AVISO_PRECIO_POR_NIVEL = 'Un nivel sin precio propio conserva lo que cobra hoy.'
 
 export const TITULO_CONFIRMA_PRECIOS = 'Vas a cambiar precios'
 export const TITULO_CONFIRMA_TIPO_CAMBIO = 'Vas a cambiar el tipo de cambio'
@@ -92,7 +92,7 @@ export const AYUDA_CUOTA_SEMANAL =
  * Se añade a la nota al pie de la pestaña Precios cuando la escuela puede
  * fijar precios por nivel (F2-9).
  */
-export const NOTA_PRECIOS_POR_NIVEL = 'Un nivel sin precio propio usa el general.'
+export const NOTA_PRECIOS_POR_NIVEL = 'Un nivel sin precio propio conserva lo que cobra hoy.'
 
 /**
  * Ayuda de un campo por nivel cuando el config.ts de la escuela YA trae esa

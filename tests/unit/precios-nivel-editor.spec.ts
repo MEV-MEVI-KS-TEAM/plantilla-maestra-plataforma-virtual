@@ -6,6 +6,8 @@ import { esSoloCursos } from '@/lib/modo'
 import { mergeSiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
 import { campoPorClave, LIMITES } from '@/lib/site-config-campos'
 import { mensualidadGeneralDe, inscripcionGeneral } from '@/lib/precios-nivel'
+import { fraseMensualidades } from '@/lib/precios-ui'
+import { listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { mensualidadQA } from '../../e2e/_precios-qa'
 import {
@@ -13,6 +15,7 @@ import {
   clavesPorNivelDePlan,
   escribirRuta,
   formatoDinero,
+  parseEntero,
   hayCambiosDePrecio,
   planDeClaveNivel,
   planSobrescrito,
@@ -339,10 +342,12 @@ test('11. los campos por nivel salen solo con Secundaria Y Preparatoria (y fuera
 
 // ─── 5. Textos y detección de cambios ────────────────────────────────────────
 
-test('12. el modal mensual y la nota dicen que un nivel sin precio propio usa el general', () => {
+test('12. el modal mensual y la nota dicen que un nivel sin precio propio conserva lo que cobra hoy', () => {
   const con = textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, porNivel: true })
   const sin = textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false })
-  expect(AVISO_PRECIO_POR_NIVEL).toBe('Un nivel sin precio propio usa el precio general.')
+  // «usa el precio general» era falso en ~94 clones: su secundaria vive en un
+  // alias o en una clave sembrada, y al vaciar el campo se conserva ESO.
+  expect(AVISO_PRECIO_POR_NIVEL).toBe('Un nivel sin precio propio conserva lo que cobra hoy.')
   expect(con).toBe(sin.replace(' ¿Publicar?', ` ${AVISO_PRECIO_POR_NIVEL} ¿Publicar?`))
   expect(con.endsWith('¿Publicar?')).toBe(true)
   expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, porNivel: false })).toBe(sin)
@@ -353,7 +358,8 @@ test('12. el modal mensual y la nota dicen que un nivel sin precio propio usa el
   expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: true, porNivel: true }))
     .toContain(`${AVISO_PRECIO_POR_NIVEL} El tipo de cambio nuevo`)
   expect(confirmacionDePrecios({ semanal: false, cambiaPrecios: true, cambiaTipoCambio: false, porNivel: true }).mensaje).toBe(con)
-  expect(NOTA_PRECIOS_POR_NIVEL).toBe('Un nivel sin precio propio usa el general.')
+  expect(NOTA_PRECIOS_POR_NIVEL).toBe('Un nivel sin precio propio conserva lo que cobra hoy.')
+  for (const t of [con, NOTA_PRECIOS_POR_NIVEL]) expect(t).not.toMatch(/usa el (precio )?general/)
   // El editor le pasa al modal si la pestaña enseña los campos por nivel.
   const pagina = sinComentarios(leer('src/app/(dashboard)/admin/configuracion/page.tsx'))
   expect(pagina).toMatch(/confirmacionDePrecios\(\{[^}]*porNivel: preciosPorNivelVisibles\(\),\s*\}\)/)
@@ -414,4 +420,78 @@ test('14. mensualidadQA: si 2500 rompe el escalón (Búfalo: 6 meses a 2800), el
     if (antes.periodicidad === undefined) delete C.periodicidad
     else C.periodicidad = antes.periodicidad
   }
+})
+
+// ─── 7. Segunda ronda: la frase de la animada y CampoEntero ──────────────────
+
+const P3 = { id: '3_meses', label: '3 meses — Express', meses: 3, mensualidad: 3000 }
+const P6 = { id: '6_meses', label: '6 meses — Estándar', meses: 6, mensualidad: 1500 }
+const dineroEn = (n: number) => `$${n.toLocaleString('en-US')}`
+const argsFrase = (precios: Record<string, unknown>, planesIguales: boolean, niveles = ['secundaria', 'preparatoria']) => ({
+  niveles, planes: [P3, P6], planesDe: () => [P3, P6], nivelReferencia: 'preparatoria',
+  precios, nombrePlan: (m: { label: string }) => m.label, dinero: dineroEn, planesIguales,
+})
+
+test('15. animada: con mensualidades distintas por nivel, una frase correcta por nivel (Sec 2500/1250, Prepa 3000/1500)', () => {
+  const porNivel = { mensualidadSecundaria3Meses: 2500, mensualidadSecundaria6Meses: 1250 }
+  const frase = fraseMensualidades(argsFrase(porNivel, false))
+  expect(frase).toBe(
+    'En Secundaria, la mensualidad es de $2,500 al mes en 3 meses — Express y $1,250 al mes en 6 meses — Estándar. ' +
+    'En Preparatoria, la mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.')
+  expect(frase).not.toMatch(/es de en /)
+  // SAMEX: la misma forma con la secundaria en su alias (claves por nivel vacías).
+  const samex = fraseMensualidades(argsFrase({ secundaria_3meses_normal: 2700, secundaria_6meses_normal: 1400 }, false))
+  expect(samex).toBe(
+    'En Secundaria, la mensualidad es de $2,700 al mes en 3 meses — Express y $1,400 al mes en 6 meses — Estándar. ' +
+    'En Preparatoria, la mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.')
+})
+
+test('16. animada: con las mismas mensualidades la frase es la de siempre, byte por byte', () => {
+  const niveles = ['secundaria', 'preparatoria']
+  // La construcción de antes (LandingAnimada en 63fa0fd), rama `planesIguales`.
+  const antes = `La mensualidad es de ${listaConY([P3, P6].map((m) => `${dineroEn(m.mensualidad)} al mes en ${m.label}`))}` +
+    `${niveles.length > 1 ? `, igual en ${nivelesTexto(niveles)}` : ''}.`
+  expect(fraseMensualidades(argsFrase({}, true, niveles))).toBe(antes)
+  expect(antes).toBe('La mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar, igual en Secundaria y Preparatoria.')
+  // Un solo nivel: sin «igual en».
+  expect(fraseMensualidades(argsFrase({}, true, ['preparatoria'])))
+    .toBe('La mensualidad es de $3,000 al mes en 3 meses — Express y $1,500 al mes en 6 meses — Estándar.')
+  // La animada la usa, y ya no arma la frase por su cuenta.
+  const animada = sinComentarios(leer('src/components/landing/animada/LandingAnimada.tsx'))
+  expect(animada).toContain('const mensualidades = fraseMensualidades({')
+  expect(animada).toContain('niveles, planes, planesDe, nivelReferencia, precios, nombrePlan, dinero, planesIguales,')
+  expect(animada).toContain('`${detalle.charAt(0).toUpperCase()}${detalle.slice(1)}. ${mensualidades} ` +')
+  expect(animada).not.toContain('La mensualidad es de ${')
+  expect(animada).not.toContain('mensualidadesTexto')
+})
+
+test('17. CampoEntero lee con parseEntero: «1,500» es 1500 y «60000» se rechaza, nunca se trunca', () => {
+  // La lectura: lo que el admin ve en pantalla (espacios, comas, $) se tolera;
+  // decimales y negativos no.
+  expect(parseEntero('1,500')).toBe(1500)
+  expect(parseEntero('$1 500')).toBe(1500)
+  expect(parseEntero(' 2,000 ')).toBe(2000)
+  expect(parseEntero('1.500')).toBeNull()
+  expect(parseEntero('-100')).toBeNull()
+  expect(parseEntero('60000')).toBe(60000) // > 50,000: fuera de rango → inválido, no 6000
+  const fuente = sinComentarios(leer('src/components/admin/personalizar/CampoTexto.tsx'))
+  const i = fuente.indexOf('export function CampoEntero(')
+  const campo = fuente.slice(i, fuente.indexOf('export interface CampoPrecioNivelProps', i))
+  expect(campo).toContain('const numero = parseEntero(texto)')
+  expect(campo).toContain('const invalido = numero === null || numero < min || numero > max')
+  expect(campo).toContain('const n = parseEntero(e.target.value)')
+  expect(campo).toContain('setTexto((actual) => (parseEntero(actual) === valor ? actual : String(valor)))')
+  // Con basura al salir: lo que había AL ENTRAR, devuelto también al borrador.
+  expect(campo).toContain('alEntrar.current = valor')
+  expect(campo).toContain('const previo = alEntrar.current')
+  expect(campo).toContain('sobrescritoAlEntrar.current = sobrescrito')
+  // Sin override al entrar, reponer es QUITAR la clave (no escribir el default).
+  expect(campo).toMatch(/if \(!sobrescritoAlEntrar\.current && onRestaurar\) \{\s*onRestaurar\(\)/)
+  expect(campo).toMatch(/else if \(Number\.isInteger\(previo\) && previo >= min && previo <= max\) \{\s*onChange\(previo\)\s*setTexto\(String\(previo\)\)/)
+  expect(campo).not.toMatch(/\/\^\\d\+\$\/\.test/)
+  // CampoPrecioNivel lee el número igual.
+  const j = fuente.indexOf('export function CampoPrecioNivel(')
+  const nivel = fuente.slice(j, fuente.indexOf('export interface CampoDecimalProps', j))
+  expect(nivel).toContain('const numero = parseEntero(texto)')
+  expect(nivel).toContain('const n = parseEntero(e.target.value)')
 })

@@ -55,7 +55,7 @@ import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciat
 import { subtituloMarca } from '@/lib/marca'
 import { etiquetaNivel, etiquetaNivelConArticulo, listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import {
-  certificacionDe, etiquetasPlan, inscripcionEnLanding, mensualidadDe, textoInscripcion,
+  certificacionDe, etiquetasPlan, fraseMensualidades, inscripcionEnLanding, mensualidadDe, textoInscripcion,
   totalPlanDe, totalesIguales, varsInscripcionPorNivel,
 } from '@/lib/precios-ui'
 import {
@@ -282,10 +282,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     const detalle = planes
       .map(m => `el plan de ${nombrePlan(m)} dura ${m.meses} meses con ${m.materiasPorMes} materias al mes`)
       .join(' y ')
-    const mensualidadesTexto = planesIguales
-      ? listaConY(planes.map(m => `${dinero(mensualidadDe(nivelReferencia, m, precios))} al mes en ${nombrePlan(m)}`))
-      : niveles.map(n => `en ${etiquetaNivel(n)}, ${listaConY(planesDe(n).map(m =>
-        `${dinero(mensualidadDe(n, m, precios))} al mes en ${nombrePlan(m)}`))}`).join('; ')
+    // Una frase por nivel cuando las mensualidades difieren (ver `fraseMensualidades`).
+    const mensualidades = fraseMensualidades({
+      niveles, planes, planesDe, nivelReferencia, precios, nombrePlan, dinero, planesIguales,
+    })
     const comunes = [
       mismasMaterias ? 'las mismas materias' : '',
       // La inscripción solo se dice COMÚN si de verdad lo es en todos los niveles.
@@ -294,8 +294,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     faqPlanes.push({
       q: `¿Qué diferencia hay entre ${listaConY(planes.map(m => `el plan de ${nombrePlan(m)}`))}?`,
       a: `${comunes.length ? `Los dos incluyen ${listaConY(comunes)}. ` : ''}` +
-        `${detalle.charAt(0).toUpperCase()}${detalle.slice(1)}. La mensualidad es de ${mensualidadesTexto}` +
-        `${planesIguales && niveles.length > 1 ? `, igual en ${nivelesTexto(niveles)}` : ''}. ` +
+        `${detalle.charAt(0).toUpperCase()}${detalle.slice(1)}. ${mensualidades} ` +
         (ins.comun ? '' : `La inscripción es ${ins.textoPorNivel}. `) +
         (mismoTotalPorNivel
           ? `Al final pagas lo mismo con cualquiera de los dos (${niveles.map(n =>

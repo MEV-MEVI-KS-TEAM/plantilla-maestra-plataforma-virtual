@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { parseDecimal } from '@/lib/site-config-validacion'
+import { parseEntero } from '@/lib/site-config-editor'
 import {
   BotonRestaurar,
   Contador,
@@ -171,6 +172,14 @@ export interface CampoEnteroProps extends Base {
 /**
  * Entero con estado de TEXTO propio.
  *
+ * Lo tecleado se lee con `parseEntero`, que tolera lo que el admin ve en
+ * pantalla (espacios, comas de miles, «$»): «1,500» es 1500. Antes, al
+ * teclearlo carácter a carácter, el prefijo «1» era un entero válido, se
+ * propagaba, y la coma dejaba el campo en rojo; al salir se reponía ese 1 y
+ * se publicaba $1. Con basura al salir se repone lo que había AL ENTRAR
+ * (y se devuelve al borrador), nunca el último prefijo: «60000» con tope
+ * 50,000 se rechaza, no se trunca a 6000.
+ *
  * Un `<input type="number">` atado directo al número no deja borrar para
  * reescribir (un campo vacío no es un número y volvería a pintar el valor
  * viejo en mitad de la captura). Aquí se guarda lo tecleado tal cual, se
@@ -193,14 +202,18 @@ export function CampoEntero({
 }: CampoEnteroProps) {
   const id = idDeCampo(clave)
   const [texto, setTexto] = useState(String(valor))
+  /** Lo que valía el campo al entrar: es lo que se repone si sale con basura. */
+  const alEntrar = useRef<number>(valor)
+  /** ¿Tenía override al entrar? Si no, reponer es QUITAR la clave, no escribir el default. */
+  const sobrescritoAlEntrar = useRef(sobrescrito)
 
   // Cuando el valor cambia desde fuera (Restaurar, restaurar todo, recarga
   // tras publicar) el input tiene que seguirlo; mientras el admin teclea, no.
   useEffect(() => {
-    setTexto((actual) => (Number(actual.replace(/[\s,$]/g, '')) === valor ? actual : String(valor)))
+    setTexto((actual) => (parseEntero(actual) === valor ? actual : String(valor)))
   }, [valor])
 
-  const numero = /^\d+$/.test(texto.trim()) ? Number(texto.trim()) : null
+  const numero = parseEntero(texto)
   const invalido = numero === null || numero < min || numero > max
   const foco = focoHandlers(resaltado || invalido)
 
@@ -225,14 +238,33 @@ export function CampoEntero({
           aria-invalid={invalido}
           onChange={(e) => {
             setTexto(e.target.value)
-            const n = /^\d+$/.test(e.target.value.trim()) ? Number(e.target.value.trim()) : null
+            const n = parseEntero(e.target.value)
             if (n !== null && n >= min && n <= max) onChange(n)
           }}
           onBlur={(e) => {
-            if (invalido) setTexto(String(valor))
+            if (invalido) {
+              const previo = alEntrar.current
+              if (!sobrescritoAlEntrar.current && onRestaurar) {
+                // Sin override al entrar: el borrador vuelve a no tenerlo (sin
+                // «Cambios sin publicar» por una cifra igual a la de fábrica).
+                onRestaurar()
+                setTexto(String(previo))
+              } else if (Number.isInteger(previo) && previo >= min && previo <= max) {
+                onChange(previo)
+                setTexto(String(previo))
+              } else {
+                // Entró con algo que ya no cabe (un config.ts viejo): se pinta
+                // lo que quedó en el borrador, para que pantalla y borrador coincidan.
+                setTexto(String(valor))
+              }
+            }
             foco.onBlur(e)
           }}
-          onFocus={foco.onFocus}
+          onFocus={(e) => {
+            alEntrar.current = valor
+            sobrescritoAlEntrar.current = sobrescrito
+            foco.onFocus(e)
+          }}
           className="w-40 px-3 py-2.5 rounded-lg text-sm outline-none transition-all tabular-nums"
           style={{
             ...INPUT_STYLE,
@@ -280,8 +312,10 @@ const textoDe = (v: unknown): string => (v === undefined || v === null ? '' : St
 
 /**
  * Quita lo que el admin ve en pantalla y teclea por costumbre: espacios,
- * comas de miles y el signo de pesos. Sin esto, «1,500» tecleado carácter a
- * carácter dejaba en el borrador el prefijo válido «1» (y se publicaba $1).
+ * comas de miles y el signo de pesos (lo mismo que ignora `parseEntero`).
+ * Sin esto, «1,500» tecleado carácter a carácter dejaba en el borrador el
+ * prefijo válido «1» (y se publicaba $1). Aquí solo decide si el campo está
+ * VACÍO; el número lo lee `parseEntero`, igual que en CampoEntero.
  */
 const normalizar = (s: string) => s.replace(/[\s,$]/g, '')
 
@@ -321,12 +355,12 @@ export function CampoPrecioNivel({
     setTexto((actual) => {
       const limpio = normalizar(actual)
       if (limpio === '' && (valor === undefined || valor === null)) return actual
-      return /^\d+$/.test(limpio) && Number(limpio) === valor ? actual : textoDe(valor)
+      return parseEntero(actual) === valor ? actual : textoDe(valor)
     })
   }, [valor])
 
   const limpio = normalizar(texto)
-  const numero = /^\d+$/.test(limpio) ? Number(limpio) : null
+  const numero = parseEntero(texto)
   const invalido = limpio !== '' && (numero === null || numero < min || numero > max)
   const foco = focoHandlers(resaltado || invalido)
 
@@ -354,7 +388,7 @@ export function CampoPrecioNivel({
             setTexto(e.target.value)
             const t = normalizar(e.target.value)
             if (t === '') return onVaciar()
-            const n = /^\d+$/.test(t) ? Number(t) : null
+            const n = parseEntero(e.target.value)
             if (n !== null && n >= min && n <= max) onChange(n)
           }}
           onBlur={(e) => {
