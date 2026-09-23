@@ -102,13 +102,26 @@ export {
  * 🛑 «Iguales entre sí» NO basta para el subtítulo de fábrica («Inscripción
  *    única {inscripcion}»): `{inscripcion}` es la GENERAL, y dos niveles que
  *    pagan 1,500 cada uno con una general de 599 lo harían decir «$599».
+ *
+ * La usan las DOS landings. `formatear` escribe un monto > 0 con el formato
+ * de cada una (la clásica lleva el código de moneda fuera de MXN); un 0 es
+ * siempre «sin costo», nunca «$0».
  */
-export function inscripcionEnLanding(niveles: readonly string[], precios: Precios) {
-  const textoDe = (nivel: string) => textoInscripcion(inscripcionDe(nivel, precios), { minusculas: true })
+export function inscripcionEnLanding(
+  niveles: readonly string[],
+  precios: Precios,
+  formatear: (monto: number) => string = (monto) => textoInscripcion(monto, { minusculas: true }),
+) {
+  const textoDe = (nivel: string) => {
+    const monto = inscripcionDe(nivel, precios)
+    return inscripcionRequierePago(monto) ? formatear(monto) : textoInscripcion(monto, { minusculas: true })
+  }
   const comun = inscripcionesIguales(niveles, precios)
   const nivelComun = niveles[0] ?? 'preparatoria'
   const montoComun = inscripcionDe(nivelComun, precios)
-  const unicaEsGeneral = comun && montoComun === inscripcionGeneral(precios)
+  // Sin niveles (solo licenciatura o solo cursos) ninguna tarjeta afirma otra
+  // cifra: el subtítulo se queda como está.
+  const unicaEsGeneral = niveles.length === 0 || (comun && montoComun === inscripcionGeneral(precios))
   return {
     /** Todos los niveles pagan la misma inscripción. */
     comun,
@@ -133,6 +146,27 @@ export function inscripcionEnLanding(niveles: readonly string[], precios: Precio
      */
     subtituloVale: (subtitulo: string | undefined) => unicaEsGeneral || !(subtitulo ?? '').includes('{inscripcion}'),
   }
+}
+
+/**
+ * El subtítulo de «Programas» de la landing CLÁSICA (F2-6b), sobre sus
+ * tarjetas de Preparatoria y Secundaria.
+ *
+ * Se pinta el del admin (interpolado con `texto`) salvo que afirme una
+ * inscripción única que no es la de las tarjetas (`subtituloVale`); entonces,
+ * una frase por nivel. Con las claves por nivel vacías devuelve SIEMPRE
+ * `texto(subtitulo)`: la portada de la flota no cambia.
+ */
+export function subtituloProgramasClasica(
+  niveles: readonly string[],
+  precios: Precios,
+  subtitulo: string | undefined,
+  texto: (s?: string) => string,
+  formatear: (monto: number) => string,
+): string {
+  const ins = inscripcionEnLanding(niveles, precios, formatear)
+  if (ins.subtituloVale(subtitulo)) return texto(subtitulo)
+  return `Inscripción ${ins.comun ? `de ${ins.textoComun}` : ins.textoPorNivel} · Elige tu nivel y plan`
 }
 
 /** Lo que es verdad de cada plan. 🛑 Ni «ahorro» ni «recomendado». */

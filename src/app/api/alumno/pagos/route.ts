@@ -115,8 +115,8 @@ export async function GET() {
       // a medida tiene las semanas que le generó el admin, no las del plan.
       semanas_total: semanas.length || plan?.semanas || 0,
       cuota:         plan?.cuotaSemanal ?? 0,
-      // La inscripción del NIVEL del alumno (la propia o, si no, la general).
-      // Campo aditivo: "Mis pagos" todavía no lo lee (F2-6b).
+      // La inscripción del NIVEL del alumno (la propia o, si no, la general), de
+      // la config PUBLICADA. «Mis pagos» la pinta (alumno/pagos/page.tsx, F2-6b).
       inscripcion:   inscripcionDe(nivel, precios),
       total_plan:    plan ? getTotalPlan(plan, inscripcionDe(nivel, precios)) : 0,
       certificacion: certificacionDe(nivel, precios),

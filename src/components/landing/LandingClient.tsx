@@ -16,7 +16,7 @@ import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 import { precioPublico } from '@/lib/cursos/catalogo'
-import { inscripcionDe, mensualidadPropiaDe, varsInscripcionPorNivel } from '@/lib/precios-ui'
+import { inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
 const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
@@ -363,6 +363,12 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // campos siguen viniendo del config.ts del cliente. Un campo que falte pinta
   // vacío en lugar de escribir "undefined" en la página.
   const texto = (s?: string) => interpolar(s ?? '', vars)
+  // El subtítulo de Programas de fábrica dice «Inscripción única {inscripcion}»,
+  // y {inscripcion} es la GENERAL: encima de tarjetas con la inscripción de
+  // cada nivel solo vale si esa general es la que pagan (misma guarda que la
+  // animada). Con las claves por nivel vacías sale tal cual, como siempre.
+  const nivelesTarjetas = ['preparatoria', 'secundaria'].filter(n => (CONFIG.niveles as readonly string[]).includes(n))
+  const subtituloProgramas = subtituloProgramasClasica(nivelesTarjetas, p, L.programas_subtitulo, texto, fmt)
   useScrollReveal()
 
   return (
@@ -532,7 +538,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                 {texto(L.programas_titulo)}
               </h2>
               <p className="mt-3 text-sm sm:text-base max-w-md mx-auto" style={{ color: C.navySuave }}>
-                {texto(L.programas_subtitulo)}
+                {subtituloProgramas}
               </p>
             </div>
             <div className="grid md:grid-cols-2 gap-8">
