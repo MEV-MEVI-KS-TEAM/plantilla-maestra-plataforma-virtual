@@ -427,17 +427,24 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     // ── ALIAS LEGACY (plan3mMensualidad, secundaria_3meses_normal…) ──
     // OJO: la respuesta de la API viene RECORTADA a CLAVES_EDITABLES
     // (recortarAEditables), y los alias NO están en la lista blanca: en
-    // `merged.precios` solo viajan inscripcion / certificacionSecundaria /
-    // certificacionPreparatoria. La derivación se comprueba sobre el merge
-    // COMPLETO — el mismo `mergeSiteConfig` que corre en el servidor, aplicado
-    // a los overrides que la API acaba de guardar.
+    // `merged.precios` solo viajan las claves canónicas (inscripcion, las dos
+    // certificaciones y, desde la Fase 2, las seis por nivel, que nacen en
+    // null). La derivación se comprueba sobre el merge COMPLETO — el mismo
+    // `mergeSiteConfig` que corre en el servidor, aplicado a los overrides que
+    // la API acaba de guardar.
     expect(
       put.merged.precios.plan3mMensualidad,
       'La API recorta a la lista blanca: los alias NO deben viajar en merged.precios',
     ).toBeUndefined()
     const completo = mergeSiteConfig(CONFIG, put.overrides)
     expect(completo.precios.plan3mMensualidad, 'Alias legacy plan3mMensualidad').toBe(2500)
-    expect(completo.precios.secundaria_3meses_normal, 'Alias legacy secundaria_3meses_normal').toBe(2500)
+    // Un cliente con mensualidad de secundaria PROPIA (Fase 2, sembrada en su
+    // config.ts) no deja que el plan arrastre ese alias: en ese caso el alias
+    // conserva su cifra y esta afirmación no aplica.
+    const secundariaPropia = Number(CONFIG.precios.mensualidadSecundaria3Meses) > 0
+    if (!secundariaPropia) {
+      expect(completo.precios.secundaria_3meses_normal, 'Alias legacy secundaria_3meses_normal').toBe(2500)
+    }
     expect(completo.precios.inscripcion, 'El canónico sigue en el merge completo').toBe(750)
 
     // ── GET devuelve lo mismo ──

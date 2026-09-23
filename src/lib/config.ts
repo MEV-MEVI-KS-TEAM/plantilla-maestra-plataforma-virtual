@@ -204,6 +204,14 @@ export const CONFIG = {
   // === PRECIOS ===
   precios: {
     inscripcion:                       599,
+    // POR NIVEL (Fase 2). null = VACÍO → se usa el valor general de hoy.
+    // Nunca se leen a pelo: pasan por inscripcionDe / mensualidadDe (precios-nivel.ts). Solo 3 y 6 meses.
+    inscripcionSecundaria:             null as number | null,
+    inscripcionPreparatoria:           null as number | null,
+    mensualidadSecundaria3Meses:       null as number | null,
+    mensualidadSecundaria6Meses:       null as number | null,
+    mensualidadPreparatoria3Meses:     null as number | null,
+    mensualidadPreparatoria6Meses:     null as number | null,
     plan6mMensualidad:                 1000, // @deprecated — usar modalidad.mensualidad via getModalidadesActivas()
     plan3mMensualidad:                 2000, // @deprecated — usar modalidad.mensualidad via getModalidadesActivas()
     certificacionSecundaria:           4900,

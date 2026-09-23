@@ -22,6 +22,7 @@
  */
 import type { Moneda } from '@/lib/moneda'
 import { CONFIG } from '@/lib/config'
+import { CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -236,10 +237,17 @@ export const CLAVES_EDITABLES = [
   // `config.ts` lo condena a volverse mentira en semanas. La `moneda` en sí NO
   // entra: cambiarla es cambiar lo que se cobra, no la marca.
   'tipoCambioMXN',
-  // precios canónicos (los alias legacy se derivan de estos, ver derivarAliasPrecios)
+  // precios canónicos (los alias legacy se derivan de estos, ver derivarAliasPrecios).
+  // Los "por nivel" nacen en null = vacío = se usa el general (precios-nivel.ts).
   'precios.inscripcion',
+  'precios.inscripcionSecundaria',
+  'precios.inscripcionPreparatoria',
   'precios.certificacionSecundaria',
   'precios.certificacionPreparatoria',
+  'precios.mensualidadSecundaria3Meses',
+  'precios.mensualidadSecundaria6Meses',
+  'precios.mensualidadPreparatoria3Meses',
+  'precios.mensualidadPreparatoria6Meses',
   // modalidades (semántica especial)
   'modalidades',
 ] as const satisfies ReadonlyArray<RutasHoja<SiteConfig>>
@@ -316,7 +324,18 @@ export interface SiteConfigOverrides {
   redes?: Partial<SiteConfig['redes']>
   landing?: Partial<Pick<SiteConfig['landing'], ClaveLandingEditable>>
   precios?: Partial<
-    Pick<SiteConfig['precios'], 'inscripcion' | 'certificacionSecundaria' | 'certificacionPreparatoria'>
+    Pick<
+      SiteConfig['precios'],
+      | 'inscripcion'
+      | 'inscripcionSecundaria'
+      | 'inscripcionPreparatoria'
+      | 'certificacionSecundaria'
+      | 'certificacionPreparatoria'
+      | 'mensualidadSecundaria3Meses'
+      | 'mensualidadSecundaria6Meses'
+      | 'mensualidadPreparatoria3Meses'
+      | 'mensualidadPreparatoria6Meses'
+    >
   >
   /**
    * Editable desde siempre (está en CLAVES_EDITABLES y en ConfigEditable), pero
@@ -573,6 +592,16 @@ export interface PreciosAplicados {
    * que la escuela puso distinto a propósito.
    */
   mensualidades?: ReadonlyArray<{ meses: number; mensualidad: number; mensualidadBase: number }>
+  /**
+   * Una entrada por clave de mensualidad POR NIVEL que se sobrescribió con un
+   * valor > 0 (Fase 2). Sus alias legacy de ese nivel y duración la siguen, igual
+   * que los de la certificación siguen a su canónico. Opcional: las llamadas
+   * directas de las pruebas siguen compilando sin ella.
+   *
+   * Las INSCRIPCIONES por nivel no se capturan aquí: no tienen alias legacy que
+   * sincronizar, y el bucle genérico del merge ya las escribe.
+   */
+  mensualidadesPorNivel?: ReadonlyArray<{ nivel: NivelConPrecio; meses: 3 | 6; mensualidad: number }>
 }
 
 /**
@@ -615,6 +644,46 @@ const ALIAS_MENSUALIDAD: Record<number, ReadonlyArray<keyof SiteConfig['precios'
   ],
 }
 
+/**
+ * Los alias legacy de cada NIVEL y duración: el normal y el sindicalizado. Un
+ * precio por nivel (Fase 2) se propaga a estos dos; no a los del otro nivel ni
+ * a `plan<N>mMensualidad`, que no tiene nivel.
+ */
+const ALIAS_POR_NIVEL: Record<
+  NivelConPrecio,
+  Record<3 | 6, readonly [keyof SiteConfig['precios'], keyof SiteConfig['precios']]>
+> = {
+  secundaria: {
+    3: ['secundaria_3meses_normal', 'secundaria_3meses_sindicalizado'],
+    6: ['secundaria_6meses_normal', 'secundaria_6meses_sindicalizado'],
+  },
+  preparatoria: {
+    3: ['preparatoria_3meses_normal', 'preparatoria_3meses_sindicalizado'],
+    6: ['preparatoria_6meses_normal', 'preparatoria_6meses_sindicalizado'],
+  },
+}
+
+/** Ruta de cada mensualidad por nivel → su nivel y duración (para la captura del merge). */
+const MENSUALIDAD_POR_NIVEL_DE_RUTA: ReadonlyMap<string, { nivel: NivelConPrecio; meses: 3 | 6 }> = new Map(
+  (['secundaria', 'preparatoria'] as const).flatMap((nivel) =>
+    ([3, 6] as const).map((meses) => [`precios.${CLAVE_MENSUALIDAD_POR_NIVEL[nivel][meses]}`, { nivel, meses }] as const),
+  ),
+)
+
+/** El nivel de un alias legacy (`secundaria_3meses_normal` → secundaria). `plan3mMensualidad` no tiene. */
+function nivelDeAlias(clave: string): NivelConPrecio | null {
+  if (clave.startsWith('secundaria_')) return 'secundaria'
+  if (clave.startsWith('preparatoria_')) return 'preparatoria'
+  return null
+}
+
+/** ¿El nivel tiene precio PROPIO (> 0) en esa duración, por override o sembrado en config.ts? */
+function tienePrecioPropio(cfg: SiteConfig, nivel: NivelConPrecio, meses: number): boolean {
+  if (meses !== 3 && meses !== 6) return false
+  const v = cfg.precios[CLAVE_MENSUALIDAD_POR_NIVEL[nivel][meses]]
+  return typeof v === 'number' && Number.isFinite(v) && v > 0
+}
+
 export function derivarAliasPrecios(cfg: SiteConfig, aplicados: PreciosAplicados): SiteConfig {
   if (aplicados.certificacionSecundaria !== undefined) {
     cfg.precios.certificacion_secundaria = aplicados.certificacionSecundaria
@@ -638,8 +707,23 @@ export function derivarAliasPrecios(cfg: SiteConfig, aplicados: PreciosAplicados
       //    a 3,000. `mensualidadBase === undefined` (llamada directa, sin el
       //    dato) mantiene el comportamiento histórico de derivar siempre.
       if (mensualidadBase !== undefined && cfg.precios[clave] !== mensualidadBase) continue
+      // 🛑 Un nivel con precio PROPIO en esta duración (Fase 2) ya no sigue al
+      //    plan: su alias lo pone la clave del nivel, en el bucle de abajo. Si
+      //    no, publicar el plan le copiaría al alias la cifra de preparatoria y
+      //    contradiría el precio del nivel (R1), también cuando la clave viene
+      //    sembrada en config.ts y no como override (R2).
+      const nivel = nivelDeAlias(clave)
+      if (nivel && tienePrecioPropio(cfg, nivel, meses)) continue
       cfg.precios[clave] = mensualidad
     }
+  }
+  // Precio POR NIVEL: se propaga a los alias de ese nivel y duración, como la
+  // certificación a los suyos. El sindicalizado solo si iba igual que el normal:
+  // si la escuela lo tenía distinto a propósito, no se pisa (R4).
+  for (const { nivel, meses, mensualidad } of aplicados.mensualidadesPorNivel ?? []) {
+    const [normal, sindicalizado] = ALIAS_POR_NIVEL[nivel][meses]
+    if (cfg.precios[sindicalizado] === cfg.precios[normal]) cfg.precios[sindicalizado] = mensualidad
+    cfg.precios[normal] = mensualidad
   }
   return cfg
 }
@@ -783,6 +867,7 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
 
   const aplicados: PreciosAplicados = {}
   const logos: LogosAplicados = { logo: false, logoOscuro: false }
+  const mensualidadesPorNivel: Array<{ nivel: NivelConPrecio; meses: 3 | 6; mensualidad: number }> = []
 
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta === 'modalidades') continue // semántica aparte, abajo
@@ -802,9 +887,14 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
     if (ruta === 'logoOscuro') logos.logoOscuro = true
     if (ruta === 'precios.certificacionSecundaria') aplicados.certificacionSecundaria = valor as number
     if (ruta === 'precios.certificacionPreparatoria') aplicados.certificacionPreparatoria = valor as number
+    // Mensualidad POR NIVEL: solo > 0 se propaga a sus alias. Un 0 escrito a
+    // mano en la BD pasa `esPrecio`, pero no debe dejar un alias en $0 (R3).
+    const porNivel = MENSUALIDAD_POR_NIVEL_DE_RUTA.get(ruta)
+    if (porNivel && (valor as number) > 0) mensualidadesPorNivel.push({ ...porNivel, mensualidad: valor as number })
   }
 
   resolverLogos(resultado, logos)
+  aplicados.mensualidadesPorNivel = mensualidadesPorNivel
   aplicados.mensualidades = aplicarModalidades(resultado, overrides.modalidades)
 
   return derivarAliasPrecios(resultado, aplicados)

@@ -413,6 +413,27 @@ test('25. precios: entero 0..50000', () => {
   error(v({ precios: { certificacionPreparatoria: -5 } }), 'precios.certificacionPreparatoria')
 })
 
+test('25 bis. precios POR NIVEL: entero 1..50000, o vacío (null) = usa el general', () => {
+  // Fase 2. El 0 NO es "sin costo" aquí: vacío ya significa "el general", y un
+  // 0 escrito dejaría al nivel anunciando $0 mientras la general cobra.
+  for (const k of [
+    'inscripcionSecundaria', 'inscripcionPreparatoria',
+    'mensualidadSecundaria3Meses', 'mensualidadSecundaria6Meses',
+    'mensualidadPreparatoria3Meses', 'mensualidadPreparatoria6Meses',
+  ]) {
+    const clave = `precios.${k}`
+    error(v({ precios: { [k]: 0 } }), clave, /entre 1 y 50000/)
+    expect(ok(v({ precios: { [k]: 1 } }))).toEqual({ precios: { [k]: 1 } })
+    expect(ok(v({ precios: { [k]: 50000 } }))).toEqual({ precios: { [k]: 50000 } })
+    error(v({ precios: { [k]: 50001 } }), clave)
+    error(v({ precios: { [k]: -1 } }), clave)
+    error(v({ precios: { [k]: 599.5 } }), clave)
+    error(v({ precios: { [k]: '599' } }), clave)
+    // null = "sin override": no es error y no se guarda nada.
+    expect(ok(v({ precios: { [k]: null } }))).toEqual({})
+  }
+})
+
 // ─── Modalidades ─────────────────────────────────────────────────────────────
 
 test('26. modalidades: solo ids de la base, solo mensualidad/activa', () => {
@@ -582,11 +603,13 @@ test('31. recortarAEditables: solo claves editables, modalidades completas, sin 
   expect(r.landing).not.toHaveProperty('mostrarCatalogoCursos')
   expect(r.landing).not.toHaveProperty('convenios')
   expect(r.landing).not.toHaveProperty('certificacion_secundaria')
-  expect(r.precios).toEqual({
-    inscripcion: CONFIG.precios.inscripcion,
-    certificacionSecundaria: CONFIG.precios.certificacionSecundaria,
-    certificacionPreparatoria: CONFIG.precios.certificacionPreparatoria,
-  })
+  // `precios` lleva EXACTAMENTE las claves de la lista blanca —ni un alias
+  // legacy—, cada una con su valor de config.ts (los precios por nivel de la
+  // Fase 2 nacen en `null`). La lista sale de CLAVES_EDITABLES para no tener que
+  // tocar esta prueba cada vez que se abre un precio al editor.
+  const clavesPrecios = CLAVES_EDITABLES.filter((c) => c.startsWith('precios.')).map((c) => c.slice('precios.'.length))
+  const preciosDeConfig = CONFIG.precios as unknown as Record<string, unknown>
+  expect(r.precios).toEqual(Object.fromEntries(clavesPrecios.map((k) => [k, preciosDeConfig[k]])))
   expect(Object.keys(r.colores as object).sort()).toEqual(Object.keys(CONFIG.colores).sort())
   // Toda clave editable está presente (salvo modalidades, que va como arreglo)
   for (const ruta of CLAVES_EDITABLES) {

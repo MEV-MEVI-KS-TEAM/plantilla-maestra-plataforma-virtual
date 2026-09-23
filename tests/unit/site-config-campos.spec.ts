@@ -81,6 +81,17 @@ test('2. los límites del brief son los indicados', () => {
     expect(campo(clave).min, clave).toBe(0)
     expect(campo(clave).max, clave).toBe(50000)
   }
+  // precios POR NIVEL (Fase 2): si se escriben, > 0; vacíos = el general.
+  for (const clave of [
+    'precios.inscripcionSecundaria', 'precios.inscripcionPreparatoria',
+    'precios.mensualidadSecundaria3Meses', 'precios.mensualidadSecundaria6Meses',
+    'precios.mensualidadPreparatoria3Meses', 'precios.mensualidadPreparatoria6Meses',
+  ] as const) {
+    expect(campo(clave).min, clave).toBe(1)
+    expect(campo(clave).max, clave).toBe(50000)
+    expect(campo(clave).opcional, clave).toBe(true)
+  }
+  expect(LIMITES.precioNivelMin).toBe(1)
   // el resto de máximos de lista
   expect(campo('landing.contadores').maxItems).toBe(4)
   expect(campo('landing.dolor_items').maxItems).toBe(6)
@@ -141,6 +152,8 @@ test('4. el tipo del descriptor coincide con el tipo del default en CONFIG', () 
     switch (c.tipo) {
       case 'entero':
       case 'decimal':
+        // Un campo `opcional` puede nacer en `null` = vacío (precios por nivel).
+        if (c.opcional && v === null) break
         expect(typeof v, c.clave).toBe('number')
         break
       case 'lista-texto':
@@ -182,6 +195,9 @@ test('6. los defaults de config.ts caben en los límites del catálogo', () => {
     switch (c.tipo) {
       case 'entero':
       case 'decimal':
+        // Vacío no es un valor fuera de rango: el editor lo reenvía como `null`
+        // y el validador lo lee como "sin override".
+        if (c.opcional && v === null) break
         expect(v as number, c.clave).toBeGreaterThanOrEqual(c.min!)
         expect(v as number, c.clave).toBeLessThanOrEqual(c.max!)
         break

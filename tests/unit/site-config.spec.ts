@@ -16,6 +16,7 @@ import {
   PLACEHOLDERS,
   type SiteConfig,
 } from '@/lib/site-config-core'
+import { recortarOverrides } from '@/lib/site-config-validacion'
 
 /**
  * F1 — "Personalizar mi página": merge de config.ts con los overrides de la BD.
@@ -34,6 +35,26 @@ import {
 const esperado = () => JSON.parse(JSON.stringify(CONFIG)) as SiteConfig
 
 /**
+ * Las cuatro mensualidades POR NIVEL (Fase 2) en `null` = vacías.
+ *
+ * Un nivel con mensualidad propia deja de seguir al plan (ver
+ * `derivarAliasPrecios`). En la plantilla nacen vacías, pero un cliente nuevo al
+ * que el onboarding le sembró la de secundaria dejaría en rojo las pruebas cuya
+ * premisa es "el alias sigue al plan" sin tener ningún problema. Por eso la
+ * premisa se construye, igual que `baseAlineada`.
+ */
+const sinPrecioPorNivel = (cfg: SiteConfig): SiteConfig => {
+  // Vista sin tipo a propósito: un clon cuyo config.ts declare la clave como
+  // número a secas (sin `as number | null`) no debe romper `tsc` por esta prueba.
+  const precios = cfg.precios as unknown as Record<string, unknown>
+  for (const k of [
+    'mensualidadSecundaria3Meses', 'mensualidadSecundaria6Meses',
+    'mensualidadPreparatoria3Meses', 'mensualidadPreparatoria6Meses',
+  ]) precios[k] = null
+  return cfg
+}
+
+/**
  * CONFIG con los alias de mensualidad ALINEADOS a su plan, pase lo que pase en
  * el `config.ts` de este repo.
  *
@@ -45,7 +66,7 @@ const esperado = () => JSON.parse(JSON.stringify(CONFIG)) as SiteConfig
  * problema. La premisa se construye aquí en vez de darla por supuesta.
  */
 const baseAlineada = (): SiteConfig => {
-  const cfg = mergeSiteConfig(CONFIG, {})
+  const cfg = sinPrecioPorNivel(mergeSiteConfig(CONFIG, {}))
   for (const m of cfg.modalidades) {
     if (m.meses === 3) {
       cfg.precios.plan3mMensualidad = m.mensualidad
@@ -303,8 +324,8 @@ test('los alias legacy divergentes de un cliente se respetan si el canónico NO 
 })
 
 test('derivarAliasPrecios elige los alias por `meses`, no por id, y no deriva nada para otros meses', () => {
-  const cfg = mergeSiteConfig(CONFIG, {})
-  const base = esperado()
+  const cfg = sinPrecioPorNivel(mergeSiteConfig(CONFIG, {}))
+  const base = sinPrecioPorNivel(esperado())
   const base6 = base.precios.plan6mMensualidad
   derivarAliasPrecios(cfg, { mensualidades: [{ meses: 9, mensualidad: 777, mensualidadBase: 999 }] })
   expect(cfg).toEqual(base)
@@ -659,7 +680,7 @@ test('F3: los defaults nuevos son los literales de la landing (invariante) y her
 
 /** CONFIG de una escuela con la secundaria más barata que la preparatoria. */
 const configPorNivel = (): SiteConfig => {
-  const cfg = mergeSiteConfig(CONFIG, {})
+  const cfg = sinPrecioPorNivel(mergeSiteConfig(CONFIG, {}))
   cfg.modalidades = cfg.modalidades.map((m) =>
     m.meses === 3 ? { ...m, mensualidad: 3000 } : { ...m, mensualidad: 1500 },
   ) as SiteConfig['modalidades']
@@ -732,4 +753,115 @@ test('mensualidad por nivel: un alias sindicalizado divergente sobrevive al camb
   const r = mergeSiteConfig(base, { modalidades: { '3_meses': { mensualidad: 2500 } } })
   expect(r.precios.secundaria_3meses_normal).toBe(2500)
   expect(r.precios.secundaria_3meses_sindicalizado).toBe(1500)
+})
+
+// ─── Precios POR NIVEL (Fase 2, F2-4) ────────────────────────────────────────
+//
+// Seis claves nuevas en `precios` que nacen en `null` (= vacío = se usa el
+// general). Lo que protegen estas pruebas: que un override por nivel toque SOLO
+// lo suyo, que sus alias legacy lo sigan como los de la certificación, que un
+// nivel con precio propio deje de seguir al plan, y que un 0 o un tipo raro
+// escrito a mano en la BD no deje ningún alias en $0.
+
+test('por nivel: un override aislado de inscripcionPreparatoria no toca nada más', () => {
+  const r = mergeSiteConfig(CONFIG, { precios: { inscripcionPreparatoria: 1500 } })
+  const e = esperado()
+  e.precios.inscripcionPreparatoria = 1500
+  // Ni la general, ni la de secundaria, ni un solo alias.
+  expect(r).toEqual(e)
+})
+
+test('por nivel: la mensualidad de un nivel se propaga a su alias normal, y al sindicalizado solo si iba igual', () => {
+  const alineada = baseAlineada()
+  const r = mergeSiteConfig(alineada, { precios: { mensualidadSecundaria3Meses: 2500 } })
+  expect(r.precios.mensualidadSecundaria3Meses).toBe(2500)
+  expect(r.precios.secundaria_3meses_normal).toBe(2500)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(2500)
+  // Lo demás no se mueve: ni la otra duración, ni la preparatoria, ni el plan.
+  expect(r.precios.secundaria_6meses_normal).toBe(alineada.precios.secundaria_6meses_normal)
+  expect(r.precios.preparatoria_3meses_normal).toBe(alineada.precios.preparatoria_3meses_normal)
+  expect(r.precios.plan3mMensualidad).toBe(alineada.precios.plan3mMensualidad)
+  expect(r.modalidades).toEqual(alineada.modalidades)
+
+  // Un sindicalizado distinto a propósito sobrevive (R4).
+  const divergente = baseAlineada()
+  divergente.precios.secundaria_3meses_sindicalizado = 1111
+  const r2 = mergeSiteConfig(divergente, { precios: { mensualidadSecundaria3Meses: 2500 } })
+  expect(r2.precios.secundaria_3meses_normal).toBe(2500)
+  expect(r2.precios.secundaria_3meses_sindicalizado).toBe(1111)
+})
+
+test('por nivel: con plan y clave del nivel en el mismo cuerpo, el alias del nivel sigue a su clave (R1)', () => {
+  const r = mergeSiteConfig(baseAlineada(), {
+    modalidades: { [CONFIG.modalidades.find((m) => m.meses === 3)!.id]: { mensualidad: 3200 } },
+    precios: { mensualidadSecundaria3Meses: 2500 },
+  })
+  // El nivel con precio propio no sigue al plan…
+  expect(r.precios.secundaria_3meses_normal).toBe(2500)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(2500)
+  // …el que no lo tiene, sí, como siempre.
+  expect(r.precios.preparatoria_3meses_normal).toBe(3200)
+  expect(r.precios.plan3mMensualidad).toBe(3200)
+})
+
+test('por nivel: una clave sembrada en config.ts corta el arrastre del plan aunque no venga en el cuerpo (R2)', () => {
+  // Premisa: el alias de secundaria VIENE SIGUIENDO al plan (vale lo mismo), así
+  // que sin la regla nueva el plan lo arrastraría. Lo único que lo detiene es la
+  // clave del nivel sembrada en config.ts (el caso del onboarding).
+  const base = baseAlineada()
+  const plan3 = base.modalidades.find((m) => m.meses === 3)!
+  // Cualquier cifra > 0 sirve (no depende del plan: en un clon semanal la
+  // mensualidad del plan puede ser 0). Lo que importa es que venga de config.ts
+  // y no del cuerpo.
+  ;(base.precios as unknown as Record<string, unknown>).mensualidadSecundaria3Meses = 1234
+  const r = mergeSiteConfig(base, { modalidades: { [plan3.id]: { mensualidad: plan3.mensualidad + 500 } } })
+  expect(r.precios.secundaria_3meses_normal).toBe(plan3.mensualidad)
+  expect(r.precios.secundaria_3meses_sindicalizado).toBe(plan3.mensualidad)
+  // La preparatoria, sin clave propia, sigue al plan como siempre.
+  expect(r.precios.preparatoria_3meses_normal).toBe(plan3.mensualidad + 500)
+})
+
+test('por nivel: un 0 o un tipo raro escrito a mano no deja ningún alias en $0 (R3)', () => {
+  const alineada = baseAlineada()
+  const cero = mergeSiteConfig(alineada, {
+    precios: { mensualidadSecundaria3Meses: 0, mensualidadPreparatoria6Meses: 0, inscripcionSecundaria: 0 },
+  })
+  expect(cero.precios.secundaria_3meses_normal).toBe(alineada.precios.secundaria_3meses_normal)
+  expect(cero.precios.preparatoria_6meses_normal).toBe(alineada.precios.preparatoria_6meses_normal)
+
+  const raros = mergeSiteConfig(CONFIG, {
+    precios: {
+      inscripcionSecundaria: '1500',
+      inscripcionPreparatoria: true,
+      mensualidadSecundaria3Meses: -1,
+      mensualidadSecundaria6Meses: Number.NaN,
+      mensualidadPreparatoria3Meses: [2500],
+      mensualidadPreparatoria6Meses: { v: 1 },
+    },
+  })
+  expect(raros).toEqual(esperado())
+})
+
+test('por nivel: recortarOverrides conserva las claves nuevas', () => {
+  const guardado = { precios: { inscripcionSecundaria: 1000, mensualidadPreparatoria6Meses: 1500 }, nombre: 'X' }
+  expect(recortarOverrides(guardado)).toEqual(guardado)
+})
+
+test('por nivel: cada nivel y duración mueve SOLO sus dos alias (tabla completa)', () => {
+  const ALIAS: Record<string, string[]> = {
+    mensualidadSecundaria3Meses: ['secundaria_3meses_normal', 'secundaria_3meses_sindicalizado'],
+    mensualidadSecundaria6Meses: ['secundaria_6meses_normal', 'secundaria_6meses_sindicalizado'],
+    mensualidadPreparatoria3Meses: ['preparatoria_3meses_normal', 'preparatoria_3meses_sindicalizado'],
+    mensualidadPreparatoria6Meses: ['preparatoria_6meses_normal', 'preparatoria_6meses_sindicalizado'],
+  }
+  const todos = [...Object.values(ALIAS).flat(), 'plan3mMensualidad', 'plan6mMensualidad']
+  for (const [clave, suyos] of Object.entries(ALIAS)) {
+    const base = baseAlineada()
+    const antes = base.precios as unknown as Record<string, unknown>
+    const r = mergeSiteConfig(base, { precios: { [clave]: 4321 } })
+    const despues = r.precios as unknown as Record<string, unknown>
+    for (const alias of todos) {
+      expect(despues[alias], `${clave} → ${alias}`).toBe(suyos.includes(alias) ? 4321 : antes[alias])
+    }
+  }
 })
