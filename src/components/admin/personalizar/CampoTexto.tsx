@@ -1,15 +1,16 @@
 'use client'
 
 /**
- * Controles de texto y de entero del editor.
+ * Controles de texto, entero y decimal del editor.
  *
- * Los dos comparten cabecera (etiqueta + contador + "Restaurar") y el mismo
+ * Comparten cabecera (etiqueta + contador + "Restaurar") y el mismo
  * contrato: el valor que se pinta es el EFECTIVO (override si lo hay, si no el
  * de fábrica) y `onChange` escribe siempre en el borrador de overrides. El
  * `placeholder` lleva el default, que es lo que se verá si el admin borra el
  * campo y pulsa "Restaurar".
  */
 import { useEffect, useState } from 'react'
+import { parseDecimal } from '@/lib/site-config-validacion'
 import {
   BotonRestaurar,
   Contador,
@@ -246,6 +247,96 @@ export function CampoEntero({
           Escribe un número entero entre {min} y {max}.
         </p>
       )}
+      {ayuda && !invalido && <p className="text-xs" style={{ color: TXT_TENUE }}>{ayuda}</p>}
+    </div>
+  )
+}
+
+export interface CampoDecimalProps extends Base {
+  valor: number
+  min: number
+  max: number
+  /** Se pinta debajo del input (p. ej. un ejemplo de la equivalencia). */
+  sufijo?: React.ReactNode
+  onChange: (v: number) => void
+}
+
+/**
+ * Decimal con estado de TEXTO propio (hoy solo el tipo de cambio).
+ *
+ * Mismo contrato que `CampoEntero`, pero lo tecleado se interpreta con
+ * `parseDecimal`, la MISMA función con la que valida el servidor: acepta la
+ * coma decimal ("16,90"). Si el editor leyera los números de otra forma,
+ * podría dar por bueno lo que el servidor rechaza, o al revés.
+ */
+export function CampoDecimal({
+  clave,
+  etiqueta,
+  ayuda,
+  valor,
+  min,
+  max,
+  sufijo,
+  deshabilitado = false,
+  sobrescrito = false,
+  resaltado = false,
+  onChange,
+  onRestaurar,
+}: CampoDecimalProps) {
+  const id = idDeCampo(clave)
+  const [texto, setTexto] = useState(String(valor))
+
+  // Igual que en CampoEntero: se sigue el valor de fuera (Restaurar, recarga),
+  // pero no se pisa lo que el admin está tecleando si ya equivale a lo mismo.
+  useEffect(() => {
+    setTexto((actual) => (parseDecimal(actual) === valor ? actual : String(valor)))
+  }, [valor])
+
+  const numero = parseDecimal(texto)
+  const invalido = numero === null || numero < min || numero > max
+  const foco = focoHandlers(resaltado || invalido)
+
+  return (
+    <div className="space-y-1.5">
+      <Cabecera
+        clave={clave}
+        etiqueta={etiqueta}
+        derecha={
+          sobrescrito && onRestaurar && !deshabilitado ? (
+            <BotonRestaurar onClick={onRestaurar} etiqueta={etiqueta} />
+          ) : null
+        }
+      />
+      <input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        value={texto}
+        disabled={deshabilitado}
+        aria-invalid={invalido}
+        onChange={(e) => {
+          setTexto(e.target.value)
+          const n = parseDecimal(e.target.value)
+          if (n !== null && n >= min && n <= max) onChange(n)
+        }}
+        onBlur={(e) => {
+          if (invalido) setTexto(String(valor))
+          foco.onBlur(e)
+        }}
+        onFocus={foco.onFocus}
+        className="w-40 px-3 py-2.5 rounded-lg text-sm outline-none transition-all tabular-nums"
+        style={{
+          ...INPUT_STYLE,
+          ...(resaltado || invalido ? { border: `1px solid ${ROJO}` } : {}),
+          ...(deshabilitado ? { opacity: 0.6 } : {}),
+        }}
+      />
+      {invalido && (
+        <p className="text-xs" style={{ color: ROJO }}>
+          Escribe un número entre {min} y {max} (con punto o coma decimal).
+        </p>
+      )}
+      {!invalido && sufijo}
       {ayuda && !invalido && <p className="text-xs" style={{ color: TXT_TENUE }}>{ayuda}</p>}
     </div>
   )

@@ -2,9 +2,10 @@
 
 /**
  * Confirmación de las dos acciones del editor que no se pueden deshacer con
- * un clic: publicar un cambio de PRECIOS (se ve al instante en la página
- * pública, en el registro y en los montos sugeridos) y restaurar el diseño
- * original (borra todo, incluido el logo).
+ * un clic: publicar un cambio de PRECIOS (se ve en la página pública en unos
+ * segundos; los pagos ya registrados no cambian) y restaurar el diseño
+ * original (borra todo, incluido el logo). Los textos viven en
+ * `src/lib/site-config-textos.ts`.
  *
  * No reutiliza `admin/cursos/ConfirmDialog` a propósito: aquél se pinta con
  * las variables de color de la ESCUELA (`--color-superficie`), que es

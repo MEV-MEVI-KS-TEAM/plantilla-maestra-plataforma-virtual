@@ -13,12 +13,19 @@
  *
  * Y NO SE PUEDE APAGAR EL ÚLTIMO PLAN ACTIVO: sin ninguno, la landing se queda
  * sin tarjetas de precio y el registro sin nada que elegir.
+ *
+ * Además: el tipo de cambio, solo si la escuela no cobra en pesos, y una
+ * tarjeta que lleva a /admin/cursos, porque el precio de cada curso o
+ * diplomado se edita en su ficha (Fase 2, F2-3).
  */
-import { BadgeDollarSign, Layers } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeftRight, BadgeDollarSign, ExternalLink, GraduationCap, Layers } from 'lucide-react'
 import { CONFIG } from '@/lib/config'
+import { esSoloCursos } from '@/lib/modo'
 import { esSemanal } from '@/lib/periodicidad'
-import type { Moneda } from '@/lib/moneda'
+import { equivalenteMXN, type Moneda } from '@/lib/moneda'
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
+import { AYUDA_CUOTA_SEMANAL, NOTA_PRECIOS } from '@/lib/site-config-textos'
 import {
   escribirModalidad,
   escribirRuta,
@@ -29,9 +36,10 @@ import {
   quitarRuta,
   valorEfectivo,
 } from '@/lib/site-config-editor'
-import { CampoEntero } from './CampoTexto'
+import { CampoDecimal, CampoEntero } from './CampoTexto'
 import {
   Ayuda,
+  BOTON_SECUNDARIO,
   BotonRestaurar,
   FIELD_BG,
   TXT,
@@ -123,6 +131,38 @@ export function PestanaPrecios({
         min={campo?.min ?? LIMITES.precioMin}
         max={campo?.max ?? LIMITES.precioMax}
         sufijo={<EnPesos valor={numero} moneda={CONFIG.moneda} />}
+        deshabilitado={!puedeEditar}
+        sobrescrito={estaSobrescrito(overrides, clave)}
+        resaltado={claveConError === clave}
+        onChange={(n) => actualizar((prev) => escribirRuta(prev, clave, n))}
+        onRestaurar={() => actualizar((prev) => quitarRuta(prev, clave))}
+      />
+    )
+  }
+
+  function campoTipoCambio() {
+    const clave = 'tipoCambioMXN'
+    const campo = campoPorClave(clave)
+    const valor = valorEfectivo(defaults, overrides, clave)
+    const tipoCambio = typeof valor === 'number' ? valor : 0
+    // El ejemplo sale de `equivalenteMXN`, la MISMA función que pinta las
+    // equivalencias que ve el alumno: con 0 devuelve null y no se muestra nada.
+    const ejemplo = equivalenteMXN(100, { moneda: CONFIG.moneda, tipoCambioMXN: tipoCambio })
+    return (
+      <CampoDecimal
+        clave={clave}
+        etiqueta={campo?.etiqueta ?? clave}
+        ayuda={campo?.ayuda}
+        valor={tipoCambio}
+        min={campo?.min ?? LIMITES.tipoCambioMin}
+        max={campo?.max ?? LIMITES.tipoCambioMax}
+        sufijo={
+          <p className="text-xs tabular-nums" style={{ color: TXT_SUAVE }}>
+            {ejemplo
+              ? `Ejemplo: ${formatoDinero(100, CONFIG.moneda)} ${ejemplo}`
+              : 'No se mostrará equivalencia en pesos.'}
+          </p>
+        }
         deshabilitado={!puedeEditar}
         sobrescrito={estaSobrescrito(overrides, clave)}
         resaltado={claveConError === clave}
@@ -228,13 +268,10 @@ export function PestanaPrecios({
             primero si necesitas cambiarlo.
           </Ayuda>
         )}
-        {semanal && (
-          <Ayuda>
-            Cambiar la cuota <strong>no modifica los calendarios ya
-            generados</strong>: cada alumno conserva la cuota con la que se
-            inscribió. La nueva se aplica a quien se registre a partir de ahora.
-          </Ayuda>
-        )}
+        {/* Antes prometía que la cuota de un alumno inscrito nunca cambia: no
+            es cierto después de "Regenerar" en Cobranza, que rehace las
+            semanas pendientes y vencidas con la cuota vigente. */}
+        {semanal && <Ayuda>{AYUDA_CUOTA_SEMANAL}</Ayuda>}
       </Tarjeta>
 
       {/* 🛑 GATEADA POR `ofreceCertificacion` (Bug P-8). Una escuela que no
@@ -256,10 +293,45 @@ export function PestanaPrecios({
         </Tarjeta>
       )}
 
+      {/* 🛑 Solo si la escuela NO cobra en pesos. La clave es editable desde
+          siempre (CLAVES_EDITABLES) y config.ts decía que el admin la cambia
+          aquí, pero ninguna pestaña la pintaba: una escuela en USD no tenía
+          forma de mantener al día sus equivalencias en pesos. */}
+      {CONFIG.moneda !== 'MXN' && (
+        <Tarjeta titulo="Tipo de cambio" icono={<ArrowLeftRight {...ICONO} aria-hidden="true" />}>
+          {campoTipoCambio()}
+        </Tarjeta>
+      )}
+
+      {/* Los cursos y diplomados tienen su precio en su propia ficha, no aquí.
+          Solo con permiso de edición: la ruta de cursos exige ADMIN.
+          Se abre en OTRA pestaña: el borrador del editor vive solo en memoria
+          y la navegación interna no dispara el aviso de `beforeunload`, así
+          que un clic aquí perdería los cambios sin publicar. */}
+      {puedeEditar && (
+        <Tarjeta
+          titulo={esSoloCursos() ? 'Diplomados' : 'Cursos y diplomados'}
+          icono={<GraduationCap {...ICONO} aria-hidden="true" />}
+        >
+          <p className="text-xs leading-relaxed" style={{ color: TXT_SUAVE }}>
+            El precio de cada curso o diplomado (inscripción y mensualidad) se edita en su propia ficha, no aquí.
+          </p>
+          <Link
+            href="/admin/cursos"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
+            style={BOTON_SECUNDARIO}
+          >
+            {esSoloCursos() ? 'Ir a Diplomados' : 'Ir a Gestionar cursos'}
+            <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+          </Link>
+        </Tarjeta>
+      )}
+
       <div className="px-4 py-3 rounded-xl text-xs leading-relaxed"
         style={{ background: 'rgba(21,101,192,0.08)', border: `1px solid rgba(21,101,192,0.2)`, color: TXT_SUAVE }}>
-        Estos precios se usan en tu página pública, en el registro y en los
-        montos sugeridos del sistema.
+        {NOTA_PRECIOS}
       </div>
     </div>
   )

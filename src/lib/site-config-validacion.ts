@@ -324,12 +324,28 @@ function validarEmail(
  * que no quiere anunciar un tipo de cambio que no puede mantener al día.
  */
 function validarDecimal(valor: unknown, etiqueta: string, min: number, max: number): Limpio<number> | Fallo {
-  const crudo = typeof valor === 'string' ? Number(valor.trim().replace(',', '.')) : valor
-  const r = z.number().min(min).max(max).safeParse(crudo)
+  const r = z.number().min(min).max(max).safeParse(parseDecimal(valor))
   if (!r.success || !Number.isFinite(r.data)) {
     return fallo(`El campo ${etiqueta} debe ser un número entre ${min} y ${max}`)
   }
   return { ok: true, valor: Math.round(r.data * 10000) / 10000 }
+}
+
+/**
+ * Cómo se lee un decimal (tipo de cambio), en el servidor Y en el editor.
+ *
+ * Acepta la coma decimal ("16,90") porque así se escribe en México. Devuelve
+ * `null` si no es un número finito. El rango lo comprueba quien llama. Una
+ * cadena vacía es 0, igual que antes de extraer esta función: para el tipo de
+ * cambio, 0 = "no mostrar equivalencia".
+ *
+ * La comparten `validarDecimal` y el `CampoDecimal` del editor, así el
+ * navegador no puede aceptar lo que el servidor rechaza. (`tipoCambioValido`
+ * en moneda.ts guarda su propia copia a propósito: ese módulo no importa nada.)
+ */
+export function parseDecimal(valor: unknown): number | null {
+  const crudo = typeof valor === 'string' ? Number(valor.trim().replace(',', '.')) : valor
+  return typeof crudo === 'number' && Number.isFinite(crudo) ? crudo : null
 }
 
 function validarEntero(valor: unknown, etiqueta: string, min: number, max: number): Limpio<number> | Fallo {

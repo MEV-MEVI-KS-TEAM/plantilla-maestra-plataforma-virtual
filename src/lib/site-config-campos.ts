@@ -445,7 +445,7 @@ export const CAMPOS: ReadonlyArray<Campo> = [
   { clave: 'modalidades', seccion: 'modalidades', etiqueta: 'Planes', tipo: 'modalidades',
     min: LIMITES.precioMin, max: LIMITES.precioMax,
     ayuda: CONFIG.periodicidad === 'semanal'
-      ? 'Por plan: cuota semanal y si está activo. La duración, las semanas y las materias por mes no se editan. Cambiar la cuota NO altera los calendarios ya generados: aplica a quien se inscriba después.'
+      ? 'Por plan: cuota semanal y si está activo. La duración, las semanas y las materias por mes no se editan. La cuota nueva no cambia las semanas ya generadas; se aplica a quien se inscriba después y a los calendarios que regeneres en Cobranza.'
       : 'Por plan: mensualidad y si está activo. Duración y materias por mes no se editan.' },
 ]
 

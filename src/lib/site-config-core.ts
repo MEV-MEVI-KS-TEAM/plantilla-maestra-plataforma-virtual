@@ -279,9 +279,10 @@ export interface OverrideModalidad {
    * un precio nuevo y no cambiaba nada, ni en la landing ni en el cobro. Pasó
    * en RHEMA #193 y en EDUHCO #197, los dos en producción.
    *
-   * ⚠️ Cambiarla NO reescribe los calendarios ya generados: cada semana lleva su
-   * monto congelado desde que se creó. La cuota nueva rige para quien se
-   * inscriba después.
+   * ⚠️ Cambiarla NO reescribe por sí sola los calendarios ya generados: cada
+   * semana lleva su monto desde que se creó. La cuota nueva rige para quien se
+   * inscriba después y para los calendarios que el admin regenere en Cobranza,
+   * que rehace las semanas pendientes y vencidas con la cuota vigente.
    */
   cuotaSemanal?: number
   activa?: boolean
@@ -317,6 +318,12 @@ export interface SiteConfigOverrides {
   precios?: Partial<
     Pick<SiteConfig['precios'], 'inscripcion' | 'certificacionSecundaria' | 'certificacionPreparatoria'>
   >
+  /**
+   * Editable desde siempre (está en CLAVES_EDITABLES y en ConfigEditable), pero
+   * faltaba aquí: nadie lo leía desde los overrides hasta que el editor empezó a
+   * pintarlo y a pedir confirmación al cambiarlo (Fase 2, F2-3).
+   */
+  tipoCambioMXN?: number
   modalidades?: { [id: string]: OverrideModalidad }
 }
 
