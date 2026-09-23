@@ -130,3 +130,106 @@ export function preguntasLicenciatura(
   ]
   return preguntas.filter((x): x is PreguntaLicenciatura => x !== null)
 }
+
+// ─── Textos editables de la sección (TICKET-2026-09-22-08, CONECTM EDU) ─────
+
+/** Un override de carrera guardado desde "Textos de mi página". */
+export type OverrideCarreraLanding = { slug: string; nombre: string; desc: string }
+/** Un override de paso de "Cómo funciona" (posición = número de paso). */
+export type OverridePasoLanding = { titulo: string; desc: string }
+
+/** Lo que la landing guarda para la sección (todo opcional; vacío = automático). */
+export type OverridesLicenciaturasLanding = {
+  readonly licenciaturas_kicker?: string
+  readonly licenciaturas_titulo?: string
+  readonly licenciaturas_subtitulo?: string
+  readonly licenciaturas_carreras?: ReadonlyArray<OverrideCarreraLanding>
+  readonly licenciaturas_pasos?: ReadonlyArray<OverridePasoLanding>
+}
+
+export type TextosLicenciaturas = {
+  kicker: string
+  titulo: string
+  bajada: string
+  /** Siempre 4, en orden. */
+  pasos: Array<{ titulo: string; desc: string }>
+  /** Por slug de carrera: lo que se PINTA en su tarjeta. */
+  carreras: Record<string, { nombre: string; desc: string }>
+}
+
+/** Número de pasos de "Cómo funciona" (fijo: el diseño es de 4 columnas). */
+export const PASOS_LICENCIATURA = 4
+
+/**
+ * Los textos AUTOMÁTICOS de la sección: los que se pintan cuando la escuela no
+ * escribió los suyos. Las frases con cifras (inscripción, ritmos) salen del
+ * desglose, así que siguen al config.
+ *
+ * Puro para que lo usen la landing y el editor (como placeholder de cada campo).
+ */
+export function textosAutoLicenciaturas(
+  carreras: readonly { slug: string; nombre: string; desc: string }[],
+  planes: readonly DesgloseLicenciatura[],
+  etiqueta: string,
+  fmt: Dinero,
+): TextosLicenciaturas {
+  const ritmos = `${unirConO(planes.map(p => String(p.meses)))} meses`
+  const nCarreras = carreras.length === 1 ? 'Una carrera' : carreras.length === 2 ? 'Dos carreras' : carreras.length === 3 ? 'Tres carreras' : `${carreras.length} carreras`
+  return {
+    kicker: 'Nivel superior',
+    titulo: carreras.length > 1 ? pluralEtiqueta(etiqueta) : etiqueta,
+    bajada: `${nCarreras} con título y cédula profesional, 100% en línea, con planes de ${ritmos}.`,
+    pasos: [
+      { titulo: 'Inscríbete', desc: planes.length > 0 ? `Inscripción única de ${fmt(planes[0].inscripcion)}.` : 'Inscripción única.' },
+      { titulo: 'Elige tu plan', desc: `${ritmos}, según tu ritmo.` },
+      { titulo: 'Acredita tus materias', desc: 'Video, quiz y examen final en cada materia.' },
+      { titulo: 'Titúlate', desc: 'Título y cédula profesional.' },
+    ],
+    carreras: Object.fromEntries(carreras.map(c => [c.slug, { nombre: c.nombre, desc: c.desc }])),
+  }
+}
+
+/**
+ * Aplica los textos que la escuela escribió encima de los automáticos. Campo
+ * por campo: uno vacío (o que no venga) conserva el automático. Las carreras
+ * se casan por SLUG; un slug que ya no existe en el config se ignora.
+ *
+ * 🛑 El nombre de la carrera aquí es solo el VISIBLE en la tarjeta de la
+ *    landing: registro, admin, materias y constancias siguen usando
+ *    `CONFIG.licenciaturas.carreras[].nombre` y `slug`.
+ *
+ * `interp` sustituye los placeholders ({nombre}, {inscripcion}…) igual que en
+ * el resto de la landing. Solo se aplica a lo que escribió la escuela.
+ */
+export function resolverTextosLicenciaturas(
+  auto: TextosLicenciaturas,
+  overrides: OverridesLicenciaturasLanding | null | undefined,
+  interp: (s: string) => string = s => s,
+): TextosLicenciaturas {
+  const o = overrides ?? {}
+  const elegir = (propio: unknown, automatico: string) =>
+    typeof propio === 'string' && propio.trim() !== '' ? interp(propio.trim()) : automatico
+
+  const pasosPropios = Array.isArray(o.licenciaturas_pasos) ? o.licenciaturas_pasos : []
+  const carrerasPropias = new Map(
+    (Array.isArray(o.licenciaturas_carreras) ? o.licenciaturas_carreras : [])
+      .filter(c => c && typeof c.slug === 'string')
+      .map(c => [c.slug, c] as const),
+  )
+
+  return {
+    kicker: elegir(o.licenciaturas_kicker, auto.kicker),
+    titulo: elegir(o.licenciaturas_titulo, auto.titulo),
+    bajada: elegir(o.licenciaturas_subtitulo, auto.bajada),
+    pasos: auto.pasos.map((p, i) => ({
+      titulo: elegir(pasosPropios[i]?.titulo, p.titulo),
+      desc: elegir(pasosPropios[i]?.desc, p.desc),
+    })),
+    carreras: Object.fromEntries(
+      Object.entries(auto.carreras).map(([slug, c]) => {
+        const propia = carrerasPropias.get(slug)
+        return [slug, { nombre: elegir(propia?.nombre, c.nombre), desc: elegir(propia?.desc, c.desc) }]
+      }),
+    ),
+  }
+}

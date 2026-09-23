@@ -128,6 +128,9 @@ type RutasHoja<T, Prefijo extends string = ''> = {
  *   modo, niveles, prefijoMatricula, dominio, urlBase, licenciaturas.*,
  *   pagos.*, cursosIngreso.*, diploma.*, documentosRequeridos,
  *   landing.mostrarCatalogoCursos, landing.convenios.
+ * (Los TEXTOS de la sección de licenciaturas de la landing sí son editables
+ * —`landing.licenciaturas_*`, vacío = automático—, pero no tocan
+ * `licenciaturas.*`: el slug y el nombre real de cada carrera no cambian.)
  *
  * `modalidades` tiene semántica ESPECIAL (ver `SiteConfigOverrides`): en la BD
  * es un objeto por id, y solo se admiten `mensualidad` y `activa`.
@@ -220,6 +223,14 @@ export const CLAVES_EDITABLES = [
   'landing.cta_subtitulo',
   'landing.cta_boton',
   'landing.cta_whatsapp',
+  // textos de la sección de licenciaturas (TICKET-2026-09-22-08). Solo TEXTOS:
+  // `licenciaturas.*` (carreras, slugs, precios, planes) sigue fuera. El nombre
+  // de carrera de aquí es el VISIBLE en la landing, casado por slug.
+  'landing.licenciaturas_kicker',
+  'landing.licenciaturas_titulo',
+  'landing.licenciaturas_subtitulo',
+  'landing.licenciaturas_carreras',
+  'landing.licenciaturas_pasos',
   // tipo de cambio: es un dato que se mueve TODOS LOS DÍAS (el dólar osciló
   // entre 16.85 y 18.78 en las últimas 52 semanas), así que tenerlo solo en
   // `config.ts` lo condena a volverse mentira en semanas. La `moneda` en sí NO
@@ -492,7 +503,17 @@ const normalizarFaq = normalizadorObjeto({
  * Toda ruta de `CLAVES_EDITABLES` que sea arreglo en CONFIG NECESITA entrada
  * aquí (lo vigila una prueba); sin ella, `normalizarArreglo` rechaza.
  */
+const normalizarCarreraLanding = normalizadorObjeto({
+  slug: 'texto', nombre: 'texto', desc: 'texto',
+} satisfies Record<keyof Landing['licenciaturas_carreras'][number], FormaCampo>)
+
+const normalizarPasoLicenciatura = normalizadorObjeto({
+  titulo: 'texto', desc: 'texto',
+} satisfies Record<keyof Landing['licenciaturas_pasos'][number], FormaCampo>)
+
 const ELEMENTOS_ARREGLO: Partial<Record<ClaveEditable, NormalizadorElemento>> = {
+  'landing.licenciaturas_carreras': normalizarCarreraLanding,
+  'landing.licenciaturas_pasos': normalizarPasoLicenciatura,
   'landing.hero_badges': normalizarEtiqueta,
   'landing.respaldo_badges': normalizarEtiqueta,
   'landing.testimonios': normalizarTestimonio,
