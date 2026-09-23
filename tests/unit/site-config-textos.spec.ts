@@ -5,12 +5,16 @@ import { CONFIG } from '@/lib/config'
 import { mergeSiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
 import { parseDecimal, validarOverrides } from '@/lib/site-config-validacion'
 import { campoPorClave } from '@/lib/site-config-campos'
-import { escribirRuta, hayCambioDeTipoCambio, hayCambiosDePrecio } from '@/lib/site-config-editor'
+import { escribirModalidad, escribirRuta, hayCambioDeTipoCambio, hayCambiosDePrecio, hayCambiosDePreciosOPlanes } from '@/lib/site-config-editor'
 import {
   AYUDA_CUOTA_SEMANAL,
   NOTA_PRECIOS,
   SUBTITULO_EDITOR,
   TEXTO_CONFIRMA_RESTAURAR,
+  TEXTO_CONFIRMA_SOLO_TIPO_CAMBIO,
+  TITULO_CONFIRMA_PRECIOS,
+  TITULO_CONFIRMA_TIPO_CAMBIO,
+  confirmacionDePrecios,
   textoConfirmaPrecios,
 } from '@/lib/site-config-textos'
 
@@ -85,7 +89,7 @@ test('4. ningún texto promete lo que la plataforma no hace', () => {
 
 test('5. el editor, la pestaña Precios, el catálogo y la e2e leen los textos de aquí', () => {
   const pagina = leer('src/app/(dashboard)/admin/configuracion/page.tsx')
-  expect(pagina).toContain('textoConfirmaPrecios(')
+  expect(pagina).toContain('confirmacionDePrecios(')
   expect(pagina).toContain('TEXTO_CONFIRMA_RESTAURAR')
   expect(pagina).toContain('{SUBTITULO_EDITOR}')
   expect(pagina).not.toContain('montos sugeridos')
@@ -164,4 +168,50 @@ test('9. un cambio de tipo de cambio pide confirmación solo si la escuela no co
   // Lo de siempre sigue igual: un texto no pide confirmación; un precio, sí.
   expect(hayCambiosDePrecio(antes, escribirRuta(antes, 'landing.hero_titulo', 'Otro'), 'USD')).toBe(false)
   expect(hayCambiosDePrecio(antes, escribirRuta(antes, 'precios.inscripcion', 799), 'MXN')).toBe(true)
+})
+
+// ─── 4. Fase 2, F2-5: lo que ve el alumno inscrito y el modal del tipo de cambio ──
+
+test('10. cuota semanal: el alumno inscrito la ve como referencia en «Mis pagos», sus semanas no cambian', () => {
+  // Verificado en el código: /api/alumno/pagos toma `cuota` y `total_plan` del
+  // plan PUBLICADO (resumen «N cuotas de $X» / «plan de $total»), y cada semana
+  // de la tabla trae su `monto` congelado hasta que se regenera el calendario.
+  for (const t of [SEMANAL, AYUDA_CUOTA_SEMANAL]) {
+    expect(t).toContain('«Mis pagos»')
+    expect(t).toContain('como referencia')
+    expect(t).toMatch(/conservan su monto hasta que regeneres su calendario/)
+  }
+  // Una escuela mensual no tiene «Mis pagos»: su texto no lo menciona.
+  expect(MENSUAL).not.toContain('Mis pagos')
+})
+
+test('11. si lo único que cambia es el tipo de cambio, el modal no habla de precios ni de cuotas', () => {
+  for (const semanal of [false, true]) {
+    const solo = confirmacionDePrecios({ semanal, cambiaPrecios: false, cambiaTipoCambio: true })
+    expect(solo.titulo).toBe(TITULO_CONFIRMA_TIPO_CAMBIO)
+    expect(solo.titulo).toBe('Vas a cambiar el tipo de cambio')
+    expect(solo.mensaje).toBe(TEXTO_CONFIRMA_SOLO_TIPO_CAMBIO)
+    expect(solo.mensaje).toContain('equivalencia en pesos')
+    expect(solo.mensaje).not.toMatch(/precio|cuota|plan/i)
+
+    // Con precios (con o sin tipo de cambio), el modal de siempre.
+    for (const cambiaTipoCambio of [false, true]) {
+      const conPrecios = confirmacionDePrecios({ semanal, cambiaPrecios: true, cambiaTipoCambio })
+      expect(conPrecios.titulo).toBe(TITULO_CONFIRMA_PRECIOS)
+      expect(conPrecios.titulo).toBe('Vas a cambiar precios')
+      expect(conPrecios.mensaje).toBe(textoConfirmaPrecios({ semanal, cambiaTipoCambio }))
+    }
+  }
+})
+
+test('12. hayCambiosDePreciosOPlanes separa precios y planes del tipo de cambio', () => {
+  const antes: SiteConfigOverrides = {}
+  expect(hayCambiosDePreciosOPlanes(antes, escribirRuta(antes, 'tipoCambioMXN', 18.25))).toBe(false)
+  expect(hayCambiosDePreciosOPlanes(antes, escribirRuta(antes, 'precios.inscripcion', 799))).toBe(true)
+  expect(hayCambiosDePreciosOPlanes(antes, escribirRuta(antes, 'precios.inscripcionSecundaria', 900))).toBe(true)
+  expect(hayCambiosDePreciosOPlanes(antes, escribirModalidad(antes, '3_meses', { activa: false }))).toBe(true)
+  // La página arma el modal con esto: título y texto salen de la misma fuente.
+  const pagina = leer('src/app/(dashboard)/admin/configuracion/page.tsx')
+  expect(pagina).toContain('cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides)')
+  expect(pagina).not.toContain('titulo="Vas a cambiar precios"')
 })

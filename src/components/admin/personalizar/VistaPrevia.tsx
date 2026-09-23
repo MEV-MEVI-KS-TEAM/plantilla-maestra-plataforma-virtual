@@ -32,6 +32,9 @@ export interface VistaPreviaProps {
   heroSubtitulo: string
   heroCtaPrimario: string
   inscripcion: number
+  /** La inscripción EFECTIVA de cada nivel en el borrador (la propia o, si no, la general). */
+  inscripcionSecundaria: number
+  inscripcionPreparatoria: number
   modalidades: ModalidadEditable[]
   /** Moneda de cobro de la escuela: la previa tiene que enseñar lo que verá el alumno. */
   moneda: Moneda
@@ -39,7 +42,8 @@ export interface VistaPreviaProps {
 
 export function VistaPrevia({
   colores, logo, nombre, nombreCompleto, tagline, whatsapp,
-  heroTitulo, heroHighlight, heroSubtitulo, heroCtaPrimario, inscripcion, modalidades, moneda,
+  heroTitulo, heroHighlight, heroSubtitulo, heroCtaPrimario, inscripcion,
+  inscripcionSecundaria, inscripcionPreparatoria, modalidades, moneda,
 }: VistaPreviaProps) {
   // Los mismos placeholders y en el mismo orden que LandingClient: si aquí se
   // vieran las llaves sin sustituir, el admin creería que su texto está roto.
@@ -49,6 +53,8 @@ export function VistaPrevia({
     nombreCompleto,
     whatsapp,
     inscripcion: formatoDinero(inscripcion, moneda),
+    inscripcionSecundaria: formatoDinero(inscripcionSecundaria, moneda),
+    inscripcionPreparatoria: formatoDinero(inscripcionPreparatoria, moneda),
   }
   const t = (s: string) => interpolar(s, vars)
 

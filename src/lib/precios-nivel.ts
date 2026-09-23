@@ -76,6 +76,23 @@ export const inscripcionDe = (nivel: Nivel, p: Precios): number =>
   inscripcionPropiaDe(nivel, p) ?? inscripcionGeneral(p)
 
 /**
+ * ¿Todos esos niveles pagan la MISMA inscripción? Con las claves vacías, siempre
+ * sí: es lo que decide si la landing puede seguir diciendo "Inscripción única".
+ */
+export const inscripcionesIguales = (niveles: readonly string[], p: Precios): boolean =>
+  new Set(niveles.map((n) => inscripcionDe(n, p))).size <= 1
+
+/**
+ * Los comodines {inscripcionSecundaria} y {inscripcionPreparatoria}, con el
+ * MISMO formato que cada sitio le da a su {inscripcion}. Con las claves vacías
+ * valen exactamente lo mismo que {inscripcion}.
+ */
+export const varsInscripcionPorNivel = (p: Precios, formatear: (monto: number) => string) => ({
+  inscripcionSecundaria: formatear(inscripcionDe('secundaria', p)),
+  inscripcionPreparatoria: formatear(inscripcionDe('preparatoria', p)),
+})
+
+/**
  * La mensualidad propia del nivel en ese plan, o `null`. Existe para que un
  * consumidor anteponga SOLO la clave nueva y conserve su respaldo de siempre.
  */

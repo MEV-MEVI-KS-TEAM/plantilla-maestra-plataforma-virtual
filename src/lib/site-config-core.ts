@@ -1010,11 +1010,20 @@ export function toLandingConfig(cfg: SiteConfig): LandingConfig {
  *   nombre         → cfg.nombre
  *   nombreCompleto → cfg.nombreCompleto
  *   whatsapp       → cfg.whatsapp
- *   inscripcion    → cfg.precios.inscripcion formateado como hoy (fmt de la landing)
+ *   inscripcion    → cfg.precios.inscripcion formateado como hoy (fmt de la landing):
+ *                    la inscripción GENERAL
+ *   inscripcionSecundaria / inscripcionPreparatoria
+ *                  → la inscripción de ese nivel (`inscripcionDe`, precios-nivel.ts),
+ *                    con el mismo formato; si el nivel no tiene la suya, la general
+ *                    (Fase 2). Salen de `varsInscripcionPorNivel` en los TRES sitios
+ *                    que interpolan: LandingClient, LandingAnimada y VistaPrevia.
  * La lista es cerrada: el editor la muestra como ayuda y el catálogo
  * (`site-config-campos.ts`) la referencia por tipo.
  */
-export const PLACEHOLDERS = ['duracion', 'nombre', 'nombreCompleto', 'whatsapp', 'inscripcion'] as const
+export const PLACEHOLDERS = [
+  'duracion', 'nombre', 'nombreCompleto', 'whatsapp', 'inscripcion',
+  'inscripcionSecundaria', 'inscripcionPreparatoria',
+] as const
 
 export type Placeholder = (typeof PLACEHOLDERS)[number]
 

@@ -55,7 +55,8 @@ import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciat
 import { subtituloMarca } from '@/lib/marca'
 import { etiquetaNivel, etiquetaNivelConArticulo, listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import {
-  certificacionDe, etiquetasPlan, mensualidadDe, textoInscripcion, totalPlanDe, totalesIguales,
+  certificacionDe, etiquetasPlan, inscripcionDe, inscripcionesIguales, mensualidadDe, textoInscripcion,
+  totalPlanDe, totalesIguales, varsInscripcionPorNivel,
 } from '@/lib/precios-ui'
 import {
   BarraAvance, BotonCopiar, Contador, Inclinable, PreguntaFrecuente, WhatsAppFlotante,
@@ -193,6 +194,15 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const nombrePlan = (m: (typeof planes)[number]) => getPlanLabelPublico(m, config.modalidades)
 
   const inscripcionTexto = textoInscripcion(precios.inscripcion as number, { minusculas: true })
+  // Inscripción POR NIVEL (Fase 2). Con las claves por nivel vacías todos los
+  // niveles pagan la general, `inscripcionComun` es verdad y cada frase sale
+  // exactamente como antes.
+  const inscripcionTextoDe = (nivel: string) => textoInscripcion(inscripcionDe(nivel, precios), { minusculas: true })
+  const inscripcionComun = inscripcionesIguales(niveles, precios)
+  const nivelComun = niveles[0] ?? nivelReferencia
+  const inscripcionComunTexto = inscripcionTextoDe(nivelComun)
+  /** «$1,000 en Secundaria y $1,500 en Preparatoria»: solo cuando difieren. */
+  const inscripcionPorNivelTexto = listaConY(niveles.map(n => `${inscripcionTextoDe(n)} en ${etiquetaNivel(n)}`))
   const minimaDe = (nivel: string) => {
     const montos = planesDe(nivel).map(m => mensualidadDe(nivel, m, precios)).filter(n => n > 0)
     return montos.length > 0 ? Math.min(...montos) : 0
@@ -218,6 +228,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     nombreCompleto: config.nombreCompleto,
     whatsapp: config.whatsappDisplay || config.whatsapp,
     inscripcion: inscripcionTexto,
+    ...varsInscripcionPorNivel(precios, (monto) => textoInscripcion(monto, { minusculas: true })),
   }
   const texto = (s?: string) => interpolar(s ?? '', vars)
 
@@ -281,13 +292,15 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
         `${dinero(mensualidadDe(n, m, precios))} al mes en ${nombrePlan(m)}`))}`).join('; ')
     const comunes = [
       mismasMaterias ? 'las mismas materias' : '',
-      Number(precios.inscripcion) > 0 ? `la inscripción de ${inscripcionTexto}` : '',
+      // La inscripción solo se dice COMÚN si de verdad lo es en todos los niveles.
+      inscripcionComun && inscripcionDe(nivelComun, precios) > 0 ? `la inscripción de ${inscripcionComunTexto}` : '',
     ].filter(Boolean)
     faqPlanes.push({
       q: `¿Qué diferencia hay entre ${listaConY(planes.map(m => `el plan de ${nombrePlan(m)}`))}?`,
       a: `${comunes.length ? `Los dos incluyen ${listaConY(comunes)}. ` : ''}` +
         `${detalle.charAt(0).toUpperCase()}${detalle.slice(1)}. La mensualidad es de ${mensualidadesTexto}` +
         `${planesIguales && niveles.length > 1 ? `, igual en ${nivelesTexto(niveles)}` : ''}. ` +
+        (inscripcionComun ? '' : `La inscripción es de ${inscripcionPorNivelTexto}. `) +
         (mismoTotalPorNivel
           ? `Al final pagas lo mismo con cualquiera de los dos (${niveles.map(n =>
             `${dinero(totalPlanDe(n, planesDe(n)[0], precios))} en ${etiquetaNivel(n)}`).join(' y ')}): eliges ritmo, no precio.`
@@ -782,9 +795,11 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             <Encabezado t={tPlanes}
               kicker={texto(L.programas_kicker)}
               titulo={mismoTotalPorNivel ? texto(L.programas_titulo) : 'Elige tu plan'}
-              bajada={mismoTotalPorNivel
+              // El subtítulo de fábrica dice "Inscripción única {inscripcion}": solo
+              // se usa si la inscripción de verdad es la misma en todos los niveles.
+              bajada={mismoTotalPorNivel && inscripcionComun
                 ? texto(L.programas_subtitulo)
-                : `Inscripción de ${inscripcionTexto}. Cambia en cuánto tiempo concluyes y cuánto pagas al mes.`} />
+                : `Inscripción de ${inscripcionComun ? inscripcionComunTexto : inscripcionPorNivelTexto}. Cambia en cuánto tiempo concluyes y cuánto pagas al mes.`} />
 
             <div className="mt-12 space-y-14">
               {niveles.map((nivel, iNivel) => {
@@ -839,7 +854,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                                     </li>
                                     <li className="flex items-center gap-2">
                                       <CheckCircle2 size={17} aria-hidden style={{ color: tPlanes.titulo, flexShrink: 0 }} />
-                                      + inscripción {inscripcionTexto}
+                                      + inscripción {inscripcionTextoDe(nivel)}
                                     </li>
                                   </ul>
 

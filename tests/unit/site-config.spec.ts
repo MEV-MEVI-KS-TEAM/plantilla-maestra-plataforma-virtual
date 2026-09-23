@@ -632,7 +632,9 @@ test('F3: interpolar sustituye {duracion} y {nombre} y deja {desconocido} tal cu
     expect(interpolar(cfg.landing.faq_items[4].a, todas)).toContain(`al ${cfg.whatsapp}.`)
     expect(interpolar(cfg.landing.programas_subtitulo, todas)).toBe('Inscripción única $599 · Elige tu nivel y plan')
   }
-  expect([...PLACEHOLDERS].sort()).toEqual(['duracion', 'inscripcion', 'nombre', 'nombreCompleto', 'whatsapp'])
+  expect([...PLACEHOLDERS].sort()).toEqual([
+    'duracion', 'inscripcion', 'inscripcionPreparatoria', 'inscripcionSecundaria', 'nombre', 'nombreCompleto', 'whatsapp',
+  ])
 })
 
 test('F3: los defaults nuevos son los literales de la landing (invariante) y hero_* dejaron de ser letra muerta', () => {

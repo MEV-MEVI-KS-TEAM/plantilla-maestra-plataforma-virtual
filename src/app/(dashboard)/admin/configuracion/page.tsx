@@ -41,13 +41,15 @@ import type { ConfigEditable } from '@/lib/site-config-validacion'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
 import { campoPorClave } from '@/lib/site-config-campos'
-import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, textoConfirmaPrecios } from '@/lib/site-config-textos'
+import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } from '@/lib/site-config-textos'
 import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
   coloresEfectivos,
   hayCambioDeTipoCambio,
   hayCambiosDePrecio,
+  hayCambiosDePreciosOPlanes,
+  inscripcionesDeBorrador,
   mismoContenido,
   modalidadesEfectivas,
   prepararParaPublicar,
@@ -343,7 +345,6 @@ export default function PersonalizarPage() {
   const previa = useMemo(() => {
     if (!defaults || !merged) return null
     const txt = (ruta: string) => String(valorEfectivo(defaults, overrides, ruta) ?? '')
-    const inscripcion = valorEfectivo(defaults, overrides, 'precios.inscripcion')
     return {
       colores: coloresEfectivos(defaults.colores as TokensColores, overrides),
       // El logo NO es parte del borrador: se publica al subirlo, así que la
@@ -357,7 +358,9 @@ export default function PersonalizarPage() {
       heroHighlight: txt('landing.hero_highlight'),
       heroSubtitulo: txt('landing.hero_subtitulo'),
       heroCtaPrimario: txt('landing.hero_cta_primario'),
-      inscripcion: typeof inscripcion === 'number' ? inscripcion : 0,
+      // General y por nivel, con la misma regla que la landing: los comodines
+      // {inscripcionSecundaria}/{inscripcionPreparatoria} se ven en la previa.
+      ...inscripcionesDeBorrador(defaults, overrides),
       modalidades: modalidadesEfectivas(defaults.modalidades, overrides.modalidades),
       // La moneda no se edita ni viaja en la config editable: sale del config.ts.
       moneda: CONFIG.moneda,
@@ -510,11 +513,12 @@ export default function PersonalizarPage() {
 
       <ModalConfirmar
         abierto={modal === 'precios'}
-        titulo="Vas a cambiar precios"
         // Los textos viven en site-config-textos.ts: la e2e compara contra la
-        // misma fuente y las pruebas vigilan que no prometan de más.
-        mensaje={textoConfirmaPrecios({
+        // misma fuente y las pruebas vigilan que no prometan de más. Si lo ÚNICO
+        // que cambió es el tipo de cambio, el modal no habla de precios.
+        {...confirmacionDePrecios({
           semanal: esSemanal(),
+          cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides),
           cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
         })}
         etiquetaConfirmar="Publicar cambios"

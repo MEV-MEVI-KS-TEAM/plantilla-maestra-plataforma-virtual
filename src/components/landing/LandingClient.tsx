@@ -16,6 +16,7 @@ import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 import { precioPublico } from '@/lib/cursos/catalogo'
+import { varsInscripcionPorNivel } from '@/lib/precios-ui'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
 const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
@@ -353,6 +354,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
     nombreCompleto: config.nombreCompleto,
     whatsapp: config.whatsapp,
     inscripcion: fmt(p.inscripcion),
+    // Con las claves por nivel vacías valen lo mismo que {inscripcion}.
+    ...varsInscripcionPorNivel(p, fmt),
   }
   // `s?: string` a propósito: `resolverLanding` ya garantiza las 42 claves,
   // pero DENTRO de las listas (`contadores[i].etiqueta`, `faq_items[i].a`…) los

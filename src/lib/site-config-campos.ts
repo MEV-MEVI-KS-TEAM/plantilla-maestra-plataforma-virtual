@@ -322,7 +322,7 @@ export const CAMPOS: ReadonlyArray<Campo> = [
     max: LIMITES.tituloSeccion, placeholders: TODOS },
   { clave: 'landing.programas_subtitulo', seccion: 'landing', etiqueta: 'Programas: subtítulo', tipo: 'textarea',
     max: LIMITES.subtituloSeccion, placeholders: TODOS,
-    ayuda: '{inscripcion} se sustituye por el precio de inscripción.' },
+    ayuda: '{inscripcion} se sustituye por la inscripción general; {inscripcionSecundaria} y {inscripcionPreparatoria}, por la de cada nivel.' },
   { clave: 'landing.programas_popular', seccion: 'landing', etiqueta: 'Programas: etiqueta "popular"', tipo: 'texto',
     max: LIMITES.boton, placeholders: TODOS },
   { clave: 'landing.programas_cta', seccion: 'landing', etiqueta: 'Programas: botón', tipo: 'texto',
@@ -438,12 +438,13 @@ export const CAMPOS: ReadonlyArray<Campo> = [
 
   // ── Precios (canónicos; los alias legacy se derivan en el merge) ──
   { clave: 'precios.inscripcion', seccion: 'precios', etiqueta: 'Inscripción', tipo: 'entero',
-    min: LIMITES.precioMin, max: LIMITES.precioMax, ayuda: 'Sin centavos, en la moneda de cobro de la escuela.' },
+    min: LIMITES.precioMin, max: LIMITES.precioMax,
+    ayuda: 'Sin centavos, en la moneda de cobro de la escuela. Es la cifra de {inscripcion} y la que se muestra en el nivel que no tenga la suya.' },
   // Por nivel (Fase 2): nacen vacíos (`null`) = se usa el precio general.
   { clave: 'precios.inscripcionSecundaria', seccion: 'precios', etiqueta: 'Inscripción de Secundaria', tipo: 'entero',
-    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general.' },
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general. Es la cifra de {inscripcionSecundaria}.' },
   { clave: 'precios.inscripcionPreparatoria', seccion: 'precios', etiqueta: 'Inscripción de Preparatoria', tipo: 'entero',
-    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general.' },
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true, ayuda: 'Vacío = se usa la inscripción general. Es la cifra de {inscripcionPreparatoria}.' },
   { clave: 'precios.certificacionSecundaria', seccion: 'precios', etiqueta: 'Certificación de Secundaria', tipo: 'entero',
     min: LIMITES.precioMin, max: LIMITES.precioMax },
   { clave: 'precios.certificacionPreparatoria', seccion: 'precios', etiqueta: 'Certificación de Preparatoria', tipo: 'entero',
