@@ -50,8 +50,17 @@ export function textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel = fal
   return `${base}${nivel}${tipoCambio} ¿Publicar?`
 }
 
-/** La frase del modal mensual cuando la escuela puede fijar precios por nivel (F2-9). */
-export const AVISO_PRECIO_POR_NIVEL = 'Un nivel sin precio propio conserva lo que cobra hoy.'
+/**
+ * La frase del modal mensual cuando la escuela puede fijar precios por nivel
+ * (F2-9). Remite al marcador del campo vacío («Vacío: usa…») porque ES lo que
+ * se cobra: se calcula con el mismo resolver que la landing sobre el borrador.
+ * Una regla con palabras fallaba en algún caso: «usa el precio general» es
+ * falso con el alias de secundaria (SAMEX, AULA RAÍZ); «conserva lo que cobra
+ * hoy», cuando la general cambia en la misma publicación; «sigue la general;
+ * si ya cobraba una cifra distinta, la conserva», al vaciar un nivel con
+ * precio propio.
+ */
+export const AVISO_PRECIO_POR_NIVEL = 'Un nivel sin precio propio cobra lo que indica su campo vacío en la pestaña Precios.'
 
 export const TITULO_CONFIRMA_PRECIOS = 'Vas a cambiar precios'
 export const TITULO_CONFIRMA_TIPO_CAMBIO = 'Vas a cambiar el tipo de cambio'
@@ -90,9 +99,9 @@ export const AYUDA_CUOTA_SEMANAL =
 
 /**
  * Se añade a la nota al pie de la pestaña Precios cuando la escuela puede
- * fijar precios por nivel (F2-9).
+ * fijar precios por nivel (F2-9). Misma regla que `AVISO_PRECIO_POR_NIVEL`.
  */
-export const NOTA_PRECIOS_POR_NIVEL = 'Un nivel sin precio propio conserva lo que cobra hoy.'
+export const NOTA_PRECIOS_POR_NIVEL = 'Un nivel sin precio propio cobra lo que indica su campo vacío («Vacío: usa…»).'
 
 /**
  * Ayuda de un campo por nivel cuando el config.ts de la escuela YA trae esa

@@ -343,12 +343,12 @@ test('11. los campos por nivel salen solo con Secundaria Y Preparatoria (y fuera
 
 // ─── 5. Textos y detección de cambios ────────────────────────────────────────
 
-test('12. el modal mensual y la nota dicen que un nivel sin precio propio conserva lo que cobra hoy', () => {
+test('12. el modal mensual y la nota remiten al campo vacío («Vacío: usa…»), que es lo que se cobra', () => {
   const con = textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, porNivel: true })
   const sin = textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false })
   // «usa el precio general» era falso en ~94 clones: su secundaria vive en un
   // alias o en una clave sembrada, y al vaciar el campo se conserva ESO.
-  expect(AVISO_PRECIO_POR_NIVEL).toBe('Un nivel sin precio propio conserva lo que cobra hoy.')
+  expect(AVISO_PRECIO_POR_NIVEL).toBe('Un nivel sin precio propio cobra lo que indica su campo vacío en la pestaña Precios.')
   expect(con).toBe(sin.replace(' ¿Publicar?', ` ${AVISO_PRECIO_POR_NIVEL} ¿Publicar?`))
   expect(con.endsWith('¿Publicar?')).toBe(true)
   expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, porNivel: false })).toBe(sin)
@@ -359,8 +359,13 @@ test('12. el modal mensual y la nota dicen que un nivel sin precio propio conser
   expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: true, porNivel: true }))
     .toContain(`${AVISO_PRECIO_POR_NIVEL} El tipo de cambio nuevo`)
   expect(confirmacionDePrecios({ semanal: false, cambiaPrecios: true, cambiaTipoCambio: false, porNivel: true }).mensaje).toBe(con)
-  expect(NOTA_PRECIOS_POR_NIVEL).toBe('Un nivel sin precio propio conserva lo que cobra hoy.')
-  for (const t of [con, NOTA_PRECIOS_POR_NIVEL]) expect(t).not.toMatch(/usa el (precio )?general/)
+  expect(NOTA_PRECIOS_POR_NIVEL).toBe('Un nivel sin precio propio cobra lo que indica su campo vacío («Vacío: usa…»).')
+  // Las reglas con palabras que resultaron falsas en algún caso no vuelven.
+  for (const t of [con, NOTA_PRECIOS_POR_NIVEL]) {
+    expect(t).not.toMatch(/usa el (precio )?general|conserva lo que cobra hoy|si ya cobraba una cifra distinta/)
+  }
+  // «Vacío: usa…» es el marcador real del campo (textoVacioNivel).
+  expect(textoVacioNivel(599, 'MXN').startsWith('Vacío: usa ')).toBe(true)
   // El editor le pasa al modal si la pestaña enseña los campos por nivel.
   const pagina = sinComentarios(leer('src/app/(dashboard)/admin/configuracion/page.tsx'))
   expect(pagina).toMatch(/confirmacionDePrecios\(\{[^}]*porNivel: preciosPorNivelVisibles\(\),\s*\}\)/)
