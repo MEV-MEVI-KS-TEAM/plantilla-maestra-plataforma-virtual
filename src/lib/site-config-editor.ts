@@ -23,6 +23,7 @@
  * abrir la puerta a que el navegador acepte lo que el servidor rechaza.
  */
 import type { Moneda } from './moneda'
+import { CONFIG } from '@/lib/config'
 import type { OverrideModalidad, SiteConfigOverrides } from '@/lib/site-config-core'
 import {
   PALETAS,
@@ -505,21 +506,30 @@ export function parseEntero(texto: string): number | null {
 
 /**
  * ¿Cambió algún precio entre dos estados del formulario? Dispara el modal de
- * confirmación: los precios no solo pintan la landing, también son los montos
- * que ve el alumno al registrarse y los sugeridos del sistema, así que se
- * publican con una pregunta de por medio.
+ * confirmación: lo que se publica aquí se ve en la página pública, y el admin
+ * tiene que saber qué cambia y qué no (los pagos ya registrados no cambian).
  *
  * Cuenta `precios.*` y `modalidades.*` — incluido el `activa`, porque apagar
- * un plan lo saca de la landing y del registro igual que cambiarle el precio.
+ * un plan lo saca de la landing y del registro igual que cambiarle el precio —
+ * y, si la escuela NO cobra en pesos, el tipo de cambio: mueve todas las
+ * equivalencias en pesos que ve el alumno. En una escuela en MXN el tipo de
+ * cambio no se pinta en ningún lado, así que no pide confirmación.
  */
 export function hayCambiosDePrecio(
   antes: SiteConfigOverrides,
   despues: SiteConfigOverrides,
+  moneda: Moneda = CONFIG.moneda,
 ): boolean {
   return (
     !mismoContenido(antes.precios, despues.precios) ||
-    !mismoContenido(antes.modalidades, despues.modalidades)
+    !mismoContenido(antes.modalidades, despues.modalidades) ||
+    (moneda !== 'MXN' && hayCambioDeTipoCambio(antes, despues))
   )
+}
+
+/** ¿Cambió el tipo de cambio? El modal de precios lo menciona aparte. */
+export function hayCambioDeTipoCambio(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
+  return !mismoContenido(antes.tipoCambioMXN, despues.tipoCambioMXN)
 }
 
 /**

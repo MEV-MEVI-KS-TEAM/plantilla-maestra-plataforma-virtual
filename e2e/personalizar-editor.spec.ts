@@ -40,6 +40,8 @@ import sharp from 'sharp'
 import { svc, mintSession, storageStateFromSession, ALUMNO_EMAIL, ALUMNO_PASSWORD } from './_helpers'
 import { PALETAS } from '@/lib/site-config-paletas'
 import { campoPorClave } from '@/lib/site-config-campos'
+import { TEXTO_CONFIRMA_RESTAURAR, textoConfirmaPrecios } from '@/lib/site-config-textos'
+import { esSemanal } from '@/lib/periodicidad'
 
 // ─── Constantes de entorno ───────────────────────────────────────────────────
 
@@ -74,13 +76,15 @@ const TEXTO_HERO_QA = 'Certifícate con nosotros QA'
 const MENSUALIDAD_QA = 2500
 const INSCRIPCION_QA = 750
 
-/** Texto EXACTO del modal de precios (page.tsx → CONFIRMA_PRECIOS). */
-const CONFIRMA_PRECIOS =
-  'Estos precios se actualizarán en tu página pública, en el registro de alumnos y en los montos sugeridos del sistema. ¿Confirmar?'
+/**
+ * Texto EXACTO del modal de precios. Sale de la MISMA función que usa
+ * page.tsx (src/lib/site-config-textos.ts). Esta suite cambia mensualidad e
+ * inscripción, no el tipo de cambio.
+ */
+const CONFIRMA_PRECIOS = textoConfirmaPrecios({ semanal: esSemanal(), cambiaTipoCambio: false })
 
-/** Texto EXACTO del modal de restaurar (page.tsx → CONFIRMA_RESTAURAR). */
-const CONFIRMA_RESTAURAR =
-  'Se borrarán todos tus cambios y tu logo; tu página volverá al diseño de la plantilla. ¿Continuar?'
+/** Texto EXACTO del modal de restaurar (misma fuente que page.tsx). */
+const CONFIRMA_RESTAURAR = TEXTO_CONFIRMA_RESTAURAR
 
 /** Las cinco pestañas del editor, en el orden de PESTANAS (page.tsx). */
 const PESTANAS = ['Identidad', 'Colores', 'Textos de mi página', 'Precios', 'Cuenta'] as const

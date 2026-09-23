@@ -4,7 +4,7 @@
  * "Personalizar mi página" (F5) — el editor.
  *
  * El admin de cada escuela cambia aquí su logo, sus colores, sus textos y sus
- * precios, y se publican al instante: sin ticket, sin código y sin redeploy.
+ * precios, y se publican en segundos: sin ticket, sin código y sin redeploy.
  * Es la pantalla que absorbe ~80 % de los tickets de soporte ("cámbiame el
  * logo", "sube el costo") y, de paso, el argumento de venta de la plataforma.
  *
@@ -41,9 +41,12 @@ import type { ConfigEditable } from '@/lib/site-config-validacion'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
 import { campoPorClave } from '@/lib/site-config-campos'
+import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, textoConfirmaPrecios } from '@/lib/site-config-textos'
+import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
   coloresEfectivos,
+  hayCambioDeTipoCambio,
   hayCambiosDePrecio,
   mismoContenido,
   modalidadesEfectivas,
@@ -78,13 +81,6 @@ const PESTANAS: ReadonlyArray<{ id: IdPestana; etiqueta: string }> = [
   { id: 'precios', etiqueta: 'Precios' },
   { id: 'cuenta', etiqueta: 'Cuenta' },
 ]
-
-/** Texto EXACTO del modal de precios: se confirma lo que se va a mover. */
-const CONFIRMA_PRECIOS =
-  'Estos precios se actualizarán en tu página pública, en el registro de alumnos y en los montos sugeridos del sistema. ¿Confirmar?'
-
-const CONFIRMA_RESTAURAR =
-  'Se borrarán todos tus cambios y tu logo; tu página volverá al diseño de la plantilla. ¿Continuar?'
 
 /**
  * En qué pestaña vive la clave que el servidor rechazó. Primero el catálogo
@@ -400,7 +396,7 @@ export default function PersonalizarPage() {
       <div className="mb-5">
         <h2 className="text-xl font-bold text-gray-900">Personalizar mi página</h2>
         <p className="text-sm mt-0.5 text-gray-500">
-          Tu logo, colores, textos y precios; se publican al instante sin tocar código.
+          {SUBTITULO_EDITOR}
         </p>
       </div>
 
@@ -515,7 +511,12 @@ export default function PersonalizarPage() {
       <ModalConfirmar
         abierto={modal === 'precios'}
         titulo="Vas a cambiar precios"
-        mensaje={CONFIRMA_PRECIOS}
+        // Los textos viven en site-config-textos.ts: la e2e compara contra la
+        // misma fuente y las pruebas vigilan que no prometan de más.
+        mensaje={textoConfirmaPrecios({
+          semanal: esSemanal(),
+          cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
+        })}
         etiquetaConfirmar="Publicar cambios"
         ocupado={publicando}
         onConfirmar={() => void publicar()}
@@ -525,7 +526,7 @@ export default function PersonalizarPage() {
       <ModalConfirmar
         abierto={modal === 'restaurar'}
         titulo="Restaurar diseño original"
-        mensaje={CONFIRMA_RESTAURAR}
+        mensaje={TEXTO_CONFIRMA_RESTAURAR}
         etiquetaConfirmar="Sí, restaurar"
         peligro
         ocupado={restaurando}
