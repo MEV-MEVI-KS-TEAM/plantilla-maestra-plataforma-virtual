@@ -152,6 +152,18 @@ export const LIMITES = {
   /** Precios y mensualidades, en MXN enteros. */
   precioMin: 0,
   precioMax: 50000,
+  /**
+   * Cuota SEMANAL (escuelas con `periodicidad: 'semanal'`). Tope propio: una
+   * cuota es del orden de una cuarta parte de una mensualidad, y el techo de las
+   * mensualidades deja pasar tecleos que se multiplican por 12 o 24 semanas.
+   *
+   * 🛑 Mínimo 1, no 0: la RPC rechaza una cuota <= 0 y `filasPlanSemanal` salta
+   * el nivel, así que una cuota de 0 dejaba en `ajustes` la cuota ANTERIOR
+   * mientras la landing anunciaba $0. La lee el validador
+   * (`LIMITE_CUOTA_SEMANAL`) y el campo de PestanaPrecios: un solo número.
+   */
+  cuotaSemanalMin: 1,
+  cuotaSemanalMax: 15000,
   // Tipo de cambio: 0 = "no mostrar equivalencia". El techo es deliberadamente
   // holgado (ninguna moneda que la flota vaya a cobrar se acerca) pero cerrado:
   // sin él, un dedazo de 16.90 a 1690 multiplicaría por cien todos los precios

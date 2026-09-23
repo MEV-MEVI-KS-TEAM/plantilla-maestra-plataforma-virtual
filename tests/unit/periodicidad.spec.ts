@@ -16,6 +16,7 @@ import { subtotalCuotas, getTotalPlan, type ModalidadPrograma } from '@/lib/moda
 import { formatoMXN, formatoPrecio, formatoMonto } from '@/lib/formato'
 import { validarOverrides, recortarAEditables, recortarOverrides } from '@/lib/site-config-validacion'
 import { mergeSiteConfig } from '@/lib/site-config-core'
+import { LIMITES } from '@/lib/site-config-campos'
 import { ES_PLANTILLA } from './es-plantilla'
 
 /**
@@ -206,6 +207,35 @@ test('5d. el merge sin overrides sigue siendo deep-equal a CONFIG', () => {
   expect(mergeSiteConfig(CONFIG, {}).modalidades).toEqual(
     CONFIG.modalidades.map(m => ({ ...m })),
   )
+})
+
+test('5e. la cuota semanal mínima es 1: con 0 no se generaría el calendario', () => {
+  // 🛑 La RPC rechaza una cuota <= 0 y `filasPlanSemanal` salta el nivel: una
+  // cuota publicada de 0 dejaba en `ajustes` la cuota ANTERIOR mientras la
+  // landing anunciaba $0. `null` sigue siendo "quitar el override".
+  const con = (cuotaSemanal: number | null) =>
+    validarOverrides({ modalidades: { [CONFIG.modalidades[0].id]: { cuotaSemanal } } }, BASE())
+
+  const cero = con(0)
+  expect(cero.ok).toBeFalsy()
+  if (!cero.ok) expect(cero.error).toMatch(/entre 1 y 15000/)
+  expect(con(1).ok).toBeTruthy()
+  expect(con(null).ok).toBeTruthy()
+  expect(LIMITES.cuotaSemanalMin).toBe(1)
+  expect(LIMITES.cuotaSemanalMax).toBe(15000)
+})
+
+test('5f. los límites de la cuota semanal viven en un solo sitio', () => {
+  // El editor tenía su propia copia del tope (MAX_CUOTA_SEMANAL) que "debía
+  // coincidir" con la del validador. Ahora los dos leen `LIMITES`.
+  const pestana = leer('src/components/admin/personalizar/PestanaPrecios.tsx')
+  // Tampoco en prosa ("15,000"): una copia en un comentario envejece igual.
+  expect(pestana, 'PestanaPrecios no debe copiar el tope semanal').not.toMatch(/15[,_ ]?000/)
+  expect(pestana).toContain('LIMITES.cuotaSemanalMin')
+  expect(pestana).toContain('LIMITES.cuotaSemanalMax')
+  const validador = leer('src/lib/site-config-validacion.ts')
+  expect(validador).toContain('LIMITES.cuotaSemanalMin')
+  expect(validador).toContain('LIMITES.cuotaSemanalMax')
 })
 
 // ─── 6. La migración: lo que NO hace ─────────────────────────────────────────
