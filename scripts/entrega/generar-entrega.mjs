@@ -27,6 +27,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { construirHTML, mxn, cap, fijarMoneda } from './documento.mjs'
+import { repartirPaginas } from './paginar.mjs'
 import {
   esSemanal, planesSemanales, tablaPrecios, colsModalidades, filasModalidades,
   frasesSemanales, lineasPreciosWhatsApp, ofertaInformativa,
@@ -690,81 +691,9 @@ const pag = await nav.newPage()
 await pag.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle' })
 await pag.evaluate(() => document.fonts.ready)
 await pag.waitForTimeout(2000)
-// ⚠️ Cada `.page` mide once pulgadas y recorta lo que sobra SIN DECIR NADA.
-// Una sección que crece —una carrera más, un aviso legal nuevo, un cliente con
-// más oferta que el de ayer— se lleva por delante lo último que se escribió, y
-// el documento sale con una frase cortada a media línea. Nadie lo ve hasta que
-// lo ve el cliente.
-//
-// Aquí el documento se pagina de verdad: lo que no cabe se pasa a una página
-// nueva, con su misma cabecera y su mismo pie, y los números se renumeran al
-// final. Así el diseño de página fija se mantiene y ninguna sección obliga a
-// adivinar cuánto texto entra.
-const reparto = await pag.evaluate(() => {
-  const cabe = (pagina) => {
-    const cuerpo = pagina.querySelector('.body')
-    return cuerpo.scrollHeight - cuerpo.clientHeight <= 2
-  }
-  const movidos = []
-  let guardia = 0
-  for (let i = 0; i < document.querySelectorAll('.page').length; i++) {
-    const pagina = document.querySelectorAll('.page')[i]
-    const cuerpo = pagina.querySelector('.body')
-    if (cabe(pagina) || cuerpo.children.length < 2) continue
-
-    // Página nueva, calcada de la actual pero con el cuerpo vacío.
-    const nueva = pagina.cloneNode(true)
-    const cuerpoNuevo = nueva.querySelector('.body')
-    cuerpoNuevo.innerHTML = ''
-    pagina.after(nueva)
-
-    // Se pasan bloques del final hasta que la de arriba respire. Siempre queda
-    // al menos uno: un bloque que no cabe ni solo no se arregla moviéndolo.
-    while (!cabe(pagina) && cuerpo.children.length > 1 && guardia++ < 400) {
-      const ultimo = cuerpo.lastElementChild
-      cuerpoNuevo.insertBefore(ultimo, cuerpoNuevo.firstChild)
-      movidos.push(ultimo.tagName.toLowerCase())
-    }
-
-    // Un encabezado no se queda solo al pie de una página con su contenido en
-    // la siguiente. Se va con él.
-    while (cuerpo.children.length > 1 && /^H[2-4]$/.test(cuerpo.lastElementChild?.tagName ?? '')) {
-      cuerpoNuevo.insertBefore(cuerpo.lastElementChild, cuerpoNuevo.firstChild)
-    }
-
-    if (!cuerpoNuevo.children.length) { nueva.remove(); continue }
-
-    // Si la página nueva no empieza por un título, se rotula: quien la lea
-    // suelta tiene que saber de qué sección viene.
-    if (!/^H[1-4]$/.test(cuerpoNuevo.firstElementChild?.tagName ?? '')) {
-      const deDonde = [...document.querySelectorAll('.page')]
-        .slice(0, i + 1).reverse()
-        .map(p => p.querySelector('.body h2'))
-        .find(Boolean)?.textContent?.trim()
-      if (deDonde) {
-        const rotulo = document.createElement('p')
-        rotulo.className = 'cont'
-        rotulo.textContent = `${deDonde} (continúa)`
-        cuerpoNuevo.insertBefore(rotulo, cuerpoNuevo.firstChild)
-      }
-    }
-  }
-  // Renumerar: los números de página se escribieron antes de repartir.
-  const paginas = [...document.querySelectorAll('.page')]
-  paginas.forEach((p, i) => {
-    const pg = p.querySelector('.pg')
-    if (pg) pg.textContent = `Pág. ${i + 1}`
-  })
-  // Lo que siga sin caber después de repartir es un bloque indivisible.
-  const rebeldes = paginas.map((p, i) => {
-    const c = p.querySelector('.body')
-    const sobra = c.scrollHeight - c.clientHeight
-    return sobra > 4
-      ? { pagina: i + 1, titulo: p.querySelector('h2, h3')?.textContent?.trim().slice(0, 46) ?? '', sobra: Math.round(sobra) }
-      : null
-  }).filter(Boolean)
-  return { paginas: paginas.length, movidos: movidos.length, rebeldes }
-})
+// Paginado de verdad: lo que no cabe en sus once pulgadas pasa a una página
+// nueva (ver `paginar.mjs`, y por qué se pasa la función sin envolverla).
+const reparto = await pag.evaluate(repartirPaginas)
 log(`· Paginado: ${reparto.paginas} páginas${reparto.movidos ? `, ${reparto.movidos} bloque(s) pasados a página nueva` : ''}`)
 if (reparto.rebeldes.length) {
   log('🛑 SIGUE SIN CABER, y el PDF lo recorta:')
