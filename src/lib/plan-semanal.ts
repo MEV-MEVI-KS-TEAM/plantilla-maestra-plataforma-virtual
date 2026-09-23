@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CONFIG } from '@/lib/config'
 import { esSemanal } from '@/lib/periodicidad'
-import { modalidadPorNivel } from '@/lib/modalidades'
+import { getSiteConfig } from '@/lib/site-config'
+import { filasPlanSemanal } from '@/lib/plan-semanal-core'
 
 /**
  * Deja en `public.ajustes` el plan semanal de cada nivel: cuántas semanas y de
@@ -9,8 +10,20 @@ import { modalidadPorNivel } from '@/lib/modalidades'
  *
  * Es el gemelo de `sincronizarPrefijoMatricula()` y por la misma razón: una
  * función de Postgres no puede leer el config del front, así que lo que
- * necesita saber se refleja en `ajustes`. La fuente de verdad sigue siendo
- * `src/lib/config.ts`; esto solo lo copia.
+ * necesita saber se refleja en `ajustes`. La fuente de verdad es el config
+ * FUSIONADO —`src/lib/config.ts` más lo publicado en "Personalizar mi página"—,
+ * el mismo que lee /api/alumno/pagos; esto solo lo copia.
+ *
+ * 🛑 Bug 165: antes leía `CONFIG.modalidades` de fábrica. Una cuota semanal
+ * publicada desde el panel salía en la landing, en el registro y en los pagos
+ * del alumno, pero el calendario se generaba con la de config.ts. Publicar NO
+ * resincroniza por sí solo: la cuota nueva llega a `ajustes` en la siguiente
+ * alta o al pulsar "regenerar", que es cuando esto se llama.
+ *
+ * ⚠️ "Regenerar" a un alumno YA inscrito le rehace las semanas pendientes y
+ * vencidas con lo que haya en `ajustes` (`generar_calendario_pagos` las borra y
+ * las vuelve a crear; las pagadas y condonadas no se borran). Después de
+ * publicar otra cuota, eso le cambia el monto de lo que aún debe.
  *
  * ⚠️ POR QUÉ EL PLAN VIVE EN LA BD Y NO VIAJA COMO ARGUMENTO.
  * `generar_calendario_por_nivel()` lee las semanas y la cuota de aquí, no las
@@ -35,20 +48,10 @@ import { modalidadPorNivel } from '@/lib/modalidades'
 export async function sincronizarPlanSemanal(admin: SupabaseClient): Promise<void> {
   if (!esSemanal()) return
 
+  // Nunca lanza: si no puede leer site_config, devuelve config.ts tal cual.
+  const cfg = await getSiteConfig()
   const ahora = new Date().toISOString()
-  const filas: { clave: string; valor: string; updated_at: string }[] = []
-
-  for (const nivel of CONFIG.niveles as readonly string[]) {
-    const plan = modalidadPorNivel(nivel)
-    // Sin plan único para el nivel, o sin cifras semanales, no se escribe nada:
-    // la RPC lo lee como "este nivel no lleva calendario" y devuelve 0. Escribir
-    // una clave a medias haría que fallara ruidosamente en el alta.
-    if (!plan?.semanas || !plan?.cuotaSemanal) continue
-    filas.push(
-      { clave: `plan_semanas_${nivel}`, valor: String(plan.semanas),      updated_at: ahora },
-      { clave: `plan_cuota_${nivel}`,   valor: String(plan.cuotaSemanal), updated_at: ahora },
-    )
-  }
+  const filas = filasPlanSemanal(CONFIG.niveles as readonly string[], cfg.modalidades, ahora)
 
   if (filas.length === 0) return
 
