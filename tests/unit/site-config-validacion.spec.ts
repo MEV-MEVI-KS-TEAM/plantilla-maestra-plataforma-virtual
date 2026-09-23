@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
+import { ES_PLANTILLA } from './es-plantilla'
+import { etiquetaNivel } from '@/lib/niveles-ui'
+import { planesPorNivel } from '@/lib/modalidades'
+import { mensualidadDe } from '@/lib/precios-nivel'
 import { CLAVES_EDITABLES, mergeSiteConfig } from '@/lib/site-config-core'
 import {
   validarOverrides,
@@ -413,6 +419,12 @@ test('25. precios: entero 0..50000', () => {
   error(v({ precios: { certificacionPreparatoria: -5 } }), 'precios.certificacionPreparatoria')
 })
 
+/** La otra duración del mismo nivel, para probar el rango sin tocar el escalón (F2-7). */
+const PAREJA: Record<string, string> = {
+  mensualidadSecundaria3Meses: 'mensualidadSecundaria6Meses', mensualidadSecundaria6Meses: 'mensualidadSecundaria3Meses',
+  mensualidadPreparatoria3Meses: 'mensualidadPreparatoria6Meses', mensualidadPreparatoria6Meses: 'mensualidadPreparatoria3Meses',
+}
+
 test('25 bis. precios POR NIVEL: entero 1..50000, o vacío (null) = usa el general', () => {
   // Fase 2. El 0 NO es "sin costo" aquí: vacío ya significa "el general", y un
   // 0 escrito dejaría al nivel anunciando $0 mientras la general cobra.
@@ -422,9 +434,13 @@ test('25 bis. precios POR NIVEL: entero 1..50000, o vacío (null) = usa el gener
     'mensualidadPreparatoria3Meses', 'mensualidadPreparatoria6Meses',
   ]) {
     const clave = `precios.${k}`
+    // F2-7: una mensualidad por nivel SOLA puede invertir el escalón (3 meses a
+    // $1 bajo 6 meses a $1,000), así que el rango se prueba con su pareja a la
+    // misma cifra: iguales cumplen el escalón y lo único que se mide es el rango.
+    const conPareja = (n: number) => (PAREJA[k] ? { [k]: n, [PAREJA[k]]: n } : { [k]: n })
     error(v({ precios: { [k]: 0 } }), clave, /entre 1 y 50000/)
-    expect(ok(v({ precios: { [k]: 1 } }))).toEqual({ precios: { [k]: 1 } })
-    expect(ok(v({ precios: { [k]: 50000 } }))).toEqual({ precios: { [k]: 50000 } })
+    expect(ok(v({ precios: conPareja(1) }))).toEqual({ precios: conPareja(1) })
+    expect(ok(v({ precios: conPareja(50000) }))).toEqual({ precios: conPareja(50000) })
     error(v({ precios: { [k]: 50001 } }), clave)
     error(v({ precios: { [k]: -1 } }), clave)
     error(v({ precios: { [k]: 599.5 } }), clave)
@@ -455,6 +471,193 @@ test('26. modalidades: solo ids de la base, solo mensualidad/activa', () => {
   expect(ok(v({ modalidades: { '3_meses': {} } }))).toEqual({})
   expect(ok(v({ modalidades: { '3_meses': { mensualidad: null, activa: null } } }))).toEqual({})
   expect(ok(v({ modalidades: {} }))).toEqual({})
+})
+
+// ─── Regla del escalón (Fase 2, F2-7) ────────────────────────────────────────
+
+type Base = ReturnType<typeof BASE>
+type Plan = { id: string; label: string; meses: number; mensualidad: number; materiasPorMes: number; activa: boolean; nivel?: string; semanas?: number; cuotaSemanal?: number }
+
+/**
+ * Una base SINTÉTICA para el escalón: no depende del config.ts del clon.
+ * Planes 3m 2000 / 6m 1000, alias alineados con el plan, claves por nivel vacías.
+ */
+function baseEscalon(o: { semanal?: boolean; niveles?: string[]; modalidades?: Plan[]; precios?: Record<string, unknown> } = {}): Base {
+  const b = BASE() as unknown as { niveles: string[]; periodicidad: string; modalidades: Plan[]; precios: Record<string, unknown> }
+  b.niveles = o.niveles ?? ['secundaria', 'preparatoria']
+  b.periodicidad = o.semanal ? 'semanal' : 'mensual'
+  b.modalidades = o.modalidades ?? [
+    { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 2000, materiasPorMes: 4, activa: true },
+    { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
+  ]
+  Object.assign(b.precios, {
+    plan3mMensualidad: 2000, plan6mMensualidad: 1000,
+    secundaria_3meses_normal: 2000, secundaria_3meses_sindicalizado: 2000, secundaria_6meses_normal: 1000, secundaria_6meses_sindicalizado: 1000,
+    preparatoria_3meses_normal: 2000, preparatoria_3meses_sindicalizado: 2000, preparatoria_6meses_normal: 1000, preparatoria_6meses_sindicalizado: 1000,
+    inscripcionSecundaria: null, inscripcionPreparatoria: null,
+    mensualidadSecundaria3Meses: null, mensualidadSecundaria6Meses: null,
+    mensualidadPreparatoria3Meses: null, mensualidadPreparatoria6Meses: null,
+  }, o.precios ?? {})
+  return b as unknown as Base
+}
+const e = (body: unknown, base: Base = baseEscalon()) => validarOverrides(body, base)
+const msg = (nivel: string, corto: number, vCorto: number, largo: number, vLargo: number, semanal = false) =>
+  `${semanal ? 'La cuota semanal' : 'La mensualidad'} de ${etiquetaNivel(nivel)} a ${corto} meses (${vCorto}) no puede ser menor que la de ${largo} meses (${vLargo}): el plan corto no puede costar menos ${semanal ? 'a la semana' : 'al mes'}.`
+
+// La SAMEX (#199): secundaria 2700/1400 en sus alias; el plan lleva la de preparatoria.
+const SAMEX = () => baseEscalon({
+  modalidades: [
+    { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 3000, materiasPorMes: 4, activa: true },
+    { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1500, materiasPorMes: 2, activa: true },
+  ],
+  precios: {
+    plan3mMensualidad: 3000, plan6mMensualidad: 1500,
+    secundaria_3meses_normal: 2700, secundaria_3meses_sindicalizado: 2700, secundaria_6meses_normal: 1400, secundaria_6meses_sindicalizado: 1400,
+    preparatoria_3meses_normal: 3000, preparatoria_3meses_sindicalizado: 3000, preparatoria_6meses_normal: 1500, preparatoria_6meses_sindicalizado: 1500,
+  },
+})
+
+test('26 bis. escalón: un plan más corto no cuesta menos al mes (y la igualdad vale)', () => {
+  // 3 < 6 da error en el plan corto; los alias alineados siguen al plan, así que
+  // el primer nivel evaluado (Secundaria) ya lo ve.
+  error(e({ modalidades: { '3_meses': { mensualidad: 900 } } }), 'modalidades.3_meses', msg('secundaria', 3, 900, 6, 1000))
+  expect(ok(e({ modalidades: { '3_meses': { mensualidad: 1000 } } }))).toEqual({ modalidades: { '3_meses': { mensualidad: 1000 } } })
+  // Subir el LARGO por encima del corto también: el error señala el plan corto.
+  error(e({ modalidades: { '6_meses': { mensualidad: 2500 } } }), 'modalidades.3_meses', msg('secundaria', 3, 2000, 6, 2500))
+})
+
+test('26 bis. escalón por nivel: la clave del nivel del plan corto, si viene en el cuerpo', () => {
+  error(e({ precios: { mensualidadSecundaria3Meses: 900 } }), 'precios.mensualidadSecundaria3Meses', msg('secundaria', 3, 900, 6, 1000))
+  // Preparatoria no se toca: Secundaria es la única que viola.
+  ok(e({ precios: { mensualidadSecundaria3Meses: 1000 } }))
+  // Si la que invierte es la del plan LARGO, la del corto no viene: el error va al plan.
+  error(e({ precios: { mensualidadPreparatoria6Meses: 2500 } }), 'modalidades.3_meses', msg('preparatoria', 3, 2000, 6, 2500))
+  // Un nivel con sus dos claves en orden (500 ≥ 400): nada que reportar.
+  ok(e({ precios: { mensualidadSecundaria3Meses: 500, mensualidadSecundaria6Meses: 400 } }))
+})
+
+test('26 bis. escalón: un plan apagado no cuenta; planes de niveles distintos no forman par', () => {
+  ok(e({ modalidades: { '3_meses': { mensualidad: 900, activa: false } } }))
+  const apagado = baseEscalon()
+  ;(apagado.modalidades as unknown as Plan[])[1].activa = false
+  ok(e({ modalidades: { '3_meses': { mensualidad: 900 } } }, apagado))
+  // Oferta asimétrica: Secundaria solo 3 meses, Preparatoria solo 6. No hay par.
+  const asimetrica = baseEscalon({
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 500, materiasPorMes: 4, activa: true, nivel: 'secundaria' },
+      { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true, nivel: 'preparatoria' },
+    ],
+    precios: { secundaria_3meses_normal: 500, secundaria_3meses_sindicalizado: 500 },
+  })
+  ok(e({ modalidades: { '3_meses': { mensualidad: 400 } } }, asimetrica))
+  // Una escuela sin Secundaria ni Preparatoria no evalúa nada.
+  ok(e({ modalidades: { '3_meses': { mensualidad: 1 } } }, baseEscalon({ niveles: ['licenciatura'] })))
+})
+
+test('26 bis. escalón: PERDÓN para lo que ya venía así en la base', () => {
+  // Una base que ya viola (3m 900 < 6m 1000) no bloquea ninguna publicación…
+  const viola = baseEscalon({
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 900, materiasPorMes: 4, activa: true },
+      { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
+    ],
+    precios: {
+      plan3mMensualidad: 900, secundaria_3meses_normal: 900, secundaria_3meses_sindicalizado: 900,
+      preparatoria_3meses_normal: 900, preparatoria_3meses_sindicalizado: 900,
+    },
+  })
+  ok(e({}, viola))
+  ok(e({ nombre: 'Otra escuela' }, viola))
+  // …ni si el editor la reenvía idéntica como override (la forma de la prueba 21).
+  ok(e({ modalidades: { '3_meses': { mensualidad: 900, activa: true }, '6_meses': { mensualidad: 1000, activa: true } } }, viola))
+  // Pero mover una cifra del par invertido ya no se perdona.
+  error(e({ modalidades: { '6_meses': { mensualidad: 1100 } } }, viola), 'modalidades.3_meses', msg('secundaria', 3, 900, 6, 1100))
+})
+
+test('26 bis. escalón semanal: se compara la cuota semanal entre planes del mismo nivel', () => {
+  // Forma RHEMA: dos planes semanales sin `nivel`, para los dos niveles.
+  const rhema = baseEscalon({
+    semanal: true,
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, semanas: 12, cuotaSemanal: 300, mensualidad: 300, materiasPorMes: 4, activa: true },
+      { id: '6_meses', label: '6 meses', meses: 6, semanas: 24, cuotaSemanal: 250, mensualidad: 250, materiasPorMes: 2, activa: true },
+    ],
+  })
+  error(e({ modalidades: { '3_meses': { cuotaSemanal: 200 } } }, rhema), 'modalidades.3_meses', msg('secundaria', 3, 200, 6, 250, true))
+  ok(e({ modalidades: { '3_meses': { cuotaSemanal: 250 } } }, rhema))
+  // En semanal la mensualidad no se cobra: no entra en el escalón.
+  ok(e({ modalidades: { '3_meses': { mensualidad: 1 } } }, rhema))
+  // Forma CAU: un plan por nivel. No hay pares.
+  const cau = baseEscalon({
+    semanal: true,
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, semanas: 12, cuotaSemanal: 250, mensualidad: 250, materiasPorMes: 4, activa: true, nivel: 'secundaria' },
+      { id: '6_meses', label: '6 meses', meses: 6, semanas: 24, cuotaSemanal: 350, mensualidad: 350, materiasPorMes: 2, activa: true, nivel: 'preparatoria' },
+    ],
+  })
+  ok(e({ modalidades: { '3_meses': { cuotaSemanal: 1 } } }, cau))
+})
+
+test('26 bis. escalón: con el alias de secundaria divergente, manda el valor EFECTIVO', () => {
+  // SAMEX: la secundaria a 3 meses cuesta 2,700 (su alias), no 3,000 (el plan).
+  // Una mensualidad propia de 6 meses de 2,800 la deja por debajo: error, aunque
+  // «el plan» (3,000) quede por encima. Evaluar lo declarado lo dejaría pasar.
+  error(e({ precios: { mensualidadSecundaria6Meses: 2800 } }, SAMEX()), 'modalidades.3_meses', msg('secundaria', 3, 2700, 6, 2800))
+  ok(e({ precios: { mensualidadSecundaria6Meses: 2700 } }, SAMEX()))
+  // Y al revés: bajar el plan de 3 meses a 1,450 no toca a Secundaria (su alias no
+  // seguía al plan), pero sí a Preparatoria.
+  error(e({ modalidades: { '3_meses': { mensualidad: 1450 } } }, SAMEX()), 'modalidades.3_meses', msg('preparatoria', 3, 1450, 6, 1500))
+})
+
+test('26 bis. escalón: cubre también 9, 12 o más meses', () => {
+  const tres = baseEscalon({
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 2000, materiasPorMes: 4, activa: true },
+      { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
+      { id: '12_meses', label: '12 meses', meses: 12, mensualidad: 800, materiasPorMes: 1, activa: true },
+    ],
+  })
+  ok(e({}, tres))
+  error(e({ modalidades: { '12_meses': { mensualidad: 1200 } } }, tres), 'modalidades.6_meses', msg('secundaria', 6, 1000, 12, 1200))
+})
+
+test('26 ter. paridad: el navegador y el servidor validan contra la MISMA base', () => {
+  // Los dos lados arman `mergeSiteConfig(CONFIG, {})`.
+  const leer = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n')
+  const pagina = leer('src/app/(dashboard)/admin/configuracion/page.tsx')
+  const api = leer('src/app/api/admin/configuracion/route.ts')
+  expect(pagina).toContain('validarOverrides(cuerpo, mergeSiteConfig(CONFIG, {}))')
+  expect(pagina).not.toContain('validarOverrides(cuerpo, defaults')
+  expect(api).toContain('const DEFAULTS = () => mergeSiteConfig(CONFIG, {})')
+  expect(api).toMatch(/validarOverrides\(body, DEFAULTS\(\)/)
+  // Los mismos cuerpos dan el mismo `ok`, `clave` y `error` contra las dos.
+  const cuerpos: unknown[] = [
+    {}, { modalidades: { [CONFIG.modalidades[0].id]: { mensualidad: 1 } } },
+    { precios: { mensualidadSecundaria3Meses: 1 } }, { precios: { mensualidadPreparatoria6Meses: 50000 } },
+    { precios: { inscripcion: 750 } }, { modalidades: { [CONFIG.modalidades[0].id]: { activa: false } } },
+  ]
+  const r = (x: ResultadoValidacion) => (x.ok ? { ok: true } : { ok: false, clave: x.clave, error: x.error })
+  for (const c of cuerpos) expect(r(validarOverrides(c, mergeSiteConfig(CONFIG, {})))).toEqual(r(v(c)))
+  // Por qué no basta la base RECORTADA que usaba la página: no trae los alias, y
+  // el respaldo de secundaria pasa por ellos. En SAMEX daría el veredicto contrario.
+  const recortada = recortarAEditables(SAMEX()) as unknown as Base
+  expect(e({ precios: { mensualidadSecundaria6Meses: 2800 } }, SAMEX()).ok).toBe(false)
+  expect(e({ precios: { mensualidadSecundaria6Meses: 2800 } }, recortada).ok).toBe(true)
+})
+
+test('26 quater. el config de FÁBRICA cumple el escalón (2000 ≥ 1000)', () => {
+  test.skip(!ES_PLANTILLA, 'en un clon manda su config.ts; el perdón cubre lo que ya venía así')
+  for (const nivel of ['secundaria', 'preparatoria']) {
+    const planes = planesPorNivel(nivel, CONFIG.modalidades)
+    for (const a of planes) for (const b of planes) {
+      if (a.meses >= b.meses) continue
+      const va = mensualidadDe(nivel, a, CONFIG.precios as unknown as Record<string, unknown>)
+      const vb = mensualidadDe(nivel, b, CONFIG.precios as unknown as Record<string, unknown>)
+      expect(va, `${nivel} ${a.meses} vs ${b.meses}`).toBeGreaterThanOrEqual(vb)
+    }
+  }
+  // Y sin perdón de por medio: con una base «vacía» de overrides, nada que reportar.
+  ok(v({}))
 })
 
 test('27. "al menos una activa" se evalúa sobre el resultado', () => {

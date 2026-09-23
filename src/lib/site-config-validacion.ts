@@ -27,6 +27,7 @@ import { z } from 'zod'
 import {
   CLAVES_EDITABLES,
   esClaveEditable,
+  mergeSiteConfig,
   normalizarArreglo,
   type ClaveEditable,
   type ClaveLandingEditable,
@@ -34,6 +35,10 @@ import {
   type SiteConfigOverrides,
 } from '@/lib/site-config-core'
 import { LIMITES, campoPorClave, type Campo, type Subcampo } from '@/lib/site-config-campos'
+import { CONFIG } from '@/lib/config'
+import { planesPorNivel, type ModalidadPrograma } from '@/lib/modalidades'
+import { etiquetaNivel } from '@/lib/niveles-ui'
+import { CLAVE_MENSUALIDAD_POR_NIVEL, mensualidadDe, type NivelConPrecio } from '@/lib/precios-nivel'
 
 // ─── Tipos públicos ──────────────────────────────────────────────────────────
 
@@ -768,6 +773,69 @@ function podarVacios(obj: ObjetoPlano): void {
   }
 }
 
+// ─── Regla del escalón (Fase 2, F2-7) ────────────────────────────────────────
+
+/**
+ * «Un plan más corto no cuesta menos al mes.» Si el de 3 meses sale más barato
+ * que el de 6, `etiquetasPlan` le pone a la vez «Terminas más rápido» y
+ * «Mensualidad más baja», y los dos planes dejan de tener sentido.
+ *
+ * - Se evalúa sobre el RESULTADO EFECTIVO (`mergeSiteConfig(base, salida)`),
+ *   con los mismos resolvers que la landing: la regla no puede contradecir lo
+ *   que se publica (el respaldo de secundaria pasa por sus alias).
+ * - Un ámbito por nivel vendido ({secundaria, preparatoria} ∩ niveles), con
+ *   sus planes ACTIVOS (`planesPorNivel`). Mensual: `mensualidadDe`; semanal:
+ *   la `cuotaSemanal` del plan. Sin esos niveles no se evalúa nada.
+ * - Para cada par con `a.meses < b.meses` se exige valor(a) ≥ valor(b); la
+ *   igualdad vale. Cubre también 9, 12 o más meses.
+ * - PERDÓN: un par cuyos dos valores son los que ya da la base sin overrides
+ *   se omite. Una base que ya viola la regla no bloquea ninguna publicación,
+ *   y reenviar los defaults (prueba 21) sigue pasando.
+ *
+ * La periodicidad y los niveles se leen de `base` (= `mergeSiteConfig(CONFIG,
+ * {})` en el servidor y en el navegador): así las pruebas pueden armar una
+ * base semanal sin tocar CONFIG. Una base que no los traiga (la recortada a
+ * lo editable) cae a CONFIG, que no se edita desde el panel.
+ */
+function validarEscalon(salida: ObjetoPlano, base: SiteConfig): Fallo | null {
+  const niveles = (['secundaria', 'preparatoria'] as const)
+    .filter((n): n is NivelConPrecio => ((base.niveles ?? CONFIG.niveles) as readonly string[]).includes(n))
+  if (niveles.length === 0) return null
+  const semanal = (base.periodicidad ?? CONFIG.periodicidad) === 'semanal'
+  const efectivo = mergeSiteConfig(base, salida)
+  const valor = (cfg: SiteConfig, nivel: NivelConPrecio, m: ModalidadPrograma) =>
+    semanal ? Number(m.cuotaSemanal ?? 0) : mensualidadDe(nivel, m, cfg.precios as unknown as Record<string, unknown>)
+  const deBase = (id: string) =>
+    (base.modalidades as readonly ModalidadPrograma[]).find((m) => m.id === id)
+
+  for (const nivel of niveles) {
+    const planes = planesPorNivel(nivel, efectivo.modalidades as readonly ModalidadPrograma[])
+    for (const corto of planes) {
+      for (const largo of planes) {
+        if (!(corto.meses < largo.meses)) continue
+        const vCorto = valor(efectivo, nivel, corto)
+        const vLargo = valor(efectivo, nivel, largo)
+        if (vCorto >= vLargo) continue
+        const bCorto = deBase(corto.id)
+        const bLargo = deBase(largo.id)
+        if (bCorto && bLargo && valor(base, nivel, bCorto) === vCorto && valor(base, nivel, bLargo) === vLargo) continue
+
+        // La clave por nivel del plan corto si viene en el cuerpo; si no, el plan.
+        const meses = corto.meses === 3 || corto.meses === 6 ? corto.meses : null
+        const claveNivel = !semanal && meses ? `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[nivel][meses]}` : null
+        const clave = claveNivel && leerRuta(salida, claveNivel) !== undefined ? claveNivel : `modalidades.${corto.id}`
+        const cuota = semanal ? 'La cuota semanal' : 'La mensualidad'
+        const unidad = semanal ? 'a la semana' : 'al mes'
+        return fallo(
+          `${cuota} de ${etiquetaNivel(nivel)} a ${corto.meses} meses (${vCorto}) no puede ser menor que la de ${largo.meses} meses (${vLargo}): el plan corto no puede costar menos ${unidad}.`,
+          clave,
+        )
+      }
+    }
+  }
+  return null
+}
+
 // ─── API pública ─────────────────────────────────────────────────────────────
 
 /**
@@ -802,6 +870,9 @@ export function validarOverrides(
   } else if (body.whatsappUrl !== undefined && body.whatsappUrl !== null) {
     return { ok: false, error: 'whatsappUrl se deriva de whatsapp', clave: 'whatsappUrl' }
   }
+
+  const escalon = validarEscalon(salida, base)
+  if (escalon) return escalon
 
   podarVacios(salida)
   return { ok: true, overrides: salida as SiteConfigOverrides }

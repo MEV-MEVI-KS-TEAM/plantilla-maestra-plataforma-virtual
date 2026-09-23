@@ -213,8 +213,12 @@ test('5e. la cuota semanal mínima es 1: con 0 no se generaría el calendario', 
   // 🛑 La RPC rechaza una cuota <= 0 y `filasPlanSemanal` salta el nivel: una
   // cuota publicada de 0 dejaba en `ajustes` la cuota ANTERIOR mientras la
   // landing anunciaba $0. `null` sigue siendo "quitar el override".
+  // F2-7: la cuota va a TODOS los planes. En un clon semanal con varios planes
+  // por nivel (forma RHEMA), una cuota de 1 solo en el primero invertiría el
+  // escalón («el plan corto no cuesta menos») y esta prueba mediría otra regla.
+  // Con la misma cuota en todos, el escalón se cumple y solo cuenta el mínimo.
   const con = (cuotaSemanal: number | null) =>
-    validarOverrides({ modalidades: { [CONFIG.modalidades[0].id]: { cuotaSemanal } } }, BASE())
+    validarOverrides({ modalidades: Object.fromEntries(CONFIG.modalidades.map((m) => [m.id, { cuotaSemanal }])) }, BASE())
 
   const cero = con(0)
   expect(cero.ok).toBeFalsy()

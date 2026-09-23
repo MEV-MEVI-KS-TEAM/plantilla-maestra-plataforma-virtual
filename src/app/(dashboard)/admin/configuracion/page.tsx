@@ -36,7 +36,8 @@ import { CONFIG } from '@/lib/config'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, Lock } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
-import type { SiteConfig, SiteConfigOverrides } from '@/lib/site-config-core'
+import type { SiteConfigOverrides } from '@/lib/site-config-core'
+import { mergeSiteConfig } from '@/lib/site-config-core'
 import type { ConfigEditable } from '@/lib/site-config-validacion'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
@@ -238,10 +239,12 @@ export default function PersonalizarPage() {
       const cuerpo = prepararParaPublicar(overrides)
 
       // Misma validación que el servidor, aquí para no gastar un viaje de red
-      // por cada campo mal escrito. `defaults` es la config recortada a las
-      // claves editables, que es todo lo que el validador consulta de la base
-      // (los logos, lo único que necesitaría más, ya no viajan en el cuerpo).
-      const previo = validarOverrides(cuerpo, defaults as unknown as SiteConfig)
+      // por cada campo mal escrito, y contra la MISMA base: la config completa
+      // (`mergeSiteConfig(CONFIG, {})`, como `DEFAULTS()` en la API). La regla
+      // del escalón (F2-7) mira precios efectivos, y el respaldo de secundaria
+      // pasa por sus alias, que la config recortada (`defaults`) no trae: con
+      // ella, el navegador aprobaría lo que el servidor rechaza, o al revés.
+      const previo = validarOverrides(cuerpo, mergeSiteConfig(CONFIG, {}))
       if (!previo.ok) {
         showToast(previo.error, 'error', 6000)
         if (previo.clave) irAlCampo(previo.clave)
