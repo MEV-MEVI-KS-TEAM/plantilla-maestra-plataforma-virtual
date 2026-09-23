@@ -5,6 +5,7 @@ import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, FileDown, StickyNote, Save, LockOpen, Undo2, CheckCircle2, CreditCard, DollarSign, Plus, Trash2, ChevronDown, ChevronRight, Pencil } from 'lucide-react'
+import { EditarDatosAlumno } from '@/components/admin/EditarDatosAlumno'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 // F3B: el precio de inscripción que se le enseña al admin sale del config
 // FUSIONADO (config.ts + lo que él mismo editó en "Personalizar mi página"),
@@ -32,7 +33,7 @@ interface AlumnoDetalle {
   // Candados de corrección de plan, evaluados por el servidor (solo admin).
   // null = el servidor no lo calculó (secretario, diplomado o migración ausente).
   plan_correccion?: { permitida: boolean; candado: string | null } | null
-  usuario: { id: string; nombre_completo: string; email: string; activo: boolean; telefono: string | null }
+  usuario: { id: string; nombre_completo: string; nombre?: string; apellidos?: string; email: string; activo: boolean; telefono: string | null }
   plan: { id: string; nombre: string; duracion_meses: number; precio_mensual: number }
   calificaciones: { id: string; calificacion_final: number | null; aprobada: boolean; materias: { nombre: string; codigo: string } }[]
   intentos: {
@@ -189,6 +190,7 @@ export default function AlumnoDetallePage() {
   const [error, setError] = useState<string | null>(null)
   const [modalPago, setModalPago] = useState(false)
   const [modalReset, setModalReset] = useState(false)
+  const [modalEditar, setModalEditar] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [resettingPass, setResettingPass] = useState(false)
   const [togglingActivo, setTogglingActivo] = useState(false)
@@ -680,6 +682,16 @@ export default function AlumnoDetallePage() {
         </div>
         {!esSecretario && (
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          <button
+            onClick={() => setModalEditar(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1', border: '1px solid rgba(99,102,241,0.2)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.18)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)' }}
+          >
+            <Pencil className="w-4 h-4" />
+            Editar datos
+          </button>
           <button
             onClick={() => { setModalReset(true); setResetError(null); setResetSuccess(null) }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
@@ -1487,6 +1499,25 @@ export default function AlumnoDetallePage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal Editar datos (nombre, apellidos, teléfono y correo de acceso) */}
+      {modalEditar && alumno && (
+        <EditarDatosAlumno
+          alumnoId={alumno.id}
+          inicial={{
+            nombre:    alumno.usuario.nombre    ?? '',
+            apellidos: alumno.usuario.apellidos ?? '',
+            email:     alumno.usuario.email === '—' ? '' : (alumno.usuario.email ?? ''),
+            telefono:  alumno.usuario.telefono ?? '',
+          }}
+          onCerrar={() => setModalEditar(false)}
+          onGuardado={(msg) => {
+            setModalEditar(false)
+            showToast(msg, 'success')
+            cargar()
+          }}
+        />
       )}
 
       {/* Modal Resetear Contraseña */}

@@ -167,6 +167,12 @@ export async function GET(
       activo: Boolean(a.activo),
       usuario: {
         nombre_completo: [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || '—',
+        // Separados además del concatenado: el formulario "Editar datos" los
+        // necesita tal cual están en la tabla. Partir `nombre_completo` por
+        // espacios corrompe los nombres compuestos ("María del Carmen Pérez"
+        // dejaría "del Carmen Pérez" como apellidos).
+        nombre:          u?.nombre    ?? '',
+        apellidos:       u?.apellidos ?? '',
         email:           u?.email ?? '—',
         telefono:        u?.telefono ?? null,
         foto_url:        u?.foto_url ?? null,
