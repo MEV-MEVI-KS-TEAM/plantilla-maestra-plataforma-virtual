@@ -22,6 +22,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteConfig } from '@/lib/site-config'
 import { esSemanal } from '@/lib/periodicidad'
 import { modalidadPorNivel, getTotalPlan } from '@/lib/modalidades'
+import { inscripcionDe } from '@/lib/precios-nivel'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,7 +115,10 @@ export async function GET() {
       // a medida tiene las semanas que le generó el admin, no las del plan.
       semanas_total: semanas.length || plan?.semanas || 0,
       cuota:         plan?.cuotaSemanal ?? 0,
-      total_plan:    plan ? getTotalPlan(plan, Number(precios.inscripcion ?? 0)) : 0,
+      // La inscripción del NIVEL del alumno (la propia o, si no, la general).
+      // Campo aditivo: "Mis pagos" todavía no lo lee (F2-6b).
+      inscripcion:   inscripcionDe(nivel, precios),
+      total_plan:    plan ? getTotalPlan(plan, inscripcionDe(nivel, precios)) : 0,
       certificacion: certificacionDe(nivel, precios),
       resumen: {
         pagadas:     pagadas.length,
