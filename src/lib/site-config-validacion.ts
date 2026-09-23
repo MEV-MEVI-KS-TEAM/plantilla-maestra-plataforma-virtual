@@ -788,9 +788,16 @@ function podarVacios(obj: ObjetoPlano): void {
  *   la `cuotaSemanal` del plan. Sin esos niveles no se evalúa nada.
  * - Para cada par con `a.meses < b.meses` se exige valor(a) ≥ valor(b); la
  *   igualdad vale. Cubre también 9, 12 o más meses.
- * - PERDÓN: un par cuyos dos valores son los que ya da la base sin overrides
- *   se omite. Una base que ya viola la regla no bloquea ninguna publicación,
- *   y reenviar los defaults (prueba 21) sigue pasando.
+ * - PERDÓN: un par que YA se publicaba así en la base (sus dos planes activos
+ *   y sus dos valores iguales a los de la base sin overrides) se omite. Una
+ *   base que ya viola la regla no bloquea ninguna publicación, y reenviar los
+ *   defaults (prueba 21) sigue pasando. Encender un plan apagado que queda
+ *   invertido NO se perdona: ese par nunca se publicó.
+ * - La clave del error es el lado del par que se puede mover: la clave por
+ *   nivel del plan corto si viene en el cuerpo; si no, su plan. Pero si la
+ *   cifra del corto no sale de su plan (alias de secundaria que no lo sigue, o
+ *   clave por nivel sembrada) y su clave no viene en el cuerpo, mover el plan
+ *   corto no la cambia: se señala el LARGO, que es el que se movió.
  *
  * La periodicidad y los niveles se leen de `base` (= `mergeSiteConfig(CONFIG,
  * {})` en el servidor y en el navegador): así las pruebas pueden armar una
@@ -818,12 +825,17 @@ function validarEscalon(salida: ObjetoPlano, base: SiteConfig): Fallo | null {
         if (vCorto >= vLargo) continue
         const bCorto = deBase(corto.id)
         const bLargo = deBase(largo.id)
-        if (bCorto && bLargo && valor(base, nivel, bCorto) === vCorto && valor(base, nivel, bLargo) === vLargo) continue
+        if (bCorto?.activa && bLargo?.activa
+          && valor(base, nivel, bCorto) === vCorto && valor(base, nivel, bLargo) === vLargo) continue
 
-        // La clave por nivel del plan corto si viene en el cuerpo; si no, el plan.
-        const meses = corto.meses === 3 || corto.meses === 6 ? corto.meses : null
-        const claveNivel = !semanal && meses ? `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[nivel][meses]}` : null
-        const clave = claveNivel && leerRuta(salida, claveNivel) !== undefined ? claveNivel : `modalidades.${corto.id}`
+        const claveEnCuerpo = (m: ModalidadPrograma): string | null => {
+          const meses = m.meses === 3 || m.meses === 6 ? m.meses : null
+          const k = !semanal && meses ? `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[nivel][meses]}` : null
+          return k && leerRuta(salida, k) !== undefined ? k : null
+        }
+        const cortoFijo = !semanal && claveEnCuerpo(corto) === null && vCorto !== Number(corto.mensualidad)
+        const lado = cortoFijo ? largo : corto
+        const clave = claveEnCuerpo(lado) ?? `modalidades.${lado.id}`
         const cuota = semanal ? 'La cuota semanal' : 'La mensualidad'
         const unidad = semanal ? 'a la semana' : 'al mes'
         return fallo(

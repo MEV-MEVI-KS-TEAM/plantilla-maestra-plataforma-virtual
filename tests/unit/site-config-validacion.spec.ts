@@ -38,6 +38,17 @@ function v(body: unknown, origenStorage?: string): ResultadoValidacion {
   return validarOverrides(body, BASE(), origenStorage ? { origenStorage } : {})
 }
 
+/**
+ * Para las pruebas de FORMA (lista blanca, limpieza, recorte): sin Secundaria
+ * ni Preparatoria en la base, la regla del escalón (F2-7) no evalúa nada. Los
+ * precios de cada clon son otros, y una cifra fija como 2500 puede invertir
+ * su escalón (Búfalo cobra 2800 a 6 meses); esa regla tiene sus pruebas (26 bis).
+ */
+function vSinEscalon(body: unknown, origenStorage?: string): ResultadoValidacion {
+  const base = { ...BASE(), niveles: [] } as unknown as ReturnType<typeof BASE>
+  return validarOverrides(body, base, origenStorage ? { origenStorage } : {})
+}
+
 /** Afirma error y devuelve el mensaje para inspecciones extra. */
 function error(r: ResultadoValidacion, clave?: string, fragmento?: string | RegExp): string {
   expect(r.ok, `se esperaba error y fue ok: ${JSON.stringify(r)}`).toBe(false)
@@ -436,11 +447,12 @@ test('25 bis. precios POR NIVEL: entero 1..50000, o vacío (null) = usa el gener
     const clave = `precios.${k}`
     // F2-7: una mensualidad por nivel SOLA puede invertir el escalón (3 meses a
     // $1 bajo 6 meses a $1,000), así que el rango se prueba con su pareja a la
-    // misma cifra: iguales cumplen el escalón y lo único que se mide es el rango.
+    // misma cifra, sobre la base sintética de planes 3 y 6 (un clon con 12 meses
+    // seguiría invirtiendo contra ese plan): lo único que se mide es el rango.
     const conPareja = (n: number) => (PAREJA[k] ? { [k]: n, [PAREJA[k]]: n } : { [k]: n })
     error(v({ precios: { [k]: 0 } }), clave, /entre 1 y 50000/)
-    expect(ok(v({ precios: conPareja(1) }))).toEqual({ precios: conPareja(1) })
-    expect(ok(v({ precios: conPareja(50000) }))).toEqual({ precios: conPareja(50000) })
+    expect(ok(validarOverrides({ precios: conPareja(1) }, baseEscalon()))).toEqual({ precios: conPareja(1) })
+    expect(ok(validarOverrides({ precios: conPareja(50000) }, baseEscalon()))).toEqual({ precios: conPareja(50000) })
     error(v({ precios: { [k]: 50001 } }), clave)
     error(v({ precios: { [k]: -1 } }), clave)
     error(v({ precios: { [k]: 599.5 } }), clave)
@@ -453,7 +465,7 @@ test('25 bis. precios POR NIVEL: entero 1..50000, o vacío (null) = usa el gener
 // ─── Modalidades ─────────────────────────────────────────────────────────────
 
 test('26. modalidades: solo ids de la base, solo mensualidad/activa', () => {
-  expect(ok(v({ modalidades: { '3_meses': { mensualidad: 2500 } } })))
+  expect(ok(vSinEscalon({ modalidades: { '3_meses': { mensualidad: 2500 } } })))
     .toEqual({ modalidades: { '3_meses': { mensualidad: 2500 } } })
   error(v({ modalidades: { inventada: { mensualidad: 1 } } }), 'modalidades.inventada', /desconocida/)
   error(v({ modalidades: { '3_meses': { meses: 4 } } }), 'modalidades.3_meses.meses', 'Clave no editable: modalidades.3_meses.meses')
@@ -490,6 +502,9 @@ function baseEscalon(o: { semanal?: boolean; niveles?: string[]; modalidades?: P
     { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 2000, materiasPorMes: 4, activa: true },
     { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
   ]
+  // Fuera los alias por nivel y duración del clon (p. ej. secundaria_12meses_normal):
+  // abajo se reponen solo los de 3 y 6 meses, alineados con el plan.
+  for (const k of Object.keys(b.precios)) if (/^(secundaria|preparatoria)_\d+meses_/.test(k)) delete b.precios[k]
   Object.assign(b.precios, {
     plan3mMensualidad: 2000, plan6mMensualidad: 1000,
     secundaria_3meses_normal: 2000, secundaria_3meses_sindicalizado: 2000, secundaria_6meses_normal: 1000, secundaria_6meses_sindicalizado: 1000,
@@ -534,6 +549,8 @@ test('26 bis. escalón por nivel: la clave del nivel del plan corto, si viene en
   error(e({ precios: { mensualidadPreparatoria6Meses: 2500 } }), 'modalidades.3_meses', msg('preparatoria', 3, 2000, 6, 2500))
   // Un nivel con sus dos claves en orden (500 ≥ 400): nada que reportar.
   ok(e({ precios: { mensualidadSecundaria3Meses: 500, mensualidadSecundaria6Meses: 400 } }))
+  // La de Preparatoria, con SU clave (no la de Secundaria).
+  error(e({ precios: { mensualidadPreparatoria3Meses: 900 } }), 'precios.mensualidadPreparatoria3Meses', msg('preparatoria', 3, 900, 6, 1000))
 })
 
 test('26 bis. escalón: un plan apagado no cuenta; planes de niveles distintos no forman par', () => {
@@ -570,8 +587,23 @@ test('26 bis. escalón: PERDÓN para lo que ya venía así en la base', () => {
   ok(e({ nombre: 'Otra escuela' }, viola))
   // …ni si el editor la reenvía idéntica como override (la forma de la prueba 21).
   ok(e({ modalidades: { '3_meses': { mensualidad: 900, activa: true }, '6_meses': { mensualidad: 1000, activa: true } } }, viola))
-  // Pero mover una cifra del par invertido ya no se perdona.
+  // Pero mover una cifra del par invertido ya no se perdona…
   error(e({ modalidades: { '6_meses': { mensualidad: 1100 } } }, viola), 'modalidades.3_meses', msg('secundaria', 3, 900, 6, 1100))
+  // …ni siquiera un paso que lo deja «menos» invertido: el perdón exige los DOS valores de la base.
+  error(e({ modalidades: { '6_meses': { mensualidad: 950 } } }, viola), 'modalidades.3_meses', msg('secundaria', 3, 900, 6, 950))
+  // Encender un plan APAGADO que queda invertido tampoco: ese par nunca se publicó.
+  const apagadoInvertido = baseEscalon({
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 900, materiasPorMes: 4, activa: false },
+      { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
+    ],
+    precios: {
+      plan3mMensualidad: 900, secundaria_3meses_normal: 900, secundaria_3meses_sindicalizado: 900,
+      preparatoria_3meses_normal: 900, preparatoria_3meses_sindicalizado: 900,
+    },
+  })
+  ok(e({}, apagadoInvertido))
+  error(e({ modalidades: { '3_meses': { activa: true } } }, apagadoInvertido), 'modalidades.3_meses', msg('secundaria', 3, 900, 6, 1000))
 })
 
 test('26 bis. escalón semanal: se compara la cuota semanal entre planes del mismo nivel', () => {
@@ -602,11 +634,28 @@ test('26 bis. escalón: con el alias de secundaria divergente, manda el valor EF
   // SAMEX: la secundaria a 3 meses cuesta 2,700 (su alias), no 3,000 (el plan).
   // Una mensualidad propia de 6 meses de 2,800 la deja por debajo: error, aunque
   // «el plan» (3,000) quede por encima. Evaluar lo declarado lo dejaría pasar.
-  error(e({ precios: { mensualidadSecundaria6Meses: 2800 } }, SAMEX()), 'modalidades.3_meses', msg('secundaria', 3, 2700, 6, 2800))
+  // El error señala la clave del LARGO: subir el plan de 3 meses no mueve el alias.
+  error(e({ precios: { mensualidadSecundaria6Meses: 2800 } }, SAMEX()), 'precios.mensualidadSecundaria6Meses', msg('secundaria', 3, 2700, 6, 2800))
   ok(e({ precios: { mensualidadSecundaria6Meses: 2700 } }, SAMEX()))
   // Y al revés: bajar el plan de 3 meses a 1,450 no toca a Secundaria (su alias no
   // seguía al plan), pero sí a Preparatoria.
   error(e({ modalidades: { '3_meses': { mensualidad: 1450 } } }, SAMEX()), 'modalidades.3_meses', msg('preparatoria', 3, 1450, 6, 1500))
+  // Forma BÚFALO: planes 3600/2800, alias de secundaria 3200 (no sigue al plan) y
+  // 2800 (sí lo sigue). Subir el plan de 6 meses a 3300 deja la secundaria a 3
+  // meses (3200) por debajo, y subir el de 3 meses no la movería: se señala el de 6.
+  const bufalo = baseEscalon({
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 3600, materiasPorMes: 4, activa: true },
+      { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 2800, materiasPorMes: 2, activa: true },
+    ],
+    precios: {
+      plan3mMensualidad: 3600, plan6mMensualidad: 2800,
+      secundaria_3meses_normal: 3200, secundaria_3meses_sindicalizado: 3200, secundaria_6meses_normal: 2800, secundaria_6meses_sindicalizado: 2800,
+      preparatoria_3meses_normal: 3600, preparatoria_3meses_sindicalizado: 3600, preparatoria_6meses_normal: 2800, preparatoria_6meses_sindicalizado: 2800,
+    },
+  })
+  error(e({ modalidades: { '6_meses': { mensualidad: 3300 } } }, bufalo), 'modalidades.6_meses', msg('secundaria', 3, 3200, 6, 3300))
+  error(e({ modalidades: { '3_meses': { mensualidad: 50000 }, '6_meses': { mensualidad: 3300 } } }, bufalo), 'modalidades.6_meses', msg('secundaria', 3, 3200, 6, 3300))
 })
 
 test('26 bis. escalón: cubre también 9, 12 o más meses', () => {
@@ -619,6 +668,23 @@ test('26 bis. escalón: cubre también 9, 12 o más meses', () => {
   })
   ok(e({}, tres))
   error(e({ modalidades: { '12_meses': { mensualidad: 1200 } } }, tres), 'modalidades.6_meses', msg('secundaria', 6, 1000, 12, 1200))
+  // La clave de 6 meses también manda cuando es el plan corto del par.
+  error(e({ precios: { mensualidadSecundaria6Meses: 700 } }, tres), 'precios.mensualidadSecundaria6Meses', msg('secundaria', 6, 700, 12, 800))
+  // Perdón + 3 planes: el par (3, 6) viene invertido y se perdona, pero eso no
+  // exime al par NO adyacente (3, 12). Comparar solo vecinos lo dejaría pasar.
+  const perdonTres = baseEscalon({
+    modalidades: [
+      { id: '3_meses', label: '3 meses', meses: 3, mensualidad: 900, materiasPorMes: 4, activa: true },
+      { id: '6_meses', label: '6 meses', meses: 6, mensualidad: 1000, materiasPorMes: 2, activa: true },
+      { id: '12_meses', label: '12 meses', meses: 12, mensualidad: 800, materiasPorMes: 1, activa: true },
+    ],
+    precios: {
+      plan3mMensualidad: 900, secundaria_3meses_normal: 900, secundaria_3meses_sindicalizado: 900,
+      preparatoria_3meses_normal: 900, preparatoria_3meses_sindicalizado: 900,
+    },
+  })
+  ok(e({}, perdonTres))
+  error(e({ modalidades: { '12_meses': { mensualidad: 950 } } }, perdonTres), 'modalidades.3_meses', msg('secundaria', 3, 900, 12, 950))
 })
 
 test('26 ter. paridad: el navegador y el servidor validan contra la MISMA base', () => {
@@ -630,14 +696,16 @@ test('26 ter. paridad: el navegador y el servidor validan contra la MISMA base',
   expect(pagina).not.toContain('validarOverrides(cuerpo, defaults')
   expect(api).toContain('const DEFAULTS = () => mergeSiteConfig(CONFIG, {})')
   expect(api).toMatch(/validarOverrides\(body, DEFAULTS\(\)/)
-  // Los mismos cuerpos dan el mismo `ok`, `clave` y `error` contra las dos.
-  const cuerpos: unknown[] = [
-    {}, { modalidades: { [CONFIG.modalidades[0].id]: { mensualidad: 1 } } },
-    { precios: { mensualidadSecundaria3Meses: 1 } }, { precios: { mensualidadPreparatoria6Meses: 50000 } },
-    { precios: { inscripcion: 750 } }, { modalidades: { [CONFIG.modalidades[0].id]: { activa: false } } },
-  ]
-  const r = (x: ResultadoValidacion) => (x.ok ? { ok: true } : { ok: false, clave: x.clave, error: x.error })
-  for (const c of cuerpos) expect(r(validarOverrides(c, mergeSiteConfig(CONFIG, {})))).toEqual(r(v(c)))
+  // Esa base trae lo que la regla lee: los niveles vendidos y la periodicidad.
+  const completa = mergeSiteConfig(CONFIG, {})
+  expect(completa.niveles).toEqual(CONFIG.niveles)
+  expect(completa.periodicidad).toBe(CONFIG.periodicidad)
+  // Una base que NO los trae (la recortada) cae a CONFIG: la regla sigue viva.
+  if (ES_PLANTILLA) {
+    const sinNiveles = recortarAEditables(BASE()) as unknown as Base
+    expect((sinNiveles as unknown as { niveles?: unknown }).niveles).toBeUndefined()
+    error(validarOverrides({ modalidades: { '3_meses': { mensualidad: 1 } } }, sinNiveles), 'modalidades.3_meses')
+  }
   // Por qué no basta la base RECORTADA que usaba la página: no trae los alias, y
   // el respaldo de secundaria pasa por ellos. En SAMEX daría el veredicto contrario.
   const recortada = recortarAEditables(SAMEX()) as unknown as Base
@@ -656,8 +724,8 @@ test('26 quater. el config de FÁBRICA cumple el escalón (2000 ≥ 1000)', () =
       expect(va, `${nivel} ${a.meses} vs ${b.meses}`).toBeGreaterThanOrEqual(vb)
     }
   }
-  // Y sin perdón de por medio: con una base «vacía» de overrides, nada que reportar.
-  ok(v({}))
+  // (No basta `ok(v({}))`: con el cuerpo vacío cada par trae los valores de la
+  // base y el perdón lo omite. El guardián de la fábrica es el bucle de arriba.)
 })
 
 test('27. "al menos una activa" se evalúa sobre el resultado', () => {
@@ -768,7 +836,7 @@ test('30. el objeto devuelto es limpio y el merge lo acepta íntegro', () => {
     modalidades: { '3_meses': { mensualidad: 2500, activa: null }, '6_meses': null },
     redes: { facebook: '' },
   }
-  const r = ok(v(cuerpo))
+  const r = ok(vSinEscalon(cuerpo))
   expect(r).toEqual({
     nombre: 'Escuela X',
     colores: { acento: '#FF0000' },
@@ -861,7 +929,7 @@ test('32. recortarOverrides: la fila que devuelve el GET va recortada a la lista
     modalidades: { [idConocido]: { mensualidad: 2500, activa: true } },
   })
   // Lo recortado se puede volver a guardar tal cual (es lo que hará el editor)
-  ok(v(r, ORIGEN))
+  ok(vSinEscalon(r, ORIGEN))
 
   // Sin `base` los ids no se filtran (solo la forma); con ella, sí.
   const soloForma = recortarOverrides(fila) as unknown as Record<string, unknown>
