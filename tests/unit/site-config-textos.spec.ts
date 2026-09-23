@@ -180,7 +180,12 @@ test('10. cuota semanal: el alumno inscrito la ve como referencia en «Mis pagos
     expect(t).toContain('«Mis pagos»')
     expect(t).toContain('como referencia')
     expect(t).toMatch(/conservan su monto hasta que regeneres su calendario/)
+    expect(t).toContain('si su nivel tiene un solo plan activo')
   }
+  // La condición del texto es la de la ruta: el plan sale de `modalidadPorNivel`,
+  // que solo responde con UN plan activo (con 0 o 2+, «Mis pagos» dice que no
+  // hay calendario). Si la ruta cambia de regla, este texto tiene que cambiar.
+  expect(leer('src/app/api/alumno/pagos/route.ts')).toContain('modalidadPorNivel(nivel, cfg.modalidades)')
   // Una escuela mensual no tiene «Mis pagos»: su texto no lo menciona.
   expect(MENSUAL).not.toContain('Mis pagos')
 })

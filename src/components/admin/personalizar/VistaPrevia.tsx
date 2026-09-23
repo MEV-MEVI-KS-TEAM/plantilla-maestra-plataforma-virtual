@@ -13,9 +13,10 @@
  * Se pinta con los valores del FORMULARIO, no con los publicados: es lo que se
  * verá al pulsar "Publicar cambios".
  */
-import { interpolar } from '@/lib/site-config-core'
+import { interpolar, type Placeholder } from '@/lib/site-config-core'
 import { getDuracionLabel } from '@/lib/modalidades'
 import { formatoDinero, type ModalidadEditable } from '@/lib/site-config-editor'
+import { varsInscripcionPorNivel } from '@/lib/precios-nivel'
 import type { Moneda } from '@/lib/moneda'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import { BORDE, TXT, TXT_SUAVE, TXT_TENUE } from './Comunes'
@@ -53,9 +54,11 @@ export function VistaPrevia({
     nombreCompleto,
     whatsapp,
     inscripcion: formatoDinero(inscripcion, moneda),
-    inscripcionSecundaria: formatoDinero(inscripcionSecundaria, moneda),
-    inscripcionPreparatoria: formatoDinero(inscripcionPreparatoria, moneda),
-  }
+    // Las cifras llegan ya resueltas por nivel (`inscripcionesDeBorrador`); el
+    // helper es el mismo de las dos landings.
+    ...varsInscripcionPorNivel({ inscripcion, inscripcionSecundaria, inscripcionPreparatoria }, (m) => formatoDinero(m, moneda)),
+  } satisfies Record<Placeholder, string>
+  // `satisfies`: un comodín de PLACEHOLDERS sin su valor aquí no compila (saldría literal).
   const t = (s: string) => interpolar(s, vars)
 
   return (

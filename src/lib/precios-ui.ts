@@ -40,6 +40,8 @@
  */
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
+import { etiquetaNivel, listaConY } from '@/lib/niveles-ui'
+import { inscripcionDe, inscripcionGeneral, inscripcionesIguales, type Precios } from './precios-nivel'
 
 /** ¿La inscripción cuesta algo? Con 0, vacío o un valor inválido: no. */
 export function inscripcionRequierePago(monto: number | string | null | undefined): boolean {
@@ -88,6 +90,50 @@ export {
   type PlanMinimo,
   type Precios,
 } from './precios-nivel'
+
+/**
+ * Cómo nombra la landing animada la inscripción cuando la frase abarca VARIOS
+ * niveles (FAQ de planes, bajada de «Programas»), Fase 2 · F2-5.
+ *
+ * Con las claves por nivel vacías todos los niveles pagan la general: `comun`
+ * es verdad, `textoComun` es el `{inscripcion}` de siempre y `subtituloVale`
+ * siempre dice que sí, así que la landing sale exactamente como antes.
+ *
+ * 🛑 «Iguales entre sí» NO basta para el subtítulo de fábrica («Inscripción
+ *    única {inscripcion}»): `{inscripcion}` es la GENERAL, y dos niveles que
+ *    pagan 1,500 cada uno con una general de 599 lo harían decir «$599».
+ */
+export function inscripcionEnLanding(niveles: readonly string[], precios: Precios) {
+  const textoDe = (nivel: string) => textoInscripcion(inscripcionDe(nivel, precios), { minusculas: true })
+  const comun = inscripcionesIguales(niveles, precios)
+  const nivelComun = niveles[0] ?? 'preparatoria'
+  const montoComun = inscripcionDe(nivelComun, precios)
+  const unicaEsGeneral = comun && montoComun === inscripcionGeneral(precios)
+  return {
+    /** Todos los niveles pagan la misma inscripción. */
+    comun,
+    /** El monto común (el del primer nivel); solo significa algo si `comun`. */
+    montoComun,
+    /** «$599» o «sin costo»: el monto común, para usarlo a media frase. */
+    textoComun: textoDe(nivelComun),
+    /** La inscripción de un nivel, a media frase. */
+    textoDe,
+    /**
+     * «de $1,000 en Secundaria y de $1,500 en Preparatoria», o «sin costo en
+     * Secundaria y de $1,500 en Preparatoria»: cada nivel lleva su preposición
+     * para que el 0 no salga como «de sin costo». Solo se usa si NO es común.
+     */
+    textoPorNivel: listaConY(niveles.map((n) =>
+      `${inscripcionDe(n, precios) > 0 ? 'de ' : ''}${textoDe(n)} en ${etiquetaNivel(n)}`)),
+    /**
+     * ¿Se puede pintar este subtítulo? Uno que interpola `{inscripcion}` (el de
+     * fábrica lo hace) solo si esa general es la que de verdad pagan todos. Uno
+     * que no la usa —p. ej. con `{inscripcionSecundaria}`— no afirma una
+     * inscripción única y se respeta.
+     */
+    subtituloVale: (subtitulo: string | undefined) => unicaEsGeneral || !(subtitulo ?? '').includes('{inscripcion}'),
+  }
+}
 
 /** Lo que es verdad de cada plan. 🛑 Ni «ahorro» ni «recomendado». */
 export const ETIQUETA_MAS_RAPIDO = 'Terminas más rápido'

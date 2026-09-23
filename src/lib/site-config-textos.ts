@@ -17,6 +17,11 @@
  *   - "al instante": la propia barra de publicar dice que tarda unos segundos;
  *   - "cada alumno conserva la cuota con la que se inscribió": "Regenerar" en
  *     Cobranza rehace las semanas pendientes y vencidas con la cuota vigente.
+ *
+ * «Mis pagos» (api/alumno/pagos/route.ts) toma la cuota y el total del plan
+ * PUBLICADO, pero solo si el nivel del alumno tiene UN plan activo
+ * (`modalidadPorNivel`); con 0 o 2+ la pantalla dice que no hay calendario.
+ * Las filas de cada semana conservan su `monto` hasta que se regenera.
  */
 
 export interface OpcionesConfirmaPrecios {
@@ -29,7 +34,7 @@ export interface OpcionesConfirmaPrecios {
 /** El modal que sale al publicar un cambio de precios, planes o tipo de cambio. */
 export function textoConfirmaPrecios({ semanal, cambiaTipoCambio }: OpcionesConfirmaPrecios): string {
   const base = semanal
-    ? 'La cuota nueva se verá en tu página pública en unos segundos y se usará en el calendario de quien se inscriba a partir de ahora. Tus alumnos ya inscritos la verán como referencia en «Mis pagos», pero sus semanas ya generadas conservan su monto hasta que regeneres su calendario en Cobranza (ahí se recalculan las pendientes y vencidas).'
+    ? 'La cuota nueva se verá en tu página pública en unos segundos y se usará en el calendario de quien se inscriba a partir de ahora. Tus alumnos ya inscritos la verán como referencia en «Mis pagos» (si su nivel tiene un solo plan activo), pero sus semanas ya generadas conservan su monto hasta que regeneres su calendario en Cobranza (ahí se recalculan las pendientes y vencidas).'
     : 'Los precios nuevos se verán en tu página pública en unos segundos. Los pagos que ya registraste no cambian. Si apagaste o encendiste un plan, también cambia lo que se ofrece al registrarse.'
   const tipoCambio = cambiaTipoCambio
     ? ' El tipo de cambio nuevo solo cambia la equivalencia en pesos que se muestra; los pagos ya registrados conservan la suya.'
@@ -69,7 +74,7 @@ export const TEXTO_CONFIRMA_RESTAURAR =
 
 /** Ayuda bajo los planes de una escuela SEMANAL (pestaña Precios). */
 export const AYUDA_CUOTA_SEMANAL =
-  'Cambiar la cuota no modifica las semanas que ya se generaron. La cuota nueva se usa en el calendario de quien se inscriba a partir de ahora y en los que regeneres desde Cobranza, donde se recalculan las semanas pendientes y vencidas. Tus alumnos ya inscritos la ven como referencia en «Mis pagos», pero sus semanas conservan su monto hasta que regeneres su calendario.'
+  'Cambiar la cuota no modifica las semanas que ya se generaron. La cuota nueva se usa en el calendario de quien se inscriba a partir de ahora y en los que regeneres desde Cobranza, donde se recalculan las semanas pendientes y vencidas. Tus alumnos ya inscritos la ven como referencia en «Mis pagos» (si su nivel tiene un solo plan activo), pero sus semanas conservan su monto hasta que regeneres su calendario.'
 
 /** Nota al pie de la pestaña Precios. */
 export const NOTA_PRECIOS =

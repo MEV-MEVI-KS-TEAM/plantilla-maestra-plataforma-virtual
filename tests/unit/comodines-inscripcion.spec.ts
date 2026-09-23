@@ -6,7 +6,8 @@ import { interpolar, mergeSiteConfig, PLACEHOLDERS } from '@/lib/site-config-cor
 import { inscripcionesIguales, varsInscripcionPorNivel } from '@/lib/precios-nivel'
 import { escribirRuta, inscripcionesDeBorrador } from '@/lib/site-config-editor'
 import { recortarAEditables } from '@/lib/site-config-validacion'
-import { textoInscripcion } from '@/lib/precios-ui'
+import { inscripcionEnLanding, textoInscripcion } from '@/lib/precios-ui'
+import { etiquetaNivel } from '@/lib/niveles-ui'
 
 /**
  * F2-5 — los comodines {inscripcionSecundaria} y {inscripcionPreparatoria}.
@@ -54,7 +55,10 @@ test('3. los comodines nuevos están en la lista cerrada y `interpolar` los sust
 })
 
 test('4. la vista previa calcula sobre el BORRADOR, con la misma regla que la landing', () => {
-  const defaults = recortarAEditables(mergeSiteConfig(CONFIG, {}))
+  // Premisa «sin claves por nivel», puesta a mano: un clon sembrado por el
+  // Frente B ya las trae con cifra en su config.ts. Aquí se mide la regla.
+  const fabrica = recortarAEditables(mergeSiteConfig(CONFIG, {}))
+  const defaults = { ...fabrica, precios: { ...fabrica.precios, inscripcionSecundaria: null, inscripcionPreparatoria: null } }
   const general = Number(CONFIG.precios.inscripcion) || 0
   // Sin claves: las tres valen lo mismo (la general), como antes de la Fase 2.
   expect(inscripcionesDeBorrador(defaults, {})).toEqual({
@@ -70,22 +74,80 @@ test('4. la vista previa calcula sobre el BORRADOR, con la misma regla que la la
   expect(inscripcionesDeBorrador(defaults, otraGeneral).inscripcionPreparatoria).toBe(800)
 })
 
-test('5. los TRES sitios que interpolan sustituyen los comodines nuevos', () => {
-  expect(leer('src/components/landing/LandingClient.tsx')).toContain('...varsInscripcionPorNivel(p, fmt)')
-  expect(leer('src/components/landing/animada/LandingAnimada.tsx')).toMatch(/\.\.\.varsInscripcionPorNivel\(precios,/)
-  const previa = leer('src/components/admin/personalizar/VistaPrevia.tsx')
-  expect(previa).toContain('inscripcionSecundaria: formatoDinero(inscripcionSecundaria, moneda)')
-  expect(previa).toContain('inscripcionPreparatoria: formatoDinero(inscripcionPreparatoria, moneda)')
+test('5. los TRES sitios que interpolan cubren TODOS los comodines (lo exige el compilador)', () => {
+  // `satisfies Record<Placeholder, string>`: un comodín nuevo en PLACEHOLDERS
+  // sin su valor en uno de los tres `vars` ya no compila, en vez de salir
+  // literal en la página (el riesgo de §10 fila 5 del diseño).
+  const sitios = [
+    'src/components/landing/LandingClient.tsx',
+    'src/components/landing/animada/LandingAnimada.tsx',
+    'src/components/admin/personalizar/VistaPrevia.tsx',
+  ]
+  for (const sitio of sitios) {
+    const fuente = leer(sitio)
+    expect(fuente, sitio).toContain('} satisfies Record<Placeholder, string>')
+    expect(fuente, sitio).toContain('...varsInscripcionPorNivel(')
+  }
   expect(leer('src/app/(dashboard)/admin/configuracion/page.tsx')).toContain('...inscripcionesDeBorrador(defaults, overrides)')
 })
 
-test('6. la landing animada solo llama "común" a una inscripción que lo es', () => {
+const SUBTITULO_FABRICA = 'Inscripción única {inscripcion} · Elige tu nivel y plan'
+const t = (n: number) => textoInscripcion(n, { minusculas: true })
+const AMBOS = ['secundaria', 'preparatoria']
+
+test('6. sin claves por nivel, la landing animada dice lo mismo que antes', () => {
+  for (const general of [599, 0, 1500]) {
+    const ins = inscripcionEnLanding(AMBOS, { inscripcion: general, inscripcionSecundaria: null })
+    expect(ins.comun).toBe(true)
+    expect(ins.montoComun).toBe(general)
+    // Lo que antes era `textoInscripcion(precios.inscripcion)`.
+    expect(ins.textoComun).toBe(t(general))
+    expect(ins.textoDe('secundaria')).toBe(t(general))
+    // El subtítulo de fábrica se sigue pintando.
+    expect(ins.subtituloVale(SUBTITULO_FABRICA)).toBe(true)
+  }
+})
+
+test('7. inscripciones distintas: una frase por nivel y sin «Inscripción única»', () => {
+  const ins = inscripcionEnLanding(AMBOS, { inscripcion: 599, inscripcionSecundaria: 1000, inscripcionPreparatoria: 1500 })
+  expect(ins.comun).toBe(false)
+  expect(ins.textoPorNivel).toBe(`de ${t(1000)} en ${etiquetaNivel('secundaria')} y de ${t(1500)} en ${etiquetaNivel('preparatoria')}`)
+  expect(ins.subtituloVale(SUBTITULO_FABRICA)).toBe(false)
+  // Un subtítulo propio que no afirma UNA inscripción se respeta, también el
+  // que usa los comodines por nivel que la ayuda del campo ofrece.
+  expect(ins.subtituloVale('Secundaria {inscripcionSecundaria} · Prepa {inscripcionPreparatoria}')).toBe(true)
+  expect(ins.subtituloVale('Elige tu nivel y plan')).toBe(true)
+  expect(ins.subtituloVale(undefined)).toBe(true)
+})
+
+test('8. iguales entre sí pero distintos de la general: tampoco «Inscripción única $general»', () => {
+  // {inscripcion} es la GENERAL: con los dos niveles en 1,500 y la general en
+  // 599, el subtítulo de fábrica diría «$599» junto a tarjetas de «$1,500».
+  const ins = inscripcionEnLanding(AMBOS, { inscripcion: 599, inscripcionSecundaria: 1500, inscripcionPreparatoria: 1500 })
+  expect(ins.comun).toBe(true)
+  expect(ins.montoComun).toBe(1500)
+  expect(ins.textoComun).toBe(t(1500))
+  expect(ins.subtituloVale(SUBTITULO_FABRICA)).toBe(false)
+  // Escuela de un solo nivel con su propia cifra: lo mismo.
+  const sola = inscripcionEnLanding(['preparatoria'], { inscripcion: 599, inscripcionPreparatoria: 1500 })
+  expect(sola.comun).toBe(true)
+  expect(sola.subtituloVale(SUBTITULO_FABRICA)).toBe(false)
+})
+
+test('9. un nivel sin costo no sale como «de sin costo»', () => {
+  const ins = inscripcionEnLanding(AMBOS, { inscripcion: 0, inscripcionPreparatoria: 1500 })
+  expect(ins.comun).toBe(false)
+  expect(ins.textoPorNivel).toBe(`${t(0)} en ${etiquetaNivel('secundaria')} y de ${t(1500)} en ${etiquetaNivel('preparatoria')}`)
+  expect(ins.textoPorNivel).not.toContain('de sin costo')
+})
+
+test('10. la landing animada usa el helper en la tarjeta, la FAQ y la bajada', () => {
+  // La conducta la miden 6-9; esto solo ata el componente al helper (Playwright
+  // no puede renderizar el componente en una prueba unitaria).
   const fuente = leer('src/components/landing/animada/LandingAnimada.tsx')
-  // La tarjeta de cada plan lleva la inscripción de SU nivel.
-  expect(fuente).toContain('+ inscripción {inscripcionTextoDe(nivel)}')
-  // El subtítulo de fábrica ("Inscripción única {inscripcion}") solo si es común.
-  expect(fuente).toContain('bajada={mismoTotalPorNivel && inscripcionComun')
-  // Y la FAQ solo dice "Los dos incluyen la inscripción de X" si es común.
-  expect(fuente).toContain('inscripcionComun && inscripcionDe(nivelComun, precios) > 0')
-  expect(fuente).toContain("(inscripcionComun ? '' : `La inscripción es de ${inscripcionPorNivelTexto}. `)")
+  expect(fuente).toContain('const ins = inscripcionEnLanding(niveles, precios)')
+  expect(fuente).toContain('+ inscripción {ins.textoDe(nivel)}')
+  expect(fuente).toContain('bajada={mismoTotalPorNivel && ins.subtituloVale(L.programas_subtitulo)')
+  expect(fuente).toContain("(ins.comun ? '' : `La inscripción es ${ins.textoPorNivel}. `)")
+  expect(fuente).toContain('ins.comun && ins.montoComun > 0 ?')
 })
