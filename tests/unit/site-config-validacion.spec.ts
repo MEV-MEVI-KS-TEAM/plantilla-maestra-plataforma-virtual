@@ -713,6 +713,23 @@ test('26 ter. paridad: el navegador y el servidor validan contra la MISMA base',
   expect(e({ precios: { mensualidadSecundaria6Meses: 2800 } }, recortada).ok).toBe(true)
 })
 
+test('26 bis. escalón: un clon legado sin `modalidades` sigue validando lo demás', () => {
+  // Hay clones viejos sin `modalidades` en su config.ts (ade, ceeva, cuen, ilh,
+  // ivs). La regla no tiene planes que comparar y NO puede tumbar la validación.
+  // En esos clones CONFIG.modalidades tampoco existe: se simula aquí, y se restaura.
+  const cfg = CONFIG as unknown as { modalidades?: unknown }
+  const original = cfg.modalidades
+  const legado = baseEscalon()
+  delete (legado as unknown as { modalidades?: unknown }).modalidades
+  try {
+    delete cfg.modalidades
+    expect(ok(validarOverrides({}, legado))).toEqual({})
+    expect(ok(validarOverrides({ precios: { inscripcion: 700 }, nombre: 'X' }, legado))).toEqual({ precios: { inscripcion: 700 }, nombre: 'X' })
+  } finally {
+    cfg.modalidades = original
+  }
+})
+
 test('26 quater. el config de FÁBRICA cumple el escalón (2000 ≥ 1000)', () => {
   test.skip(!ES_PLANTILLA, 'en un clon manda su config.ts; el perdón cubre lo que ya venía así')
   for (const nivel of ['secundaria', 'preparatoria']) {

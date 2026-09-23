@@ -809,7 +809,11 @@ function validarEscalon(salida: ObjetoPlano, base: SiteConfig): Fallo | null {
     .filter((n): n is NivelConPrecio => ((base.niveles ?? CONFIG.niveles) as readonly string[]).includes(n))
   if (niveles.length === 0) return null
   const semanal = (base.periodicidad ?? CONFIG.periodicidad) === 'semanal'
+  // Un clon legado sin `modalidades` (o con otra forma) no tiene planes que
+  // comparar. La regla no puede ser la que tumbe la validación de TODO lo demás.
+  if (!Array.isArray(base.modalidades)) return null
   const efectivo = mergeSiteConfig(base, salida)
+  if (!Array.isArray(efectivo.modalidades)) return null
   const valor = (cfg: SiteConfig, nivel: NivelConPrecio, m: ModalidadPrograma) =>
     semanal ? Number(m.cuotaSemanal ?? 0) : mensualidadDe(nivel, m, cfg.precios as unknown as Record<string, unknown>)
   const deBase = (id: string) =>
