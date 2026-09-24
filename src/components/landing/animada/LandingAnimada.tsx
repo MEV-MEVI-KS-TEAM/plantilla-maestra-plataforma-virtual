@@ -18,6 +18,9 @@
  *
  * Se elige con `CONFIG.estiloLanding`. Con `'clasica'` se sirve `LandingClient`,
  * que se conserva intacto: las escuelas ya entregadas no cambian de portada.
+ * Una escuela semanal o que no cobra en MXN también recibe la clásica aunque
+ * declare 'animada': esta portada aún no sabe anunciar ese cobro (ver
+ * `animadaSabeCobrar` en src/lib/landing-estilo.ts).
  *
  * ── Reglas duras ────────────────────────────────────────────────────────────
  *
