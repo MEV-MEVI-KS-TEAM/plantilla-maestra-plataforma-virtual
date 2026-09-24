@@ -429,17 +429,19 @@ test('toda ruta editable que sea arreglo en CONFIG tiene normalizador (fail-clos
   expect(normalizarArreglo('landing.hero_badges', ['a', 2])).toBeUndefined()
 })
 
-test("'' se rechaza en logo y whatsappUrl, pero se acepta donde vacío significa algo", () => {
+test("'' se rechaza en logo, pero se acepta donde vacío significa algo", () => {
   const r = mergeSiteConfig(CONFIG, {
     logo: '',
-    whatsappUrl: '   ',
+    whatsappUrl: '   ',       // sin WhatsApp: se acepta, y en blanco sale vacío
     logoOscuro: '',          // "sin variante oscura": resolverLogos lo rellena con `logo`
     cct: '',
     landing: { ciudad: '', cct: '' },
   })
   const base = esperado()
   expect(r.logo).toBe(base.logo)
-  expect(r.whatsappUrl).toBe(base.whatsappUrl)
+  // Antes el merge lo descartaba y devolvía el enlace de config.ts: el número
+  // VIEJO, justo cuando el admin acababa de quitarlo desde el panel.
+  expect(r.whatsappUrl).toBe('')
   // Se ACEPTA (no lo rechaza SIN_VACIO) pero nunca llega vacío al consumidor:
   // el merge lo resuelve al logo claro (ver tests/unit/site-config-logos.spec.ts).
   expect(r.logoOscuro).toBe(base.logo)

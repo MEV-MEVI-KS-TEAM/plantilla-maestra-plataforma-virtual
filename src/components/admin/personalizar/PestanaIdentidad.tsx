@@ -15,6 +15,7 @@
  * `validarOverrides`), y por eso el editor ni siquiera lo manda.
  */
 import { AtSign, Building2, Image as ImageIcon, Share2 } from 'lucide-react'
+import { mensajeWhatsAppInvalido, normalizarWhatsApp } from '@/lib/contacto-ui'
 import { LIMITES } from '@/lib/site-config-campos'
 import type { ConfigEditable } from '@/lib/site-config-validacion'
 import {
@@ -54,7 +55,16 @@ export function PestanaIdentidad({
   const sobrescritaAlguna = (rutas: string[]) => rutas.some((r) => estaSobrescrito(overrides, r))
 
   const whatsapp = txt('whatsapp')
-  const whatsappValido = /^\d{10,13}$/.test(whatsapp)
+  // La MISMA regla con la que el servidor lo guarda: la ayuda enseña el enlace
+  // que de verdad se va a publicar (con el 52 si se capturaron 10 dígitos).
+  const whatsappNormalizado = normalizarWhatsApp(whatsapp)
+  const ayudaWhatsApp =
+    whatsappNormalizado === null
+      ? mensajeWhatsAppInvalido('WhatsApp (número)')
+      : whatsappNormalizado === ''
+        ? 'Vacío = la escuela no usa WhatsApp.'
+        : `Enlace: https://wa.me/${whatsappNormalizado}` +
+          (whatsappNormalizado !== whatsapp ? ' (al guardar se agrega la lada 52 de México)' : '')
 
   return (
     <div className="space-y-5">
@@ -104,15 +114,11 @@ export function PestanaIdentidad({
           // control va SIN `maxlength`: el navegador lo aplicaría al pegar,
           // antes de que `normalizarTelefono` quite los separadores, y
           // '+52 1 (999) 123-45-67' se convertiría en un número a medias. Aquí
-          // sobra: lo que se pinta ya viene normalizado a 13 dígitos como mucho.
+          // sobra: lo que se pinta ya viene normalizado a 15 dígitos como mucho.
           max={MAX_DIGITOS_TELEFONO} maxEntrada={null}
           valor={whatsapp} placeholder={defaults.whatsapp}
-          ayudaEsError={!whatsappValido}
-          ayuda={
-            whatsappValido
-              ? `Enlace: https://wa.me/${whatsapp}`
-              : 'Solo dígitos con lada de país (10 a 13), p. ej. 5219991234567.'
-          }
+          ayudaEsError={whatsappNormalizado === null}
+          ayuda={ayudaWhatsApp}
           deshabilitado={!puedeEditar}
           resaltado={claveConError === 'whatsapp' || claveConError === 'contactoTelefono'}
           sobrescrito={sobrescritaAlguna(['whatsapp', 'contactoTelefono'])}

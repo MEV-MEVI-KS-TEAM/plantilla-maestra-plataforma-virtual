@@ -22,6 +22,7 @@
  */
 import type { Moneda } from '@/lib/moneda'
 import { CONFIG } from '@/lib/config'
+import { normalizarUrlWhatsApp, normalizarWhatsApp } from '@/lib/contacto-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -453,8 +454,12 @@ function compatible(base: unknown, valor: unknown): boolean {
  * por `logo`, así que ningún consumidor ve nunca un `logoOscuro` vacío (ni
  * pinta `<img src="">`). Tampoco `landing.ciudad` ni `cct`: vacío = se omite
  * el segmento en la UI.
+ *
+ * `whatsappUrl` tampoco: `''` es lo que la validación deriva de un `whatsapp`
+ * vacío, «la escuela no usa WhatsApp». Rechazarlo aquí devolvía el enlace de
+ * config.ts —el número VIEJO— justo cuando el admin acababa de quitarlo.
  */
-const SIN_VACIO: ReadonlySet<ClaveEditable> = new Set<ClaveEditable>(['logo', 'whatsappUrl'])
+const SIN_VACIO: ReadonlySet<ClaveEditable> = new Set<ClaveEditable>(['logo'])
 
 // ─── Elementos de los arreglos editables ─────────────────────────────────────
 
@@ -833,6 +838,28 @@ export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteC
 }
 
 /**
+ * El WhatsApp de la escuela, normalizado AL LEER con la misma regla con que el
+ * panel lo guarda (`normalizarWhatsApp`). MUTA `cfg` (el clon fresco del merge).
+ *
+ * Existe por lo que ya estaba publicado antes de la regla: una fila guardada
+ * con `3312345678` y su `whatsappUrl` derivado `https://wa.me/3312345678`, o un
+ * config.ts con 10 dígitos. Sin esto seguirían mandando al alumno a un número
+ * de otro país. Lo que no se puede normalizar se deja como está: aquí no se
+ * rechaza nada, eso es de la validación al guardar.
+ */
+export function normalizarContactoWhatsApp(cfg: SiteConfig): SiteConfig {
+  if (typeof cfg.whatsapp === 'string') cfg.whatsapp = normalizarWhatsApp(cfg.whatsapp) ?? cfg.whatsapp
+  if (typeof cfg.contactoTelefono === 'string') {
+    cfg.contactoTelefono = normalizarWhatsApp(cfg.contactoTelefono) ?? cfg.contactoTelefono
+  }
+  if (typeof cfg.whatsappUrl === 'string') {
+    // Un enlace en blanco es un enlace vacío: `<a href="   ">` recarga la página.
+    cfg.whatsappUrl = cfg.whatsappUrl.trim() === '' ? '' : normalizarUrlWhatsApp(cfg.whatsappUrl)
+  }
+  return cfg
+}
+
+/**
  * Fusiona los defaults de config.ts con los overrides de la BD.
  *
  *  - NUNCA muta `base`: devuelve un clon profundo nuevo.
@@ -843,7 +870,8 @@ export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteC
  *    completos y cada elemento debe tener la forma esperada
  *    (`normalizarArreglo`); si uno falla, se ignora el arreglo entero. El
  *    editor no edita "un badge": manda la lista entera.
- *  - `''` se ignora en las claves de `SIN_VACIO` (logo, whatsappUrl).
+ *  - `''` se ignora en las claves de `SIN_VACIO` (logo).
+ *  - El WhatsApp de la escuela sale normalizado (`normalizarContactoWhatsApp`).
  *  - `logo` / `logoOscuro` se RESUELVEN al final (`resolverLogos`): con solo el
  *    claro subido, ese logo vale para los dos fondos; con solo el oscuro, el
  *    claro de config.ts se conserva.
@@ -863,7 +891,9 @@ export function resolverLogos(cfg: SiteConfig, aplicados: LogosAplicados): SiteC
  */
 export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteConfig {
   const resultado = clonar(base) as SiteConfig
-  if (!esObjetoPlano(overrides)) return resolverLogos(resultado, { logo: false, logoOscuro: false })
+  if (!esObjetoPlano(overrides)) {
+    return normalizarContactoWhatsApp(resolverLogos(resultado, { logo: false, logoOscuro: false }))
+  }
 
   const aplicados: PreciosAplicados = {}
   const logos: LogosAplicados = { logo: false, logoOscuro: false }
@@ -894,6 +924,7 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
   }
 
   resolverLogos(resultado, logos)
+  normalizarContactoWhatsApp(resultado)
   aplicados.mensualidadesPorNivel = mensualidadesPorNivel
   aplicados.mensualidades = aplicarModalidades(resultado, overrides.modalidades)
 

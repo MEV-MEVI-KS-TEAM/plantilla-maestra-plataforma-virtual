@@ -23,6 +23,7 @@ import {
   type ModalidadEditable,
 } from '@/lib/site-config-editor'
 import { PALETAS, TOKENS_COLORES, paletaPorId, type TokensColores } from '@/lib/site-config-paletas'
+import { normalizarWhatsApp } from '@/lib/contacto-ui'
 import { ratioContraste } from '@/lib/contraste'
 import type { SiteConfigOverrides } from '@/lib/site-config-core'
 
@@ -119,11 +120,11 @@ test('normalizarTelefono limpia ANTES de recortar y guarda el número entero', (
   expect(normalizarTelefono('')).toBe('')
 })
 
-test('normalizarTelefono corta en los 13 dígitos que admite el validador', () => {
-  expect(MAX_DIGITOS_TELEFONO).toBe(13)
-  expect(normalizarTelefono('12345678901234567')).toBe('1234567890123')
-  // Lo que sale de aquí con lada completa pasa el `^\d{10,13}$` del servidor.
-  expect(/^\d{10,13}$/.test(normalizarTelefono('+52 1 (999) 123 45 67'))).toBe(true)
+test('normalizarTelefono corta en los 15 dígitos que admite el validador', () => {
+  expect(MAX_DIGITOS_TELEFONO).toBe(15)
+  expect(normalizarTelefono('12345678901234567')).toBe('123456789012345')
+  // Lo que sale de aquí con lada completa pasa la regla del servidor.
+  expect(normalizarWhatsApp(normalizarTelefono('+52 1 (999) 123 45 67'))).toBe('5219991234567')
 })
 
 // ─── Modalidades ─────────────────────────────────────────────────────────────

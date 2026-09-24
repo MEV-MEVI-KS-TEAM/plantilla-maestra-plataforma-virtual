@@ -382,17 +382,31 @@ test('22. redes.facebook / instagram: https + dominio en lista; el resto error',
 
 // ─── Contacto ────────────────────────────────────────────────────────────────
 
-test('23. whatsapp: dígitos 10-13; whatsappUrl SIEMPRE derivado', () => {
-  error(v({ whatsapp: '52123' }), 'whatsapp', /10 y 13/)
-  error(v({ whatsapp: '52123456789012' }), 'whatsapp')
-  error(v({ whatsapp: '+5212345678901' }), 'whatsapp')
-  error(v({ whatsapp: '521 234 5678' }), 'whatsapp')
+test('23. whatsapp: se guarda normalizado; vacío = sin WhatsApp; whatsappUrl SIEMPRE derivado', () => {
+  error(v({ whatsapp: '52123' }), 'whatsapp', /celular de 10 dígitos/)
+  error(v({ whatsapp: '52123' }), 'whatsapp', /Déjalo vacío si la escuela no usa WhatsApp/)
+  error(v({ whatsapp: '1234567890123456' }), 'whatsapp') // 16 dígitos
+  error(v({ whatsapp: '33.1234.5678' }), 'whatsapp')
+  error(v({ whatsapp: '0445512345678' }), 'whatsapp') // 044 + celular: ninguna lada empieza con 0
   error(v({ whatsapp: 5212345678901 }), 'whatsapp')
   expect(ok(v({ whatsapp: '5212345678901' }))).toEqual({
     whatsapp: '5212345678901',
     whatsappUrl: 'https://wa.me/5212345678901',
   })
-  expect(ok(v({ whatsapp: '5551234567' })).whatsappUrl).toBe('https://wa.me/5551234567')
+  // Espacios, guiones, paréntesis y «+» se quitan al guardar.
+  expect(ok(v({ whatsapp: '+52 1 (234) 567-8901' })).whatsapp).toBe('5212345678901')
+  // 10 dígitos = celular mexicano sin lada: se guarda con 52. Esta línea daba
+  // por bueno `https://wa.me/5551234567`, un enlace que no llega a la escuela.
+  expect(ok(v({ whatsapp: '5551234567' }))).toEqual({
+    whatsapp: '525551234567',
+    whatsappUrl: 'https://wa.me/525551234567',
+  })
+  // Vacío = la escuela no usa WhatsApp: se guarda, y el enlace queda vacío.
+  expect(ok(v({ whatsapp: '', contactoTelefono: '' }))).toEqual({
+    whatsapp: '',
+    contactoTelefono: '',
+    whatsappUrl: '',
+  })
   // whatsappUrl propio se ignora y se sobreescribe
   expect(ok(v({ whatsapp: '5212345678901', whatsappUrl: 'https://evil.com' })).whatsappUrl)
     .toBe('https://wa.me/5212345678901')
