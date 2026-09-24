@@ -46,6 +46,21 @@ import {
   type PlanMinimo, type Precios,
 } from './precios-nivel'
 
+/**
+ * ¿La escuela OFRECE certificación? (`CONFIG.ofreceCertificacion`, Bug 194.)
+ *
+ * Se compara con `!== false`, nunca por falsy: la mayoría de la flota no trae
+ * la clave y para ella la respuesta es «sí», como antes de que existiera.
+ *
+ * 🛑 Con `false`, ninguna portada ANUNCIA certificación: ni la fila de precio de
+ * la clásica, ni la línea «Certificación» de la tarjeta de nivel ni el recuadro
+ * «pago único al concluir» de la animada (#165, A6). Los precios de
+ * certificación siguen en el config a propósito: los leen pagos y reportes.
+ */
+export function escuelaCertifica(cfg: { readonly ofreceCertificacion?: unknown } = CONFIG): boolean {
+  return cfg.ofreceCertificacion !== false
+}
+
 /** ¿La inscripción cuesta algo? Con 0, vacío o un valor inválido: no. */
 export function inscripcionRequierePago(monto: number | string | null | undefined): boolean {
   const n = Number(monto)
