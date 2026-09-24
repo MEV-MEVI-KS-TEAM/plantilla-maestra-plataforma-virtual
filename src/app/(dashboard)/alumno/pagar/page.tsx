@@ -5,6 +5,7 @@ import { formatearMoneda } from '@/lib/moneda'
 import { useEffect, useState } from 'react'
 import { CONFIG } from '@/lib/config'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { canalEscuela } from '@/lib/contacto-ui'
 
 /**
  * Pagos del alumno.
@@ -48,7 +49,11 @@ export default function PagarPage() {
     e.niveles.length > 0 && (nivel === null ? true : e.niveles.includes(nivel)),
   )
 
-  const wa = cfg.whatsappUrl || (cfg.whatsapp ? `https://wa.me/${cfg.whatsapp}` : '')
+  // El canal que la escuela SÍ tiene: WhatsApp, o su correo si no hay número.
+  // Sin ninguno no se ofrece escribir: antes se prometía «Escríbenos» y el
+  // botón no salía, o salía con un `wa.me/` vacío.
+  const canal = canalEscuela(cfg)
+  const porWhatsApp = canal?.tipo === 'whatsapp'
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -66,13 +71,15 @@ export default function PagarPage() {
           <p className="text-sm" style={{ color: 'var(--color-texto)' }}>
             {cargando
               ? 'Cargando tus opciones de pago…'
-              : 'Todavía no hay enlaces de pago para tu programa. Escríbenos y te decimos cómo hacer tu pago.'}
+              : canal
+                ? 'Todavía no hay enlaces de pago para tu programa. Escríbenos y te decimos cómo hacer tu pago.'
+                : 'Todavía no hay enlaces de pago para tu programa. Pregunta en tu escuela cómo hacer tu pago.'}
           </p>
-          {!cargando && wa && (
-            <a href={wa} target="_blank" rel="noopener noreferrer"
+          {!cargando && canal && (
+            <a href={canal.href} target="_blank" rel="noopener noreferrer"
               className="mt-3 inline-block px-4 py-2 rounded-lg text-sm font-semibold"
-              style={{ background: '#25D366', color: '#fff' }}>
-              💬 Escríbenos por WhatsApp
+              style={{ background: porWhatsApp ? '#25D366' : 'var(--color-acento)', color: '#fff' }}>
+              {porWhatsApp ? '💬 Escríbenos por WhatsApp' : '✉️ Escríbenos por correo'}
             </a>
           )}
         </div>
@@ -116,8 +123,9 @@ export default function PagarPage() {
               Después de pagar
             </p>
             <p className="text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
-              Envíanos tu comprobante por WhatsApp para registrar el pago en tu cuenta y
-              abrirte el siguiente mes. El pago no se refleja solo.
+              {canal
+                ? `Envíanos tu comprobante por ${porWhatsApp ? 'WhatsApp' : 'correo'} para registrar el pago en tu cuenta y abrirte el siguiente mes. El pago no se refleja solo.`
+                : 'Entrega tu comprobante en tu escuela para que registren el pago en tu cuenta y te abran el siguiente mes. El pago no se refleja solo.'}
             </p>
             {cfgPagos.emisor && (
               <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
@@ -125,11 +133,11 @@ export default function PagarPage() {
                 que es quien procesa los pagos de {cfg.nombre}.
               </p>
             )}
-            {wa && (
-              <a href={wa} target="_blank" rel="noopener noreferrer"
+            {canal && (
+              <a href={canal.href} target="_blank" rel="noopener noreferrer"
                 className="inline-block px-4 py-2 rounded-lg text-sm font-semibold"
-                style={{ background: '#25D366', color: '#fff' }}>
-                💬 Enviar mi comprobante
+                style={{ background: porWhatsApp ? '#25D366' : 'var(--color-acento)', color: '#fff' }}>
+                {porWhatsApp ? '💬 Enviar mi comprobante' : '✉️ Enviar mi comprobante'}
               </a>
             )}
           </div>

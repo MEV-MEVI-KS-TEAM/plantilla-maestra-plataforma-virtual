@@ -4,6 +4,7 @@ import { CONFIG } from '@/lib/config'
 import { getNivelLabel } from '@/lib/modalidades'
 import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
 /**
  * Qué vende el cliente, leído de su config.
@@ -28,6 +29,8 @@ export function Footer() {
   // Nombre y contacto son editables desde "Personalizar mi página". `dominio`
   // no lo es y sigue saliendo de CONFIG.
   const cfg = useSiteConfig()
+  const mailto = mailtoEscuela(cfg.contactoEmail)
+  const wa = urlWhatsAppEscuela(cfg.contactoTelefono)
   return (
     <footer
       className="mt-auto px-4 py-6 text-center space-y-1.5"
@@ -54,27 +57,33 @@ export function Footer() {
         >
           {CONFIG.dominio}
         </a>
-        <span style={{ color: '#2A2F3E' }}>·</span>
-        <a
-          href={`mailto:${cfg.contactoEmail}`}
-          className="text-xs transition-colors"
-          style={{ color: '#374151' }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
-        >
-          {cfg.contactoEmail}
-        </a>
-        {cfg.contactoTelefono && (
+        {/* Sin correo público no hay `mailto:` vacío; sin WhatsApp real, no hay
+            `wa.me/` que no lleve a nadie. */}
+        {mailto && (
           <>
             <span style={{ color: '#2A2F3E' }}>·</span>
             <a
-              href={`https://wa.me/${cfg.contactoTelefono}`}
+              href={mailto}
               className="text-xs transition-colors"
               style={{ color: '#374151' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
               onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
             >
-              {cfg.whatsappDisplay ?? cfg.contactoTelefono}
+              {cfg.contactoEmail}
+            </a>
+          </>
+        )}
+        {wa && (
+          <>
+            <span style={{ color: '#2A2F3E' }}>·</span>
+            <a
+              href={wa}
+              className="text-xs transition-colors"
+              style={{ color: '#374151' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
+            >
+              {cfg.whatsappDisplay || cfg.contactoTelefono}
             </a>
           </>
         )}

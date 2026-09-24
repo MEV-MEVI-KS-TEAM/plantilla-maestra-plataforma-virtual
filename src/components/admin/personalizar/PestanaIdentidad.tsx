@@ -140,7 +140,7 @@ export function PestanaIdentidad({
         />
         <CampoTexto
           clave="email" etiqueta="Correo de contacto" max={LIMITES.email} tipo="email"
-          ayuda="Aparece en el pie de página y en los avisos del sistema."
+          ayuda="Correo público de la escuela: sale en la página, en el pie del portal, en el perfil del alumno y en las legales, y es el contacto cuando no hay WhatsApp. No es el remitente de los correos automáticos."
           valor={txt('email')} placeholder={defaults.email}
           deshabilitado={!puedeEditar}
           resaltado={claveConError === 'email' || claveConError === 'contactoEmail'}

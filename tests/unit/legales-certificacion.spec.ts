@@ -138,25 +138,31 @@ test('P-8. la numeración de las secciones no cambia entre las dos ramas', () =>
 // ─── El gateo del correo ───────────────────────────────────────────────────
 
 for (const pagina of Object.keys(RUTAS) as Array<keyof typeof RUTAS>) {
-  test(`P-8c. en ${pagina} no queda ni un mailto: fuera del componente Contacto`, () => {
+  test(`P-8c. en ${pagina} el correo sale de mailtoEscuela y solo lo pinta el componente Contacto`, () => {
     const src = sinComentarios(FUENTE[pagina])
 
-    // Todo `mailto:` tiene que vivir dentro de `const Contacto = …`, que es el
-    // único sitio donde se comprueba que hay destinatario.
+    // Desde A1 (Bloque A) la página ya no arma `mailto:` a mano: lo arma
+    // `mailtoEscuela`, que devuelve `null` si no hay destinatario. Un `mailto:`
+    // literal aquí sería un enlace que se salta esa comprobación.
+    expect(src, `hay un mailto: literal en ${pagina}`).not.toMatch(/mailto:/)
+    expect(src).toMatch(/const MAILTO\s*=\s*mailtoEscuela\(EMAIL\)/)
+
+    // El enlace de correo solo lo pinta `const Contacto = …`, colgado del dato
+    // (`MAILTO`), con el WhatsApp como alternativa y, sin ninguno de los dos,
+    // un texto sin enlace.
     const iContacto = src.indexOf('const Contacto =')
     expect(iContacto, `${pagina} no define el componente Contacto`).toBeGreaterThan(-1)
     // El cuerpo de Contacto llega hasta el `return (` del componente de página.
     const finContacto = src.indexOf('return (', iContacto)
     const cuerpoContacto = src.slice(iContacto, finContacto)
-
-    const mailtos = [...src.matchAll(/mailto:/g)].map(m => m.index!)
-    expect(mailtos.length, `${pagina} no pinta ningún mailto: ¿se borró el contacto?`).toBeGreaterThan(0)
-    for (const i of mailtos) {
-      expect(i >= iContacto && i < finContacto,
-        `hay un mailto: suelto en ${pagina} (posición ${i}), fuera de Contacto`).toBe(true)
-    }
-    // Y dentro de Contacto, el mailto: cuelga del dato y hay alternativa.
-    expect(cuerpoContacto).toMatch(/EMAIL\s*$|EMAIL\s*\n/m)
+    expect(cuerpoContacto).toMatch(/MAILTO\s*$|MAILTO\s*\n/m)
     expect(cuerpoContacto).toContain('WHATSAPP_URL')
+    expect(cuerpoContacto).toContain('los medios de contacto publicados en')
+    const enlacesCorreo = [...src.matchAll(/href=\{MAILTO\}/g)].map(m => m.index!)
+    expect(enlacesCorreo.length, `${pagina} no pinta ningún enlace de correo: ¿se borró el contacto?`).toBeGreaterThan(0)
+    for (const i of enlacesCorreo) {
+      expect(i >= iContacto && i < finContacto,
+        `hay un enlace de correo suelto en ${pagina} (posición ${i}), fuera de Contacto`).toBe(true)
+    }
   })
 }

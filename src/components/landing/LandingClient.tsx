@@ -16,6 +16,7 @@ import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 import { precioPublico } from '@/lib/cursos/catalogo'
+import { faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
@@ -308,7 +309,11 @@ export interface CursoCatalogo {
  */
 export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[]; config: LandingConfig }) {
   const p = config.precios
-  const wa = config.whatsappUrl
+  // El contacto de la escuela pasa por contacto-ui: número normalizado (con su
+  // 52) y `null` si no hay WhatsApp real o no hay correo. Sin eso, cada botón
+  // se pintaba con `href=""` (recarga la página) o `mailto:` sin destinatario.
+  const wa = urlWhatsAppEscuela(config.whatsapp)
+  const mailto = mailtoEscuela(config.contactoEmail)
   // Los textos pasan por `resolverLanding`: rellena desde CONFIG.landing lo que
   // el config.ts del cliente no traiga y garantiza que toda lista sea arreglo.
   // Sin esto, un cliente legacy sin las 35 claves de F3 se queda sin landing
@@ -374,7 +379,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   return (
     <div className={dmSans.className} style={{ background: C.white, color: C.navy, minHeight: '100vh', ...varsPaleta }}>
       <ScrollProgress />
-      <FloatingWA href={wa} />
+      {wa && <FloatingWA href={wa} />}
 
       {/* ── NAV ──────────────────────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-10 h-[68px]"
@@ -473,9 +478,11 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
               <Link href="/register" className="cjvb-btn-white w-full sm:w-auto">{texto(L.hero_cta_primario)}</Link>
-              <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-outline w-full sm:w-auto">
-                <WaIcon />{` ${texto(L.hero_cta_whatsapp)}`}
-              </a>
+              {wa && (
+                <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-outline w-full sm:w-auto">
+                  <WaIcon />{` ${texto(L.hero_cta_whatsapp)}`}
+                </a>
+              )}
             </div>
 
             {/* Counters */}
@@ -943,7 +950,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               </h2>
             </div>
             <div data-reveal>
-              {L.faq_items.map((f, i) => <FAQItem key={i} q={texto(f.q)} a={texto(f.a)} />)}
+              {faqSegunWhatsApp(L.faq_items, wa !== null).map((f, i) => <FAQItem key={i} q={texto(f.q)} a={texto(f.a)} />)}
             </div>
           </div>
         </section>
@@ -971,9 +978,11 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/register" className="cjvb-btn-white w-full sm:w-auto">{texto(L.cta_boton)}</Link>
-                <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-wa w-full sm:w-auto">
-                  <WaIcon />{` ${texto(L.cta_whatsapp)}`}
-                </a>
+                {wa && (
+                  <a href={wa} target="_blank" rel="noopener noreferrer" className="cjvb-btn-wa w-full sm:w-auto">
+                    <WaIcon />{` ${texto(L.cta_whatsapp)}`}
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -999,9 +1008,9 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           <p className="text-sm font-semibold" style={{ color: C.ice }}>{config.nombreCompleto}</p>
           <p className="text-xs mt-1.5">{CONFIG.dominio}</p>
           <div className="flex items-center justify-center gap-3 mt-4 flex-wrap text-xs" style={{ color: iceSuave(C, 0.4) }}>
-            <a href={`mailto:${config.contactoEmail}`} className="hover:text-white transition-colors">{config.contactoEmail}</a>
-            <span>·</span>
-            <a href={config.whatsappUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a>
+            {mailto && <a href={mailto} className="hover:text-white transition-colors">{config.contactoEmail}</a>}
+            {mailto && wa && <span>·</span>}
+            {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a>}
           </div>
           {/* Redes sociales */}
           <div className="flex items-center justify-center gap-5 mt-5">

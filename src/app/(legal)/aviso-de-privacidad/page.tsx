@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig } from '@/lib/site-config'
+import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
 // Nombre y correo son editables desde "Personalizar mi página", así que se
 // leen de la config fusionada por petición. El dominio no es editable (cambia
@@ -21,7 +22,10 @@ export default async function AvisoPrivacidadPage() {
   const cfg = await getSiteConfig()
   const RAZON_SOCIAL = cfg.nombreCompleto
   const EMAIL        = cfg.contactoEmail
-  const WHATSAPP_URL = cfg.whatsappUrl
+  // WhatsApp de la escuela por contacto-ui: normalizado, y `null` sin número
+  // real. El correo, igual (`null` sin correo).
+  const WHATSAPP_URL = urlWhatsAppEscuela(cfg.whatsapp)
+  const MAILTO       = mailtoEscuela(EMAIL)
 
   /**
    * ¿Esta escuela gestiona certificación oficial? (Bug P-8)
@@ -48,9 +52,13 @@ export default async function AvisoPrivacidadPage() {
    *
    * Con correo devuelve el MISMO <a> de antes, byte a byte.
    */
-  const Contacto = ({ size }: { size?: string }) => EMAIL
-    ? <a href={`mailto:${EMAIL}`} style={{ color: '#60A5FA', fontSize: size }}>{EMAIL}</a>
-    : <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#60A5FA', fontSize: size }}>WhatsApp ({cfg.whatsappDisplay})</a>
+  const Contacto = ({ size }: { size?: string }) => MAILTO
+    ? <a href={MAILTO} style={{ color: '#60A5FA', fontSize: size }}>{EMAIL}</a>
+    : WHATSAPP_URL
+      ? <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#60A5FA', fontSize: size }}>WhatsApp ({cfg.whatsappDisplay})</a>
+      // Sin correo ni WhatsApp: nada de enlaces vacíos. El documento sigue
+      // diciendo por dónde contactar (el sitio de la escuela).
+      : <span style={{ fontSize: size }}>los medios de contacto publicados en {DOMINIO}</span>
 
   return (
     <div style={{ minHeight: '100vh', background: '#0A0A0F', color: 'rgba(224,235,255,0.85)' }}>
@@ -184,7 +192,7 @@ export default async function AvisoPrivacidadPage() {
             </p>
             <p>Para ejercer sus derechos ARCO, envíe su solicitud a:</p>
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '20px 24px', margin: '12px 0' }}>
-              <p style={{ margin: 0, color: '#fff', fontWeight: 600 }}>{EMAIL ? 'Correo electrónico:' : 'WhatsApp:'}</p>
+              <p style={{ margin: 0, color: '#fff', fontWeight: 600 }}>{MAILTO ? 'Correo electrónico:' : WHATSAPP_URL ? 'WhatsApp:' : 'Contacto:'}</p>
               <Contacto size="1rem" />
               <p style={{ margin: '12px 0 4px', color: '#fff', fontWeight: 600 }}>Asunto:</p>
               <p style={{ margin: 0, color: 'rgba(224,235,255,0.7)' }}>Ejercicio de Derechos ARCO — [Acceso / Rectificación / Cancelación / Oposición]</p>

@@ -17,6 +17,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
 import { listarCatalogoPublico, precioPublico } from '@/lib/cursos/catalogo'
+import { canalEscuela } from '@/lib/contacto-ui'
 
 // Título, logo y WhatsApp son editables desde "Personalizar mi página": salen
 // de la config fusionada, no de CONFIG, para que un cambio del admin se vea
@@ -31,6 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function DiplomadosPage() {
   const [catalogo, cfg] = await Promise.all([listarCatalogoPublico(), getSiteConfig()])
+  const canal = canalEscuela(cfg)
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF7F0' }}>
@@ -62,17 +64,23 @@ export default async function DiplomadosPage() {
             <p style={{ fontSize: 16, color: '#475569', margin: '0 0 8px', fontWeight: 600 }}>
               Aún no hay programas publicados
             </p>
-            <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>
-              Escríbenos y con gusto te contamos qué estamos preparando.
-            </p>
-            <a href={cfg.whatsappUrl} target="_blank" rel="noopener noreferrer"
-              style={{
-                display: 'inline-block', marginTop: 22, padding: '12px 26px',
-                borderRadius: 999, background: '#25D366', color: '#fff',
-                fontWeight: 600, fontSize: 14, textDecoration: 'none',
-              }}>
-              Escríbenos por WhatsApp
-            </a>
+            {/* Por el canal que la escuela SÍ tiene; sin ninguno no se invita a
+                escribir (antes: botón con `href` vacío o `wa.me/` roto). */}
+            {canal && (
+              <>
+                <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>
+                  Escríbenos y con gusto te contamos qué estamos preparando.
+                </p>
+                <a href={canal.href} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-block', marginTop: 22, padding: '12px 26px',
+                    borderRadius: 999, background: canal.tipo === 'whatsapp' ? '#25D366' : 'var(--color-primario)', color: '#fff',
+                    fontWeight: 600, fontSize: 14, textDecoration: 'none',
+                  }}>
+                  {canal.tipo === 'whatsapp' ? 'Escríbenos por WhatsApp' : 'Escríbenos por correo'}
+                </a>
+              </>
+            )}
           </div>
         ) : (
           <div style={{

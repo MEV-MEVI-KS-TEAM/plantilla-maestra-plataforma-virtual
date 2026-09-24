@@ -186,16 +186,42 @@ export function canalEscuela(cfg: ConfigContacto, mensaje?: string): CanalEscuel
       valor: cfg.whatsappDisplay || numero,
     }
   }
-  const correo = cfg.contactoEmail || cfg.email || ''
-  if (correo) {
+  const correo = (cfg.contactoEmail || cfg.email || '').trim()
+  const mailto = mailtoEscuela(correo, mensaje)
+  if (mailto) {
     return {
       tipo: 'correo',
-      href: mensaje ? `mailto:${correo}?subject=${encodeURIComponent(mensaje)}` : `mailto:${correo}`,
+      href: mailto,
       etiqueta: 'Escríbenos por correo',
       valor: correo,
     }
   }
   return null
+}
+
+/**
+ * `mailto:` del correo PÚBLICO de la escuela, o `null` si no tiene. Sin esto
+ * cada pantalla armaba `mailto:${correo}` a mano y, con el correo vacío,
+ * publicaba un enlace sin destinatario y con el texto visible vacío.
+ */
+export function mailtoEscuela(correo: string | null | undefined, asunto?: string): string | null {
+  const c = String(correo ?? '').trim()
+  if (!c) return null
+  return asunto ? `mailto:${c}?subject=${encodeURIComponent(asunto)}` : `mailto:${c}`
+}
+
+/**
+ * Las preguntas de la FAQ que dan el número (`{whatsapp}`), FUERA si la escuela
+ * no tiene WhatsApp. La plantilla trae «Contamos con canal directo de atención
+ * por WhatsApp al {whatsapp}.»: sin número salía «…por WhatsApp al .», una
+ * promesa de atención por un canal que no existe.
+ */
+export function faqSegunWhatsApp<T extends { readonly q: string; readonly a: string }>(
+  items: readonly T[],
+  hayWhatsApp: boolean,
+): T[] {
+  if (hayWhatsApp) return [...items]
+  return items.filter((f) => !f.q.includes('{whatsapp}') && !f.a.includes('{whatsapp}'))
 }
 
 /**

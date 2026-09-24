@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { detallePublico, precioPublico, waUrlDiplomado } from '@/lib/cursos/catalogo'
+import { canalDiplomado, detallePublico, precioPublico } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
 
@@ -52,7 +52,7 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
   if (!curso) notFound()
 
   const cfg = await getSiteConfig()
-  const wa = waUrlDiplomado(cfg.whatsappUrl, curso.nombre)
+  const canal = canalDiplomado(cfg, curso.nombre)
   const etiqueta = curso.tipo === 'diplomado' ? 'Diplomado' : 'Curso'
 
   return (
@@ -131,19 +131,24 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
             </div>
           )}
 
-          {/* CTA alcanzable con el pulgar: ancho completo en móvil. */}
-          <a
-            href={wa}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-10 w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-base font-bold"
-            style={{ background: '#0F7A41', color: '#fff' }}
-          >
-            Pedir informes por WhatsApp
-          </a>
-          <p className="text-xs text-center mt-3" style={{ color: 'var(--color-texto-secundario)' }}>
-            Te contactamos para resolver dudas y darte de alta.
-          </p>
+          {/* CTA alcanzable con el pulgar: ancho completo en móvil. Por el
+              canal que la escuela SÍ tiene; sin ninguno, no se promete contacto. */}
+          {canal && (
+            <>
+              <a
+                href={canal.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-10 w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-base font-bold"
+                style={{ background: canal.tipo === 'whatsapp' ? '#0F7A41' : 'var(--color-primario)', color: '#fff' }}
+              >
+                {canal.tipo === 'whatsapp' ? 'Pedir informes por WhatsApp' : 'Pedir informes por correo'}
+              </a>
+              <p className="text-xs text-center mt-3" style={{ color: 'var(--color-texto-secundario)' }}>
+                Te contactamos para resolver dudas y darte de alta.
+              </p>
+            </>
+          )}
         </div>
       </div>
     </main>

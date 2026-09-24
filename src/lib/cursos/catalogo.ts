@@ -21,6 +21,7 @@
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { canalEscuela, type CanalEscuela } from '@/lib/contacto-ui'
 
 // La purga del catálogo (revalidatePath al publicar/editar/borrar) vive en
 // src/lib/cursos/purga.ts, NO aquí: este archivo lo importa LandingClient
@@ -142,8 +143,17 @@ export function precioPublico(n: number): string {
   return formatearMoneda(n, CONFIG, { conCodigo: true })
 }
 
-/** Mensaje precargado de WhatsApp para un diplomado concreto. */
-export function waUrlDiplomado(whatsappUrl: string, nombreCurso: string): string {
-  const base = whatsappUrl.split('?')[0]
-  return `${base}?text=${encodeURIComponent(`Hola, me interesa el diplomado "${nombreCurso}". ¿Me dan informes?`)}`
+/** El mensaje con el que se piden informes de un diplomado concreto. */
+export function mensajeDiplomado(nombreCurso: string): string {
+  return `Hola, me interesa el diplomado "${nombreCurso}". ¿Me dan informes?`
+}
+
+/**
+ * Por dónde se piden informes de un diplomado: el WhatsApp de la escuela con el
+ * mensaje precargado, su correo con ese asunto si no tiene número, o `null` si
+ * no tiene ninguno. Antes se armaba sobre `whatsappUrl` tal cual: un número de
+ * 10 dígitos sin lada no llegaba a nadie y, sin número, el botón quedaba vacío.
+ */
+export function canalDiplomado(cfg: Parameters<typeof canalEscuela>[0], nombreCurso: string): CanalEscuela | null {
+  return canalEscuela(cfg, mensajeDiplomado(nombreCurso))
 }
