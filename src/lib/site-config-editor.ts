@@ -238,16 +238,17 @@ export function estaSobrescrito(overrides: SiteConfigOverrides, ruta: string): b
 
 // ─── Teléfono ────────────────────────────────────────────────────────────────
 
-/** Máximo de dígitos que admite `validarTelefono` (acepta de 10 a 13). */
-export const MAX_DIGITOS_TELEFONO = 13
+/** Máximo de dígitos que admite `normalizarWhatsApp` (un número internacional llega a 15). */
+export const MAX_DIGITOS_TELEFONO = 15
 
 /**
- * El WhatsApp tal como se guarda: SOLO dígitos y 13 como mucho.
+ * El WhatsApp tal como se captura: SOLO dígitos y 15 como mucho. El 52 de un
+ * celular de 10 dígitos lo pone el servidor al guardar (`normalizarWhatsApp`).
  *
  * SE LIMPIA ANTES DE RECORTAR, y no al revés. Con el tope puesto en el
  * `maxlength` del input, pegar '+5219991234567' (14 caracteres) dejaba en el
- * campo '+521999123456' y de ahí salía '521999123456': doce dígitos, que pasan
- * el `^\d{10,13}$` del validador y publican un número TRUNCADO. El admin ve un
+ * campo '+521999123456' y de ahí salía '521999123456': doce dígitos, que el
+ * validador acepta, y se publicaba un número TRUNCADO. El admin ve un
  * campo verde, y el enlace de WhatsApp de toda su landing no lleva a nadie.
  * Quitando primero los separadores, '+521 999 123 4567' se guarda entero.
  */

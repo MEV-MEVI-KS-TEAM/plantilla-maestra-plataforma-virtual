@@ -36,6 +36,7 @@ import {
 } from '@/lib/site-config-core'
 import { LIMITES, campoPorClave, type Campo, type Subcampo } from '@/lib/site-config-campos'
 import { CONFIG } from '@/lib/config'
+import { mensajeWhatsAppInvalido, normalizarWhatsApp } from '@/lib/contacto-ui'
 import { planesPorNivel, type ModalidadPrograma } from '@/lib/modalidades'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, mensualidadDe, type NivelConPrecio } from '@/lib/precios-nivel'
@@ -282,13 +283,20 @@ function validarHex(valor: unknown, etiqueta: string): Limpio<string> | Fallo {
   return { ok: true, valor: valor.trim().toUpperCase() }
 }
 
-const TELEFONO = /^\d{10,13}$/
-
+/**
+ * WhatsApp de la escuela (y su par `contactoTelefono`), con la regla de
+ * `normalizarWhatsApp`: se guarda YA normalizado, así que un celular de 10
+ * dígitos entra con el 52 delante y el `whatsappUrl` que se deriva abajo sí
+ * lleva a la escuela.
+ *
+ * El vacío se acepta: significa «la escuela no usa WhatsApp». Rechazarlo
+ * dejaba a esa escuela sin poder guardar NADA desde el panel, porque el editor
+ * manda el formulario entero (Bug 179).
+ */
 function validarTelefono(valor: unknown, etiqueta: string): Limpio<string> | Fallo {
-  if (typeof valor !== 'string' || !TELEFONO.test(valor.trim())) {
-    return fallo(`El campo ${etiqueta} debe tener entre 10 y 13 dígitos, sin espacios ni signos`)
-  }
-  return { ok: true, valor: valor.trim() }
+  const numero = typeof valor === 'string' ? normalizarWhatsApp(valor) : null
+  if (numero === null) return fallo(mensajeWhatsAppInvalido(etiqueta))
+  return { ok: true, valor: numero }
 }
 
 const esquemaEmail = z.email()
@@ -880,9 +888,10 @@ export function validarOverrides(
   // `whatsappUrl` SIEMPRE se deriva del número: la landing pinta el enlace y
   // el número por separado y un admin que cambie uno olvidaría el otro. Si el
   // cuerpo trae un `whatsappUrl` propio, se ignora y se sobreescribe; si lo
-  // trae SIN número, es un error (no hay de dónde derivarlo).
+  // trae SIN número, es un error (no hay de dónde derivarlo). El número ya
+  // viene normalizado por `validarTelefono`; vacío = sin WhatsApp = sin enlace.
   if (typeof salida.whatsapp === 'string') {
-    salida.whatsappUrl = `https://wa.me/${salida.whatsapp}`
+    salida.whatsappUrl = salida.whatsapp ? `https://wa.me/${salida.whatsapp}` : ''
   } else if (body.whatsappUrl !== undefined && body.whatsappUrl !== null) {
     return { ok: false, error: 'whatsappUrl se deriva de whatsapp', clave: 'whatsappUrl' }
   }

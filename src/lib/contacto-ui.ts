@@ -26,7 +26,64 @@
  *
  * Puro: lo importan componentes cliente, rutas de servidor y pruebas.
  */
-import { waNumero, waUrl } from '@/lib/whatsapp'
+
+/**
+ * El WhatsApp de la escuela tal como se guarda y como va en `wa.me/…`.
+ *
+ * UNA sola regla para el panel (al guardar), para la config ya publicada (al
+ * leer, en `mergeSiteConfig`) y para todo botón que arme el enlace:
+ *
+ *   · se quitan espacios, guiones, paréntesis y «+»;
+ *   · vacío → `''`: la escuela no usa WhatsApp, y es una respuesta válida;
+ *   · 10 dígitos → celular mexicano sin lada de país: se le antepone `52`;
+ *   · 12 dígitos que empiezan con `52` y 13 que empiezan con `521` → tal cual;
+ *   · cualquier otro número internacional de 8 a 15 dígitos → tal cual;
+ *   · lo demás → `null` (no es un número: letras, puntos, muy corto o muy
+ *     largo, o empieza con 0, que ninguna lada de país hace).
+ *
+ * 🛑 Por qué el 52. El panel aceptaba 10 dígitos y el enlace salía
+ *    `https://wa.me/3312345678`: WhatsApp lo lee como un número de otro país y
+ *    el alumno escribe a nadie. Solo la landing animada agregaba el 52; los
+ *    demás botones (login, registro, pie de página, inicio del alumno, legales,
+ *    diplomados) quedaban rotos.
+ *
+ * Idempotente: normalizar lo ya normalizado da lo mismo.
+ */
+export function normalizarWhatsApp(valor: string | null | undefined): string | null {
+  if (valor === null || valor === undefined) return ''
+  const limpio = valor.replace(/[\s()+-]/g, '')
+  if (limpio === '') return ''
+  if (!/^\d+$/.test(limpio)) return null
+  if (limpio.length === 10) return `52${limpio}`
+  if (limpio.length === 12 && limpio.startsWith('52')) return limpio
+  if (limpio.length === 13 && limpio.startsWith('521')) return limpio
+  if (limpio.length >= 8 && limpio.length <= 15 && !limpio.startsWith('0')) return limpio
+  return null
+}
+
+/**
+ * Qué se le dice al admin cuando el número no pasa `normalizarWhatsApp`. Lo usan
+ * el servidor (al rechazar el guardado) y el editor (bajo el campo), con la
+ * etiqueta del campo que toque.
+ */
+export function mensajeWhatsAppInvalido(etiqueta: string): string {
+  return `El campo ${etiqueta} debe ser un celular de 10 dígitos (p. ej. 33 1234 5678) ` +
+    'o un número con lada de país, de 8 a 15 dígitos (p. ej. 52 33 1234 5678). ' +
+    'Déjalo vacío si la escuela no usa WhatsApp.'
+}
+
+/**
+ * Un `https://wa.me/<dígitos>…` con el número pasado por `normalizarWhatsApp`,
+ * conservando lo que venga detrás (`?text=…`). Para el `whatsappUrl` que se
+ * guardó antes de esta regla (`wa.me/3312345678`). Lo que no sea un enlace
+ * `wa.me/<dígitos>`, o un número que no se pueda normalizar, se deja tal cual.
+ */
+export function normalizarUrlWhatsApp(url: string): string {
+  const m = /^(https?:\/\/wa\.me\/)(\d+)(.*)$/.exec(url)
+  if (!m) return url
+  const n = normalizarWhatsApp(m[2])
+  return n ? `${m[1]}${n}${m[3]}` : url
+}
 
 /**
  * ¿Ese número es un WhatsApp REAL de la escuela?
@@ -36,22 +93,24 @@ import { waNumero, waUrl } from '@/lib/whatsapp'
  * con él armaba un enlace de WhatsApp perfectamente formado que no lleva a
  * nadie. Aquí se exige además que no sea un marcador:
  *
- *   · normalizado por `waNumero()` (10 dígitos mexicanos → con 52 delante);
- *   · entre 11 y 13 dígitos, que es lo que admite el editor del panel;
+ *   · que pase `normalizarWhatsApp()` (10 dígitos mexicanos → con 52 delante)
+ *     y no quede vacío;
  *   · y que sus últimos diez dígitos no sean todos ceros (el marcador).
  *
  * 🛑 Solo para el WhatsApp DE LA ESCUELA. El recibo por WhatsApp va al número
  *    del alumno y no pasa por aquí.
  */
 export function whatsappEscuelaDisponible(numero: string | null | undefined): boolean {
-  const n = waNumero(numero)
-  if (!n || n.length < 11 || n.length > 13) return false
+  const n = normalizarWhatsApp(numero)
+  if (!n) return false
   return !/^0{10}$/.test(n.slice(-10))
 }
 
 /** `https://wa.me/…` de la escuela, o `null` si no tiene un número real. */
 export function urlWhatsAppEscuela(numero: string | null | undefined, mensaje?: string): string | null {
-  return whatsappEscuelaDisponible(numero) ? waUrl(numero, mensaje) : null
+  if (!whatsappEscuelaDisponible(numero)) return null
+  const n = normalizarWhatsApp(numero) as string
+  return mensaje ? `https://wa.me/${n}?text=${encodeURIComponent(mensaje)}` : `https://wa.me/${n}`
 }
 
 export type CanalEscuela = {
