@@ -20,6 +20,7 @@
  * B8.2 contra `next start`: publicar aparece, editar se refleja y despublicar
  * desaparece, todo sin redeploy.
  *
+ * El índice (/diplomados) se purga porque es estático y pinta los precios.
  * El detalle (/diplomados/[id]) se purga también por completitud, aunque hoy es
  * una ruta dinámica (ƒ, se renderiza por petición): si mañana alguien la vuelve
  * estática, esta purga ya la cubre.
@@ -31,5 +32,9 @@ import { revalidatePath } from 'next/cache'
 
 export function purgarCatalogoPublico(cursoId?: string): void {
   revalidatePath('/')
+  // El ÍNDICE del catálogo también es estático y pinta el precio de cada curso:
+  // sin esta purga, cambiar un precio en /admin/cursos/[id] dejaba en
+  // /diplomados la cifra vieja hasta el siguiente deploy.
+  revalidatePath('/diplomados')
   if (cursoId) revalidatePath(`/diplomados/${cursoId}`)
 }

@@ -49,7 +49,7 @@ import { formatearMoneda } from '@/lib/moneda'
 import { planesPorNivel, getDuracionLabel, getPlanLabelPublico, getPlanLabelConDuracion } from '@/lib/modalidades'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { resolverLanding } from '@/lib/landing-textos'
-import { precioPublico, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
+import { TEXTO_SIN_PRECIO, precioCatalogo, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela, faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
 import { subtituloMarca } from '@/lib/marca'
@@ -391,7 +391,12 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
       : { Icono: Laptop, titulo: '100% en línea', detalle: 'A tu ritmo, las 24 horas' },
   ]
 
-  const precioCurso = (n: number) => (n > 0 ? precioPublico(n) : 'Sin costo')
+  // Un curso sin precio NO se anuncia «Sin costo»: la tabla guarda 0 cuando
+  // nadie capturó el precio (ver `precioCatalogo`). Dice «Pide informes».
+  const precioCurso = (c: CursoCatalogoPublico) => {
+    const p = precioCatalogo(c)
+    return p.tipo === 'mensual' ? `${p.mensualidad} al mes` : p.tipo === 'unico' ? `${p.monto} · pago único` : TEXTO_SIN_PRECIO
+  }
 
   return (
     <div className="la-landing" style={{ background: paleta.blanco, color: paleta.tinta, minHeight: '100vh' }}>
@@ -1132,9 +1137,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                         <p className="mt-2 text-sm line-clamp-3" style={{ color: tCatalogo.textoSuave }}>{c.descripcion}</p>
                       )}
                       <p className="mt-4 text-sm font-semibold flex items-center gap-1.5" style={{ color: tCatalogo.titulo }}>
-                        {Number(c.precio_mensualidad) > 0
-                          ? `${precioCurso(Number(c.precio_mensualidad))} al mes`
-                          : `${precioCurso(Number(c.precio_inscripcion))} · pago único`}
+                        {precioCurso(c)}
                         <ArrowRight size={15} aria-hidden />
                       </p>
                     </Link>

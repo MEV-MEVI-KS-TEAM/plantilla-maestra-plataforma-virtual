@@ -16,7 +16,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { listarCatalogoPublico, precioPublico } from '@/lib/cursos/catalogo'
+import { TEXTO_SIN_PRECIO, listarCatalogoPublico, precioCatalogo, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela } from '@/lib/contacto-ui'
 
 // Título, logo y WhatsApp son editables desde "Personalizar mi página": salen
@@ -28,6 +28,19 @@ export async function generateMetadata(): Promise<Metadata> {
     title: `${cfg.landing.catalogoTitulo} · ${cfg.nombre}`,
     description: cfg.landing.catalogoSubtitulo,
   }
+}
+
+/**
+ * El precio de la tarjeta. Sin precio capturado (los dos en 0) dice «Pide
+ * informes»: antes ponía «$0», y un curso sembrado sin precio se anunciaba
+ * gratis (ver `precioCatalogo`).
+ */
+function PrecioTarjeta({ curso }: { curso: CursoCatalogoPublico }) {
+  const p = precioCatalogo(curso)
+  if (p.tipo === 'mensual') {
+    return <>{p.mensualidad}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> /mes</span></>
+  }
+  return <>{p.tipo === 'unico' ? p.monto : TEXTO_SIN_PRECIO}</>
 }
 
 export default async function DiplomadosPage() {
@@ -123,9 +136,7 @@ export default async function DiplomadosPage() {
                     </p>
                   )}
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primario)', margin: 0 }}>
-                    {c.precio_mensualidad > 0
-                      ? <>{precioPublico(c.precio_mensualidad)}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> /mes</span></>
-                      : precioPublico(c.precio_inscripcion)}
+                    <PrecioTarjeta curso={c} />
                   </p>
                 </div>
               </Link>
