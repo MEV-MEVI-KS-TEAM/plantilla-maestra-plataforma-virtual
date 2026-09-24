@@ -143,6 +143,38 @@ export function precioPublico(n: number): string {
   return formatearMoneda(n, CONFIG, { conCodigo: true })
 }
 
+/** Lo que el catálogo dice de un curso SIN precio capturado. */
+export const TEXTO_SIN_PRECIO = 'Pide informes'
+
+/**
+ * Qué anuncia el catálogo del precio de un curso.
+ *
+ * 🛑 UN CURSO SIN PRECIO NO ES UN CURSO GRATIS. La tabla `cursos` guarda
+ * `DEFAULT 0` en los dos precios, y los bancos de cursos siembran el curso
+ * PUBLICADO sin precio: la portada animada lo anunciaba «Sin costo» y
+ * `/diplomados` ponía «$0» hasta que alguien se acordara de capturarlo. La tabla
+ * no tiene un campo explícito de «gratis», así que con los dos precios en 0 (o
+ * negativos) el curso dice «Pide informes» y el visitante pregunta.
+ *
+ *   · mensualidad > 0 → `mensual` (con la inscripción, si la hay);
+ *   · solo inscripción > 0 → `unico` (pago único);
+ *   · ninguno → `informes`.
+ */
+export type PrecioCatalogo =
+  | { tipo: 'mensual'; mensualidad: string; inscripcion: string | null }
+  | { tipo: 'unico'; monto: string }
+  | { tipo: 'informes' }
+
+export function precioCatalogo(c: { precio_inscripcion: number | null; precio_mensualidad: number | null }): PrecioCatalogo {
+  const mensualidad = Number(c.precio_mensualidad ?? 0)
+  const inscripcion = Number(c.precio_inscripcion ?? 0)
+  if (mensualidad > 0) {
+    return { tipo: 'mensual', mensualidad: precioPublico(mensualidad), inscripcion: inscripcion > 0 ? precioPublico(inscripcion) : null }
+  }
+  if (inscripcion > 0) return { tipo: 'unico', monto: precioPublico(inscripcion) }
+  return { tipo: 'informes' }
+}
+
 /** El mensaje con el que se piden informes de un diplomado concreto. */
 export function mensajeDiplomado(nombreCurso: string): string {
   return `Hola, me interesa el diplomado "${nombreCurso}". ¿Me dan informes?`

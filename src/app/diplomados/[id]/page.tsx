@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { canalDiplomado, detallePublico, precioPublico } from '@/lib/cursos/catalogo'
+import { TEXTO_SIN_PRECIO, canalDiplomado, detallePublico, precioCatalogo, precioPublico } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
 
@@ -110,6 +110,20 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>Pago único</p>
                 </>
+              )}
+            </div>
+          )}
+          {/* 🛑 Sin precio capturado NO es gratis (la tabla guarda 0 por
+              default): se dice «Pide informes» y el botón de abajo lleva al
+              canal de la escuela. Nunca «Sin costo» ni «$0». */}
+          {precioCatalogo(curso).tipo === 'informes' && (
+            <div className="mt-6 rounded-xl p-4"
+              style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
+              <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>{TEXTO_SIN_PRECIO}</p>
+              {canal && (
+                <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
+                  Te damos el precio y las fechas por {canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}.
+                </p>
               )}
             </div>
           )}

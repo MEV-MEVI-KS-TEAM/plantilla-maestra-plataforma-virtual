@@ -369,7 +369,7 @@ export function CursoDatosForm({ curso, inscritosActivos = 0, onChanged, onError
           />
           <CampoNumero
             id="curso-precio-mensualidad" label={`Mensualidad (${CONFIG.moneda})`} valor={precioMensualidad} onChange={setPrecioMensualidad}
-            min={0} step="0.01" ayuda="Lo que paga cada mes. Es el monto que se propone al registrar el pago."
+            min={0} step="0.01" ayuda="Lo que paga cada mes; es lo que anuncia el catálogo. Con los dos precios en 0, el catálogo dice «Pide informes», no «gratis»."
           />
           <CampoNumero
             id="curso-horas" label="Horas" valor={horas} onChange={setHoras}
