@@ -20,7 +20,7 @@ import { ROJO, estiloBorde } from '@/components/admin/personalizar/Comunes'
  *    porque el foco se pintaba escribiendo en el DOM. Ahora `estiloBorde` hace
  *    que el rojo gane (grupo `b`).
  *  - M0: a 1366 px el marcador «Vacío: usa la general, $2,000» se cortaba en un
- *    input de 224 px (grupo `c`).
+ *    input `w-56` (238 px con la raíz del admin a 17 px) (grupo `c`).
  */
 
 const raiz = process.cwd()
@@ -162,12 +162,13 @@ test.describe('b) con error, el campo es ROJO aunque tenga el foco (M6 a)', () =
 })
 
 test.describe('c) el marcador del campo por nivel se lee completo (M0)', () => {
-  test('c1. el campo ocupa el renglón hasta 320 px y la cifra verde baja si no cabe', () => {
+  test('c1. el campo ocupa el renglón hasta 20rem y la cifra verde baja si no cabe', () => {
     const src = leer(CAMPOS)
     const cuerpo = src.slice(src.indexOf('export function CampoPrecioNivel('), src.indexOf('export interface CampoDecimalProps'))
-    // 224 px (w-56) cortaba «Vacío: usa la general, $2,000» (215 px de texto
-    // en 198 útiles). 320 px deja 294 útiles: cabe el más largo de la flota
-    // («Vacío: usa el de fábrica, $1,500», Moreta) con holgura.
+    // `w-56` (238 px con la raíz a 17 px) cortaba «Vacío: usa la general,
+    // $2,000» (215 px de texto en 211 útiles). `max-w-xs` (340 px) deja 312
+    // útiles: medido en navegador, caben los 167 marcadores distintos de la
+    // flota (el más ancho, «…$300 USD», 238 px) a 1366, 1024, 768 y 390 px.
     expect(cuerpo).toContain('className="w-full max-w-xs px-3')
     expect(cuerpo).toContain('className="flex flex-wrap items-center gap-x-3 gap-y-1.5"')
     expect(cuerpo).not.toContain('w-56')

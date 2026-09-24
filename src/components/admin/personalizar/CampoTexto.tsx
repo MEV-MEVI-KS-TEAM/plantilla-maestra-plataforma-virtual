@@ -393,9 +393,10 @@ export function CampoPrecioNivel({
       />
       {/* El marcador («Vacío: usa la general, $2,000») tiene que leerse
           COMPLETO: un input no parte su placeholder en dos líneas. Por eso el
-          campo ocupa el renglón hasta 320 px y, si no queda sitio para la
-          cifra verde (móvil, o la columna angosta de 1024 px), ésta baja de
-          renglón en vez de comerse el ancho del campo. */}
+          campo ocupa el renglón hasta `max-w-xs` (20rem: 340 px con la raíz
+          del admin a 17 px) y, si no queda sitio para la cifra verde (móvil,
+          o la columna angosta de 1024 px), ésta baja de renglón en vez de
+          comerse el ancho del campo. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <input
           id={id}
