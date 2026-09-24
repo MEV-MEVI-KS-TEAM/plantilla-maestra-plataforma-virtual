@@ -15,6 +15,8 @@ import { useEffect, useState } from 'react'
 import { CONFIG } from '@/lib/config'
 import { formatoMXN } from '@/lib/formato'
 import { textoInscripcion } from '@/lib/precios-ui'
+import { useSiteConfig } from '@/components/site-config-provider'
+import { canalEscuela } from '@/lib/contacto-ui'
 
 type Estado = 'pendiente' | 'pagado' | 'vencido' | 'condonado'
 
@@ -70,6 +72,11 @@ function fechaLarga(iso: string): string {
 }
 
 export default function MisPagosPage() {
+  // El contacto de la escuela es el PUBLICADO (panel), no el de config.ts: antes
+  // «avísanos por WhatsApp al …» enseñaba el número de fábrica aunque la escuela
+  // lo hubiera cambiado. WhatsApp, o su correo si no hay número; sin ninguno, no
+  // se invita a escribir.
+  const canal = canalEscuela(useSiteConfig())
   const [datos, setDatos] = useState<Datos | null>(null)
   const [cargando, setCargando] = useState(true)
 
@@ -90,8 +97,9 @@ export default function MisPagosPage() {
       <div style={{ padding: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: C.primario, marginBottom: 8 }}>Mis Pagos</h1>
         <p style={{ color: C.textoSecundario, fontSize: 14 }}>
-          Tu inscripción no lleva calendario de cuotas semanales. Si tienes dudas sobre tus
-          pagos, escríbenos por WhatsApp.
+          {canal
+            ? `Tu inscripción no lleva calendario de cuotas semanales. Si tienes dudas sobre tus pagos, escríbenos por ${canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}.`
+            : 'Tu inscripción no lleva calendario de cuotas semanales. Si tienes dudas sobre tus pagos, pregunta en tu escuela.'}
         </p>
       </div>
     )
@@ -225,7 +233,9 @@ export default function MisPagosPage() {
 
       <p style={{ fontSize: 12, color: C.textoSecundario, marginTop: 16 }}>
         Los pagos se registran en la escuela. Si ya pagaste una semana y sigue apareciendo como
-        pendiente, avísanos por WhatsApp al {CONFIG.whatsappDisplay}.
+        pendiente, {!canal
+          ? 'avísale a tu escuela.'
+          : `avísanos por ${canal.tipo === 'whatsapp' ? 'WhatsApp al' : 'correo a'} ${canal.valor}.`}
       </p>
     </div>
   )

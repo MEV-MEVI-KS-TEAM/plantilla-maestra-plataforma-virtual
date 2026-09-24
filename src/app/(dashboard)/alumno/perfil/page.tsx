@@ -5,6 +5,7 @@ import { Loader2, Eye, EyeOff, User, Lock, GraduationCap, Mail, Phone, Camera } 
 import Image from 'next/image'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
 interface Perfil {
   id: string
@@ -29,6 +30,8 @@ export default function PerfilPage() {
   const { toasts, showToast, removeToast } = useToast()
   // Datos de la escuela editables desde "Personalizar mi página".
   const cfg = useSiteConfig()
+  const mailto = mailtoEscuela(cfg.contactoEmail)
+  const wa = urlWhatsAppEscuela(cfg.contactoTelefono)
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -302,28 +305,32 @@ export default function PerfilPage() {
               <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>{cfg.nombre}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Mail className="w-4 h-4 flex-shrink-0" style={{ color: '#94A3B8' }} />
-            <div>
-              <p className="text-xs" style={{ color: '#64748B' }}>Contacto</p>
-              <a
-                href={`mailto:${cfg.contactoEmail}`}
-                className="text-sm transition-colors"
-                style={{ color: 'var(--color-acento)' }}
-                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
-              >
-                {cfg.contactoEmail}
-              </a>
+          {/* Sin correo público no hay renglón de correo (antes: `mailto:` sin
+              destinatario y texto vacío); sin WhatsApp real, tampoco el del teléfono. */}
+          {mailto && (
+            <div className="flex items-center gap-3">
+              <Mail className="w-4 h-4 flex-shrink-0" style={{ color: '#94A3B8' }} />
+              <div>
+                <p className="text-xs" style={{ color: '#64748B' }}>Contacto</p>
+                <a
+                  href={mailto}
+                  className="text-sm transition-colors"
+                  style={{ color: 'var(--color-acento)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-acento)' }}
+                >
+                  {cfg.contactoEmail}
+                </a>
+              </div>
             </div>
-          </div>
-          {cfg.contactoTelefono && (
+          )}
+          {wa && (
             <div className="flex items-center gap-3">
               <Phone className="w-4 h-4 flex-shrink-0" style={{ color: '#94A3B8' }} />
               <div>
                 <p className="text-xs" style={{ color: '#64748B' }}>Teléfono / WhatsApp</p>
                 <a
-                  href={`https://wa.me/${cfg.contactoTelefono}`}
+                  href={wa}
                   className="text-sm transition-colors"
                   style={{ color: 'var(--color-acento)' }}
                 >

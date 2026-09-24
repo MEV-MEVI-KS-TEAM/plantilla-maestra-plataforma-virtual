@@ -50,7 +50,7 @@ import { planesPorNivel, getDuracionLabel, getPlanLabelPublico, getPlanLabelConD
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { resolverLanding } from '@/lib/landing-textos'
 import { precioPublico, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
-import { canalEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
+import { canalEscuela, faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
 import { subtituloMarca } from '@/lib/marca'
 import { etiquetaNivel, etiquetaNivelConArticulo, listaConY, nivelesTexto } from '@/lib/niveles-ui'
@@ -238,6 +238,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   )
   const telefonoVisible = config.whatsappDisplay || config.whatsapp
   const correo = config.contactoEmail || config.email
+  const mailto = mailtoEscuela(correo)
   const anio = new Date().getFullYear()
 
   // Sobre los bloques oscuros va `logoOscuro`. Cuando la escuela entrega un solo
@@ -305,7 +306,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // Las preguntas de licenciatura se CALCULAN de sus precios (no se guardan en
   // `faq_items`: el editor admite 8 y quedarían desfasadas si cambia un precio).
   const faqLicenciatura = hayLicenciaturas ? preguntasLicenciatura(planesLic, carrerasLic, dinero) : []
-  const faqs = [...L.faq_items.map(f => ({ q: texto(f.q), a: texto(f.a) })), ...faqPlanes, ...faqLicenciatura]
+  // Sin WhatsApp, la pregunta que da el número (`{whatsapp}`) no se publica: saldría «al .».
+  const faqs = [...faqSegunWhatsApp(L.faq_items, urlWhatsApp !== null).map(f => ({ q: texto(f.q), a: texto(f.a) })), ...faqPlanes, ...faqLicenciatura]
 
   const testimonios = L.testimonios ?? []
 
@@ -1221,9 +1223,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   <TarjetaContacto t={tContacto} href={urlWhatsApp} externo destacada Icono={MessageCircle} etiqueta="WhatsApp" valor={telefonoVisible} />
                 </li>
               )}
-              {correo && (
+              {correo && mailto && (
                 <li data-la-reveal="der" style={retraso(2)}>
-                  <TarjetaContacto t={tContacto} href={`mailto:${correo}`} Icono={Mail} etiqueta="Escríbenos por correo"
+                  <TarjetaContacto t={tContacto} href={mailto} Icono={Mail} etiqueta="Escríbenos por correo"
                     valor={correo} grande={!urlWhatsApp} accion={urlWhatsApp ? undefined : 'Escríbenos'}
                     nota={urlWhatsApp ? undefined : 'Te respondemos para orientarte sobre niveles, planes y documentos.'} />
                 </li>
@@ -1273,9 +1275,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   </a>
                 </li>
               )}
-              {correo && (
+              {correo && mailto && (
                 <li>
-                  <a href={`mailto:${correo}`} className="inline-flex items-center gap-2 hover:underline underline-offset-4 break-all"
+                  <a href={mailto} className="inline-flex items-center gap-2 hover:underline underline-offset-4 break-all"
                     style={{ color: tPie.texto }}>
                     <Mail size={16} aria-hidden style={{ color: tPie.decorativo }} />{correo}
                   </a>

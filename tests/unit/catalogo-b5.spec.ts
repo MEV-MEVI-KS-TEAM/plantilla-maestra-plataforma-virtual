@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { precioPublico, waUrlDiplomado } from '@/lib/cursos/catalogo'
+import { canalDiplomado, precioPublico } from '@/lib/cursos/catalogo'
 import { CONFIG } from '@/lib/config'
 
 /**
@@ -102,13 +102,12 @@ test('precioPublico formatea en pesos sin decimales', () => {
 })
 
 test('el CTA de WhatsApp precarga el nombre del diplomado', () => {
-  const url = waUrlDiplomado('https://wa.me/5215512345678', 'Dactiloscopia Forense')
+  // El enlace sale del NÚMERO (normalizado por contacto-ui), no de un
+  // whatsappUrl guardado: así no arrastra un ?text= previo ni un número sin lada.
+  const url = canalDiplomado({ whatsapp: '5215512345678' }, 'Dactiloscopia Forense')!.href
   expect(url).toContain('wa.me/5215512345678')
   expect(decodeURIComponent(url)).toContain('Dactiloscopia Forense')
-  // Y no arrastra un ?text= previo del CONFIG.
-  const conTexto = waUrlDiplomado('https://wa.me/521551234?text=hola%20previo', 'Balística')
-  expect((decodeURIComponent(conTexto).match(/text=/g) ?? []).length).toBe(1)
-  expect(decodeURIComponent(conTexto)).not.toContain('hola previo')
+  expect((decodeURIComponent(url).match(/text=/g) ?? []).length).toBe(1)
 })
 
 test('los textos por defecto del catálogo no afirman validez oficial', () => {

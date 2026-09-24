@@ -17,6 +17,8 @@ import { getOfertasIngreso } from '@/lib/cursos/oferta'
 // Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
 // provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
 import { useSiteConfig } from '@/components/site-config-provider'
+import { urlWhatsAppEscuela } from '@/lib/contacto-ui'
+import { mensajeRegistro } from '@/lib/registro-mensajes'
 
 // La última viñeta enumera la oferta real de la escuela en vez de una frase
 // fija: si el cliente activa o retira un programa, el copy lo sigue solo.
@@ -202,6 +204,9 @@ function LeftPanel() {
 export default function RegisterPage() {
   const router = useRouter()
   const cfg = useSiteConfig()
+  // WhatsApp de la escuela, o `null` sin número real: sin él no hay enlace de
+  // ayuda ni mensajes de error que manden a escribir por WhatsApp.
+  const wa = urlWhatsAppEscuela(cfg.whatsapp)
 
   const [nombre,          setNombre]          = useState('')
   const [apellidoPat,     setApellidoPat]     = useState('')
@@ -343,13 +348,13 @@ export default function RegisterPage() {
         if (msg.includes('already')) {
           setError('Ya existe una cuenta con ese correo. Inicia sesión.')
         } else if (msg.includes('rate limit') || msg.includes('too many')) {
-          setError('Hemos enviado demasiados correos en la última hora. Espera unos minutos y vuelve a intentarlo, o escríbenos por WhatsApp y te damos de alta nosotros.')
+          setError(mensajeRegistro('limite', { hayWhatsApp: wa !== null }))
         } else if (msg.includes('password')) {
           setError('La contraseña no cumple los requisitos mínimos. Usa al menos 8 caracteres.')
         } else if (msg.includes('invalid') && msg.includes('email')) {
           setError('El correo electrónico no parece válido. Revísalo e intenta de nuevo.')
         } else {
-          setError('No pudimos crear tu cuenta en este momento. Vuelve a intentarlo o escríbenos por WhatsApp.')
+          setError(mensajeRegistro('generico', { hayWhatsApp: wa !== null }))
         }
         return
       }
@@ -360,7 +365,7 @@ export default function RegisterPage() {
       // ⚠️ Esto NO desbloquea el registro: para eso hay que apagar "Confirm
       // email" y poner el Site URL real en el panel de Supabase.
       if (!signUpData?.session) {
-        setError('Te enviamos un correo de confirmación a ' + email.trim() + '. Revísalo (y la carpeta de spam) para activar tu cuenta. Si no te llega en unos minutos, escríbenos por WhatsApp y te damos de alta nosotros.')
+        setError(mensajeRegistro('confirmar', { hayWhatsApp: wa !== null, email: email.trim() }))
         return
       }
 
@@ -732,16 +737,18 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <div className="mt-8 flex flex-col items-center gap-3">
-          <a
-            href={cfg.whatsappUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm transition-colors"
-            style={{ color: 'var(--color-texto-secundario)', textDecoration: 'none' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#16A34A' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-texto-secundario)' }}
-          >
-            <span style={{ color: '#22C55E' }}><WaSvg size={16} /></span>
-            ¿Necesitas ayuda? WhatsApp
-          </a>
+          {wa && (
+            <a
+              href={wa} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm transition-colors"
+              style={{ color: 'var(--color-texto-secundario)', textDecoration: 'none' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#16A34A' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-texto-secundario)' }}
+            >
+              <span style={{ color: '#22C55E' }}><WaSvg size={16} /></span>
+              ¿Necesitas ayuda? WhatsApp
+            </a>
+          )}
           <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
             © {new Date().getFullYear()} {cfg.nombreCompleto}
           </p>

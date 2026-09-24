@@ -10,6 +10,7 @@ import { ROLE_REDIRECTS } from '@/lib/constants'
 // Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
 // provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
 import { useSiteConfig } from '@/components/site-config-provider'
+import { urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
 const BENEFITS = [
   'Acompañamiento para tu certificado SEP',
@@ -132,6 +133,7 @@ function LeftPanel() {
 export default function LoginPage() {
   const router = useRouter()
   const cfg = useSiteConfig()
+  const wa = urlWhatsAppEscuela(cfg.whatsapp)
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -306,36 +308,42 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
-            <span className="text-xs px-1" style={{ color: 'var(--color-texto-secundario)' }}>o</span>
-            <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
-          </div>
+          {/* Sin WhatsApp de la escuela no hay botón, ni el «o» que lo separa:
+              antes se pintaba con `href=""`, que recarga el login. */}
+          {wa && (
+            <>
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
+                <span className="text-xs px-1" style={{ color: 'var(--color-texto-secundario)' }}>o</span>
+                <div className="flex-1 h-px" style={{ background: 'var(--color-borde)' }} />
+              </div>
 
-          {/* WhatsApp button */}
-          <a
-            href={cfg.whatsappUrl} target="_blank" rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2.5 font-semibold text-sm transition-all"
-            style={{
-              display: 'flex',
-              background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: 12,
-              color: 'var(--color-primario)', padding: '12px 16px', textDecoration: 'none',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#22C55E'
-              e.currentTarget.style.color = '#16A34A'
-              e.currentTarget.style.background = '#F0FDF4'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = '#E2E8F0'
-              e.currentTarget.style.color = 'var(--color-primario)'
-              e.currentTarget.style.background = '#fff'
-            }}
-          >
-            <span style={{ color: '#22C55E' }}><WaSvg size={18} /></span>
-            ¿Necesitas ayuda? Escríbenos por WhatsApp
-          </a>
+              {/* WhatsApp button */}
+              <a
+                href={wa} target="_blank" rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2.5 font-semibold text-sm transition-all"
+                style={{
+                  display: 'flex',
+                  background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: 12,
+                  color: 'var(--color-primario)', padding: '12px 16px', textDecoration: 'none',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = '#22C55E'
+                  e.currentTarget.style.color = '#16A34A'
+                  e.currentTarget.style.background = '#F0FDF4'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = '#E2E8F0'
+                  e.currentTarget.style.color = 'var(--color-primario)'
+                  e.currentTarget.style.background = '#fff'
+                }}
+              >
+                <span style={{ color: '#22C55E' }}><WaSvg size={18} /></span>
+                ¿Necesitas ayuda? Escríbenos por WhatsApp
+              </a>
+            </>
+          )}
 
           {/* Register link */}
           <p className="mt-5 text-center text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
