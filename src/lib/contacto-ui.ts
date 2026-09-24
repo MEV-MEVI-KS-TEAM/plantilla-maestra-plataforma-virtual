@@ -85,6 +85,43 @@ export function normalizarUrlWhatsApp(url: string): string {
   return n ? `${m[1]}${n}${m[3]}` : url
 }
 
+/** LADAs de dos dígitos en México (CDMX, Guadalajara, Monterrey); las demás son de tres. */
+const LADA_DE_DOS = /^(33|55|56|81)/
+
+/**
+ * El WhatsApp de la escuela como se LEE: «33 1234 5678», «777 441 6667»,
+ * «+1 210 792 3638». `''` si no hay un número válido.
+ *
+ * Un número mexicano (52 + 10, o 521 + 10) se escribe sin la lada de país,
+ * que es como lo dicta cualquiera en México; el de otro país lleva su «+».
+ */
+export function formatearWhatsApp(numero: string | null | undefined): string {
+  const n = normalizarWhatsApp(numero)
+  if (!n) return ''
+  const mx = n.length === 12 && n.startsWith('52') ? n.slice(2)
+    : n.length === 13 && n.startsWith('521') ? n.slice(3)
+      : null
+  if (mx) {
+    return LADA_DE_DOS.test(mx)
+      ? `${mx.slice(0, 2)} ${mx.slice(2, 6)} ${mx.slice(6)}`
+      : `${mx.slice(0, 3)} ${mx.slice(3, 6)} ${mx.slice(6)}`
+  }
+  if (n.length === 11 && n.startsWith('1')) return `+1 ${n.slice(1, 4)} ${n.slice(4, 7)} ${n.slice(7)}`
+  return `+${n}`
+}
+
+/**
+ * ¿El texto «como se muestra» dice ESE número? Se comparan los dígitos: basta
+ * con que coincidan los últimos diez (con o sin lada de país, con el 1 del
+ * celular o sin él, con cualquier separador).
+ */
+export function whatsappDisplayCuadra(display: string | null | undefined, numero: string | null | undefined): boolean {
+  const d = String(display ?? '').replace(/\D/g, '')
+  const n = normalizarWhatsApp(numero)
+  if (!n || d.length < Math.min(10, n.length)) return false
+  return d === n || d.slice(-10) === n.slice(-10)
+}
+
 /**
  * ¿Ese número es un WhatsApp REAL de la escuela?
  *
