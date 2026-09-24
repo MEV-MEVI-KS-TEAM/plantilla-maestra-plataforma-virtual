@@ -24,8 +24,11 @@
  */
 import type { Moneda } from './moneda'
 import { CONFIG } from '@/lib/config'
-import { inscripcionDe } from '@/lib/precios-nivel'
-import type { OverrideModalidad, SiteConfigOverrides } from '@/lib/site-config-core'
+import { CLAVE_MENSUALIDAD_POR_NIVEL, inscripcionDe, mensualidadDe, type NivelConPrecio } from '@/lib/precios-nivel'
+import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
+import { validarOverrides } from '@/lib/site-config-validacion'
+import { esSoloCursos } from '@/lib/modo'
+import type { ModalidadPrograma } from '@/lib/modalidades'
 import {
   PALETAS,
   PARES_CONTRASTE,
@@ -55,6 +58,8 @@ export interface ModalidadEditable {
    */
   semanas?: number
   cuotaSemanal?: number
+  /** Solo en una oferta asimétrica: el nivel al que aplica el plan (ver `planesPorNivel`). */
+  nivel?: string
   materiasPorMes: number
   activa: boolean
 }
@@ -519,13 +524,55 @@ export function formatoDinero(n: number, moneda: Moneda = 'MXN'): string {
  * toleran los separadores que él mismo ve en pantalla ('$2,000' pegado desde
  * otro lado); nada más. Negativos y decimales devuelven `null` en vez de
  * redondear: un precio mal capturado tiene que verse rojo, no arreglarse solo.
+ *
+ * 🛑 La coma SOLO vale como separador de miles bien formado («1,500»,
+ * «12,345»). «499,00» o «4,5» son una coma DECIMAL —así se escribe en
+ * México, y el tipo de cambio de la misma pestaña la acepta— y quitarla
+ * multiplicaba el precio por 100 sin marcar nada en rojo (499,00 → 49900).
  */
 export function parseEntero(texto: string): number | null {
   if (typeof texto !== 'string') return null
-  const limpio = texto.replace(/[\s,$]/g, '')
+  const sinEspacios = texto.replace(/[\s$]/g, '')
+  if (sinEspacios.includes(',') && !/^\d{1,3}(,\d{3})+$/.test(sinEspacios)) return null
+  const limpio = sinEspacios.replace(/,/g, '')
   if (!/^\d+$/.test(limpio)) return null
   const n = Number(limpio)
   return Number.isSafeInteger(n) ? n : null
+}
+
+/**
+ * Qué hace un campo de entero cuando pierde el foco con basura (texto que no
+ * es un entero en rango). Regla: el BORRADOR vuelve a como estaba AL ENTRAR,
+ * y la pantalla también. Nunca se queda el último prefijo válido que se
+ * propagó al teclear («60000» con tope 50,000 no deja 6000).
+ *
+ * - Si al entrar NO tenía override y el campo sabe quitar su clave
+ *   (`puedeDescartar`), se quita SIEMPRE: escribir la cifra de fábrica
+ *   dejaría un override fijo que ya no sigue al config.ts. Va ANTES del
+ *   atajo de abajo: teclear «599,00» sobre un 599 de fábrica propaga 5, 59
+ *   y 599, así que el valor acaba igual al de entrada pero la clave ya
+ *   existe. Quitar una clave que no está no cambia nada.
+ * - Si tenía override y el valor quedó igual, no se toca el borrador.
+ * - Si no, se vuelve a escribir lo de al entrar TAL CUAL, aunque ya no
+ *   quepa en el rango o ni siquiera sea número (la mensualidad decimal de
+ *   CIEB, una fila de BD escrita a mano): el campo sigue en rojo y el
+ *   validador lo señala, en vez de publicar un prefijo que nadie quiso.
+ */
+export function alSalirConBasura({
+  alEntrar, actual, sobrescritoAlEntrar, puedeDescartar,
+}: {
+  alEntrar: unknown
+  actual: unknown
+  sobrescritoAlEntrar: boolean
+  puedeDescartar: boolean
+}): { accion: 'nada' | 'descartar' | 'escribir'; valor?: unknown; texto: string } {
+  const textoDe = (v: unknown) => (v === undefined || v === null ? '' : String(v))
+  const vacioAlEntrar = alEntrar === undefined || alEntrar === null
+  if ((!sobrescritoAlEntrar || vacioAlEntrar) && puedeDescartar) {
+    return { accion: 'descartar', texto: textoDe(alEntrar) }
+  }
+  if (Object.is(actual, alEntrar) || vacioAlEntrar) return { accion: 'nada', texto: textoDe(alEntrar) }
+  return { accion: 'escribir', valor: alEntrar, texto: textoDe(alEntrar) }
 }
 
 // ─── Publicar ────────────────────────────────────────────────────────────────
@@ -564,6 +611,169 @@ export function hayCambiosDePreciosOPlanes(antes: SiteConfigOverrides, despues: 
   )
 }
 
+// ─── Precios por nivel (Fase 2, F2-9) ────────────────────────────────────────
+
+/**
+ * ¿La pestaña Precios enseña los campos por nivel? Solo si la escuela vende
+ * Secundaria Y Preparatoria y no es de solo cursos: con un solo nivel, «por
+ * nivel» y «general» son lo mismo, y el campo sobraría.
+ */
+export function preciosPorNivelVisibles(niveles: readonly string[] = CONFIG.niveles): boolean {
+  return ['secundaria', 'preparatoria'].every((n) => niveles.includes(n)) && !esSoloCursos()
+}
+
+type PlanDelEditor = { id: string; meses: number; nivel?: string | null }
+
+/**
+ * Las claves por nivel de la mensualidad de un plan: solo los planes de 3 y 6
+ * meses tienen precio por nivel (los demás usan el general), y un plan con
+ * `nivel` solo toca la de su nivel.
+ *
+ * ⚠️ La clave se indexa por DURACIÓN, no por plan: si dos planes duran lo
+ * mismo (Habsburgo: «6 Meses» y «Acceso completo»), comparten la clave. Con
+ * `modalidades`, solo el PRIMERO de su duración la edita y la restaura; los
+ * demás devuelven `[]` (un solo campo por clave: sin ids repetidos en la
+ * pestaña, y el «Restaurar plan» de uno no borra en silencio lo del otro).
+ */
+export function clavesPorNivelDePlan(
+  plan: PlanDelEditor,
+  modalidades?: ReadonlyArray<PlanDelEditor>,
+): string[] {
+  if (plan.meses !== 3 && plan.meses !== 6) return []
+  if (modalidades) {
+    const primero = modalidades.find((p) => p.meses === plan.meses && (p.nivel ?? null) === (plan.nivel ?? null))
+    if (primero && primero.id !== plan.id) return []
+  }
+  const niveles: NivelConPrecio[] = !plan.nivel
+    ? ['secundaria', 'preparatoria']
+    : plan.nivel === 'secundaria' || plan.nivel === 'preparatoria' ? [plan.nivel] : []
+  return niveles.map((n) => `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[n][plan.meses as 3 | 6]}`)
+}
+
+/**
+ * «Restaurar plan»: quita los overrides del plan (mensualidad, cuota semanal,
+ * activa) Y las claves por nivel de su duración. Sin esto, una mensualidad
+ * por nivel guardada seguiría mandando sobre el plan «restaurado».
+ */
+export function restaurarPlan(
+  overrides: SiteConfigOverrides,
+  plan: PlanDelEditor,
+  modalidades?: ReadonlyArray<PlanDelEditor>,
+): SiteConfigOverrides {
+  let r = escribirModalidad(overrides, plan.id, { mensualidad: null, cuotaSemanal: null, activa: null })
+  for (const clave of clavesPorNivelDePlan(plan, modalidades)) r = quitarRuta(r, clave)
+  return r
+}
+
+/**
+ * ¿Tiene precio propio este campo por nivel en el borrador? `null` cuenta
+ * como VACÍO, no como override: el validador lo descarta al publicar y la
+ * fila nunca lo guarda. Un 0 escrito a mano SÍ cuenta (es inválido y el
+ * admin necesita el «Restaurar» para quitarlo).
+ */
+export function precioNivelSobrescrito(overrides: SiteConfigOverrides, clave: string): boolean {
+  const v = valorEfectivo({}, overrides, clave)
+  return v !== undefined && v !== null
+}
+
+/**
+ * ¿Hay algo que «Restaurar plan» deshaga? El plan, o una de sus claves por
+ * nivel: el botón sale aunque solo esté sobrescrita una de ellas.
+ */
+export function planSobrescrito(
+  overrides: SiteConfigOverrides,
+  plan: PlanDelEditor,
+  modalidades?: ReadonlyArray<PlanDelEditor>,
+): boolean {
+  return overrides.modalidades?.[plan.id] !== undefined
+    || clavesPorNivelDePlan(plan, modalidades).some((clave) => precioNivelSobrescrito(overrides, clave))
+}
+
+/**
+ * El precio de un nivel en el BORRADOR, con el mismo resolver que la landing:
+ * `mergeSiteConfig(CONFIG, …)` y después `inscripcionDe` o `mensualidadDe`.
+ * Con `vacio`, sin la clave del campo: es lo que cobraría el nivel si el admin
+ * lo deja vacío (la general de hoy).
+ *
+ * 🛑 No sale de `defaults` (no trae los alias de secundaria, que deciden la
+ * «general» de ese nivel) ni de `valorEfectivo` (no aplica el merge).
+ */
+export function precioNivelEfectivo(
+  overrides: SiteConfigOverrides,
+  campo: { clave: string; nivel: NivelConPrecio; planId?: string },
+  { vacio = false }: { vacio?: boolean } = {},
+): number {
+  const efectivo = mergeSiteConfig(CONFIG, prepararParaPublicar(vacio ? quitarRuta(overrides, campo.clave) : overrides))
+  const precios = efectivo.precios as unknown as Record<string, unknown>
+  if (!campo.planId) return inscripcionDe(campo.nivel, precios)
+  const planes = efectivo.modalidades as unknown as readonly ModalidadPrograma[] | undefined
+  const plan = Array.isArray(planes) ? planes.find((m) => m.id === campo.planId) : undefined
+  return plan ? mensualidadDe(campo.nivel, plan, precios) : 0
+}
+
+/**
+ * De dónde sale lo que cobra un nivel con el campo vacío:
+ *   - 'general': la general que se ve en la misma tarjeta (inscripción
+ *     general o «Mensualidad general» del plan);
+ *   - 'hoy': la de hoy del nivel, que NO es esa general — la secundaria de
+ *     SAMEX o AULA RAÍZ vive en su alias (2,700 frente a 3,000 del plan) y
+ *     decir «la general» junto a otra cifra sería contradecirse;
+ *   - 'fabrica': el clon cuyo config.ts ya trae la clave con cifra; vaciar
+ *     el campo vuelve a ESA cifra.
+ */
+export type OrigenVacio = 'general' | 'hoy' | 'fabrica'
+
+/** El marcador de un campo por nivel vacío: «Vacío: usa la general, $599». Nunca «$0». */
+export function textoVacioNivel(monto: number, moneda: Moneda = CONFIG.moneda, origen: OrigenVacio = 'general'): string {
+  const cifra = monto > 0 ? formatoDinero(monto, moneda) : 'sin costo'
+  const cual = origen === 'fabrica' ? 'el de fábrica' : origen === 'hoy' ? 'la de hoy' : 'la general'
+  return `Vacío: usa ${cual}, ${cifra}`
+}
+
+/**
+ * El final del error del campo: «…o déjalo vacío para usar ___.». Con origen
+ * 'general' es el texto del diseño (§7.3); con 'hoy' o 'fabrica' dice la
+ * cifra, porque vacío NO da la general y, con el campo en rojo, el marcador
+ * y la ayuda no se ven: el error es la única guía.
+ */
+export function textoVacioError(monto: number, moneda: Moneda = CONFIG.moneda, origen: OrigenVacio = 'general'): string {
+  if (origen === 'general') return 'el precio general'
+  return textoVacioNivel(monto, moneda, origen).replace(/^Vacío: usa /, '')
+}
+
+/**
+ * El plan cuya caja lleva el campo de una clave por nivel de mensualidad: el
+ * primero de esa duración sin `nivel` o con el mismo nivel. `null` si no es
+ * una clave de mensualidad por nivel o si ningún plan dura eso.
+ */
+export function planDeClaveNivel(clave: string, modalidades: ReadonlyArray<PlanDelEditor>): string | null {
+  const m = /^precios\.mensualidad(Secundaria|Preparatoria)(3|6)Meses$/.exec(clave)
+  if (!m) return null
+  const nivel = m[1].toLowerCase()
+  const meses = Number(m[2])
+  return modalidades.find((p) => p.meses === meses && (!p.nivel || p.nivel === nivel))?.id ?? null
+}
+
+/**
+ * La clave que hay que señalar en la pestaña Precios para un error del
+ * servidor (F2-7). El escalón puede culpar a una clave por nivel de
+ * mensualidad; si en la pestaña no hay campo para ella (plan con `nivel`,
+ * escuela semanal o de un solo nivel), se señala la caja de su plan, cuyo
+ * «Restaurar plan» la limpia. Cualquier otra clave pasa tal cual.
+ */
+export function claveASenalar(
+  clave: string,
+  modalidades: ReadonlyArray<PlanDelEditor> | undefined,
+  { semanal, porNivel }: { semanal: boolean; porNivel: boolean },
+): string {
+  const planes = Array.isArray(modalidades) ? modalidades : []
+  const id = planDeClaveNivel(clave, planes)
+  if (id === null) return clave
+  const plan = planes.find((p) => p.id === id)
+  const tieneCampo = !semanal && porNivel && !!plan && !plan.nivel
+  return tieneCampo ? clave : `modalidades.${id}`
+}
+
 /** ¿Cambió el tipo de cambio? El modal de precios lo menciona aparte. */
 export function hayCambioDeTipoCambio(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
   return !mismoContenido(antes.tipoCambioMXN, despues.tipoCambioMXN)
@@ -592,6 +802,37 @@ export function prepararParaPublicar(overrides: SiteConfigOverrides): SiteConfig
   delete salida.whatsappUrl
   podarVacios(salida)
   return salida as SiteConfigOverrides
+}
+
+/** Lo que hace «Publicar cambios» con el borrador de hoy. */
+export type PasoAlPublicar =
+  | { paso: 'error'; error: string; clave?: string }
+  | { paso: 'modal' }
+  | { paso: 'publicar' }
+
+/**
+ * Qué pasa al pulsar «Publicar cambios»: PRIMERO la misma validación que el
+ * servidor, sobre el mismo cuerpo del PUT (`prepararParaPublicar`), y solo si
+ * pasa se abre el modal de precios o se publica directo.
+ *
+ * POR QUÉ. Validar después de confirmar obligaba al admin a aceptar «Vas a
+ * cambiar precios» para enterarse de que el borrador no se podía publicar
+ * (el escalón de F2-7, un campo fuera de rango). Con el error delante, el
+ * modal solo sale cuando lo que confirma es publicable.
+ *
+ * `contra` tiene que ser la config COMPLETA (`mergeSiteConfig(CONFIG, {})`,
+ * la `DEFAULTS()` de la API): el escalón mira precios efectivos y el respaldo
+ * de secundaria pasa por alias que la config recortada no trae.
+ */
+export function pasoAlPublicar(
+  publicado: SiteConfigOverrides,
+  borrador: SiteConfigOverrides,
+  contra: SiteConfig,
+  moneda: Moneda = CONFIG.moneda,
+): PasoAlPublicar {
+  const previo = validarOverrides(prepararParaPublicar(borrador), contra)
+  if (!previo.ok) return { paso: 'error', error: previo.error, clave: previo.clave }
+  return hayCambiosDePrecio(publicado, borrador, moneda) ? { paso: 'modal' } : { paso: 'publicar' }
 }
 
 /**

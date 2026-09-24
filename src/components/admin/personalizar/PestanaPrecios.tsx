@@ -17,6 +17,13 @@
  * Además: el tipo de cambio, solo si la escuela no cobra en pesos, y una
  * tarjeta que lleva a /admin/cursos, porque el precio de cada curso o
  * diplomado se edita en su ficha (Fase 2, F2-3).
+ *
+ * PRECIOS POR NIVEL (Fase 2, F2-9). En una escuela que vende Secundaria y
+ * Preparatoria, la inscripción y la mensualidad de los planes de 3 y 6
+ * meses se pueden fijar por nivel. Son OPCIONALES: un campo vacío sigue la
+ * general de hoy, y con los seis vacíos la escuela cobra exactamente lo de
+ * antes. No hay campo por nivel en los planes con `nivel` (ya son de uno
+ * solo), en los de otra duración ni en una escuela semanal.
  */
 import Link from 'next/link'
 import { ArrowLeftRight, BadgeDollarSign, ExternalLink, GraduationCap, Layers } from 'lucide-react'
@@ -25,18 +32,33 @@ import { esSoloCursos } from '@/lib/modo'
 import { esSemanal } from '@/lib/periodicidad'
 import { equivalenteMXN, type Moneda } from '@/lib/moneda'
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
-import { AYUDA_CUOTA_SEMANAL, NOTA_PRECIOS } from '@/lib/site-config-textos'
 import {
+  AYUDA_CUOTA_SEMANAL,
+  AYUDA_NIVEL_CIFRA_PROPIA,
+  AYUDA_NIVEL_DE_FABRICA,
+  NOTA_PRECIOS,
+  NOTA_PRECIOS_POR_NIVEL,
+} from '@/lib/site-config-textos'
+import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
+import {
+  clavesPorNivelDePlan,
   escribirModalidad,
   escribirRuta,
   estaSobrescrito,
   formatoDinero,
   modalidadesEfectivas,
+  planSobrescrito,
+  precioNivelEfectivo,
+  precioNivelSobrescrito,
+  preciosPorNivelVisibles,
   puedeDesactivar,
   quitarRuta,
+  restaurarPlan,
+  textoVacioError,
+  textoVacioNivel,
   valorEfectivo,
 } from '@/lib/site-config-editor'
-import { CampoDecimal, CampoEntero } from './CampoTexto'
+import { CampoDecimal, CampoEntero, CampoPrecioNivel } from './CampoTexto'
 import {
   Ayuda,
   BOTON_SECUNDARIO,
@@ -51,6 +73,17 @@ import {
 } from './Comunes'
 
 const ICONO = { className: 'w-4 h-4', style: { color: 'var(--color-acento)' } }
+
+const NIVELES_CON_PRECIO: readonly NivelConPrecio[] = ['secundaria', 'preparatoria']
+
+/** El rótulo de un subbloque de campos por nivel. */
+function Subtitulo({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-wide pt-1" style={{ color: TXT_TENUE }}>
+      {children}
+    </p>
+  )
+}
 
 /**
  * Las cifras semanales de un plan.
@@ -117,15 +150,18 @@ export function PestanaPrecios({
   // Fijo por config, no editable: la periodicidad no la cambia el admin desde
   // aquí (ver la nota de `periodicidad` en config.ts).
   const semanal = esSemanal()
+  // Solo con Secundaria Y Preparatoria (y fuera de solo cursos): con un
+  // nivel, «por nivel» y «general» serían el mismo campo dos veces.
+  const porNivel = preciosPorNivelVisibles()
 
-  function campoPrecio(clave: string) {
+  function campoPrecio(clave: string, etiqueta?: string) {
     const campo = campoPorClave(clave)
     const valor = valorEfectivo(defaults, overrides, clave)
     const numero = typeof valor === 'number' ? valor : 0
     return (
       <CampoEntero
         clave={clave}
-        etiqueta={campo?.etiqueta ?? clave}
+        etiqueta={etiqueta ?? campo?.etiqueta ?? clave}
         ayuda={campo?.ayuda}
         valor={numero}
         min={campo?.min ?? LIMITES.precioMin}
@@ -135,6 +171,47 @@ export function PestanaPrecios({
         sobrescrito={estaSobrescrito(overrides, clave)}
         resaltado={claveConError === clave}
         onChange={(n) => actualizar((prev) => escribirRuta(prev, clave, n))}
+        onRestaurar={() => actualizar((prev) => quitarRuta(prev, clave))}
+      />
+    )
+  }
+
+  /**
+   * Un precio por nivel: vacío = sigue la general. El marcador y la cifra de
+   * la derecha salen de `precioNivelEfectivo`, el MISMO resolver que la
+   * landing, así que dicen lo que el nivel cobraría de verdad (incluido el
+   * alias de secundaria de SAMEX o AULA RAÍZ, que `defaults` no trae).
+   */
+  function campoNivel(clave: string, nivel: NivelConPrecio, plan?: { id: string; mensualidad: number }) {
+    const campo = campoPorClave(clave)
+    const destino = { clave, nivel, planId: plan?.id }
+    const siVacio = precioNivelEfectivo(overrides, destino, { vacio: true })
+    const cobra = precioNivelEfectivo(overrides, destino)
+    // Un clon cuyo config.ts ya trae la clave con cifra: vaciar el campo
+    // vuelve a esa cifra, no a la general. Y la secundaria de SAMEX o AULA
+    // RAÍZ no sigue la «Mensualidad general» del plan sino su alias.
+    const origen = Number(valorEfectivo(defaults, {}, clave)) > 0 ? 'fabrica'
+      : plan && siVacio !== plan.mensualidad ? 'hoy' : 'general'
+    return (
+      <CampoPrecioNivel
+        key={clave}
+        clave={clave}
+        etiqueta={campo?.etiqueta ?? clave}
+        ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA
+          : origen === 'hoy' ? `${campo?.ayuda ?? ''} ${AYUDA_NIVEL_CIFRA_PROPIA}`.trim()
+          : campo?.ayuda}
+        valor={valorEfectivo({}, overrides, clave)}
+        vacio={textoVacioNivel(siVacio, CONFIG.moneda, origen)}
+        vacioError={textoVacioError(siVacio, CONFIG.moneda, origen)}
+        min={campo?.min ?? LIMITES.precioNivelMin}
+        max={campo?.max ?? LIMITES.precioMax}
+        sufijo={<EnPesos valor={cobra} moneda={CONFIG.moneda} />}
+        deshabilitado={!puedeEditar}
+        sobrescrito={precioNivelSobrescrito(overrides, clave)}
+        resaltado={claveConError === clave}
+        onChange={(n) => actualizar((prev) => escribirRuta(prev, clave, n))}
+        onVaciar={() => actualizar((prev) => quitarRuta(prev, clave))}
+        onReponer={(crudo) => actualizar((prev) => escribirRuta(prev, clave, crudo))}
         onRestaurar={() => actualizar((prev) => quitarRuta(prev, clave))}
       />
     )
@@ -175,7 +252,13 @@ export function PestanaPrecios({
   return (
     <div className="space-y-5">
       <Tarjeta titulo="Inscripción" icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
-        {campoPrecio('precios.inscripcion')}
+        {campoPrecio('precios.inscripcion', porNivel ? 'Inscripción general' : undefined)}
+        {porNivel && (
+          <div className="space-y-3">
+            <Subtitulo>Por nivel (opcional)</Subtitulo>
+            {NIVELES_CON_PRECIO.map((n) => campoNivel(`precios.${CLAVE_INSCRIPCION_POR_NIVEL[n]}`, n))}
+          </div>
+        )}
       </Tarjeta>
 
       <Tarjeta
@@ -186,12 +269,16 @@ export function PestanaPrecios({
         <div className="space-y-3">
           {mods.map((m) => {
             const claveMensualidad = `modalidades.${m.id}.mensualidad`
-            const override = overrides.modalidades?.[m.id]
             const sePuedeApagar = puedeDesactivar(mods, m.id)
             // El servidor rechaza los planes con la clave `modalidades.<id>`
             // (ver validarModalidades), así que ESA es la que hay que poder
             // enfocar: el contenedor la lleva y admite foco programático.
             const errorAqui = claveConError === 'modalidades' || claveConError === `modalidades.${m.id}`
+            // Las claves por nivel de ESTE plan (vacío si otro plan de la misma
+            // duración ya las lleva: la clave es por duración, no por plan).
+            const clavesNivel = clavesPorNivelDePlan(m, mods)
+            const conSubbloque = !semanal && porNivel && !m.nivel && clavesNivel.length > 0
+            const restaurable = planSobrescrito(overrides, m, mods)
             return (
               <div
                 key={m.id}
@@ -236,7 +323,7 @@ export function PestanaPrecios({
                       Pasó en RHEMA #193 y EDUHCO #197, los dos en producción. */}
                   <CampoEntero
                     clave={semanal ? `modalidades.${m.id}.cuotaSemanal` : claveMensualidad}
-                    etiqueta={semanal ? 'Cuota semanal' : 'Mensualidad'}
+                    etiqueta={semanal ? 'Cuota semanal' : conSubbloque ? 'Mensualidad general' : 'Mensualidad'}
                     valor={semanal ? cuotaDe(m) : m.mensualidad}
                     // La cuota semanal tiene sus propios límites
                     // (`LIMITES.cuotaSemanalMin/Max`), los mismos que usa el validador.
@@ -245,19 +332,45 @@ export function PestanaPrecios({
                     sufijo={<EnPesos valor={semanal ? cuotaDe(m) : m.mensualidad} moneda={CONFIG.moneda} />}
                     deshabilitado={!puedeEditar}
                     resaltado={errorAqui}
+                    // Sin botón propio (la caja ya tiene «Restaurar plan»), pero
+                    // al salir con basura de un campo sin override se quita SU
+                    // clave en vez de fijar la cifra de fábrica como override.
+                    sobrescrito={overrides.modalidades?.[m.id]?.[semanal ? 'cuotaSemanal' : 'mensualidad'] !== undefined}
                     onChange={(n) => actualizar((prev) => escribirModalidad(
                       prev, m.id, semanal ? { cuotaSemanal: n } : { mensualidad: n },
                     ))}
+                    onDescartar={() => actualizar((prev) => escribirModalidad(
+                      prev, m.id, semanal ? { cuotaSemanal: null } : { mensualidad: null },
+                    ))}
                   />
-                  {override && puedeEditar && (
+                  {/* Sale aunque solo haya una clave por nivel sobrescrita: sin
+                      eso, un precio por nivel guardado no tendría forma de
+                      deshacerse desde la caja que el escalón señala. */}
+                  {restaurable && puedeEditar && (
                     <BotonRestaurar
-                      onClick={() => actualizar((prev) => escribirModalidad(
-                        prev, m.id, { mensualidad: null, cuotaSemanal: null, activa: null },
-                      ))}
+                      onClick={() => actualizar((prev) => restaurarPlan(prev, m, mods))}
                       etiqueta={`el plan ${m.label}`}
                     />
                   )}
                 </div>
+
+                {conSubbloque && (
+                  <div className="space-y-3">
+                    <Subtitulo>Precio por nivel (opcional)</Subtitulo>
+                    {NIVELES_CON_PRECIO.map((n) => campoNivel(
+                      `precios.${CLAVE_MENSUALIDAD_POR_NIVEL[n][m.meses as 3 | 6]}`, n, m,
+                    ))}
+                  </div>
+                )}
+                {/* Otro plan de la misma duración ya lleva los campos (Habsburgo:
+                    «6 Meses» y «Acceso completo»). La clave es por duración, así
+                    que ese precio también se cobra aquí: se dice, no se esconde. */}
+                {!semanal && porNivel && !m.nivel && clavesNivel.length === 0 && (m.meses === 3 || m.meses === 6) && (
+                  <Ayuda>
+                    El precio por nivel de {m.meses} meses se fija en el plan
+                    «{mods.find((p) => p.meses === m.meses && !p.nivel)?.label}» y también se cobra en este.
+                  </Ayuda>
+                )}
               </div>
             )
           })}
@@ -332,6 +445,7 @@ export function PestanaPrecios({
       <div className="px-4 py-3 rounded-xl text-xs leading-relaxed"
         style={{ background: 'rgba(21,101,192,0.08)', border: `1px solid rgba(21,101,192,0.2)`, color: TXT_SUAVE }}>
         {NOTA_PRECIOS}
+        {porNivel && ` ${NOTA_PRECIOS_POR_NIVEL}`}
       </div>
     </div>
   )

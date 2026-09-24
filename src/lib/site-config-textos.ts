@@ -29,18 +29,38 @@ export interface OpcionesConfirmaPrecios {
   semanal: boolean
   /** El cambio incluye el tipo de cambio (solo en escuelas que no cobran en pesos). */
   cambiaTipoCambio: boolean
+  /**
+   * La pestaña Precios enseña los campos por nivel (`preciosPorNivelVisibles`,
+   * F2-9). Opcional: sin él, el modal es el de antes de la Fase 2.
+   */
+  porNivel?: boolean
 }
 
 /** El modal que sale al publicar un cambio de precios, planes o tipo de cambio. */
-export function textoConfirmaPrecios({ semanal, cambiaTipoCambio }: OpcionesConfirmaPrecios): string {
+export function textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel = false }: OpcionesConfirmaPrecios): string {
   const base = semanal
     ? 'La cuota nueva se verá en tu página pública en unos segundos y se usará en el calendario de quien se inscriba a partir de ahora. Tus alumnos ya inscritos la verán como referencia en «Mis pagos» (si su nivel tiene un solo plan activo), pero sus semanas ya generadas conservan su monto hasta que regeneres su calendario en Cobranza (ahí se recalculan las pendientes y vencidas).'
     : 'Los precios nuevos se verán en tu página pública en unos segundos. Los pagos que ya registraste no cambian. Si apagaste o encendiste un plan, también cambia lo que se ofrece al registrarse.'
   const tipoCambio = cambiaTipoCambio
     ? ' El tipo de cambio nuevo solo cambia la equivalencia en pesos que se muestra; los pagos ya registrados conservan la suya.'
     : ''
-  return `${base}${tipoCambio} ¿Publicar?`
+  // Solo en el mensual: en el semanal lo que se cobra es la cuota del plan,
+  // que no tiene precio por nivel.
+  const nivel = porNivel && !semanal ? ` ${AVISO_PRECIO_POR_NIVEL}` : ''
+  return `${base}${nivel}${tipoCambio} ¿Publicar?`
 }
+
+/**
+ * La frase del modal mensual cuando la escuela puede fijar precios por nivel
+ * (F2-9). Remite al marcador del campo vacío («Vacío: usa…») porque ES lo que
+ * se cobra: se calcula con el mismo resolver que la landing sobre el borrador.
+ * Una regla con palabras fallaba en algún caso: «usa el precio general» es
+ * falso con el alias de secundaria (SAMEX, AULA RAÍZ); «conserva lo que cobra
+ * hoy», cuando la general cambia en la misma publicación; «sigue la general;
+ * si ya cobraba una cifra distinta, la conserva», al vaciar un nivel con
+ * precio propio.
+ */
+export const AVISO_PRECIO_POR_NIVEL = 'Un nivel sin precio propio cobra lo que indica su campo vacío en la pestaña Precios.'
 
 export const TITULO_CONFIRMA_PRECIOS = 'Vas a cambiar precios'
 export const TITULO_CONFIRMA_TIPO_CAMBIO = 'Vas a cambiar el tipo de cambio'
@@ -57,11 +77,12 @@ export function confirmacionDePrecios({
   semanal,
   cambiaPrecios,
   cambiaTipoCambio,
+  porNivel,
 }: OpcionesConfirmaPrecios & { cambiaPrecios: boolean }): { titulo: string; mensaje: string } {
   if (!cambiaPrecios && cambiaTipoCambio) {
     return { titulo: TITULO_CONFIRMA_TIPO_CAMBIO, mensaje: TEXTO_CONFIRMA_SOLO_TIPO_CAMBIO }
   }
-  return { titulo: TITULO_CONFIRMA_PRECIOS, mensaje: textoConfirmaPrecios({ semanal, cambiaTipoCambio }) }
+  return { titulo: TITULO_CONFIRMA_PRECIOS, mensaje: textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel }) }
 }
 
 /**
@@ -75,6 +96,26 @@ export const TEXTO_CONFIRMA_RESTAURAR =
 /** Ayuda bajo los planes de una escuela SEMANAL (pestaña Precios). */
 export const AYUDA_CUOTA_SEMANAL =
   'Cambiar la cuota no modifica las semanas que ya se generaron. La cuota nueva se usa en el calendario de quien se inscriba a partir de ahora y en los que regeneres desde Cobranza, donde se recalculan las semanas pendientes y vencidas. Tus alumnos ya inscritos la ven como referencia en «Mis pagos» (si su nivel tiene un solo plan activo), pero sus semanas conservan su monto hasta que regeneres su calendario.'
+
+/**
+ * Se añade a la nota al pie de la pestaña Precios cuando la escuela puede
+ * fijar precios por nivel (F2-9). Misma regla que `AVISO_PRECIO_POR_NIVEL`.
+ */
+export const NOTA_PRECIOS_POR_NIVEL = 'Un nivel sin precio propio cobra lo que indica su campo vacío («Vacío: usa…»).'
+
+/**
+ * Ayuda de un campo por nivel cuando el config.ts de la escuela YA trae esa
+ * clave con cifra (Moreta): vaciar el campo no vuelve a la general sino a esa
+ * cifra, y la ayuda de siempre («sigue la general de hoy») mentiría.
+ */
+export const AYUDA_NIVEL_DE_FABRICA = 'Vacío = vuelve al precio que trae la configuración de tu escuela para este nivel.'
+
+/**
+ * Se añade a la ayuda de un campo por nivel cuando «la general de hoy» de ese
+ * nivel NO es la «Mensualidad general» de la misma tarjeta: la secundaria de
+ * SAMEX, AULA RAÍZ, CEIJ o Búfalo vive en su alias (2,700 frente a 3,000).
+ */
+export const AYUDA_NIVEL_CIFRA_PROPIA = 'Este nivel ya cobra hoy una cifra distinta de la «Mensualidad general»: vacío la conserva.'
 
 /** Nota al pie de la pestaña Precios. */
 export const NOTA_PRECIOS =

@@ -46,14 +46,16 @@ import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } fro
 import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
+  claveASenalar,
   coloresEfectivos,
   hayCambioDeTipoCambio,
-  hayCambiosDePrecio,
   hayCambiosDePreciosOPlanes,
   inscripcionesDeBorrador,
   mismoContenido,
   modalidadesEfectivas,
+  pasoAlPublicar,
   prepararParaPublicar,
+  preciosPorNivelVisibles,
   sincronizarLogos,
   valorEfectivo,
 } from '@/lib/site-config-editor'
@@ -212,7 +214,15 @@ export default function PersonalizarPage() {
   // ─── Errores del servidor ──────────────────────────────────────────────────
 
   /** Lleva al admin al campo que falló: cambia de pestaña, enfoca y desplaza. */
-  const irAlCampo = useCallback((clave: string) => {
+  const irAlCampo = useCallback((claveDelError: string) => {
+    // El escalón (F2-7) puede culpar a una mensualidad por nivel que en la
+    // pestaña no tiene campo (plan con `nivel`, escuela semanal): entonces se
+    // señala la caja de su plan, cuyo «Restaurar plan» la limpia. Sin esto el
+    // admin aterrizaba en Precios sin nada en rojo que corregir.
+    const clave = claveASenalar(claveDelError, mergeSiteConfig(CONFIG, {}).modalidades, {
+      semanal: esSemanal(),
+      porNivel: preciosPorNivelVisibles(),
+    })
     setClaveConError(clave)
     setPestana(pestanaDeClave(clave))
     // Los doce colores sueltos viven detrás de un acordeón cerrado: sin abrirlo
@@ -307,8 +317,21 @@ export default function PersonalizarPage() {
     document.getElementById(`tab-${destino}`)?.focus()
   }
 
+  /**
+   * «Publicar cambios» valida ANTES de abrir el modal de precios (ver
+   * `pasoAlPublicar`): con un borrador que no se puede publicar sale el toast,
+   * el campo en rojo y con el foco, y el modal no se abre. `publicar()` vuelve
+   * a validar y el servidor también: esto solo adelanta el aviso.
+   */
   function alPulsarPublicar() {
-    if (hayCambiosDePrecio(overridesBase, overrides)) {
+    if (!defaults) return
+    const paso = pasoAlPublicar(overridesBase, overrides, mergeSiteConfig(CONFIG, {}))
+    if (paso.paso === 'error') {
+      showToast(paso.error, 'error', 6000)
+      if (paso.clave) irAlCampo(paso.clave)
+      return
+    }
+    if (paso.paso === 'modal') {
       setModal('precios')
       return
     }
@@ -523,6 +546,7 @@ export default function PersonalizarPage() {
           semanal: esSemanal(),
           cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides),
           cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
+          porNivel: preciosPorNivelVisibles(),
         })}
         etiquetaConfirmar="Publicar cambios"
         ocupado={publicando}

@@ -40,8 +40,11 @@
  */
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
-import { etiquetaNivel, listaConY } from '@/lib/niveles-ui'
-import { inscripcionDe, inscripcionGeneral, inscripcionesIguales, type Precios } from './precios-nivel'
+import { etiquetaNivel, listaConY, nivelesTexto } from '@/lib/niveles-ui'
+import {
+  inscripcionDe, inscripcionGeneral, inscripcionesIguales, mensualidadDe as mensualidadDeNivel,
+  type PlanMinimo, type Precios,
+} from './precios-nivel'
 
 /** ¿La inscripción cuesta algo? Con 0, vacío o un valor inválido: no. */
 export function inscripcionRequierePago(monto: number | string | null | undefined): boolean {
@@ -167,6 +170,45 @@ export function subtituloProgramasClasica(
   const ins = inscripcionEnLanding(niveles, precios, formatear)
   if (ins.subtituloVale(subtitulo)) return texto(subtitulo)
   return `Inscripción ${ins.comun ? `de ${ins.textoComun}` : ins.textoPorNivel} · Elige tu nivel y plan`
+}
+
+/**
+ * La frase de mensualidades de la pregunta «¿Qué diferencia hay entre…?» de
+ * la landing ANIMADA.
+ *
+ * - Mismas mensualidades en todos los niveles (`planesIguales`): «La
+ *   mensualidad es de $2,000 al mes en … y $1,000 al mes en …, igual en
+ *   Secundaria y Preparatoria.» Es la frase de siempre, byte por byte.
+ * - Distintas: UNA FRASE POR NIVEL, «En Secundaria, la mensualidad es de
+ *   $2,500 al mes en … y $1,250 al mes en …. En Preparatoria, la mensualidad
+ *   es de …». Antes salía «La mensualidad es de en Secundaria, …» (desde que
+ *   llegó la animada, 59a17d9): el «de» sobraba en SAMEX y AULA RAÍZ, que
+ *   tienen la secundaria en su alias, y en toda escuela con precio por nivel.
+ */
+export function fraseMensualidades<P extends PlanMinimo>({
+  niveles, planes, planesDe, nivelReferencia, precios, nombrePlan, dinero, planesIguales,
+}: {
+  niveles: readonly string[]
+  /** Los planes del nivel de referencia (los de la tarjeta común). */
+  planes: readonly P[]
+  planesDe: (nivel: string) => readonly P[]
+  nivelReferencia: string
+  precios: Precios
+  nombrePlan: (m: P) => string
+  dinero: (monto: number) => string
+  planesIguales: boolean
+}): string {
+  const lista = (nivel: string, ps: readonly P[]) =>
+    listaConY(ps.map((m) => `${dinero(mensualidadDeNivel(nivel, m, precios))} al mes en ${nombrePlan(m)}`))
+  if (planesIguales) {
+    return `La mensualidad es de ${lista(nivelReferencia, planes)}${niveles.length > 1 ? `, igual en ${nivelesTexto(niveles)}` : ''}.`
+  }
+  // Un nivel sin planes activos (el admin apagó el único que tenía) no tiene
+  // mensualidad que decir: se omite en vez de escribir «es de .».
+  return niveles
+    .filter((n) => planesDe(n).length > 0)
+    .map((n) => `En ${etiquetaNivel(n)}, la mensualidad es de ${lista(n, planesDe(n))}.`)
+    .join(' ')
 }
 
 /** Lo que es verdad de cada plan. 🛑 Ni «ahorro» ni «recomendado». */

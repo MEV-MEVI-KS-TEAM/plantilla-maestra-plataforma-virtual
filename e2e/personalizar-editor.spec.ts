@@ -42,6 +42,8 @@ import { PALETAS } from '@/lib/site-config-paletas'
 import { campoPorClave } from '@/lib/site-config-campos'
 import { TEXTO_CONFIRMA_RESTAURAR, textoConfirmaPrecios } from '@/lib/site-config-textos'
 import { esSemanal } from '@/lib/periodicidad'
+import { preciosPorNivelVisibles } from '@/lib/site-config-editor'
+import { mensualidadQA } from './_precios-qa'
 
 // ─── Constantes de entorno ───────────────────────────────────────────────────
 
@@ -73,15 +75,25 @@ const BUCKET = 'branding'
 // ─── Datos que escribe esta suite ────────────────────────────────────────────
 
 const TEXTO_HERO_QA = 'Certifícate con nosotros QA'
-const MENSUALIDAD_QA = 2500
+/**
+ * La mensualidad que c4 escribe en el plan de 3 meses. Se calcula en
+ * `beforeAll` con la config de la escuela (`mensualidadQA`): un 2500 fijo
+ * no cumple el escalón (F2-7) donde el plan largo cobra más.
+ */
+let MENSUALIDAD_QA = 0
 const INSCRIPCION_QA = 750
 
 /**
  * Texto EXACTO del modal de precios. Sale de la MISMA función que usa
  * page.tsx (src/lib/site-config-textos.ts). Esta suite cambia mensualidad e
- * inscripción, no el tipo de cambio.
+ * inscripción, no el tipo de cambio. `porNivel`: la frase «un nivel sin
+ * precio propio…» sale donde la pestaña enseña los campos por nivel (F2-9).
  */
-const CONFIRMA_PRECIOS = textoConfirmaPrecios({ semanal: esSemanal(), cambiaTipoCambio: false })
+const CONFIRMA_PRECIOS = textoConfirmaPrecios({
+  semanal: esSemanal(),
+  cambiaTipoCambio: false,
+  porNivel: preciosPorNivelVisibles(),
+})
 
 /** Texto EXACTO del modal de restaurar (misma fuente que page.tsx). */
 const CONFIRMA_RESTAURAR = TEXTO_CONFIRMA_RESTAURAR
@@ -107,7 +119,8 @@ interface ConfigEditable {
   logoOscuro: string
   colores: Record<string, string>
   landing: Record<string, unknown>
-  precios: Record<string, number>
+  // Las seis claves por nivel (Fase 2) viajan en `null` mientras están vacías.
+  precios: Record<string, number | null>
   modalidades: ModalidadEditable[]
 }
 
@@ -265,6 +278,7 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     DEFAULTS = g.defaults
     PLAN_3M = DEFAULTS.modalidades.find((m) => m.meses === 3) ?? DEFAULTS.modalidades[0]
     if (!PLAN_3M) throw new Error('[beforeAll] el cliente no declara ninguna modalidad en CONFIG.modalidades')
+    MENSUALIDAD_QA = mensualidadQA(PLAN_3M.id)
     HERO_DEFAULT = String(DEFAULTS.landing.hero_titulo ?? '')
 
     // ── Alumno de QA (para la ficha /admin/alumnos/[id] de c6) ──
@@ -406,13 +420,16 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await editor.getByRole('tab', { name: 'Precios' }).click()
 
     // Mensualidad del plan de 3 meses: se acota a SU tarjeta porque todos los
-    // planes tienen un campo etiquetado "Mensualidad".
+    // planes tienen un campo etiquetado "Mensualidad" ("Mensualidad general"
+    // donde la tarjeta trae además los precios por nivel, F2-9).
     const tarjeta3m = editor.locator(`#${idDeCampo(`modalidades.${PLAN_3M.id}`)}`)
-    const mensualidad = tarjeta3m.getByLabel('Mensualidad')
+    const mensualidad = tarjeta3m.getByLabel(/^Mensualidad( general)?$/)
     await mensualidad.fill(String(MENSUALIDAD_QA))
     await expect(mensualidad).toHaveValue(String(MENSUALIDAD_QA))
 
-    const inscripcion = editor.getByLabel('Inscripción', { exact: true })
+    // "Inscripción general" si la escuela vende los dos niveles (F2-9); el
+    // ancla deja fuera "Inscripción de Secundaria/Preparatoria".
+    const inscripcion = editor.getByLabel(/^Inscripción( general)?$/)
     await inscripcion.fill(String(INSCRIPCION_QA))
     await expect(inscripcion).toHaveValue(String(INSCRIPCION_QA))
 
@@ -446,8 +463,9 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
 
     const modal = editor.getByRole('dialog', { name: 'Vas a cambiar precios' })
     await expect(modal).toBeVisible()
-    // Texto EXACTO: es la promesa que se le hace al admin sobre dónde se mueven
-    // esos precios (página pública, registro y montos sugeridos).
+    // Texto EXACTO: es la promesa que se le hace al admin (página pública en
+    // unos segundos, pagos ya registrados intactos y, con los dos niveles, que
+    // un nivel sin precio propio cobra lo que indica su campo vacío).
     await expect(modal.getByText(CONFIRMA_PRECIOS, { exact: true })).toBeVisible()
 
     await modal.getByRole('button', { name: 'Publicar cambios' }).click()

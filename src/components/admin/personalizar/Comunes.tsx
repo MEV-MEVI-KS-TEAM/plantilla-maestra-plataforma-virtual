@@ -158,6 +158,10 @@ export function Aviso({
   )
 }
 
+/** Realce de foco (azul) del resto del admin. */
+const FOCO_BORDE = '1px solid rgba(21,101,192,0.6)'
+const FOCO_SOMBRA = '0 0 0 3px rgba(21,101,192,0.1)'
+
 /**
  * Realce de foco de los inputs, el mismo del resto del admin.
  *
@@ -170,12 +174,29 @@ export function focoHandlers(resaltado: boolean) {
   const bordeBase = resaltado ? `1px solid ${ROJO}` : '1px solid rgba(255,255,255,0.1)'
   return {
     onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.border = '1px solid rgba(21,101,192,0.6)'
-      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,101,192,0.1)'
+      e.currentTarget.style.border = FOCO_BORDE
+      e.currentTarget.style.boxShadow = FOCO_SOMBRA
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       e.currentTarget.style.border = bordeBase
       e.currentTarget.style.boxShadow = 'none'
     },
   }
+}
+
+/**
+ * Borde de un input numérico (CampoEntero, CampoPrecioNivel) según su estado,
+ * para pasarlo en `style`: con error manda el ROJO aunque el campo tenga el
+ * foco; sin error y con el foco, el azul de `focoHandlers`; sin nada, el de
+ * `INPUT_STYLE`.
+ *
+ * POR QUÉ no `focoHandlers`. Aquél pinta el foco escribiendo en el DOM, así
+ * que al enfocar un campo con error (el que `irAlCampo` señala tras un
+ * rechazo) lo volvía azul justo cuando el admin llegaba a corregirlo: el rojo
+ * solo reaparecía al salir. Calculado en cada render, el estado de error gana
+ * siempre y ningún cambio (teclear, corregir, salir) deja un borde viejo.
+ */
+export function estiloBorde(conError: boolean, enfocado: boolean): CSSProperties {
+  if (conError) return { border: `1px solid ${ROJO}`, ...(enfocado ? { boxShadow: '0 0 0 3px rgba(239,68,68,0.15)' } : {}) }
+  return enfocado ? { border: FOCO_BORDE, boxShadow: FOCO_SOMBRA } : {}
 }
