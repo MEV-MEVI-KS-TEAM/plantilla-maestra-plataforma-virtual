@@ -9,7 +9,8 @@
  * `whatsapp` / `contactoTelefono`, `email` / `contactoEmail`. Enseñarlos por
  * separado garantizaba el ticket "cambié el teléfono y el pie de página sigue
  * con el viejo", así que el editor muestra UN control y escribe los dos. Lo
- * mismo al restaurar.
+ * mismo al restaurar. El del WhatsApp escribe además `whatsappDisplay` con el
+ * número formateado (`escribirNumeroWhatsApp`), que el admin puede retocar.
  *
  * `whatsappUrl` no se edita: lo deriva el servidor del número (ver
  * `validarOverrides`), y por eso el editor ni siquiera lo manda.
@@ -19,9 +20,10 @@ import { mensajeWhatsAppInvalido, normalizarWhatsApp } from '@/lib/contacto-ui'
 import { LIMITES } from '@/lib/site-config-campos'
 import type { ConfigEditable } from '@/lib/site-config-validacion'
 import {
+  CLAVES_NUMERO_WHATSAPP,
   MAX_DIGITOS_TELEFONO,
+  escribirNumeroWhatsApp,
   estaSobrescrito,
-  normalizarTelefono,
   quitarRuta,
   escribirRuta,
   valorEfectivo,
@@ -110,7 +112,7 @@ export function PestanaIdentidad({
       <Tarjeta titulo="Contacto" icono={<AtSign {...ICONO} aria-hidden="true" />}>
         <CampoTexto
           clave="whatsapp" etiqueta="WhatsApp (número)" tipo="tel"
-          // El contador cuenta DÍGITOS (13, que es lo que se guarda) y el
+          // El contador cuenta DÍGITOS (15, que es lo que se guarda) y el
           // control va SIN `maxlength`: el navegador lo aplicaría al pegar,
           // antes de que `normalizarTelefono` quite los separadores, y
           // '+52 1 (999) 123-45-67' se convertiría en un número a medias. Aquí
@@ -122,12 +124,14 @@ export function PestanaIdentidad({
           deshabilitado={!puedeEditar}
           resaltado={claveConError === 'whatsapp' || claveConError === 'contactoTelefono'}
           sobrescrito={sobrescritaAlguna(['whatsapp', 'contactoTelefono'])}
-          onChange={(v) => escribirVarias(['whatsapp', 'contactoTelefono'], normalizarTelefono(v))}
-          onRestaurar={() => quitarVarias(['whatsapp', 'contactoTelefono'])}
+          // Capturar el número también llena «como se muestra» con el número
+          // formateado: si no, el texto se quedaba con el número viejo.
+          onChange={(v) => actualizar((prev) => escribirNumeroWhatsApp(prev, v))}
+          onRestaurar={() => quitarVarias([...CLAVES_NUMERO_WHATSAPP])}
         />
         <CampoTexto
           clave="whatsappDisplay" etiqueta="WhatsApp (como se muestra)" max={LIMITES.kicker}
-          ayuda="El número tal como quieres que se lea, p. ej. 999 123 4567."
+          ayuda="Se llena solo al capturar el número; puedes ajustarlo antes de publicar. Si sus dígitos no son los del número, la página enseña el número."
           valor={txt('whatsappDisplay')} placeholder={defaults.whatsappDisplay}
           deshabilitado={!puedeEditar} resaltado={claveConError === 'whatsappDisplay'}
           sobrescrito={estaSobrescrito(overrides, 'whatsappDisplay')}

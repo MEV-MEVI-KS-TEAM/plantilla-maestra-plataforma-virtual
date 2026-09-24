@@ -22,7 +22,13 @@
  */
 import type { Moneda } from '@/lib/moneda'
 import { CONFIG } from '@/lib/config'
-import { normalizarUrlWhatsApp, normalizarWhatsApp } from '@/lib/contacto-ui'
+import {
+  formatearWhatsApp,
+  normalizarUrlWhatsApp,
+  normalizarWhatsApp,
+  whatsappDisplayCuadra,
+  whatsappEscuelaDisponible,
+} from '@/lib/contacto-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -855,6 +861,14 @@ export function normalizarContactoWhatsApp(cfg: SiteConfig): SiteConfig {
   if (typeof cfg.whatsappUrl === 'string') {
     // Un enlace en blanco es un enlace vacío: `<a href="   ">` recarga la página.
     cfg.whatsappUrl = cfg.whatsappUrl.trim() === '' ? '' : normalizarUrlWhatsApp(cfg.whatsappUrl)
+  }
+  // «Como se muestra» SIGUE al número. El panel escribía el número y el texto
+  // por separado: la escuela cambiaba su WhatsApp y la portada, el pie, las
+  // legales y el recibo seguían enseñando el viejo. Si los dígitos del texto no
+  // son los del número, se enseña el número formateado; sin número real, nada.
+  const numero = cfg.whatsapp || cfg.contactoTelefono || ''
+  if (!whatsappDisplayCuadra(cfg.whatsappDisplay, numero)) {
+    cfg.whatsappDisplay = whatsappEscuelaDisponible(numero) ? formatearWhatsApp(numero) : ''
   }
   return cfg
 }

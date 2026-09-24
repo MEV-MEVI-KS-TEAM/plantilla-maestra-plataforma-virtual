@@ -28,6 +28,7 @@ import { CLAVE_MENSUALIDAD_POR_NIVEL, inscripcionDe, mensualidadDe, type NivelCo
 import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { esSoloCursos } from '@/lib/modo'
+import { formatearWhatsApp } from '@/lib/contacto-ui'
 import type { ModalidadPrograma } from '@/lib/modalidades'
 import {
   PALETAS,
@@ -254,6 +255,22 @@ export const MAX_DIGITOS_TELEFONO = 15
  */
 export function normalizarTelefono(v: string): string {
   return v.replace(/\D/g, '').slice(0, MAX_DIGITOS_TELEFONO)
+}
+
+/** Las claves que escribe el campo del número (y que «Restaurar» quita juntas). */
+export const CLAVES_NUMERO_WHATSAPP = ['whatsapp', 'contactoTelefono', 'whatsappDisplay'] as const
+
+/**
+ * Capturar el WhatsApp escribe las TRES claves que lo publican: el número en
+ * `whatsapp` y `contactoTelefono` (el par histórico), y el número formateado
+ * («33 1234 5678») en `whatsappDisplay`. El admin puede ajustar ese texto antes
+ * de publicar; lo que no puede pasar es que el número cambie y el texto se
+ * quede con el viejo, que era lo que pasaba con dos campos independientes.
+ */
+export function escribirNumeroWhatsApp(overrides: SiteConfigOverrides, capturado: string): SiteConfigOverrides {
+  const numero = normalizarTelefono(capturado)
+  const conNumero = escribirRuta(escribirRuta(overrides, 'whatsapp', numero), 'contactoTelefono', numero)
+  return escribirRuta(conNumero, 'whatsappDisplay', formatearWhatsApp(numero))
 }
 
 // ─── Modalidades ─────────────────────────────────────────────────────────────
