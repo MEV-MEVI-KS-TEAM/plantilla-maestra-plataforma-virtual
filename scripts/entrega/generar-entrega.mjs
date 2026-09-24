@@ -32,7 +32,7 @@ import {
   esSemanal, planesSemanales, tablaPrecios, colsModalidades, filasModalidades,
   frasesSemanales, lineasPreciosWhatsApp, ofertaInformativa,
   problemaDePrecios, nivelesSinPlanes, tablaPreciosMensual, filasModalidadesMensual, frasesMensuales,
-  lineasPreciosMensualWhatsApp,
+  lineasPreciosMensualWhatsApp, ofreceCertificacion, certificacionEntrega,
 } from './planes.mjs'
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
 import {
@@ -434,7 +434,15 @@ if (!modalidadesActivas.length && CONFIG.modo !== 'solo_cursos')
 const problemaPrecios = nivelesPrograma.length ? problemaDePrecios(CONFIG.precios, esSemanal(CONFIG) ? [] : modalidadesActivas) : null
 if (problemaPrecios) abortar(problemaPrecios)
 const insc = (nivel) => inscripcionDe(nivel, CONFIG.precios)
-const cert = (nivel) => certificacionDe(nivel, CONFIG.precios)
+// 🛑 Una escuela que NO certifica (`ofreceCertificacion: false`) no anuncia
+// certificación: ni fila, ni «(con certificación)», ni línea en el WhatsApp
+// (#165). Sus precios de certificación siguen en el config a propósito.
+const CERTIFICA = ofreceCertificacion(CONFIG)
+const cert = certificacionEntrega(CONFIG, certificacionDe)
+// La sección de validez habla del CERTIFICADO («un certificado, dos países»,
+// folio SIGED de la SEP): en una escuela que no certifica no va, diga lo que
+// diga entrega.local.json. En las demás, igual que siempre (`!== false`).
+const VALIDEZ = D.validez !== false && CERTIFICA
 const mens = (nivel, m) => mensualidadDe(nivel, m, CONFIG.precios)
 const PRECIOS = { insc, mens, cert }
 // Un nivel del programa sin NINGÚN plan mensual no se puede contar: la tabla
@@ -654,7 +662,7 @@ const datos = {
   incluirCursos: true,
   cursosPublicados: INV.cursos || 0,
   cursosLista: CURSOS_PUBLICADOS.map(c => ({ ...c, precio: precioDeCurso(c) })),
-  validez: D.validez !== false,
+  validez: VALIDEZ,
   folioVerificable: FOLIO_VERIFICABLE,
   soporte: D.soporte || SOPORTE,
   tutoriales: [
@@ -680,7 +688,7 @@ const datos = {
       ? `${CARRERAS[0].nombre}, con su contenido cargado`
       : `${CARRERAS.length} ${soloLicenciaturas(CARRERAS) ? 'licenciaturas ya cargadas' : 'programas ya cargados'}: ${unirConY(CARRERAS.map(c => c.nombre))}`] : []),
     'Módulo de Cursos y Diplomados listo para tu propio contenido',
-    D.validez !== false && 'Sección de Validez Oficial México + Estados Unidos',
+    VALIDEZ && 'Sección de Validez Oficial México + Estados Unidos',
     'Panel de pagos, reportes y estado de cuenta',
   ].filter(Boolean),
   palabraInstitucion: D.palabraInstitucion || 'instituto',
@@ -693,7 +701,7 @@ const datos = {
     `Registro público de alumnos con matrícula automática (prefijo ${CONFIG.prefijoMatricula}-)`,
     'Desbloqueo progresivo del contenido, mes a mes, a tu ritmo de cobro',
     'Video, quiz semanal y examen final en cada materia',
-    D.validez !== false && (FOLIO_VERIFICABLE
+    VALIDEZ && (FOLIO_VERIFICABLE
       ? 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP'
       : 'Sección de Validez Oficial México + Estados Unidos, con los dos documentos oficiales que recibe el alumno'),
     'Módulo de pagos: recibo en PDF con tu marca y envío por WhatsApp',
@@ -923,7 +931,7 @@ if (!flag('solo-pdf')) {
   // el visitante ve. Son parte de lo entregado y el cliente tiene que saber
   // que existen para poder enseñarlas.
   const publicas = [
-    D.validez !== false && (FOLIO_VERIFICABLE
+    VALIDEZ && (FOLIO_VERIFICABLE
       ? `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`
       : `• Validez oficial México y Estados Unidos, con los dos documentos oficiales que recibe el alumno: ${URL_BASE}/#validez`),
     PAGINA_INSTITUCIONAL && `• Manifiesto de tu marca, con una demostración de un curso real que se prueba sin registro: ${URL_BASE}${PAGINA_INSTITUCIONAL}`,

@@ -58,7 +58,7 @@ import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciat
 import { subtituloMarca } from '@/lib/marca'
 import { etiquetaNivel, etiquetaNivelConArticulo, listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import {
-  certificacionDe, etiquetasPlan, fraseMensualidades, inscripcionEnLanding, mensualidadDe, textoInscripcion,
+  certificacionDe, escuelaCertifica, etiquetasPlan, fraseMensualidades, inscripcionEnLanding, mensualidadDe, textoInscripcion,
   totalPlanDe, totalesIguales, varsInscripcionPorNivel,
 } from '@/lib/precios-ui'
 import {
@@ -185,6 +185,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // edita desde el panel. El folio es la acreditación COMPARTIDA de la red
   // (00 §11) y va a máximo contraste.
   const VALIDEZ = CONFIG.landing.validezOficial
+  // ¿La escuela certifica? Con `ofreceCertificacion: false` no se anuncia (ver escuelaCertifica).
+  const certifica = escuelaCertifica()
   const validezActiva = Boolean(VALIDEZ.activa)
   const folio = String(VALIDEZ.folio ?? '')
   const hayCatalogo = Boolean(CONFIG.landing.mostrarCatalogoCursos) && catalogo.length > 0
@@ -694,7 +696,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             <div className={`grid gap-6 mt-12 ${hayLicenciaturas ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
               {niveles.map((nivel, i) => {
                 const planesNivel = planesDe(nivel)
-                const certificacion = certificacionDe(nivel, precios)
+                // Sin certificación, no se anuncia certificación (#165): en 0 la línea no se pinta.
+                const certificacion = certifica ? certificacionDe(nivel, precios) : 0
                 const totales = planesNivel.map(m => totalPlanDe(nivel, m, precios))
                 const totalUnico = totalesIguales(totales)
                 return (
@@ -893,25 +896,27 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             </div>
 
             {/* La certificación va aparte: se paga al concluir y NO forma parte
-                del total del plan. */}
-            <div data-la-reveal className="mt-14 max-w-4xl mx-auto rounded-2xl p-6 sm:p-8"
-              style={{ ...retraso(3, 110), background: tPlanes.superficie, border: `1px solid ${tPlanes.borde}` }}>
-              <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: tPlanes.titulo }}>
-                Certificación · pago único al concluir
-              </p>
-              <dl className="mt-4 grid sm:grid-cols-2 gap-3">
-                {niveles.map(n => (
-                  <div key={n} className="flex items-baseline justify-between gap-4 rounded-xl px-4 py-3" style={{ background: tPlanes.fondo }}>
-                    <dt style={{ color: tPlanes.texto }}>{etiquetaNivel(n)}</dt>
-                    <dd className="text-lg font-bold" style={{ color: tPlanes.titulo }}>{dinero(certificacionDe(n, precios))}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className="mt-4 flex items-start gap-2 text-sm" style={{ color: tPlanes.textoSuave }}>
-                <AlertCircle size={16} aria-hidden className="mt-0.5 flex-shrink-0" style={{ color: tPlanes.titulo }} />
-                La certificación no está incluida en el total del plan.
-              </p>
-            </div>
+                del total del plan. Una escuela que no certifica no la anuncia. */}
+            {certifica && (
+              <div data-la-reveal className="mt-14 max-w-4xl mx-auto rounded-2xl p-6 sm:p-8"
+                style={{ ...retraso(3, 110), background: tPlanes.superficie, border: `1px solid ${tPlanes.borde}` }}>
+                <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: tPlanes.titulo }}>
+                  Certificación · pago único al concluir
+                </p>
+                <dl className="mt-4 grid sm:grid-cols-2 gap-3">
+                  {niveles.map(n => (
+                    <div key={n} className="flex items-baseline justify-between gap-4 rounded-xl px-4 py-3" style={{ background: tPlanes.fondo }}>
+                      <dt style={{ color: tPlanes.texto }}>{etiquetaNivel(n)}</dt>
+                      <dd className="text-lg font-bold" style={{ color: tPlanes.titulo }}>{dinero(certificacionDe(n, precios))}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-4 flex items-start gap-2 text-sm" style={{ color: tPlanes.textoSuave }}>
+                  <AlertCircle size={16} aria-hidden className="mt-0.5 flex-shrink-0" style={{ color: tPlanes.titulo }} />
+                  La certificación no está incluida en el total del plan.
+                </p>
+              </div>
+            )}
 
             <div data-la-reveal className="mt-10 text-center">
               <Link href="/register" className={`${BOTON} la-btn-color`}

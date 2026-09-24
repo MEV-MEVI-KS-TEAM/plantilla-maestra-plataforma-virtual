@@ -169,6 +169,28 @@ export function lineasPreciosWhatsApp(planes, niveles) {
  */
 
 /**
+ * ¿La escuela OFRECE certificación? (`CONFIG.ofreceCertificacion`, Bug 194.)
+ *
+ * Se compara con `!== false`, NUNCA por falsy: la mayoría de la flota no trae
+ * la clave y para ella la respuesta es «sí», como antes de que existiera.
+ */
+export const ofreceCertificacion = (config) => config?.ofreceCertificacion !== false
+
+/**
+ * El resolver de certificación que usa la entrega: el de la plataforma
+ * (`certificacionDe`, que llega por parámetro para no importar `src/`), o 0 en
+ * una escuela que NO certifica.
+ *
+ * 🛑 El 0 no se pinta: con `cert` en 0, `hayCert` es falso en las dos ramas
+ * (mensual y semanal), así que desaparecen la fila «Certificación», las
+ * etiquetas «(con certificación)» y la línea del WhatsApp. Los precios de
+ * certificación SIGUEN en el config de esa escuela a propósito (los leen pagos
+ * y reportes): lo que se apaga es el ANUNCIO (#165, parte A).
+ */
+export const certificacionEntrega = (config, certificacionDe) =>
+  (nivel) => (ofreceCertificacion(config) ? certificacionDe(nivel, config?.precios) : 0)
+
+/**
  * ¿Algo en los precios que el resolver no sabe leer? Devuelve el motivo, o null.
  * La inscripción general y la mensualidad de cada plan MENSUAL tienen que ser
  * números: la forma de objeto `{ secundaria, preparatoria }` y la grafía
@@ -316,7 +338,10 @@ function duracionesPorNivel(config, niveles) {
 export function frasesMensuales(config, niveles, { insc }) {
   const mods = planesActivos(config)
   const inscDistinta = new Set(niveles.map(insc)).size > 1
-  const notaPrecios = 'El total suma inscripción + mensualidades del plan + certificación. Los montos se muestran solos en tu página pública. ' +
+  // Una escuela que NO certifica no dice «+ certificación» (#165). Se pregunta
+  // la BANDERA, no el monto: una escuela que sí certifica conserva su nota tal
+  // cual, aunque su certificación esté en 0.
+  const notaPrecios = `El total suma inscripción + mensualidades del plan${ofreceCertificacion(config) ? ' + certificación' : ''}. Los montos se muestran solos en tu página pública. ` +
     'Al marcar la inscripción como pagada, el panel muestra la cifra del nivel del alumno. El monto de cada pago lo capturas tú.'
   if (ofertaSimetrica(config, niveles)) {
     const dur = mods.map(m => `${m.meses}`).join(' o ')

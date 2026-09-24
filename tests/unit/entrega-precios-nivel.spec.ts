@@ -323,7 +323,9 @@ test('9. el generador usa el resolver único y ya no promete lo que no existe', 
   expect(sinComentarios).toMatch(/const \{ inscripcionDe, mensualidadDe, certificacionDe \} =\s*await import\(pathToFileURL\(path\.join\(RAIZ, 'src\/lib\/precios-nivel\.ts'\)\)\.href\)/)
   expect(sinComentarios).toContain('const insc = (nivel) => inscripcionDe(nivel, CONFIG.precios)')
   expect(sinComentarios).toContain('const mens = (nivel, m) => mensualidadDe(nivel, m, CONFIG.precios)')
-  expect(sinComentarios).toContain('const cert = (nivel) => certificacionDe(nivel, CONFIG.precios)')
+  // La certificación sale del MISMO resolver, pasada por la bandera
+  // `ofreceCertificacion` (A6, #165): 0 en una escuela que no certifica.
+  expect(sinComentarios).toContain('const cert = certificacionEntrega(CONFIG, certificacionDe)')
   // Los resolvers propios y las lecturas que la plataforma no hace, fuera.
   for (const viejo of ['const porNivel', 'const rango', 'inscripcion_${', '_${meses}meses_normal', 'meses}meses_normal']) {
     expect(sinComentarios, viejo).not.toContain(viejo)

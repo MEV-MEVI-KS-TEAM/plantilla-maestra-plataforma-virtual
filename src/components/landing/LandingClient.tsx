@@ -17,7 +17,7 @@ import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 import { precioPublico } from '@/lib/cursos/catalogo'
 import { faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
-import { inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
+import { escuelaCertifica, inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
 const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
@@ -345,6 +345,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // Nadie debe poder encender desde un panel una validez oficial que la escuela
   // no tiene, ni cambiar el folio que la persona va a teclear en el portal.
   const VALIDEZ = CONFIG.landing.validezOficial
+  // ¿La escuela certifica? Con `ofreceCertificacion: false` no se anuncia (ver escuelaCertifica).
+  const certifica = escuelaCertifica()
   // Con la paleta personalizada el div raíz reparte los tonos a las clases de
   // globals.css (ver variablesLanding). Sin ella no se inyecta ninguna
   // variable: el style queda idéntico al de siempre y el CSS usa sus fallbacks.
@@ -571,7 +573,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                       ...(CONFIG.landing.mostrarTotalPlan
                         ? planesPrepa.map(m => ({ label: `Total ${getPlanLabelConDuracion(m, mods)}`, price: getTotalPlan({ ...m, mensualidad: mensualidadPropiaDe('preparatoria', m, p) ?? m.mensualidad }, inscripcionDe('preparatoria', p)), unit: '' }))
                         : []),
-                      { label: 'Certificación', price: p.certificacionPreparatoria, unit: ' único' },
+                      // Sin certificación, no se anuncia certificación (#165).
+                      ...(certifica ? [{ label: 'Certificación', price: p.certificacionPreparatoria, unit: ' único' }] : []),
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
                         style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.07)' }}>
@@ -617,7 +620,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                             unit: '',
                           }))
                         : []),
-                      { label: 'Certificación', price: p.certificacionSecundaria, unit: ' único' },
+                      ...(certifica ? [{ label: 'Certificación', price: p.certificacionSecundaria, unit: ' único' }] : []),
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
                         style={{ background: `${C.royal}08`, border: `1px solid ${C.royal}14` }}>
