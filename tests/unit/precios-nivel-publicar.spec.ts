@@ -106,9 +106,28 @@ test.describe('a) «Publicar cambios» valida ANTES de abrir el modal (M6 a/b)',
     // El error se enseña como los del servidor: toast y campo señalado.
     expect(cuerpo).toContain('showToast(paso.error')
     expect(cuerpo).toContain('irAlCampo(paso.clave)')
+    // Las tres ramas, en este orden y sin nada más: error → aviso y sale;
+    // modal → lo abre y sale; si no, publica. Cambiar un literal o quitar una
+    // salida publicaría precios sin confirmar (o dejaría el botón muerto).
+    expect(cuerpo).toMatch(new RegExp([
+      String.raw`if \(paso\.paso === 'error'\) \{`, String.raw`showToast\(paso\.error, 'error', 6000\)`,
+      String.raw`if \(paso\.clave\) irAlCampo\(paso\.clave\)`, 'return', String.raw`\}`,
+      String.raw`if \(paso\.paso === 'modal'\) \{`, String.raw`setModal\('precios'\)`, 'return', String.raw`\}`,
+      String.raw`void publicar\(\)$`,
+    ].join(String.raw`\s*`)))
     // Ya no queda otro camino al modal que se salte la validación.
     expect(src).not.toMatch(/hayCambiosDePrecio\(/)
     expect(src.match(/setModal\('precios'\)/g)).toHaveLength(1)
+  })
+
+  test('a7. tipo de cambio: en una escuela que no cobra en pesos, cambiarlo abre el modal', () => {
+    const borrador: SiteConfigOverrides = { tipoCambioMXN: 19.5 }
+    expect(servidor(borrador).ok).toBe(true)
+    // Es la regla de `hayCambiosDePrecio`: en MXN el tipo de cambio no pinta nada.
+    expect(pasoAlPublicar({}, borrador, BASE(), 'USD')).toEqual({ paso: 'modal' })
+    expect(pasoAlPublicar({}, borrador, BASE(), 'MXN')).toEqual({ paso: 'publicar' })
+    // La página no pasa moneda: vale la de la escuela.
+    expect(leer('src/lib/site-config-editor.ts')).toContain('  moneda: Moneda = CONFIG.moneda,\n): PasoAlPublicar {')
   })
 })
 
@@ -118,6 +137,8 @@ test.describe('b) con error, el campo es ROJO aunque tenga el foco (M6 a)', () =
     expect(estiloBorde(true, false)).toEqual({ border: `1px solid ${ROJO}` })
     expect(estiloBorde(false, true).border).toBe('1px solid rgba(21,101,192,0.6)')
     expect(estiloBorde(false, false)).toEqual({})
+    expect(estiloBorde(true, true).boxShadow).toBe('0 0 0 3px rgba(239,68,68,0.15)')
+    expect(estiloBorde(false, true).boxShadow).toBe('0 0 0 3px rgba(21,101,192,0.1)')
   })
 
   // Leído del fuente: el runner de estas pruebas compila el JSX de los
@@ -129,7 +150,11 @@ test.describe('b) con error, el campo es ROJO aunque tenga el foco (M6 a)', () =
       ['export function CampoPrecioNivel(', 'export interface CampoDecimalProps'],
     ]) {
       const cuerpo = src.slice(src.indexOf(desde), src.indexOf(hasta))
-      expect(cuerpo).toContain('estiloBorde(resaltado || invalido, enfocado)')
+      // DESPUÉS de INPUT_STYLE: su borde gris ganaría si fuera antes.
+      expect(cuerpo).toMatch(/\.\.\.INPUT_STYLE,\s*\.\.\.estiloBorde\(resaltado \|\| invalido, enfocado\),/)
+      // El foco mueve el estado al entrar y al salir.
+      expect(cuerpo).toMatch(/onFocus=\{\(\) => \{[^}]*setEnfocado\(true\)\s*\}\}/)
+      expect(cuerpo).toMatch(/setEnfocado\(false\)\s*\}\}\s*onFocus=/)
       expect(cuerpo).not.toContain('focoHandlers(')
       expect(cuerpo).not.toContain('style.border')
     }
