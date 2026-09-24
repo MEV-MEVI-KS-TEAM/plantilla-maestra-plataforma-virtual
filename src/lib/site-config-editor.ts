@@ -25,7 +25,8 @@
 import type { Moneda } from './moneda'
 import { CONFIG } from '@/lib/config'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, inscripcionDe, mensualidadDe, type NivelConPrecio } from '@/lib/precios-nivel'
-import { mergeSiteConfig, type OverrideModalidad, type SiteConfigOverrides } from '@/lib/site-config-core'
+import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
+import { validarOverrides } from '@/lib/site-config-validacion'
 import { esSoloCursos } from '@/lib/modo'
 import type { ModalidadPrograma } from '@/lib/modalidades'
 import {
@@ -801,6 +802,37 @@ export function prepararParaPublicar(overrides: SiteConfigOverrides): SiteConfig
   delete salida.whatsappUrl
   podarVacios(salida)
   return salida as SiteConfigOverrides
+}
+
+/** Lo que hace «Publicar cambios» con el borrador de hoy. */
+export type PasoAlPublicar =
+  | { paso: 'error'; error: string; clave?: string }
+  | { paso: 'modal' }
+  | { paso: 'publicar' }
+
+/**
+ * Qué pasa al pulsar «Publicar cambios»: PRIMERO la misma validación que el
+ * servidor, sobre el mismo cuerpo del PUT (`prepararParaPublicar`), y solo si
+ * pasa se abre el modal de precios o se publica directo.
+ *
+ * POR QUÉ. Validar después de confirmar obligaba al admin a aceptar «Vas a
+ * cambiar precios» para enterarse de que el borrador no se podía publicar
+ * (el escalón de F2-7, un campo fuera de rango). Con el error delante, el
+ * modal solo sale cuando lo que confirma es publicable.
+ *
+ * `contra` tiene que ser la config COMPLETA (`mergeSiteConfig(CONFIG, {})`,
+ * la `DEFAULTS()` de la API): el escalón mira precios efectivos y el respaldo
+ * de secundaria pasa por alias que la config recortada no trae.
+ */
+export function pasoAlPublicar(
+  publicado: SiteConfigOverrides,
+  borrador: SiteConfigOverrides,
+  contra: SiteConfig,
+  moneda: Moneda = CONFIG.moneda,
+): PasoAlPublicar {
+  const previo = validarOverrides(prepararParaPublicar(borrador), contra)
+  if (!previo.ok) return { paso: 'error', error: previo.error, clave: previo.clave }
+  return hayCambiosDePrecio(publicado, borrador, moneda) ? { paso: 'modal' } : { paso: 'publicar' }
 }
 
 /**

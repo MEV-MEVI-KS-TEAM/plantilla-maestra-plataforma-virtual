@@ -591,7 +591,7 @@ test('19. CampoEntero y CampoPrecioNivel: leen con parseEntero y usan alSalirCon
     // Lo de «al entrar» se toma SOLO al enfocar: si el efecto de `valor` lo
     // actualizara, al salir se repondría el último prefijo (6000).
     expect(campo.match(/alEntrar\.current =/g), nombre).toHaveLength(1)
-    expect(campo, nombre).toMatch(/onFocus=\{\(e\) => \{\s*alEntrar\.current = valor/)
+    expect(campo, nombre).toMatch(/onFocus=\{\(\) => \{\s*alEntrar\.current = valor/)
     const i = campo.indexOf('useEffect(')
     expect(i, `${nombre}: sin efecto de valor`).toBeGreaterThan(-1)
     const efecto = campo.slice(i, campo.indexOf('}, [valor])', i))
@@ -607,7 +607,7 @@ test('19. CampoEntero y CampoPrecioNivel: leen con parseEntero y usan alSalirCon
   // CampoEntero: el override de ENTRADA, no el de ahora.
   expect(entero).toContain('sobrescritoAlEntrar: sobrescritoAlEntrar.current,')
   expect(entero.match(/sobrescritoAlEntrar\.current =/g)).toHaveLength(1)
-  expect(entero).toMatch(/onFocus=\{\(e\) => \{\s*alEntrar\.current = valor\s*sobrescritoAlEntrar\.current = sobrescrito/)
+  expect(entero).toMatch(/onFocus=\{\(\) => \{\s*alEntrar\.current = valor\s*sobrescritoAlEntrar\.current = sobrescrito/)
   expect(entero).toContain('const descartar = onDescartar ?? onRestaurar')
   expect(entero).toContain('puedeDescartar: Boolean(descartar),')
   expect(entero).toContain("if (r.accion === 'descartar') descartar?.()")

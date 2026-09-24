@@ -19,6 +19,7 @@ import {
   ROJO,
   TXT_SUAVE,
   TXT_TENUE,
+  estiloBorde,
   focoHandlers,
   idDeCampo,
 } from './Comunes'
@@ -223,7 +224,9 @@ export function CampoEntero({
 
   const numero = parseEntero(texto)
   const invalido = numero === null || numero < min || numero > max
-  const foco = focoHandlers(resaltado || invalido)
+  // El foco va en el estado, no en el DOM: así el rojo del error gana al azul
+  // del foco (ver `estiloBorde`).
+  const [enfocado, setEnfocado] = useState(false)
 
   return (
     <div className="space-y-1.5">
@@ -249,7 +252,7 @@ export function CampoEntero({
             const n = parseEntero(e.target.value)
             if (n !== null && n >= min && n <= max) onChange(n)
           }}
-          onBlur={(e) => {
+          onBlur={() => {
             // Con basura: el borrador y la pantalla vuelven a como estaban AL
             // ENTRAR (ver `alSalirConBasura`).
             if (invalido) {
@@ -264,17 +267,17 @@ export function CampoEntero({
               else if (r.accion === 'escribir' && typeof r.valor === 'number') onChange(r.valor)
               setTexto(r.texto)
             }
-            foco.onBlur(e)
+            setEnfocado(false)
           }}
-          onFocus={(e) => {
+          onFocus={() => {
             alEntrar.current = valor
             sobrescritoAlEntrar.current = sobrescrito
-            foco.onFocus(e)
+            setEnfocado(true)
           }}
           className="w-40 px-3 py-2.5 rounded-lg text-sm outline-none transition-all tabular-nums"
           style={{
             ...INPUT_STYLE,
-            ...(resaltado || invalido ? { border: `1px solid ${ROJO}` } : {}),
+            ...estiloBorde(resaltado || invalido, enfocado),
             ...(deshabilitado ? { opacity: 0.6 } : {}),
           }}
         />
@@ -374,7 +377,8 @@ export function CampoPrecioNivel({
   const limpio = normalizar(texto)
   const numero = parseEntero(texto)
   const invalido = limpio !== '' && (numero === null || numero < min || numero > max)
-  const foco = focoHandlers(resaltado || invalido)
+  // Como en CampoEntero: el foco va en el estado para que el rojo gane.
+  const [enfocado, setEnfocado] = useState(false)
 
   return (
     <div className="space-y-1.5">
@@ -387,7 +391,12 @@ export function CampoPrecioNivel({
           ) : null
         }
       />
-      <div className="flex items-center gap-3">
+      {/* El marcador («Vacío: usa la general, $2,000») tiene que leerse
+          COMPLETO: un input no parte su placeholder en dos líneas. Por eso el
+          campo ocupa el renglón hasta 320 px y, si no queda sitio para la
+          cifra verde (móvil, o la columna angosta de 1024 px), ésta baja de
+          renglón en vez de comerse el ancho del campo. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <input
           id={id}
           type="text"
@@ -403,7 +412,7 @@ export function CampoPrecioNivel({
             const n = parseEntero(e.target.value)
             if (n !== null && n >= min && n <= max) onChange(n)
           }}
-          onBlur={(e) => {
+          onBlur={() => {
             // Con basura, se repone lo que había AL ENTRAR (y se devuelve al
             // borrador), no el último prefijo válido que se propagó al teclear.
             // Vacío al entrar = sin override: reponer es quitar la clave.
@@ -421,16 +430,16 @@ export function CampoPrecioNivel({
               // Solo espacios o «$»: ya es vacío; se limpia para que se vea el marcador.
               setTexto('')
             }
-            foco.onBlur(e)
+            setEnfocado(false)
           }}
-          onFocus={(e) => {
+          onFocus={() => {
             alEntrar.current = valor
-            foco.onFocus(e)
+            setEnfocado(true)
           }}
-          className="w-56 px-3 py-2.5 rounded-lg text-sm outline-none transition-all tabular-nums"
+          className="w-full max-w-xs px-3 py-2.5 rounded-lg text-sm outline-none transition-all tabular-nums"
           style={{
             ...INPUT_STYLE,
-            ...(resaltado || invalido ? { border: `1px solid ${ROJO}` } : {}),
+            ...estiloBorde(resaltado || invalido, enfocado),
             ...(deshabilitado ? { opacity: 0.6 } : {}),
           }}
         />

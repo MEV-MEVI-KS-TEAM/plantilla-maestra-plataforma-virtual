@@ -49,11 +49,11 @@ import {
   claveASenalar,
   coloresEfectivos,
   hayCambioDeTipoCambio,
-  hayCambiosDePrecio,
   hayCambiosDePreciosOPlanes,
   inscripcionesDeBorrador,
   mismoContenido,
   modalidadesEfectivas,
+  pasoAlPublicar,
   prepararParaPublicar,
   preciosPorNivelVisibles,
   sincronizarLogos,
@@ -317,8 +317,21 @@ export default function PersonalizarPage() {
     document.getElementById(`tab-${destino}`)?.focus()
   }
 
+  /**
+   * «Publicar cambios» valida ANTES de abrir el modal de precios (ver
+   * `pasoAlPublicar`): con un borrador que no se puede publicar sale el toast,
+   * el campo en rojo y con el foco, y el modal no se abre. `publicar()` vuelve
+   * a validar y el servidor también: esto solo adelanta el aviso.
+   */
   function alPulsarPublicar() {
-    if (hayCambiosDePrecio(overridesBase, overrides)) {
+    if (!defaults) return
+    const paso = pasoAlPublicar(overridesBase, overrides, mergeSiteConfig(CONFIG, {}))
+    if (paso.paso === 'error') {
+      showToast(paso.error, 'error', 6000)
+      if (paso.clave) irAlCampo(paso.clave)
+      return
+    }
+    if (paso.paso === 'modal') {
       setModal('precios')
       return
     }
