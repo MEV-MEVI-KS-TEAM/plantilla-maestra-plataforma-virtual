@@ -117,7 +117,7 @@ export default function AlumnoDashboard() {
   useEffect(() => { setAhora(new Date()) }, [])
   const [diasRacha,          setDiasRacha]          = useState(0)
   const [loading,            setLoading]            = useState(true)
-  /** Primera materia del plan (orden) con acceso; IVS entra directo a materia, no a /mes/[n] */
+  /** Primera materia del plan (orden) con acceso, no acreditada y no demo; IVS entra directo a materia, no a /mes/[n] */
   const [primeraMateriaId,    setPrimeraMateriaId]   = useState<string | null>(null)
 
   // Toast on redirect
@@ -182,10 +182,15 @@ export default function AlumnoDashboard() {
         califRows.filter(r => r.estado === 'Acreditada').map(r => r.materia_id)
       ))
 
-      type MatRow = { id: string; orden?: number; disponible?: boolean }
+      type MatRow = { id: string; orden?: number; disponible?: boolean; acreditada?: boolean; es_demo?: boolean }
       const list = Array.isArray(mat?.materias) ? (mat.materias as MatRow[]) : []
+      // Primera materia abierta que el alumno AÚN NO aprueba, sin contar la
+      // demo. La tutoría demo tiene orden 0 y siempre está disponible: tomar
+      // "la primera disponible" regresaba a la demo —y a su «Ya puedes
+      // presentar tu examen final»— a alumnos que ya la habían aprobado
+      // (TICKET-2026-09-22-01, Evocontucenter). Sin candidata → /alumno/materias.
       const primera = [...list]
-        .filter(x => x.disponible)
+        .filter(x => x.disponible && !x.acreditada && !x.es_demo)
         .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))[0]
       setPrimeraMateriaId(primera?.id ?? null)
 

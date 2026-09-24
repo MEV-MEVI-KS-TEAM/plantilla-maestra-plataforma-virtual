@@ -134,6 +134,11 @@ export async function GET() {
         total_meses:    meses.length,
         total_semanas:  totalSemanas,
         disponible:     disponibilidad.get(mat.id) === true,
+        // Para que "Continuar estudiando" no regrese al alumno a la demo ni a
+        // una materia que ya aprobó (TICKET-2026-09-22-01): la demo tiene
+        // orden 0 y siempre está disponible, así que era la "primera" siempre.
+        acreditada:     acreditadasSet.has(mat.id),
+        es_demo:        mat.nivel === 'demo',
       }]
     })
 
