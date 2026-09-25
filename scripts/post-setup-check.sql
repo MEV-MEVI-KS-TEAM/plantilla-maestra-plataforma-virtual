@@ -206,12 +206,13 @@ SELECT
   END AS resultado
 FROM tablas_sin_policy;
 
--- ─── CHECK 14: el CHECK de alumnos.modalidad admite los planes de la escuela ──
--- Sin '6_meses_lic' (u otro id de config.ts), dar de alta a un alumno en ese
--- plan falla con 23514 y la ruta de alta borra el usuario de Auth que acababa
--- de crear (Bug 68). Se busca por CATÁLOGO (conkey), no por nombre (Bug 72):
--- tiene que haber UN solo CHECK de una columna sobre `modalidad`, y admitir el
--- plan de 6 meses de licenciatura (migración 20260925120000).
+-- ─── CHECK 14: un solo CHECK sobre alumnos.modalidad (y si admite 6_meses_lic) ─
+-- Se busca por CATÁLOGO (conkey), no por nombre (Bug 72). ❌ solo cuando SIEMPRE
+-- es defecto: ningún CHECK, o más de uno. Que no admita '6_meses_lic' (el plan
+-- de 6 meses de licenciatura, Bloque B) solo importa si config.ts VENDE ese
+-- plan: sin él, esa alta falla con 23514 y la ruta borra el usuario de Auth que
+-- acababa de crear (Bug 68). Este script no puede leer config.ts, así que lo
+-- dice en el texto sin marcar ❌: un clon anterior a esa migración está sano.
 WITH col AS (
   SELECT attnum FROM pg_attribute
    WHERE attrelid = 'public.alumnos'::regclass AND attname = 'modalidad' AND NOT attisdropped
@@ -221,12 +222,12 @@ WITH col AS (
    WHERE c.conrelid = 'public.alumnos'::regclass AND c.contype = 'c' AND c.conkey = ARRAY[col.attnum]
 )
 SELECT
-  'CHECK de alumnos.modalidad (uno solo, con 6_meses_lic)' AS check_name,
+  'CHECK de alumnos.modalidad (uno solo)' AS check_name,
   COUNT(*)::text AS valor,
   CASE
-    WHEN COUNT(*) = 1 AND bool_and(def LIKE '%''6_meses_lic''%') THEN '✅ OK'
     WHEN COUNT(*) = 0 THEN '❌ FALTA el CHECK de alumnos.modalidad'
     WHEN COUNT(*) > 1 THEN '❌ HAY ' || COUNT(*) || ' CHECK sobre modalidad (Bug 72): consolidar con 20260925120000'
-    ELSE '❌ El CHECK no admite 6_meses_lic: correr 20260925120000_licenciatura_plan_6_meses.sql'
+    WHEN bool_and(def LIKE '%''6_meses_lic''%') THEN '✅ OK (admite 6_meses_lic)'
+    ELSE '✅ OK (no admite 6_meses_lic: solo hace falta si config.ts vende ese plan → correr 20260925120000_licenciatura_plan_6_meses.sql)'
   END AS resultado
 FROM checks;

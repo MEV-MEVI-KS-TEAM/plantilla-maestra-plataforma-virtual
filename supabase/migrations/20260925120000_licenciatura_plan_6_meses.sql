@@ -63,11 +63,13 @@ BEGIN
        !~ '^CHECK(modalidadISNULLOR)?modalidad=ANYARRAY\[L(,L)*\]$' THEN
       RAISE EXCEPTION 'CHECK % sobre alumnos.modalidad con forma desconocida: %', c.conname, c.def;
     END IF;
-    -- Unión: lo que ya admitía + los canónicos.
+    -- Unión: lo que ya admitía + los canónicos. Se extrae con la MISMA
+    -- gramática que valida la guarda de arriba ('…'::text, vacío incluido):
+    -- si no, un literal '' desfasaría la lectura y el CHECK nuevo perdería ids.
     SELECT array_agg(DISTINCT x) INTO v_ids
       FROM (SELECT unnest(v_ids) AS x
             UNION
-            SELECT (regexp_matches(c.def, '''([^'']+)''', 'g'))[1]) s;
+            SELECT (regexp_matches(c.def, '''([^'']*)''::text', 'g'))[1]) s;
     RAISE NOTICE 'quitando CHECK %: %', c.conname, c.def;
     EXECUTE format('ALTER TABLE public.alumnos DROP CONSTRAINT %I', c.conname);
     v_n := v_n + 1;

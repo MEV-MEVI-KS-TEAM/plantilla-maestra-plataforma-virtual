@@ -101,3 +101,26 @@ test('5. la migración nueva va DESPUÉS de la de licenciaturas y con otro nombr
   expect(nombre).not.toBe('20260917120000_modalidad_6_meses_lic.sql')
   expect(nombre).not.toBe('20260918120000_modalidad_6_meses_lic.sql')
 })
+
+test('6. la guarda y el extractor de literales leen con la MISMA gramática', () => {
+  // Si la guarda acepta un literal que el extractor no sabe leer (p. ej. ''),
+  // la lectura se desfasa y el CHECK nuevo pierde ids: justo lo que la guarda
+  // fail-closed debe impedir (revisión de B5, hallazgo sql-1).
+  const sql = sinComentariosSql(leer(MIGRACION))
+  expect(sql).toContain("regexp_replace(c.def, '''[^'']*''::text', 'L', 'g')")
+  expect(sql).toContain("regexp_matches(c.def, '''([^'']*)''::text', 'g')")
+})
+
+test('7. post-setup CHECK 14: ❌ solo cuando siempre es defecto (0 o más de 1 CHECK)', () => {
+  // Un clon anterior a B5 está sano sin '6_meses_lic' (si no vende ese plan):
+  // marcarle ❌ lo frenaría en la TAREA 7 del onboarding por nada.
+  const post = leer('scripts/post-setup-check.sql')
+  const i = post.indexOf('CHECK 14')
+  expect(i).toBeGreaterThan(-1)
+  const bloque = post.slice(i)
+  const cruces = bloque.split('\n').filter((l) => l.includes("'❌"))
+  expect(cruces).toHaveLength(2)
+  expect(cruces.join('\n')).toMatch(/COUNT\(\*\) = 0 THEN '❌ FALTA/)
+  expect(cruces.join('\n')).toMatch(/COUNT\(\*\) > 1 THEN '❌ HAY/)
+  expect(bloque).toContain("THEN '✅ OK (admite 6_meses_lic)'")
+})
