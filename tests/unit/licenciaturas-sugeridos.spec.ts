@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
 import { ES_PLANTILLA } from './es-plantilla'
-import { LIMITES_LIC, bloqueLicEditable, planesLicEditables } from '@/lib/precios-licenciatura'
+import { LIMITES_LIC, bloqueLicEditable, inscripcionLicEditable, planesLicEditables, titulacionLicEditable } from '@/lib/precios-licenciatura'
+import { rangoMateriasDelMes } from '@/lib/acceso-materias'
 import { getDesglosesLicenciatura } from '@/lib/licenciatura-utils'
 
 /**
@@ -54,10 +55,18 @@ test('3. cada plan cabe en el CHECK de alumnos.modalidad del instalador', () => 
 })
 
 test('4. el ritmo abre las 32 materias de una carrera del banco en el último mes', () => {
+  // Con la ventana REAL de acceso-materias.ts: en el mes n se abren los índices
+  // [desde, hasta] (base 0) de las materias regulares.
   for (const m of lic().modalidades) {
-    expect(Math.ceil(m.meses * m.materiasPorMes), m.id).toBeGreaterThanOrEqual(32)
-    // Y no las abre antes del último mes (el plan largo no es más rápido).
-    expect(Math.ceil((m.meses - 1) * m.materiasPorMes), m.id).toBeLessThan(32)
+    const ultimo = rangoMateriasDelMes(m.meses, m.materiasPorMes)
+    expect(ultimo.hasta, `${m.id}: mes ${m.meses}`).toBeGreaterThanOrEqual(31) // la materia 32 abre en el último mes
+    const penultimo = rangoMateriasDelMes(m.meses - 1, m.materiasPorMes)
+    expect(penultimo.hasta, `${m.id}: mes ${m.meses - 1}`).toBeLessThan(31) // y no antes
+    // Ningún mes se queda sin materia nueva.
+    for (let mes = 1; mes <= m.meses; mes++) {
+      const r = rangoMateriasDelMes(mes, m.materiasPorMes)
+      expect(r.hasta, `${m.id}: mes ${mes}`).toBeGreaterThanOrEqual(r.desde)
+    }
   }
 })
 
@@ -65,6 +74,8 @@ test('5. al encender el add-on con una carrera, la tarjeta los edita y la landin
   const encendida = { ...lic(), activas: true, carreras: [{ slug: 'derecho', nombre: 'Licenciatura en Derecho' }] }
   // Forma estándar: la tarjeta «Licenciaturas» los muestra como campos.
   expect(bloqueLicEditable(encendida)).toBe(true)
+  expect(inscripcionLicEditable(encendida)).toBe(true)
+  expect(titulacionLicEditable(encendida)).toBe(true)
   expect(planesLicEditables(encendida).map((p) => p.id)).toEqual(['12_meses', '18_meses'])
   // Dentro de lo que el panel publica.
   const l = lic()
