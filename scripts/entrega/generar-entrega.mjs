@@ -86,6 +86,11 @@ const { inscripcionDe, mensualidadDe, certificacionDe } =
 // regla que usa la plataforma al fusionar (Bloque B): también es puro.
 const { licenciaturaEfectiva, bloqueLicEditable } =
   await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-licenciatura.ts')).href)
+// El precio de cada CURSO, con la MISMA regla que la página y el registro
+// (Bloque C): sin imports, por eso se importa igual. Antes el PDF decía «Lo
+// defines tú» donde la página ya decía «Pide informes».
+const { precioCursoNumerico, TEXTO_SIN_PRECIO } =
+  await import(pathToFileURL(path.join(RAIZ, 'src/lib/cursos/precio-regla.ts')).href)
 
 
 const dominio = String(CONFIG.dominio || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -257,11 +262,10 @@ if (JSON.stringify(LIC) !== JSON.stringify(CONFIG.licenciaturas)) log('  · lice
 
 /* ── 3. Conteo real de contenido ─────────────────────────────────────────── */
 async function inventario() {
-  const env = path.join(RAIZ, '.env.local')
-  if (!fs.existsSync(env)) { log('  · sin .env.local — se omite el inventario'); return {} }
-  const vars = Object.fromEntries(fs.readFileSync(env, 'utf8').split('\n')
-    .map(l => l.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean)
-    .map(m => [m[1], m[2].replace(/^["']|["']$/g, '')]))
+  // leerEnvLocal: la misma lectura que lo publicado, que aguanta un .env.local
+  // guardado en Windows (CRLF) y con BOM.
+  const vars = leerEnvLocal()
+  if (!vars) { log('  · sin .env.local — se omite el inventario'); return {} }
   const url = vars.NEXT_PUBLIC_SUPABASE_URL, key = vars.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) { log('  · .env.local sin credenciales — se omite el inventario'); return {} }
   const { createClient } = await import('@supabase/supabase-js')
@@ -325,14 +329,15 @@ async function inventario() {
    */
   inv.cursosLista = []
   {
-    const campos = 'nombre, tipo, precio_inscripcion, precio_mensualidad, duracion_meses, orden'
+    const campos = 'id, nombre, tipo, precio_inscripcion, precio_mensualidad, duracion_meses, orden'
     let { data, error } = await sb.from('cursos').select(campos)
       .eq('estado', 'publicado').order('orden')
     if (error) {
-      ;({ data } = await sb.from('cursos').select('nombre, tipo')
+      ;({ data } = await sb.from('cursos').select('id, nombre, tipo')
         .eq('estado', 'publicado').order('nombre'))
     }
     inv.cursosLista = (data || []).map(c => ({
+      id: c.id,
       nombre: c.nombre,
       tipo: c.tipo,
       inscripcion: Number(c.precio_inscripcion ?? 0),
@@ -366,18 +371,63 @@ const INV = await inventario()
  */
 const CURSOS_PUBLICADOS = INV.cursosLista || []
 
-/** «$1,500 de pago único», «$800 al mes × 3 meses» o '' si no hay precio. */
+/**
+ * «$2,490 de pago único», «$1,500 de inscripción + $800 al mes × 3 meses», o
+ * «Pide informes» si no hay precio: la MISMA regla que la página
+ * (precioCursoNumerico). Un curso sin mensualidad se cobra una sola vez: decirlo
+ * evita la duda de si además hay algo mensual, que es la objeción del prospecto.
+ */
 function precioDeCurso(c) {
-  const partes = []
-  if (c.inscripcion > 0) {
-    // Un curso sin mensualidad se cobra una sola vez: decirlo evita la duda de
-    // si además hay algo mensual. Es la objeción que trae el prospecto.
-    partes.push(c.mensualidad > 0 ? `${mxn(c.inscripcion)} de inscripción` : `${mxn(c.inscripcion)} de pago único`)
+  const p = precioCursoNumerico({ precio_inscripcion: c.inscripcion, precio_mensualidad: c.mensualidad })
+  if (p.tipo === 'unico') return `${mxn(p.monto)} de pago único`
+  if (p.tipo === 'mensual') {
+    const mes = c.meses > 0 ? `${mxn(p.mensualidad)} al mes × ${c.meses} ${c.meses === 1 ? 'mes' : 'meses'}` : `${mxn(p.mensualidad)} al mes`
+    return p.inscripcion !== null ? `${mxn(p.inscripcion)} de inscripción + ${mes}` : mes
   }
-  if (c.mensualidad > 0) {
-    partes.push(c.meses > 0 ? `${mxn(c.mensualidad)} al mes × ${c.meses} ${c.meses === 1 ? 'mes' : 'meses'}` : `${mxn(c.mensualidad)} al mes`)
+  return TEXTO_SIN_PRECIO
+}
+
+// Un curso publicado sin precio se entrega diciendo «Pide informes», igual que
+// la página: se avisa para que el operador lo corrija antes, si no era a propósito.
+for (const c of CURSOS_PUBLICADOS) {
+  if (precioCursoNumerico({ precio_inscripcion: c.inscripcion, precio_mensualidad: c.mensualidad }).tipo === 'informes')
+    log(`  ⚠ «${c.nombre}» no tiene precio: la página y este documento dicen «${TEXTO_SIN_PRECIO}». Ponlo en Gestionar cursos → el curso → Precios y ritmo.`)
+}
+
+/**
+ * El add-on de Cursos de Ingreso (CONFIG.cursosIngreso) no se niega en silencio.
+ *
+ * Sin inventario (sin .env.local o sin la service role) el documento decía
+ * «Crea tus propios cursos / Vacío — lo defines tú» aunque la escuela acabara
+ * de comprar el add-on con sus cursos publicados. Si config.ts lo declara, se
+ * aborta: un documento oficial que niega lo vendido es peor que no tenerlo.
+ *
+ * Y el registro anuncia el precio de la FICHA de cada curso (config.ts solo es
+ * el respaldo si la ficha está en 0/0; el paquete sí sale de config.ts): si
+ * config.ts dice otra cifra, se avisa, porque este documento pinta la de la ficha.
+ */
+{
+  const ing = CONFIG.cursosIngreso
+  const addon = Boolean(ing && (ing.activa ?? ing.activos))
+  if (addon && !INV.cursosLista) {
+    abortar('CONFIG.cursosIngreso está encendido y no se pudo leer el inventario de cursos.',
+      'El documento diría «Crea tus propios cursos» a una escuela que compró el add-on.\nPon NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env.local y vuelve a correr.')
   }
-  return partes.join(' + ')
+  if (addon && CURSOS_PUBLICADOS.length === 0)
+    log('  ⚠ CONFIG.cursosIngreso está encendido pero no hay cursos publicados: el documento dirá «Crea tus propios cursos».')
+  if (addon && Number(ing.precioPaquete ?? 0) > 0)
+    log(`  ⚠ Paquete de cursos de ingreso: el registro anuncia ${mxn(Number(ing.precioPaquete))} por el paquete; este documento lista el precio de cada curso.`)
+  if (addon && !(Number(ing.precioPaquete ?? 0) > 0)) {
+    for (const o of ing.cursos ?? []) {
+      const ids = o.cursoIds ?? []
+      const fila = ids.length === 1 ? CURSOS_PUBLICADOS.find(c => c.id === ids[0]) : null
+      const deConfig = Number(o.precio ?? 0)
+      if (!fila || !(deConfig > 0)) continue
+      const p = precioCursoNumerico({ precio_inscripcion: fila.inscripcion, precio_mensualidad: fila.mensualidad })
+      if (p.tipo !== 'unico' || p.monto !== deConfig)
+        log(`  ⚠ «${fila.nombre}»: config.ts dice ${mxn(deConfig)} y la ficha del curso ${precioDeCurso(fila)}. El registro y este documento anuncian el de la ficha.`)
+    }
+  }
 }
 
 /* ── 4. Modalidades y precios, adaptados a lo CONTRATADO ─────────────────── */
@@ -773,7 +823,9 @@ const datos = {
     ...(CARRERAS.length ? [CARRERAS.length === 1
       ? `${CARRERAS[0].nombre}, con su contenido cargado`
       : `${CARRERAS.length} ${soloLicenciaturas(CARRERAS) ? 'licenciaturas ya cargadas' : 'programas ya cargados'}: ${unirConY(CARRERAS.map(c => c.nombre))}`] : []),
-    'Módulo de Cursos y Diplomados listo para tu propio contenido',
+    CURSOS_PUBLICADOS.length
+      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso ya publicado' : 'cursos ya publicados'} y a la venta`
+      : 'Módulo de Cursos y Diplomados listo para tu propio contenido',
     VALIDEZ && 'Sección de Validez Oficial México + Estados Unidos',
     'Panel de pagos, reportes y estado de cuenta',
   ].filter(Boolean),
@@ -798,7 +850,9 @@ const datos = {
     ...(CARRERAS.length ? [
       `${ETIQUETA_PROGRAMAS} ya ${soloLicenciaturas(CARRERAS) ? 'cargadas y listas' : 'cargados y listos'} para inscribir: ${unirConY(CARRERAS.map(c => c.nombre))}`,
     ] : []),
-    'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
+    CURSOS_PUBLICADOS.length
+      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso publicado' : 'cursos publicados'}: al asignar a un alumno, un curso de pago único se le abre completo`
+      : 'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
     'Rol de secretario con accesos delimitados',
 
     // ── Lo que se construyó a medida para este cliente ────────────────
@@ -998,7 +1052,7 @@ if (!flag('solo-pdf')) {
     INFORMES_EXCEL ? '• Consultar tus Informes de ingresos por semana y por mes, y descargarlos en Excel' : '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
     CURSOS_PUBLICADOS.length
-      ? `• Inscribir alumnos a tus ${CURSOS_PUBLICADOS.length} curso${CURSOS_PUBLICADOS.length === 1 ? '' : 's'}, seguir su avance y crear todos los que quieras`
+      ? `• Asignar alumnos a tus ${CURSOS_PUBLICADOS.length} curso${CURSOS_PUBLICADOS.length === 1 ? '' : 's'} (en uno de pago único se les abre completo al asignarlos), seguir su avance y crear todos los que quieras`
       : '• Crear tus propios Cursos y Diplomados cuando quieras',
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
@@ -1033,10 +1087,7 @@ if (!flag('solo-pdf')) {
     // 🛑 Los cursos que el cliente compró y que YA están a la venta se nombran
     // con su precio. Sin esto, el mensaje de entrega del add-on de Cursos de
     // Ingreso no mencionaba en ninguna línea lo que el cliente acababa de pagar.
-    ...CURSOS_PUBLICADOS.map(c => {
-      const p = precioDeCurso(c)
-      return `• ${c.nombre}${p ? ` — ${p}` : ''}: ${URL_BASE}/diplomados`
-    }),
+    ...CURSOS_PUBLICADOS.map(c => `• ${c.nombre} — ${precioDeCurso(c)}: ${URL_BASE}/diplomados`),
   ].filter(Boolean)
   if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')
   // ── El módulo que el cliente opera solo ────────────────────────────────

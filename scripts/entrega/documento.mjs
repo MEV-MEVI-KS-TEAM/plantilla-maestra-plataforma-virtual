@@ -362,7 +362,7 @@ ${kv([
     ['Contenido inicial', hay ? `${n} ${plural} ${n === 1 ? 'publicado' : 'publicados'}` : 'Vacío — lo defines tú'],
   ])}
 ${hay && lista.length ? `<h3>Lo que ya está a la venta</h3>
-${dt(['Curso', 'Precio'], lista.map(c => [c.nombre, c.precio || 'Lo defines tú']))}` : ''}
+${dt(['Curso', 'Precio'], lista.map(c => [c.nombre, c.precio || 'Pide informes']))}` : ''}
 <h3>Qué te permite hacer</h3>
 ${ul([
     hay
@@ -372,11 +372,11 @@ ${ul([
     'Examen final con banco de preguntas propio por curso',
     'Constancia con folio consecutivo al terminar el curso',
     'Inscribir alumnos y seguir su avance lección por lección',
-    'Cobro por inscripción y por mensualidad, independiente del programa académico',
-    'Apertura de contenido mes a mes, igual que en el programa',
+    'Precio por curso: de pago único, o inscripción y mensualidad, independiente del programa académico',
+    'Al asignar a un alumno, un curso de pago único se le abre completo; uno mensual, mes a mes',
   ])}
 <div class="note"><b>Cómo empezar</b><p>${hay
-    ? `Tu catálogo público ya muestra ${n === 1 ? 'este curso' : `estos ${n} cursos`}: enséñalo tal cual a tus prospectos. Desde <b>Gestionar Cursos</b> inscribes alumnos, sigues su avance y añades los cursos que quieras.`
+    ? `Tu catálogo público ya muestra ${n === 1 ? 'este curso' : `estos ${n} cursos`}: enséñalo tal cual a tus prospectos. Cuando un alumno te pague, asígnalo en <b>Gestionar Cursos → el curso → Alumnos</b>: en un curso de pago único se le abre completo; en uno mensual, el mes 1. Ahí sigues su avance, y el precio de cada curso lo cambias en su ficha.`
     : 'Entra a <b>Gestionar Cursos</b> en el menú de tu panel y crea tu primer curso. Mientras no publiques ninguno, la sección de diplomados no se muestra en tu página pública.'}</p></div>
 ${tablaModalidades(d)}`
 }
@@ -413,7 +413,7 @@ ${ul([
     'Tu logo y el icono que se ve en la pestaña del navegador',
     'Los colores de tu marca, con 12 paletas listas o los tuyos propios',
     'Tu WhatsApp, tu correo y tu teléfono de contacto',
-    'Los precios y los planes que se anuncian en la página y en el registro',
+    'Los precios y los planes que se anuncian en la página y en el registro (el precio de cada curso se cambia en su ficha, en Gestionar Cursos)',
   ])}
 <div class="note"><b>Publicar y volver atrás</b><p>Cada cambio se guarda cuando
 pulsas <b>Publicar cambios</b>, y <b>Restaurar diseño original</b> devuelve la

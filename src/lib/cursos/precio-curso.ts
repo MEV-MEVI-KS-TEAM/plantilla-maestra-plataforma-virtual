@@ -10,38 +10,10 @@
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 
-/** Los dos precios de la ficha del curso (tabla `cursos`). */
-export interface PreciosCurso {
-  precio_inscripcion?: number | null
-  precio_mensualidad?: number | null
-}
-
-/**
- * Qué se cobra, en números.
- *
- * 🛑 UN CURSO SIN PRECIO NO ES UN CURSO GRATIS. La tabla `cursos` guarda
- * `DEFAULT 0` en los dos precios, y los bancos de cursos siembran el curso
- * PUBLICADO sin precio: la portada animada lo anunciaba «Sin costo» y
- * `/diplomados` ponía «$0» hasta que alguien se acordara de capturarlo. La tabla
- * no tiene un campo explícito de «gratis», así que con los dos precios en 0 (o
- * negativos) el curso dice «Pide informes» y el visitante pregunta.
- *
- *   · mensualidad > 0 → `mensual` (con la inscripción, si la hay);
- *   · solo inscripción > 0 → `unico` (pago único);
- *   · ninguno → `informes`.
- */
-export type PrecioNumerico =
-  | { tipo: 'mensual'; mensualidad: number; inscripcion: number | null }
-  | { tipo: 'unico'; monto: number }
-  | { tipo: 'informes' }
-
-export function precioCursoNumerico(c: PreciosCurso): PrecioNumerico {
-  const mensualidad = Number(c.precio_mensualidad ?? 0)
-  const inscripcion = Number(c.precio_inscripcion ?? 0)
-  if (mensualidad > 0) return { tipo: 'mensual', mensualidad, inscripcion: inscripcion > 0 ? inscripcion : null }
-  if (inscripcion > 0) return { tipo: 'unico', monto: inscripcion }
-  return { tipo: 'informes' }
-}
+// La regla numérica y el texto sin precio viven en precio-regla.ts, sin imports,
+// para que el generador de la entrega (Node, sin alias '@/') use la MISMA.
+import { precioCursoNumerico, TEXTO_SIN_PRECIO, type PreciosCurso, type PrecioNumerico } from './precio-regla'
+export { precioCursoNumerico, TEXTO_SIN_PRECIO, type PreciosCurso, type PrecioNumerico }
 
 /**
  * Precio de catálogo, sin decimales — los precios de la plantilla son enteros.
@@ -55,8 +27,6 @@ export function precioPublico(n: number): string {
   return formatearMoneda(n, CONFIG, { conCodigo: true })
 }
 
-/** Lo que el catálogo dice de un curso SIN precio capturado. */
-export const TEXTO_SIN_PRECIO = 'Pide informes'
 
 /** `precioCursoNumerico` con los montos ya formateados, para pintarlos. */
 export type PrecioCatalogo =
