@@ -180,10 +180,12 @@ test('4d. precios-licenciatura.ts se puede importar desde Node: sin imports de v
 test('4d2. la tabla de licenciatura se lee con cast: hay clones sin el bloque en su config.ts', () => {
   // `cfg.licenciaturas` a secas no compila en un clon cuyo config.ts no declara
   // la clave (SiteConfig = Widen<typeof CONFIG>). Todo acceso va por el helper.
-  // Solo el código de las rutas (contenido/page.tsx lo CITA en un texto de la UI).
-  for (const archivo of archivosDe('src/app/api')) {
+  // Todo src/app. contenido/page.tsx lo CITA en un texto de la UI, no lo lee.
+  const CITA = 'src/app/(dashboard)/admin/contenido/page.tsx'
+  for (const archivo of archivosDe('src/app').filter((f) => f !== CITA)) {
     expect(sinComentarios(leer(archivo)), archivo).not.toMatch(/\b(cfg|config|CONFIG)\.licenciaturas\b/)
   }
+  expect(leer(CITA)).toContain(' CONFIG.licenciaturas.carreras </span>')
   expect(tablaLicenciaturas({ licenciaturas: { activas: true, inscripcion: 1 } })).toEqual({ activas: true, inscripcion: 1 })
   expect(tablaLicenciaturas({})).toBeUndefined()
 })

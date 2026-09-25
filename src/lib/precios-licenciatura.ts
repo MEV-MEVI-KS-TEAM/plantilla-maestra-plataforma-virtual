@@ -3,9 +3,11 @@
  *
  * ── Por qué un módulo aparte ────────────────────────────────────────────────
  *
- * Es PURO a propósito, igual que precios-nivel.ts: no importa nada. Así lo
- * usan la app (a través de licenciatura-utils.ts) y el generador del PDF de
- * entrega, que corre en Node sin el alias `@/`.
+ * Es PURO a propósito, igual que precios-nivel.ts: no importa nada. Hoy lo usa
+ * la app (a través de licenciatura-utils.ts), y así lo puede cargar también el
+ * generador del PDF de entrega, que corre en Node sin el alias `@/`. (La
+ * entrega todavía resuelve licenciatura con su propia regla en
+ * scripts/entrega/licenciaturas.mjs.)
  *
  * 🛑 NO agregues aquí un import de valor, `enum` ni `namespace`: Node los
  *    rechaza al quitar los tipos. Lo vigila
