@@ -1,5 +1,6 @@
 /** Tipos del visor del alumno (respuestas de las API /api/alumno/cursos). */
 import type { CursoTipo } from './cursos'
+import type { MotivoBloqueo } from '@/lib/cursos/acceso'
 
 export interface CursoCatalogoItem {
   id: string
@@ -48,6 +49,12 @@ export interface VentanaCurso {
   /** Mes (1-based) que hay que abrir para liberar el siguiente. null si no queda ninguno. */
   proximo_mes: number | null
   estado_inscripcion: string | null
+  /**
+   * Por qué no ve (todo) el contenido; null si tiene acceso. Ver
+   * `motivoBloqueo` en src/lib/cursos/acceso.ts. Sin esto el visor le decía
+   * «no tiene lecciones» a quien esperaba su pago (#183).
+   */
+  motivo: MotivoBloqueo | null
 }
 
 export interface CursoDetalleAlumno {

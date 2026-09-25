@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SIGNED_URL_TTL } from './storage'
 import { BUCKET_CURSOS } from './archivos'
-import { limiteVentana } from './acceso'
+import { limiteVentana, motivoBloqueo } from './acceso'
 import type { CursoVentana, InscripcionVentana } from './acceso'
 import type { LeccionAlumno, ModuloAlumno, VentanaCurso } from '@/types/cursos-alumno'
 
@@ -191,5 +191,6 @@ export async function resumenVentana(
     // El siguiente módulo bloqueado está en `orden = limite`; su mes es 1-based.
     proximo_mes: bloqueados > 0 && porMes > 0 ? Math.floor(limite / porMes) + 1 : null,
     estado_inscripcion: inscripcion.estado ?? null,
+    motivo: motivoBloqueo({ inscripcion, curso: cursoV, modulosTotales: totales }),
   }
 }

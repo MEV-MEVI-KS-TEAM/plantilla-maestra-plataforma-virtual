@@ -140,3 +140,39 @@ export function mesDeLiberacion(
   if (orden === ORDEN_SIN_DEFINIR) return null
   return Math.floor(orden / Math.floor(porMes)) + 1
 }
+
+/**
+ * POR QUÉ el alumno no ve contenido (o parte de él). Solo presentación: no
+ * autoriza nada — el candado sigue siendo la RLS y `limiteVentana`.
+ *
+ * El visor decía «Este curso todavía no tiene lecciones» ante CUALQUIER
+ * ventana en 0, y el alumno creía que el curso estaba vacío cuando en realidad
+ * esperaba su pago (issue #183). Este es el motivo que le da el texto correcto:
+ *   'sin_contenido' → el curso de verdad no tiene módulos.
+ *   'no_publicado'  → el curso no está publicado.
+ *   'no_vigente'    → la inscripción está suspendida o cancelada.
+ *   'vencida'       → la inscripción venció.
+ *   'sin_apertura'  → inscrito y vigente, pero aún no se le abre nada.
+ *   null            → tiene acceso (a todo o a una parte).
+ *
+ * Usa EXACTAMENTE los mismos filtros que `limiteVentana`, en el mismo orden,
+ * para que el motivo y el candado no puedan discrepar.
+ */
+export type MotivoBloqueo = 'sin_contenido' | 'no_publicado' | 'no_vigente' | 'vencida' | 'sin_apertura'
+
+export function motivoBloqueo(args: {
+  inscripcion: InscripcionVentana | null | undefined
+  curso: CursoVentana | null | undefined
+  modulosTotales: number
+}): MotivoBloqueo | null {
+  const { inscripcion, curso, modulosTotales } = args
+  if (!(modulosTotales > 0)) return 'sin_contenido'
+  if (!curso || curso.estado !== 'publicado') return 'no_publicado'
+  if (!inscripcion) return 'sin_apertura'
+  if (!(ESTADOS_CON_ACCESO as readonly string[]).includes(inscripcion.estado ?? '')) return 'no_vigente'
+  if (inscripcion.fecha_vencimiento) {
+    const hoy = new Date().toISOString().slice(0, 10)
+    if (inscripcion.fecha_vencimiento < hoy) return 'vencida'
+  }
+  return limiteVentana(inscripcion, curso) > 0 ? null : 'sin_apertura'
+}

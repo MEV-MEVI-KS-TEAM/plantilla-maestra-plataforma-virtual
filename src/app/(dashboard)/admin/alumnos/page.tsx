@@ -31,8 +31,10 @@ interface Alumno {
   curso_solicitado_nombre: string | null
   /** UUID(s) de `cursos` a inscribir al activar. El paquete trae varios. */
   curso_solicitado_ids: string[]
-  /** Derivado de curso_inscripciones, no es un flag guardado. */
+  /** Derivado de curso_inscripciones Y de la ventana real (limiteVentana), no es un flag guardado. */
   curso_activado: boolean
+  /** Inscrito en la oferta pero sin acceso abierto todavía (#183). */
+  curso_acceso_pendiente: boolean
 }
 
 
@@ -215,7 +217,9 @@ export default function AlumnosPage() {
       if (fallos.length) {
         showToast(`No se pudo activar ${fallos.length} de ${a.curso_solicitado_ids.length} curso(s)`, 'error')
       } else {
-        showToast(`✓ Curso activado para ${a.nombre_completo}`, 'success')
+        // Asignar crea la inscripción; el acceso se abre aparte (pestaña Alumnos
+        // del curso). La lista recargada dice si quedó «Activado» o «Acceso pendiente».
+        showToast(`✓ Curso asignado a ${a.nombre_completo}`, 'success')
       }
       await cargarAlumnos()
     } catch {
@@ -542,6 +546,13 @@ export default function AlumnosPage() {
                             style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>
                             Activado
                           </span>
+                        ) : a.curso_acceso_pendiente ? (
+                          <a href={a.curso_solicitado_ids.length === 1 ? `/admin/cursos/${a.curso_solicitado_ids[0]}` : '/admin/cursos'}
+                            className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
+                            title="Asignado, pero todavía sin acceso: ábrelo en la pestaña Alumnos del curso">
+                            Acceso pendiente
+                          </a>
                         ) : (
                           <button
                             onClick={() => activarCurso(a)}
@@ -599,6 +610,13 @@ export default function AlumnosPage() {
                                 title={a.curso_solicitado_nombre}>
                                 Activado
                               </span>
+                            ) : a.curso_acceso_pendiente ? (
+                              <a href={a.curso_solicitado_ids.length === 1 ? `/admin/cursos/${a.curso_solicitado_ids[0]}` : '/admin/cursos'}
+                                className="px-2 py-0.5 rounded-full text-xs font-medium"
+                                style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
+                                title={`${a.curso_solicitado_nombre}: asignado, pero todavía sin acceso. Ábrelo en la pestaña Alumnos del curso.`}>
+                                Acceso pendiente
+                              </a>
                             ) : (
                               <button
                                 onClick={() => activarCurso(a)}
