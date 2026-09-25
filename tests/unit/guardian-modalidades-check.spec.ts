@@ -86,7 +86,10 @@ test('4. la migración es la variante mínima: aditiva, por catálogo, fail-clos
   expect(sql).toMatch(/UNION\s+SELECT \(regexp_matches\(c\.def/)
   expect(sql).toContain("RAISE EXCEPTION 'CHECK % sobre alumnos.modalidad con forma desconocida: %'")
   // Un CHECK de varias columnas no se toca: se avisa.
-  expect(sql).toContain('RAISE WARNING')
+  expect(sql).toContain("RAISE WARNING 'CHECK % también restringe modalidad y NO se amplió: %'")
+  // Sin ningún CHECK (re-corrida fallida de la 20260812), se crea sin dejar
+  // fuera a ningún alumno: canónicos + los ids en uso.
+  expect(sql).toMatch(/IF v_n = 0 THEN[\s\S]*SELECT modalidad FROM public\.alumnos WHERE modalidad IS NOT NULL/)
   expect(sql).toContain("NOTIFY pgrst, 'reload schema';")
 })
 

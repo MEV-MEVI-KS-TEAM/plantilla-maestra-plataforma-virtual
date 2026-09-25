@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
 import { ES_PLANTILLA } from './es-plantilla'
 import { LIMITES_LIC, bloqueLicEditable, inscripcionLicEditable, planesLicEditables, titulacionLicEditable } from '@/lib/precios-licenciatura'
-import { rangoMateriasDelMes } from '@/lib/acceso-materias'
+import { calcularDisponibilidad, materiasPorMesDePlan, rangoMateriasDelMes, type MateriaVentana } from '@/lib/acceso-materias'
+import { getMateriasPorMesByModalidad } from '@/lib/modalidades'
 import { getDesglosesLicenciatura } from '@/lib/licenciatura-utils'
 
 /**
@@ -94,4 +95,37 @@ test('5. al encender el add-on con una carrera, la tarjeta los edita y la landin
     ['12_meses', 1500 + 12 * 1450 + 38000],
     ['18_meses', 1500 + 18 * 1050 + 38000],
   ])
+})
+
+test('6. un alumno de licenciatura en 6_meses_lic abre 32 de 32 materias en el mes 6, con la ventana REAL', () => {
+  // La misma función que usan /api/alumno/materias y los gates de contenido,
+  // evaluación y quiz. Una carrera del banco: 32 materias regulares + tutorial.
+  const materias: MateriaVentana[] = [
+    { id: 'tutorial', nombre: 'Tutorial de la plataforma', nivel: 'licenciatura', orden: 0, numero_mes: 1 },
+    ...Array.from({ length: 32 }, (_, i) => ({ id: `m${i + 1}`, nombre: `Materia ${i + 1}`, nivel: 'licenciatura', orden: i + 1, numero_mes: 1 })),
+  ]
+  const alumno = { nivel: 'licenciatura', modalidad: '6_meses_lic', duracion_meses: 6, meses_desbloqueados: 0 }
+  // Los helpers académicos leen CONFIG y, con el add-on apagado, no ven la tabla
+  // de licenciatura. Se enciende SOLO aquí, como en una escuela que la vende
+  // (la prueba es síncrona y lo restaura).
+  const tabla = lic() as { activas: boolean }
+  const antes = tabla.activas
+  tabla.activas = true
+  try {
+    // Su ritmo es el de licenciatura (5.34), nunca el del '6_meses' de Sec/Prepa (Bug 121).
+    expect(materiasPorMesDePlan(alumno, 32)).toBe(5.34)
+    expect(getMateriasPorMesByModalidad('6_meses')).not.toBe(5.34)
+    const abiertas = (mes: number) => {
+      const d = calcularDisponibilidad({ ...alumno, meses_desbloqueados: mes }, materias, new Set())
+      return materias.filter((m) => m.id !== 'tutorial' && d.get(m.id)).length
+    }
+    expect([1, 2, 3, 4, 5, 6].map(abiertas)).toEqual([6, 11, 17, 22, 27, 32])
+    expect(abiertas(6)).toBe(32) // 32 de 32 en el último mes
+    expect(abiertas(5)).toBeLessThan(32) // y no antes
+    // El tutorial sigue abierto desde el primer día y sin ocupar lugar.
+    expect(calcularDisponibilidad({ ...alumno, meses_desbloqueados: 1 }, materias, new Set()).get('tutorial')).toBe(true)
+  } finally {
+    tabla.activas = antes
+  }
+  expect(lic().activas).toBe(false)
 })
