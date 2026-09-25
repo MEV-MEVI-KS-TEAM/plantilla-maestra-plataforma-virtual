@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
-import { getPlanNombre, inscripcionDelAlumno } from '@/lib/licenciatura-utils'
+import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
 import { getSiteConfig } from '@/lib/site-config'
 import { CONFIG } from '@/lib/config'
 
@@ -153,7 +153,7 @@ export async function GET(
       duracion_meses:      duracion,
       meses_desbloqueados: a.meses_desbloqueados ?? 0,
       inscripcion_pagada:  a.inscripcion_pagada ?? false,
-      monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, cfg.licenciaturas),
+      monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg)),
       sindicalizado:       Boolean(a.es_sindicalizado ?? a.sindicalizado),
       sindicato:           a.sindicato ?? null,
       // Notas internas: solo visibles para admin (el secretario recibe null)

@@ -97,7 +97,8 @@ const LIC_APAGADA = { activas: false, inscripcion: 1000 }
 
 test('4. api/alumno/pagos: total_plan con la inscripción del alumno y el campo aditivo `inscripcion`', () => {
   const ruta = leer('src/app/api/alumno/pagos/route.ts')
-  expect(ruta).toContain('const inscripcion = inscripcionDelAlumno(nivel, precios, cfg.licenciaturas)')
+  expect(ruta).toContain('const inscripcion = inscripcionDelAlumno(nivel, precios, lic)')
+  expect(ruta).toContain('const lic = tablaLicenciaturas(cfg)')
   expect(ruta).toMatch(/\n\s+inscripcion,\n/)
   expect(ruta).toContain('total_plan:    plan ? getTotalPlan(plan, inscripcion) : 0,')
   // Sigue leyendo el config PUBLICADO (plan-semanal.spec 4 lo exige).
@@ -128,7 +129,7 @@ test('5. la ficha confirma la inscripción del programa del alumno, con el mismo
   // La calcula el servidor: la ficha solo tiene el config PÚBLICO, que no trae
   // la tabla de licenciaturas (#164).
   const api = leer('src/app/api/admin/alumnos/[id]/route.ts')
-  expect(api).toContain('monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, cfg.licenciaturas),')
+  expect(api).toContain('monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg)),')
   expect(api).toMatch(/const cfg = await getSiteConfig\(\)/)
   // Sin claves por nivel es la cifra de siempre (la e2e del editor busca `$750`).
   expect(`$${inscripcionDelAlumno('secundaria', { inscripcion: 750, inscripcionSecundaria: null }, LIC_APAGADA)}`).toBe('$750')

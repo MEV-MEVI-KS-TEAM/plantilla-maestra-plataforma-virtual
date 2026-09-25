@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
 import { certificacionDe, inscripcionDe } from '@/lib/precios-nivel'
 import { inscripcionLicenciaturaDe, titulacionLicenciaturaDe } from '@/lib/precios-licenciatura'
-import { certificacionDelAlumno, inscripcionDelAlumno } from '@/lib/licenciatura-utils'
+import { certificacionDelAlumno, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
 
 /**
  * #164 — el alumno de licenciatura confirma y paga la inscripción de SU
@@ -146,7 +146,7 @@ test('4. la ficha pinta la cifra que calcula el servidor, con el config publicad
   expect(ficha).not.toMatch(/\binscripcionDe\(/)
   const api = sinComentarios(leer('src/app/api/admin/alumnos/[id]/route.ts'))
   expect(api).toMatch(/import \{[^}]*\bgetSiteConfig\b[^}]*\} from '@\/lib\/site-config'/)
-  expect(api).toContain('inscripcionDelAlumno(a.nivel as string | null, cfg.precios, cfg.licenciaturas)')
+  expect(api).toContain('inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg))')
 })
 
 test('4b. ningún consumidor de src/app le pide a inscripcionDe la inscripción de un ALUMNO', () => {
@@ -162,7 +162,7 @@ test('4c. una sola certificacionDe: la de precios-nivel.ts', () => {
   const con = archivosDe('src').filter(f => /function certificacionDe\b/.test(leer(f)))
   expect(con).toEqual(['src/lib/precios-nivel.ts'])
   const ruta = sinComentarios(leer('src/app/api/alumno/pagos/route.ts'))
-  expect(ruta).toContain('certificacion: certificacionDelAlumno(nivel, precios, cfg.licenciaturas),')
+  expect(ruta).toContain('certificacion: certificacionDelAlumno(nivel, precios, lic),')
 })
 
 test('4d. precios-licenciatura.ts se puede importar desde Node: sin imports de valor, sin enum ni namespace', () => {
@@ -175,6 +175,17 @@ test('4d. precios-licenciatura.ts se puede importar desde Node: sin imports de v
   expect(codigo).not.toMatch(/\brequire\s*\(/)
   expect(codigo).not.toContain("from '@/")
   expect(codigo).not.toMatch(/\benum\b|\bnamespace\b|\bdeclare\b/)
+})
+
+test('4d2. la tabla de licenciatura se lee con cast: hay clones sin el bloque en su config.ts', () => {
+  // `cfg.licenciaturas` a secas no compila en un clon cuyo config.ts no declara
+  // la clave (SiteConfig = Widen<typeof CONFIG>). Todo acceso va por el helper.
+  // Solo el código de las rutas (contenido/page.tsx lo CITA en un texto de la UI).
+  for (const archivo of archivosDe('src/app/api')) {
+    expect(sinComentarios(leer(archivo)), archivo).not.toMatch(/\b(cfg|config|CONFIG)\.licenciaturas\b/)
+  }
+  expect(tablaLicenciaturas({ licenciaturas: { activas: true, inscripcion: 1 } })).toEqual({ activas: true, inscripcion: 1 })
+  expect(tablaLicenciaturas({})).toBeUndefined()
 })
 
 test('4e. con el CONFIG de ESTE repo, la inscripción de cualquier alumno es un número', () => {

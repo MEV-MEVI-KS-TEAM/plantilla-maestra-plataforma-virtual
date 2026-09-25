@@ -220,6 +220,15 @@ export function porcentajeTitulacion(d: DesgloseLicenciatura | null | undefined)
 // CONFIG a pelo: por eso `lic` no tiene default.
 
 /**
+ * La tabla de licenciatura de un config (el FUSIONADO). Con cast, como el resto
+ * del add-on (`cfgLic`, `modalidadesLic`): hay clones cuyo config.ts no declara
+ * `licenciaturas`, y `cfg.licenciaturas` a secas no compilaría allí.
+ */
+export function tablaLicenciaturas(cfg: object): LicenciaturaPrecios {
+  return (cfg as { licenciaturas?: LicenciaturaPrecios }).licenciaturas
+}
+
+/**
  * La inscripción del alumno. Licenciatura: la de su programa. Si el add-on está
  * apagado o el clon la guarda con una forma propia (objeto por moneda o por
  * tarifa), la de antes: `inscripcionDe`. Cualquier otro nivel, `inscripcionDe`

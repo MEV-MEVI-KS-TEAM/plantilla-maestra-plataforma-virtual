@@ -22,7 +22,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteConfig } from '@/lib/site-config'
 import { esSemanal } from '@/lib/periodicidad'
 import { modalidadPorNivel, getTotalPlan } from '@/lib/modalidades'
-import { certificacionDelAlumno, inscripcionDelAlumno } from '@/lib/licenciatura-utils'
+import { certificacionDelAlumno, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -95,10 +95,11 @@ export async function GET() {
     const proxima    = semanas.find(s => s.estado === 'pendiente' || s.estado === 'vencido') ?? null
 
     const precios = cfg.precios as unknown as Record<string, unknown>
+    const lic = tablaLicenciaturas(cfg)
     // La inscripción del PROGRAMA del alumno, de la config PUBLICADA: la propia
     // de su nivel o la general en Sec/Prepa, la de su tabla en licenciatura
     // (#164). «Mis pagos» la pinta (alumno/pagos/page.tsx, F2-6b).
-    const inscripcion = inscripcionDelAlumno(nivel, precios, cfg.licenciaturas)
+    const inscripcion = inscripcionDelAlumno(nivel, precios, lic)
 
     return NextResponse.json({
       // `null` cuando el alumno no lleva calendario semanal (sin nivel, o
@@ -116,7 +117,7 @@ export async function GET() {
       inscripcion,
       total_plan:    plan ? getTotalPlan(plan, inscripcion) : 0,
       // La canónica de precios-nivel.ts (#162), y la titulación en licenciatura.
-      certificacion: certificacionDelAlumno(nivel, precios, cfg.licenciaturas),
+      certificacion: certificacionDelAlumno(nivel, precios, lic),
       resumen: {
         pagadas:     pagadas.length,
         condonadas:  condonadas.length,
