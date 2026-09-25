@@ -33,7 +33,7 @@ test('1. «Mis pagos» pinta la inscripción que devuelve la API, con el formato
   // fija de dónde sale `precios`: si volviera a ser el config de fábrica, «Mis
   // pagos» regresaría al defecto que F2-6b cierra (K5 del diseño).
   const ruta = sinComentarios(leer('src/app/api/alumno/pagos/route.ts'))
-  expect(ruta).toContain('inscripcion:   inscripcionDe(nivel, precios),')
+  expect(ruta).toContain('const inscripcion = inscripcionDelAlumno(nivel, precios, cfg.licenciaturas)')
   expect(ruta).toMatch(/const cfg = await getSiteConfig\(\)/)
   expect(ruta).toContain('const precios = cfg.precios as unknown as Record<string, unknown>')
   expect(ruta.match(/\bprecios\s*=/g)).toHaveLength(1)

@@ -283,18 +283,29 @@ export function planesPorNivel(
   return activas.filter(m => !m.nivel || m.nivel === nivel)
 }
 
+/** Niveles que no cobran con la tabla de modalidades del programa (Sec/Prepa). */
+const NIVELES_CON_TABLA_PROPIA: ReadonlySet<string> = new Set(['licenciatura', 'diplomado'])
+
 /**
  * El plan de un nivel cuando solo hay UNO, para deducirlo sin preguntar.
  *
  * Devuelve `undefined` con 0 y con 2 o más: quien llama decide si muestra un
  * selector o deduce. NO adivina cuál de dos planes quiso el alumno — en un
  * cobro por plan, elegir por él es elegir cuánto paga.
+ *
+ * Licenciatura y diplomado tienen su propia tabla de precios (el add-on y el
+ * catálogo de cursos): de ESTA tabla solo les toca un plan que los nombre con
+ * `nivel`. Sin esa guarda, el plan único sin `nivel` de Sec/Prepa les armaba el
+ * calendario semanal y el total de «Mis pagos» (#164). `planesPorNivel` no
+ * cambia: la landing y el registro siguen con su regla.
  */
 export function modalidadPorNivel(
   nivel: string | null | undefined,
   mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
 ): ModalidadPrograma | undefined {
-  const planes = planesPorNivel(nivel, mods)
+  const planes = nivel && NIVELES_CON_TABLA_PROPIA.has(nivel)
+    ? getModalidadesActivas(mods).filter(m => m.nivel === nivel)
+    : planesPorNivel(nivel, mods)
   return planes.length === 1 ? planes[0] : undefined
 }
 

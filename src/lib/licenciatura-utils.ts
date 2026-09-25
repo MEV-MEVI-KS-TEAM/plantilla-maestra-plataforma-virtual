@@ -1,4 +1,10 @@
 import { CONFIG } from '@/lib/config'
+import { certificacionDe, inscripcionDe, type Precios } from '@/lib/precios-nivel'
+import {
+  inscripcionLicenciaturaDe,
+  titulacionLicenciaturaDe,
+  type LicenciaturaPrecios,
+} from '@/lib/precios-licenciatura'
 
 /**
  * Helpers del add-on de licenciaturas.
@@ -201,4 +207,42 @@ export function getTotalComunLicenciatura(
 export function porcentajeTitulacion(d: DesgloseLicenciatura | null | undefined): number | null {
   if (!d || d.total <= 0 || d.titulacion <= 0) return null
   return Math.round((d.titulacion / d.total) * 100)
+}
+
+// ─── Lo que paga UN alumno según su nivel (#164) ─────────────────────────────
+//
+// `inscripcionDe` y `certificacionDe` (precios-nivel.ts) son de Secundaria y
+// Preparatoria: a cualquier otro nivel le dan la inscripción general y la
+// certificación de preparatoria. Todo lo que le cobra o le confirma una cifra a
+// UN alumno pasa por aquí, que manda a licenciatura a su propia tabla.
+//
+// `precios` y `lic` son los del config FUSIONADO (`getSiteConfig()`), nunca
+// CONFIG a pelo: por eso `lic` no tiene default.
+
+/**
+ * La inscripción del alumno. Licenciatura: la de su programa. Si el add-on está
+ * apagado o el clon la guarda con una forma propia (objeto por moneda o por
+ * tarifa), la de antes: `inscripcionDe`. Cualquier otro nivel, `inscripcionDe`
+ * sin cambio (diplomado y sin nivel siguen con la general).
+ */
+export function inscripcionDelAlumno(
+  nivel: string | null | undefined,
+  precios: Precios,
+  lic: LicenciaturaPrecios,
+): number {
+  return (nivel === 'licenciatura' ? inscripcionLicenciaturaDe(lic) : null) ?? inscripcionDe(nivel, precios)
+}
+
+/**
+ * La certificación del alumno (#162). Secundaria y preparatoria: la canónica.
+ * Licenciatura: su titulación. Diplomado y sin nivel: 0, para no anunciarles la
+ * certificación de preparatoria.
+ */
+export function certificacionDelAlumno(
+  nivel: string | null | undefined,
+  precios: Precios,
+  lic: LicenciaturaPrecios,
+): number {
+  if (nivel === 'licenciatura') return titulacionLicenciaturaDe(lic) ?? 0
+  return nivel === 'secundaria' || nivel === 'preparatoria' ? certificacionDe(nivel, precios) : 0
 }

@@ -22,7 +22,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteConfig } from '@/lib/site-config'
 import { esSemanal } from '@/lib/periodicidad'
 import { modalidadPorNivel, getTotalPlan } from '@/lib/modalidades'
-import { inscripcionDe } from '@/lib/precios-nivel'
+import { certificacionDelAlumno, inscripcionDelAlumno } from '@/lib/licenciatura-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,13 +39,6 @@ type Fila = {
 function hoyMX(): string {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }))
     .toISOString().slice(0, 10)
-}
-
-/** La certificación del nivel, con los alias que conviven en `precios`. */
-function certificacionDe(nivel: string | null, p: Record<string, unknown>): number {
-  if (nivel === 'secundaria')   return Number(p.certificacionSecundaria ?? p.certificacion_secundaria ?? 0)
-  if (nivel === 'preparatoria') return Number(p.certificacionPreparatoria ?? p.certificacion_preparatoria ?? 0)
-  return 0
 }
 
 export async function GET() {
@@ -102,10 +95,15 @@ export async function GET() {
     const proxima    = semanas.find(s => s.estado === 'pendiente' || s.estado === 'vencido') ?? null
 
     const precios = cfg.precios as unknown as Record<string, unknown>
+    // La inscripción del PROGRAMA del alumno, de la config PUBLICADA: la propia
+    // de su nivel o la general en Sec/Prepa, la de su tabla en licenciatura
+    // (#164). «Mis pagos» la pinta (alumno/pagos/page.tsx, F2-6b).
+    const inscripcion = inscripcionDelAlumno(nivel, precios, cfg.licenciaturas)
 
     return NextResponse.json({
-      // `null` cuando el alumno no lleva calendario semanal (diplomado o sin
-      // nivel): la pantalla lo explica en vez de pintar una tabla vacía.
+      // `null` cuando el alumno no lleva calendario semanal (sin nivel, o
+      // licenciatura o diplomado sin un plan que los nombre): la pantalla lo
+      // explica en vez de pintar una tabla vacía.
       periodicidad:  plan ? 'semanal' : null,
       nivel,
       matricula:     alumno?.matricula ?? null,
@@ -115,11 +113,10 @@ export async function GET() {
       // a medida tiene las semanas que le generó el admin, no las del plan.
       semanas_total: semanas.length || plan?.semanas || 0,
       cuota:         plan?.cuotaSemanal ?? 0,
-      // La inscripción del NIVEL del alumno (la propia o, si no, la general), de
-      // la config PUBLICADA. «Mis pagos» la pinta (alumno/pagos/page.tsx, F2-6b).
-      inscripcion:   inscripcionDe(nivel, precios),
-      total_plan:    plan ? getTotalPlan(plan, inscripcionDe(nivel, precios)) : 0,
-      certificacion: certificacionDe(nivel, precios),
+      inscripcion,
+      total_plan:    plan ? getTotalPlan(plan, inscripcion) : 0,
+      // La canónica de precios-nivel.ts (#162), y la titulación en licenciatura.
+      certificacion: certificacionDelAlumno(nivel, precios, cfg.licenciaturas),
       resumen: {
         pagadas:     pagadas.length,
         condonadas:  condonadas.length,
