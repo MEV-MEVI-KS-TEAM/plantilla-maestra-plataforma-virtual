@@ -40,6 +40,12 @@ import { mensajeWhatsAppInvalido, normalizarWhatsApp } from '@/lib/contacto-ui'
 import { planesPorNivel, type ModalidadPrograma } from '@/lib/modalidades'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, mensualidadDe, type NivelConPrecio } from '@/lib/precios-nivel'
+import {
+  bloqueLicEditable,
+  inscripcionLicEditable,
+  planesLicEditables,
+  titulacionLicEditable,
+} from '@/lib/precios-licenciatura'
 
 // ─── Tipos públicos ──────────────────────────────────────────────────────────
 
@@ -673,6 +679,70 @@ function validarModalidades(
   return { ok: true, valor: salida }
 }
 
+// ─── Planes de licenciatura ──────────────────────────────────────────────────
+
+/**
+ * `licenciaturas.modalidades`: el mapa por id de la tabla de LICENCIATURA,
+ * aparte del de Sec/Prepa. Solo `mensualidad` (`null` = quitar el override):
+ * duración, materias por mes y `activa` son el producto.
+ *
+ * El mínimo es 1 (`LIMITES.precioNivelMin`): una mensualidad de 0 esconde el
+ * plan de la landing mientras el registro lo sigue ofreciendo.
+ */
+const esquemaOverrideModalidadLic = z.strictObject({
+  mensualidad: z.int().nullable().optional(),
+})
+
+/** La tabla de licenciatura de la base, con cast: hay clones sin el bloque. */
+const licDe = (base: SiteConfig): unknown => (base as unknown as { licenciaturas?: unknown }).licenciaturas
+
+function validarModalidadesLic(
+  valor: unknown,
+  campo: Campo,
+  base: SiteConfig,
+): Limpio<Record<string, { mensualidad: number }>> | Fallo {
+  const raiz = 'licenciaturas.modalidades'
+  if (!esObjetoPlano(valor)) return fallo(`El campo ${campo.etiqueta} debe ser un objeto por id de plan`, raiz)
+  const min = campo.min ?? LIMITES.precioNivelMin
+  const max = campo.max ?? LIMITES.precioMax
+  // Solo los planes que se pueden publicar: activos, con la forma estándar y
+  // sin los `*_dip` de los diplomados montados en el riel.
+  const ids = new Set(planesLicEditables(licDe(base)).map((m) => m.id))
+  const salida: Record<string, { mensualidad: number }> = {}
+
+  for (const id of Object.keys(valor)) {
+    const clave = `${raiz}.${id}`
+    if (CLAVES_PROHIBIDAS.has(id)) return fallo(`Clave no editable: ${clave}`, clave)
+    if (!ids.has(id)) return fallo(`Plan de licenciatura desconocido: ${id}`, clave)
+    const ov = valor[id]
+    if (ov === null || ov === undefined) continue
+    if (esObjetoPlano(ov)) {
+      for (const k of Object.keys(ov)) {
+        if (CLAVES_PROHIBIDAS.has(k)) return fallo(`Clave no editable: ${clave}.${k}`, `${clave}.${k}`)
+      }
+    }
+    const r = esquemaOverrideModalidadLic.safeParse(ov)
+    if (!r.success) {
+      const issue = r.error.issues[0]
+      if (issue?.code === 'unrecognized_keys') {
+        const keys = (issue as { keys?: string[] }).keys ?? []
+        return fallo(`Clave no editable: ${clave}.${keys[0] ?? '?'}`, `${clave}.${keys[0] ?? '?'}`)
+      }
+      if (issue?.path?.[0] === 'mensualidad') {
+        return fallo(`La mensualidad del plan ${id} debe ser un entero entre ${min} y ${max}`, clave)
+      }
+      return fallo(`El plan ${id} debe ser un objeto con su mensualidad`, clave)
+    }
+    if (typeof r.data.mensualidad === 'number') {
+      if (r.data.mensualidad < min || r.data.mensualidad > max) {
+        return fallo(`La mensualidad del plan ${id} debe ser un entero entre ${min} y ${max}`, clave)
+      }
+      salida[id] = { mensualidad: r.data.mensualidad }
+    }
+  }
+  return { ok: true, valor: salida }
+}
+
 // ─── Hoja por descriptor ─────────────────────────────────────────────────────
 
 interface Contexto {
@@ -692,6 +762,19 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
   // si faltara, mejor rechazar que guardar sin límites.
   if (!campo) return fallo(`Clave sin descriptor: ${ruta}`, ruta)
   const defaultBase = leerRuta(ctx.base, ruta)
+
+  // Licenciatura: solo sobre la forma estándar de la plantilla. En una escuela
+  // con forma propia el merge ignoraría lo guardado, y el admin creería que
+  // publicó algo que nadie ve: mejor decírselo al guardar.
+  if (ruta.startsWith('licenciaturas.')) {
+    const lic = licDe(ctx.base)
+    const editable = ruta === 'licenciaturas.inscripcion' ? inscripcionLicEditable(lic)
+      : ruta === 'licenciaturas.certificacion' ? titulacionLicEditable(lic)
+      : bloqueLicEditable(lic)
+    if (!editable) {
+      return fallo(`${campo.etiqueta}: los precios de licenciatura de tu escuela no se editan desde aquí; pídeselo a soporte`, ruta)
+    }
+  }
   const max = campo.max ?? Number.POSITIVE_INFINITY
 
   switch (campo.tipo) {
@@ -732,6 +815,8 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
       return validarListaObjetos(valor, campo, defaultBase)
     case 'modalidades':
       return validarModalidades(valor, campo, ctx.base)
+    case 'modalidades-lic':
+      return validarModalidadesLic(valor, campo, ctx.base)
   }
 }
 
@@ -926,6 +1011,9 @@ export function recortarAEditables(cfg: SiteConfig): ConfigEditable {
   const salida: ObjetoPlano = {}
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta === 'modalidades') continue
+    // Los precios de licenciatura no viajan todavía al editor: se editan desde
+    // su tarjeta (Bloque B, B3), que decide qué piezas manda y con qué forma.
+    if (ruta.startsWith('licenciaturas.')) continue
     const v = leerRuta(cfg, ruta)
     if (v === undefined) continue
     escribirRuta(salida, ruta, Array.isArray(v) ? JSON.parse(JSON.stringify(v)) : v)
@@ -983,9 +1071,34 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
 
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta === 'modalidades') continue // objeto por id, no ruta con puntos
+    if (ruta.startsWith('licenciaturas.')) continue // su propia forma, abajo
     const v = leerRuta(data, ruta)
     if (v === undefined || v === null) continue
     escribirRuta(salida, ruta, Array.isArray(v) ? JSON.parse(JSON.stringify(v)) : v)
+  }
+
+  // Licenciatura: los dos precios si son números y la mensualidad de cada plan
+  // (mapa por id). Con `base`, solo lo que esa escuela puede publicar: si su
+  // tabla dejó de ser estándar, el editor no reenvía algo que el PUT rechaza.
+  const licData = data.licenciaturas
+  if (esObjetoPlano(licData)) {
+    const licBase = base ? licDe(base) : undefined
+    const l: ObjetoPlano = {}
+    if (typeof licData.inscripcion === 'number' && (!base || inscripcionLicEditable(licBase))) l.inscripcion = licData.inscripcion
+    if (typeof licData.certificacion === 'number' && (!base || titulacionLicEditable(licBase))) l.certificacion = licData.certificacion
+    const idsLic = base ? new Set(planesLicEditables(licBase).map((m) => m.id)) : null
+    const modsLic = licData.modalidades
+    if (esObjetoPlano(modsLic)) {
+      const limpias: ObjetoPlano = {}
+      for (const id of Object.keys(modsLic)) {
+        if (CLAVES_PROHIBIDAS.has(id)) continue
+        if (idsLic && !idsLic.has(id)) continue
+        const ov = modsLic[id]
+        if (esObjetoPlano(ov) && typeof ov.mensualidad === 'number') limpias[id] = { mensualidad: ov.mensualidad }
+      }
+      if (Object.keys(limpias).length > 0) l.modalidades = limpias
+    }
+    if (Object.keys(l).length > 0) salida.licenciaturas = l
   }
 
   const mods = data.modalidades

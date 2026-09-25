@@ -52,7 +52,8 @@ que no tenerlo.
 | Nombre, dominio, colores, logo | `src/lib/config.ts` |
 | Niveles, modalidades, precios | `src/lib/config.ts` |
 | Inscripción y mensualidad **por nivel** | El MISMO resolver de la plataforma (`src/lib/precios-nivel.ts`), con las mismas claves que leen la landing, el estado de cuenta y la ficha del alumno: `precios.inscripcionSecundaria` / `precios.inscripcionPreparatoria` y `precios.mensualidadSecundaria3Meses`, `…6Meses`, `precios.mensualidadPreparatoria3Meses`, `…6Meses`. Vacías (`null`) = la general. Sin mensualidad propia, Secundaria usa su alias `precios.secundaria_<n>meses_normal` si es mayor que 0 y Preparatoria, la del plan. Solo refleja `config.ts`: lo que el admin publica después en «Personalizar mi página» no llega al papel |
-| Licenciaturas, cursos de ingreso | `src/lib/config.ts` |
+| Licenciaturas | `src/lib/config.ts` con lo publicado en «Personalizar mi página» encima: inscripción, titulación y la mensualidad de cada plan (`site_config` → `licenciaturas`, con la MISMA regla de la plataforma, `src/lib/precios-licenciatura.ts`). Sin `.env.local`, sin fila o con `--solo-config`, solo `config.ts`. Si la lectura falla, el script aborta |
+| Cursos de ingreso | `src/lib/config.ts` |
 | Materias, semanas, preguntas, matrícula | consulta real a Supabase vía `.env.local` |
 | Nombre del admin y contraseñas | `entrega.local.json` (ignorado por git) |
 | Cuentas del cliente con su contraseña: correo, Supabase y GoDaddy (Infraestructura) | `entrega.local.json` → `cuentas`: `{ "correo": { "email", "password" }, "supabase": {…}, "godaddy": {…} }`. En MEV salen de la ficha de `credenciales-clientes` (`outlook_*`, `supabase_*`, `godaddy_*`) |
@@ -160,8 +161,9 @@ Supabase, y sin ellas no puede renovar el dominio ni entrar a su base de datos.
 Solo van en el PDF: el mensaje de WhatsApp dice que están ahí, sin repetirlas.
 
 Fuera de las cuentas, todo lo que imprime es una dirección o un identificador público. De
-`.env.local` solo se usa `NEXT_PUBLIC_SUPABASE_URL`; la service_role se lee
-únicamente para contar filas del inventario y nunca llega al documento.
+`.env.local` solo se usa `NEXT_PUBLIC_SUPABASE_URL`; la anon key (o, si falta, la
+service_role) se usa para leer los precios de licenciatura publicados, y la
+service_role para contar filas del inventario. Ninguna llega al documento.
 
 ## Qué NO va en el documento
 

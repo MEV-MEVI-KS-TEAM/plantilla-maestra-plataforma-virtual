@@ -258,9 +258,16 @@ test('10b. toLandingConfig = el recorte público + landing, y nada más', () => 
 test('11. CLAVES_EDITABLES no contiene ninguna clave prohibida en F1', () => {
   const prohibidas = [
     'modo', 'niveles', 'prefijoMatricula', 'dominio', 'urlBase',
-    'licenciaturas', 'pagos', 'cursosIngreso', 'diploma', 'documentosRequeridos',
+    'pagos', 'cursosIngreso', 'diploma', 'documentosRequeridos',
     'landing.mostrarCatalogoCursos', 'landing.convenios',
   ]
+  // De `licenciaturas` se publican SOLO sus tres precios (Bloque B). Encender el
+  // add-on, las carreras o la estructura de los planes siguen siendo el producto.
+  expect((CLAVES_EDITABLES as readonly string[]).filter((c) => c === 'licenciaturas' || c.startsWith('licenciaturas.')).sort())
+    .toEqual(['licenciaturas.certificacion', 'licenciaturas.inscripcion', 'licenciaturas.modalidades'])
+  for (const p of ['licenciaturas', 'licenciaturas.activas', 'licenciaturas.carreras', 'licenciaturas.rutas']) {
+    expect(esClaveEditable(p), p).toBe(false)
+  }
   for (const p of prohibidas) {
     expect(CLAVES_EDITABLES).not.toContain(p)
     // Ni como raíz de una ruta anidada ('pagos.activo', 'diploma.etiqueta'…).
@@ -401,7 +408,8 @@ test('toda ruta editable que sea arreglo en CONFIG tiene normalizador (fail-clos
   // prueba lo hace ruidoso.
   const cfg = esperado() as unknown as Record<string, unknown>
   const rutasArreglo = CLAVES_EDITABLES.filter((ruta) => {
-    if (ruta === 'modalidades') return false
+    // Semántica especial: en la BD son objetos por id, no arreglos.
+    if (ruta === 'modalidades' || ruta === 'licenciaturas.modalidades') return false
     let actual: unknown = cfg
     for (const seg of ruta.split('.')) actual = (actual as Record<string, unknown>)[seg]
     return Array.isArray(actual)

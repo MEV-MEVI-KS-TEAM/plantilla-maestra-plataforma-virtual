@@ -10,6 +10,7 @@
  *   pnpm entrega                    # PDF + mensaje
  *   pnpm entrega --solo-pdf         # solo el PDF
  *   pnpm entrega --datos otro.json  # otro archivo de datos
+ *   pnpm entrega --solo-config      # sin leer lo publicado en el panel
  *
  * TODO lo que sabe del cliente lo saca de `src/lib/config.ts` y de la base de
  * datos: nombre, dominio, colores, logo, niveles, modalidades, precios,
@@ -81,6 +82,10 @@ const { CONFIG } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/config.ts
 // se importa igual que config.ts. Ver la Fase 2 en precios-nivel.ts.
 const { inscripcionDe, mensualidadDe, certificacionDe } =
   await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-nivel.ts')).href)
+// Los precios de LICENCIATURA publicados en el panel se aplican con la MISMA
+// regla que usa la plataforma al fusionar (Bloque B): también es puro.
+const { licenciaturaEfectiva } =
+  await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-licenciatura.ts')).href)
 
 
 const dominio = String(CONFIG.dominio || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -169,6 +174,56 @@ const ALUMNOS_PRUEBA = Array.isArray(D.alumnosPrueba) && D.alumnosPrueba.length
   ? D.alumnosPrueba.filter(a => a?.email)
   : (D.alumnoEmail ? [{ email: D.alumnoEmail, password: D.alumnoPassword }] : [])
 
+/* ── 2b. Lo publicado en «Personalizar mi página» ────────────────────────── */
+/**
+ * Los precios de LICENCIATURA que el admin publica en su panel (inscripción,
+ * titulación y la mensualidad de cada plan) llegan al papel: se leen de
+ * `site_config` y se aplican con `licenciaturaEfectiva`, la regla de la
+ * plataforma. Sin fila, sin `.env.local` o con `--solo-config`, la tabla es
+ * EXACTAMENTE la de config.ts (el mismo objeto).
+ *
+ * ⚠️ Los de Secundaria y Preparatoria todavía NO: el documento los toma de
+ * config.ts (decisión 14 de la Fase 2). Si hay alguno publicado, se avisa.
+ *
+ * Si la lectura FALLA (base caída, pausada, llave inválida) se aborta: un
+ * documento oficial con precios que quizá ya no son los de la escuela es peor
+ * que no tenerlo. `--solo-config` genera con los de config.ts a sabiendas.
+ */
+function leerEnvLocal() {
+  const env = path.join(RAIZ, '.env.local')
+  if (!fs.existsSync(env)) return null
+  // `\r?\n`: un .env.local guardado en Windows (CRLF) también se lee.
+  return Object.fromEntries(fs.readFileSync(env, 'utf8').split(/\r?\n/)
+    .map(l => l.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean)
+    .map(m => [m[1], m[2].trim().replace(/^["']|["']$/g, '')]))
+}
+async function leerPublicado() {
+  if (flag('solo-config')) { log('  · --solo-config: los precios salen solo de config.ts'); return {} }
+  const vars = leerEnvLocal()
+  if (!vars) { log('  · sin .env.local — los precios salen de config.ts'); return {} }
+  // Basta la anon key: `site_config` se lee en abierto (la landing la lee así).
+  const url = vars.NEXT_PUBLIC_SUPABASE_URL, key = vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) { log('  · .env.local sin credenciales — los precios salen de config.ts'); return {} }
+  const { createClient } = await import('@supabase/supabase-js')
+  const sb = createClient(url, key, { auth: { persistSession: false } })
+  const { data, error } = await sb.from('site_config').select('data').eq('id', 1).maybeSingle()
+  if (error) {
+    // Base sin la tabla: nadie ha publicado nada. Mismos códigos que site-config.ts.
+    if (error.code === 'PGRST205' || error.code === '42P01') { log('  · la base no tiene site_config — los precios salen de config.ts'); return {} }
+    abortar(`No se pudo leer lo publicado en el panel (site_config): ${error.message}`,
+      'El documento podría decir precios que ya no son los de la escuela.\nRevisa la base y vuelve a correr, o usa --solo-config para generar solo con config.ts.')
+  }
+  const pub = data?.data
+  return pub && typeof pub === 'object' && !Array.isArray(pub) ? pub : {}
+}
+log('· Leyendo lo publicado en el panel…')
+const PUBLICADO = await leerPublicado()
+/** La tabla de licenciatura con lo publicado encima (la de config.ts si no hay nada). */
+const LIC = licenciaturaEfectiva(CONFIG.licenciaturas, PUBLICADO.licenciaturas)
+if (LIC !== CONFIG.licenciaturas) log('  · licenciatura: con los precios publicados en el panel')
+if (PUBLICADO.precios || PUBLICADO.modalidades)
+  log('  ⚠ hay precios de Secundaria/Preparatoria publicados en el panel: este documento todavía los toma de config.ts')
+
 /* ── 3. Conteo real de contenido ─────────────────────────────────────────── */
 async function inventario() {
   const env = path.join(RAIZ, '.env.local')
@@ -197,7 +252,7 @@ async function inventario() {
   // programas entre sí y el documento diría "48 materias" donde el alumno de
   // cada uno cursa 24. Ver Bug 59 del playbook.
   inv.porCarrera = {}
-  for (const c of (CONFIG.licenciaturas?.activas ? (CONFIG.licenciaturas.carreras || []) : [])) {
+  for (const c of (LIC?.activas ? (LIC.carreras || []) : [])) {
     const materias = await n('materias', q => q.eq('carrera', c.slug).eq('activa', true))
     if (materias == null) continue
     const { data: ids } = await sb.from('materias').select('id').eq('carrera', c.slug).eq('activa', true)
@@ -309,7 +364,7 @@ const tipoDePrograma = (c) => {
   if (n.startsWith('diplomado')) return 'diplomado'
   return 'licenciatura'
 }
-const CARRERAS = (CONFIG.licenciaturas?.activas ? (CONFIG.licenciaturas.carreras || []) : [])
+const CARRERAS = (LIC?.activas ? (LIC.carreras || []) : [])
   .map(c => ({ ...c, tipo: tipoDePrograma(c), inv: INV.porCarrera?.[c.slug] ?? null }))
 const TIPOS = [...new Set(CARRERAS.map(c => c.tipo))]
 
@@ -318,7 +373,7 @@ const TIPOS = [...new Set(CARRERAS.map(c => c.tipo))]
  * lista escrita a mano en el generador envejece a la primera entrega.
  */
 const existe = (rel) => { try { return fs.existsSync(path.join(RAIZ, rel)) } catch { return false } }
-const RUTAS_TITULACION = (CONFIG.licenciaturas?.rutas || []).filter(r => r.activa !== false)
+const RUTAS_TITULACION = (LIC?.rutas || []).filter(r => r.activa !== false)
 const FORMULARIO_DIAGNOSTICO = existe('src/app/(dashboard)/admin/prospectos/page.tsx')
   || existe('src/app/api/admin/prospectos/route.ts')
 /**
@@ -414,7 +469,7 @@ const ETIQUETA_PROGRAMAS = TIPOS.length === 0 ? 'Programas'
 // (se decía «8 módulos», que el cliente no encuentra en su panel).
 
 // Titulación con precio propio: cada plan con su costo completo. `[]` si no aplica.
-const DESGLOSES_LIC = CONFIG.licenciaturas?.activas ? desglosesLicenciatura(CONFIG.licenciaturas, CARRERAS) : []
+const DESGLOSES_LIC = LIC?.activas ? desglosesLicenciatura(LIC, CARRERAS) : []
 
 const nivelesPrograma = CONFIG.niveles.filter(n => n !== 'licenciatura')
 const modalidadesActivas = (CONFIG.modalidades || []).filter(m => m && typeof m === 'object' && m.activa)
@@ -504,12 +559,12 @@ if (SEMANAL) {
 // un plan gratis en el documento de entrega es una promesa que nadie quiso
 // hacer.
 if (CARRERAS.length) {
-  const rutasLic = (CONFIG.licenciaturas.rutas || []).filter(r => r.activa !== false)
+  const rutasLic = (LIC.rutas || []).filter(r => r.activa !== false)
   const deRuta = new Map()
   for (const r of rutasLic)
     for (const m of (r.modalidades || [])) deRuta.set(m.id, r)
 
-  for (const m of (CONFIG.licenciaturas.modalidades || []).filter(x => x.activa !== false)) {
+  for (const m of (LIC.modalidades || []).filter(x => x.activa !== false)) {
     if (!m.mensualidad) continue
     const r = deRuta.get(m.id)
     const nombre = r && rutasLic.length > 1
@@ -521,7 +576,7 @@ if (CARRERAS.length) {
   }
 
   // Los diplomados llevan su plan y su precio en su propio bloque del config.
-  const modsDip = (CONFIG.licenciaturas.modalidadesDiplomado || []).filter(x => x.activa !== false)
+  const modsDip = (LIC.modalidadesDiplomado || []).filter(x => x.activa !== false)
   for (const c of CARRERAS.filter(x => x.tipo === 'diplomado' && x.precio)) {
     const m = modsDip[0]
     if (!m) continue
@@ -654,9 +709,9 @@ const datos = {
   // Se enriquece con el conteo REAL de la base y con el tipo de cada programa,
   // para que el documento no repita el `totalMaterias` declarado en el config
   // sin comprobarlo, ni llame "licenciatura" a un curso de preparación.
-  licenciaturas: CONFIG.licenciaturas?.activas
-    ? { ...CONFIG.licenciaturas, carreras: CARRERAS }
-    : CONFIG.licenciaturas,
+  licenciaturas: LIC?.activas
+    ? { ...LIC, carreras: CARRERAS }
+    : LIC,
   anclaProgramas,
   etiquetaProgramas: ETIQUETA_PROGRAMAS,
   incluirCursos: true,
@@ -829,7 +884,7 @@ if (!flag('solo-pdf')) {
       .filter(([, cs]) => cs.length)
 
     for (const [titulo, carreras] of grupos) {
-    const modsLic = (CONFIG.licenciaturas.modalidades || []).filter(m => m.activa !== false)
+    const modsLic = (LIC.modalidades || []).filter(m => m.activa !== false)
     L.push(`🎓 ${grupos.length > 1 ? titulo : ETIQUETA_PROGRAMAS.toUpperCase()}`)
     for (const c of carreras) {
       const partes = []
@@ -842,7 +897,7 @@ if (!flag('solo-pdf')) {
     // Un cliente puede vender el mismo programa por caminos que se titulan
     // distinto. Listar sus planes en una sola línea borra la diferencia, que
     // es justo lo que el cliente tiene que poder explicar a un prospecto.
-    const RUTAS = (CONFIG.licenciaturas.rutas || []).filter(r => r.activa !== false)
+    const RUTAS = (LIC.rutas || []).filter(r => r.activa !== false)
     const esDip = titulo === 'DIPLOMADOS'
     // El desglose con titulación es de las licenciaturas, no de los cursos de
     // preparación que comparten los mismos rieles.
@@ -851,7 +906,7 @@ if (!flag('solo-pdf')) {
     if (esDip) {
       // El diplomado tiene su propio plan y su propio precio, y ninguno de los
       // dos vive en `licenciaturas.modalidades`.
-      const modsDip = (CONFIG.licenciaturas.modalidadesDiplomado || []).filter(m => m.activa !== false)
+      const modsDip = (LIC.modalidadesDiplomado || []).filter(m => m.activa !== false)
       for (const c of carreras) {
         if (!c.precio) continue
         const p = c.precio
@@ -865,8 +920,8 @@ if (!flag('solo-pdf')) {
         L.push(`Precio · ${linea.join(' · ')}`)
       }
       // El marco legal del diplomado: lo que se vende es la preparación.
-      const aviso = CONFIG.licenciaturas.avisoCostoDiplomado
-      const dis = CONFIG.licenciaturas.disclaimerDiplomado
+      const aviso = LIC.avisoCostoDiplomado
+      const dis = LIC.disclaimerDiplomado
       if (aviso) L.push(`⚠️ ${aviso}`)
       if (dis) L.push(`⚠️ ${dis}`)
     } else if (RUTAS.length > 1) {
@@ -898,7 +953,7 @@ if (!flag('solo-pdf')) {
       L.push(`Precio: ${precios}`)
     }
 
-    const inscLic = CONFIG.licenciaturas.inscripcion
+    const inscLic = LIC.inscripcion
     // Con el desglose, la inscripción ya va dentro de cada plan.
     if (!esDip && !desgloses.length) L.push(inscLic ? `Inscripción: ${mxn(inscLic)}` : 'Sin inscripción adicional.')
     L.push('Se inscriben desde tu misma página, eligiendo el programa al registrarse.', '')

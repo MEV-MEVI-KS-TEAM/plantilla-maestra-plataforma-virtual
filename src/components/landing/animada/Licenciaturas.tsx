@@ -45,7 +45,6 @@ import Link from 'next/link'
 import type { CanalEscuela } from '@/lib/contacto-ui'
 import {
   getCarrerasLicenciatura,
-  getDesglosesLicenciatura,
   porcentajeTitulacion,
   type DesgloseLicenciatura,
 } from '@/lib/licenciatura-utils'
@@ -79,7 +78,7 @@ const REQUISITOS = ['Certificado de Bachillerato o Preparatoria', 'CURP', 'Acta 
 /** Clases estáticas (Tailwind no ve clases armadas al vuelo). */
 const COLUMNAS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'sm:grid-cols-2 lg:grid-cols-4' }
 
-export function SeccionLicenciaturas({ t, tOscuro, fmt, canal, variante, textos }: {
+export function SeccionLicenciaturas({ t, tOscuro, fmt, canal, variante, textos, planes }: {
   /** Tokens de la sección (clara). */
   t: TokensSeccion
   /** Tokens oscuros para el panel del costo. */
@@ -90,9 +89,14 @@ export function SeccionLicenciaturas({ t, tOscuro, fmt, canal, variante, textos 
   variante: string
   /** Textos ya resueltos (automáticos + los que escribió la escuela). */
   textos: TextosLicenciaturas
+  /**
+   * El desglose que ya calculó la landing con la tabla EFECTIVA. Llega por
+   * props para que el panel del costo y la tarjeta de «Programas» digan la
+   * misma cifra: si esta sección lo recalculara con CONFIG, no vería lo publicado.
+   */
+  planes: readonly DesgloseLicenciatura[]
 }) {
   const carreras = getCarrerasLicenciatura()
-  const planes = getDesglosesLicenciatura()
   if (carreras.length === 0 || planes.length === 0) return null
 
   const ritmos = `${unirConO(planes.map(p => String(p.meses)))} meses`

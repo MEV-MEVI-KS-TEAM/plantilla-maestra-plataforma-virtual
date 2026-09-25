@@ -29,6 +29,7 @@ import {
 
 const TIPOS: ReadonlyArray<TipoCampo> = [
   'texto', 'textarea', 'hex', 'url', 'telefono', 'email', 'entero', 'decimal', 'lista-texto', 'lista-objetos', 'modalidades',
+  'modalidades-lic',
 ]
 const TIPOS_SUB: ReadonlyArray<TipoSubcampo> = ['texto', 'textarea', 'entero']
 const SECCIONES_VALIDAS: ReadonlyArray<SeccionCampo> = [
@@ -133,7 +134,7 @@ test('3. tipos y secciones válidos; toda lista tiene maxItems; lista-objetos ti
     }
 
     if (c.tipo === 'lista-texto') expect(c.max, `${c.clave}: lista-texto sin max por elemento`).toBeGreaterThan(0)
-    if (c.tipo === 'entero' || c.tipo === 'decimal' || c.tipo === 'modalidades') {
+    if (c.tipo === 'entero' || c.tipo === 'decimal' || c.tipo === 'modalidades' || c.tipo === 'modalidades-lic') {
       expect(c.min, `${c.clave}: sin min`).toBeDefined()
       expect(c.max, `${c.clave}: sin max`).toBeDefined()
       expect(c.min!).toBeLessThanOrEqual(c.max!)
@@ -174,6 +175,7 @@ test('4. el tipo del descriptor coincide con el tipo del default en CONFIG', () 
         break
       }
       case 'modalidades':
+      case 'modalidades-lic':
         expect(Array.isArray(v), c.clave).toBe(true)
         break
       default:

@@ -30,6 +30,7 @@ import {
   whatsappEscuelaDisponible,
 } from '@/lib/contacto-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
+import { licenciaturaEfectiva, type OverrideLicenciaturas } from '@/lib/precios-licenciatura'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -133,15 +134,22 @@ type RutasHoja<T, Prefijo extends string = ''> = {
  * FUERA DE F1 A PROPÓSITO — cambiar esto es cambiar el producto, no la marca, y
  * cada uno arrastra migraciones, rutas o lógica de cobro que un override en la
  * BD no puede acompañar:
- *   modo, niveles, prefijoMatricula, dominio, urlBase, licenciaturas.*,
- *   pagos.*, cursosIngreso.*, diploma.*, documentosRequeridos,
- *   landing.mostrarCatalogoCursos, landing.convenios.
+ *   modo, niveles, prefijoMatricula, dominio, urlBase, licenciaturas.* (salvo
+ *   sus tres precios, abajo), pagos.*, cursosIngreso.*, diploma.*,
+ *   documentosRequeridos, landing.mostrarCatalogoCursos, landing.convenios.
  * (Los TEXTOS de la sección de licenciaturas de la landing sí son editables
  * —`landing.licenciaturas_*`, vacío = automático—, pero no tocan
  * `licenciaturas.*`: el slug y el nombre real de cada carrera no cambian.)
  *
+ * De `licenciaturas` solo se publican sus PRECIOS (Bloque B): la inscripción,
+ * la titulación y la mensualidad de cada plan. `activas`, `carreras` y la
+ * estructura de los planes siguen siendo el producto. Su regla vive en
+ * precios-licenciatura.ts (la comparte el PDF de entrega).
+ *
  * `modalidades` tiene semántica ESPECIAL (ver `SiteConfigOverrides`): en la BD
- * es un objeto por id, y solo se admiten `mensualidad` y `activa`.
+ * es un objeto por id, y solo se admiten `mensualidad` y `activa`. Igual
+ * `licenciaturas.modalidades`, que es otro mapa por id (el de licenciatura) y
+ * solo admite `mensualidad`.
  *
  * F3 convirtió en configurables los textos que estaban como literales en la
  * landing (`landing.hero_badge_superior` … `landing.cta_whatsapp`). Los
@@ -257,6 +265,14 @@ export const CLAVES_EDITABLES = [
   'precios.mensualidadPreparatoria6Meses',
   // modalidades (semántica especial)
   'modalidades',
+  // precios de LICENCIATURA (Bloque B), en su sitio: no hay «general» al que
+  // caer, la cifra de config.ts ya es la de licenciatura. `licenciaturas.modalidades`
+  // es un mapa por id APARTE del de Sec/Prepa y solo admite `mensualidad`.
+  // Se aplican con `licenciaturaEfectiva` (precios-licenciatura.ts), no con el
+  // bucle genérico del merge.
+  'licenciaturas.inscripcion',
+  'licenciaturas.certificacion',
+  'licenciaturas.modalidades',
 ] as const satisfies ReadonlyArray<RutasHoja<SiteConfig>>
 
 export type ClaveEditable = (typeof CLAVES_EDITABLES)[number]
@@ -351,6 +367,11 @@ export interface SiteConfigOverrides {
    */
   tipoCambioMXN?: number
   modalidades?: { [id: string]: OverrideModalidad }
+  /**
+   * Precios de licenciatura (Bloque B). `modalidades` aquí es el mapa por id de
+   * la tabla de LICENCIATURA, no el de Sec/Prepa. Ver precios-licenciatura.ts.
+   */
+  licenciaturas?: OverrideLicenciaturas
 }
 
 // ─── Utilidades internas ─────────────────────────────────────────────────────
@@ -915,6 +936,7 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
 
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta === 'modalidades') continue // semántica aparte, abajo
+    if (ruta.startsWith('licenciaturas.')) continue // su propia regla, abajo
     const valor = leerRuta(overrides, ruta)
     if (valor === undefined || valor === null) continue
     const actual = leerRuta(resultado, ruta)
@@ -941,6 +963,16 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
   normalizarContactoWhatsApp(resultado)
   aplicados.mensualidadesPorNivel = mensualidadesPorNivel
   aplicados.mensualidades = aplicarModalidades(resultado, overrides.modalidades)
+
+  // Licenciatura: la regla de precios-licenciatura.ts, la MISMA del PDF de
+  // entrega. Deja lo publicado DENTRO de `licenciaturas`, que es lo que leen la
+  // ficha, «Mis pagos», /api/admin/planes y la landing. No pasa por
+  // `derivarAliasPrecios`: esos alias son de Sec/Prepa y se eligen por MESES,
+  // así que un plan de 6 meses de licenciatura pisaría los de preparatoria.
+  const destino = resultado as unknown as ObjetoPlano
+  const lic = destino.licenciaturas
+  const efectiva = licenciaturaEfectiva(lic, overrides.licenciaturas)
+  if (efectiva !== lic) destino.licenciaturas = efectiva
 
   return derivarAliasPrecios(resultado, aplicados)
 }
@@ -1030,21 +1062,54 @@ export function toPublicSiteConfig(cfg: SiteConfig): PublicSiteConfig {
 }
 
 /**
+ * Lo que la landing necesita de la tabla de licenciatura para su desglose
+ * (`getDesglosesLicenciatura`): los precios y los planes, sin carreras.
+ */
+export type LicenciaturaLanding = DeepReadonly<{
+  activas: unknown
+  inscripcion: unknown
+  certificacion: unknown
+  modalidades: unknown
+}>
+
+/**
  * Lo que recibe la LANDING pública: el recorte público + `landing`.
  *
  * Es la única pantalla que pinta los textos de `landing.*`, y los recibe por
  * PROPS desde su Server Component (src/app/page.tsx) en vez de por el contexto
  * — así el peso de esos 42 textos se paga en la ruta que los usa y en ninguna
  * otra (ver `CLAVES_PUBLICAS`).
+ *
+ * `licenciaturas` solo viaja cuando el admin PUBLICÓ precios de licenciatura
+ * distintos de los de config.ts. Si no, la landing lee la tabla de CONFIG como
+ * siempre: el bundle ya la trae y no se duplica en el HTML (Bloque B).
  */
-export type LandingConfig = PublicSiteConfig & { landing: DeepReadonly<SiteConfig['landing']> }
+export type LandingConfig = PublicSiteConfig & {
+  landing: DeepReadonly<SiteConfig['landing']>
+  licenciaturas?: LicenciaturaLanding
+}
+
+/** Precios y planes de un bloque de licenciatura, en la forma que lee la landing. */
+function proyeccionLicenciatura(lic: unknown): LicenciaturaLanding | undefined {
+  if (!esObjetoPlano(lic)) return undefined
+  return {
+    activas: lic.activas,
+    inscripcion: lic.inscripcion,
+    certificacion: lic.certificacion,
+    modalidades: lic.modalidades,
+  }
+}
 
 /**
- * `toPublicSiteConfig` + `landing`. Mismas reglas que aquél: no clona, comparte
- * referencias con `cfg` (que es siempre un clon fresco del merge).
+ * `toPublicSiteConfig` + `landing` (+ `licenciaturas` si hay precios publicados).
+ * Mismas reglas que aquél: no clona, comparte referencias con `cfg` (que es
+ * siempre un clon fresco del merge).
  */
 export function toLandingConfig(cfg: SiteConfig): LandingConfig {
-  return { ...toPublicSiteConfig(cfg), landing: cfg.landing }
+  const efectiva = proyeccionLicenciatura((cfg as unknown as ObjetoPlano).licenciaturas)
+  const deFabrica = proyeccionLicenciatura((CONFIG as unknown as ObjetoPlano).licenciaturas)
+  const publicada = efectiva !== undefined && JSON.stringify(efectiva) !== JSON.stringify(deFabrica)
+  return { ...toPublicSiteConfig(cfg), landing: cfg.landing, ...(publicada ? { licenciaturas: efectiva } : {}) }
 }
 
 // ─── Placeholders de los textos de la landing ────────────────────────────────

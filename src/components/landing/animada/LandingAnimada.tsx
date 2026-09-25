@@ -253,11 +253,12 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const logoEnPlaca = config.logoOscuro === config.logo
 
   // ── Add-on Licenciaturas V3.7 ─────────────────────────────────────────────
-  // Los planes de licenciatura no se editan desde el panel: salen de
-  // CONFIG.licenciaturas con su desglose COMPLETO (la titulación va dentro del
-  // total). Sin carreras o sin planes, la sección y su tarjeta no existen.
+  // Los planes salen de CONFIG.licenciaturas con lo que el admin haya publicado
+  // encima (`config.licenciaturas`, solo si difiere: ver toLandingConfig), con
+  // su desglose COMPLETO (la titulación va dentro del total). Sin carreras o
+  // sin planes, la sección y su tarjeta no existen.
   const carrerasLic = getCarrerasLicenciatura()
-  const planesLic = getDesglosesLicenciatura()
+  const planesLic = getDesglosesLicenciatura(config.licenciaturas)
   const hayLicenciaturas = carrerasLic.length > 0 && planesLic.length > 0
   const etiquetaLic = hayLicenciaturas ? (carrerasLic.length > 1 ? pluralEtiqueta(getEtiquetaLicenciatura()) : getEtiquetaLicenciatura()) : ''
   const ritmosLic = hayLicenciaturas ? `${unirConO(planesLic.map(p => String(p.meses)))} meses` : ''
@@ -929,7 +930,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
         {/* ── LICENCIATURAS (claro, con panel oscuro dentro) — add-on ────── */}
         {hayLicenciaturas && textosLic && (
-          <SeccionLicenciaturas t={tLic} tOscuro={tOscuro} fmt={dinero} canal={canal} variante={seccion('licenciaturas').variante} textos={textosLic} />
+          <SeccionLicenciaturas t={tLic} tOscuro={tOscuro} fmt={dinero} canal={canal} variante={seccion('licenciaturas').variante} textos={textosLic} planes={planesLic} />
         )}
 
         {/* ── 6. VALIDEZ OFICIAL MX + USA (oscuro) ────────────────────────────

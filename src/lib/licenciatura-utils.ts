@@ -115,9 +115,11 @@ export function agruparPorCuatrimestre<T extends { orden?: number | null }>(
 
 // ─── Costo completo del programa ────────────────────────────────────────────
 //
-// Los planes de licenciatura no se editan desde «Personalizar mi página»: viven
-// en CONFIG.licenciaturas. La landing, el registro y el alta del panel leen el
-// desglose de aquí para decir la MISMA cifra en los tres lugares.
+// La tabla vive en CONFIG.licenciaturas y sus TRES PRECIOS (inscripción,
+// titulación y la mensualidad de cada plan) se publican desde «Personalizar mi
+// página» (Bloque B, precios-licenciatura.ts). El desglose recibe la tabla
+// efectiva; sin argumento, la de config.ts. Lo pinta la landing animada; el
+// registro y el alta solo ofrecen los planes, sin cifras.
 //
 // La titulación entra en el total a propósito. En la licenciatura suele ser la
 // parte más grande de la inversión (62–65 % en UNIVERSIDAD INSPIRA #203, 56–59 %
@@ -133,15 +135,16 @@ type ModalidadLicCfg = {
   activa?: boolean
 }
 
-function cfgPrecios() {
-  return (CONFIG as {
-    licenciaturas?: {
-      activas?: boolean
-      inscripcion?: number
-      certificacion?: number
-      modalidades?: readonly ModalidadLicCfg[]
-    }
-  }).licenciaturas
+/** La tabla de precios de licenciatura, en la forma que lee el desglose. */
+type TablaLic = {
+  readonly activas?: unknown
+  readonly inscripcion?: unknown
+  readonly certificacion?: unknown
+  readonly modalidades?: unknown
+} | null | undefined
+
+function cfgPrecios(): TablaLic {
+  return (CONFIG as { licenciaturas?: TablaLic }).licenciaturas
 }
 
 export type DesgloseLicenciatura = {
@@ -159,13 +162,17 @@ export type DesgloseLicenciatura = {
   total: number
 }
 
-/** El desglose de cada plan ACTIVO, en el orden del config. Vacío con el add-on apagado. */
-export function getDesglosesLicenciatura(): DesgloseLicenciatura[] {
-  const lic = cfgPrecios()
+/**
+ * El desglose de cada plan ACTIVO, en el orden del config. Vacío con el add-on
+ * apagado. `lic` es la tabla efectiva (con lo publicado); sin ella, la de
+ * config.ts. La regla de lectura es la de siempre, sin normalizar formas
+ * propias: con nada publicado, el desglose es exactamente el de antes.
+ */
+export function getDesglosesLicenciatura(lic: TablaLic = cfgPrecios()): DesgloseLicenciatura[] {
   if (!lic?.activas) return []
   const inscripcion = Number(lic.inscripcion ?? 0)
   const titulacion = Number(lic.certificacion ?? 0)
-  return (lic.modalidades ?? [])
+  return ((lic.modalidades ?? []) as readonly ModalidadLicCfg[])
     .filter(m => m.activa !== false && m.meses > 0 && m.mensualidad > 0)
     .map(m => {
       const colegiatura = m.mensualidad * m.meses

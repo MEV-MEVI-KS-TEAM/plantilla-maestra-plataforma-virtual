@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { getSiteConfig } from '@/lib/site-config'
+import { tablaLicenciaturas } from '@/lib/licenciatura-utils'
 import { CONFIG } from '@/lib/config'
 
 /**
@@ -21,8 +22,8 @@ import { CONFIG } from '@/lib/config'
  * F3B: el programa se lee del config FUSIONADO (`getSiteConfig()`), no del
  * literal de config.ts. Este endpoint publica un PRECIO (`precio_mensual`) y
  * el catálogo comercial de planes activos, y las dos cosas se editan desde
- * "Personalizar mi página". Las de licenciatura no son editables y siguen en
- * CONFIG.
+ * "Personalizar mi página". Las de licenciatura también (Bloque B): su
+ * mensualidad sale de la tabla EFECTIVA; las carreras siguen en CONFIG.
  */
 export async function GET() {
   try {
@@ -48,7 +49,7 @@ export async function GET() {
     const lic = (CONFIG as { licenciaturas?: { activas?: boolean; carreras?: ReadonlyArray<{ slug: string; nombre: string }> } }).licenciaturas
     const licenciatura = lic?.activas && lic.carreras
       ? lic.carreras.flatMap(c =>
-          getModalidadesLicenciatura().map(m => ({
+          getModalidadesLicenciatura(tablaLicenciaturas(cfg)).map(m => ({
             id: `${c.slug}__${m.id}`,
             nombre: `${c.nombre} — ${m.label}`,
             duracion_meses: m.meses,
