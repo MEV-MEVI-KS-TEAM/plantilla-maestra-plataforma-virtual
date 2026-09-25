@@ -559,12 +559,20 @@ export const CONFIG = {
   // (ver `cargarContextoAcceso` en src/lib/acceso-materias.ts): filtrar además
   // por modalidad deja sin materias a todo alumno cuyo plan no sea aquel con
   // el que se sembró el catálogo.
+  //
+  // PRECIOS SUGERIDOS (Bloque B): el paquete que ya venden varias escuelas de
+  // la flota. Con el add-on apagado no se ven en ningún lado. Al encenderlo, el
+  // admin los ajusta en «Personalizar mi página» (tarjeta «Licenciaturas») o
+  // soporte los cambia aquí. Sin plan de 6 meses: la base todavía no admite un
+  // id propio para él (el de Sec/Prepa choca, Bug 121).
+  // Ritmos para una carrera de 32 materias: 2.67 al mes en 12 meses y 1.78 al
+  // mes en 18 (se redondea hacia arriba: el último mes abre la última materia).
   licenciaturas: {
     activas: false,
     /** Pago único al inscribirse. */
-    inscripcion: 0,
+    inscripcion: 1500,
     /** Título y cédula profesional, con gestión administrativa. */
-    certificacion: 0,
+    certificacion: 38000,
     carreras: [] as ReadonlyArray<{
       /** Slug estable. Es el valor que se guarda en `alumnos.carrera`. */
       slug: string
@@ -576,7 +584,10 @@ export const CONFIG = {
       desc: string
       incluye: readonly string[]
     }>,
-    modalidades: [] as ReadonlyArray<{
+    modalidades: [
+      { id: '12_meses', label: 'Ejecutivo 12 meses', sublabel: '12 meses', meses: 12, mensualidad: 1450, activa: true, materiasPorMes: 2.67 },
+      { id: '18_meses', label: 'Extendido 18 meses', sublabel: '18 meses', meses: 18, mensualidad: 1050, activa: true, materiasPorMes: 1.78 },
+    ] as ReadonlyArray<{
       id: string
       label: string
       /** Etiqueta corta para las tarjetas de precio (ej. '9 meses'). */
