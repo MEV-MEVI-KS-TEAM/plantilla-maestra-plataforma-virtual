@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo } from '@/lib/admin-alumno'
 
 /**
  * PATCH /api/admin/alumnos/[id]/datos — edición de los datos del alumno.
@@ -29,6 +30,8 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
  *     emitidos, y la genera un trigger. Cambiarla rompe el historial.
  *   - `meses_desbloqueados`: tiene su propio endpoint con las reglas de avance.
  *   - `rol`: un alta de alumno no debe poder convertirse en admin desde aquí.
+ *
+ * Y solo opera sobre cuentas con rol 'alumno' (`cargarAlumnoObjetivo`).
  */
 
 /** Campos de `usuarios`. El email se trata aparte por lo de Auth. */
@@ -57,17 +60,13 @@ export async function PATCH(
     const admin = createAdminClient()
 
     // ── Estado previo: hace falta para revertir y para el registro ───────────
-    const { data: previo } = await admin
-      .from('usuarios')
-      .select('nombre, apellidos, email, telefono')
-      .eq('id', params.id)
-      .single()
+    // 🛑 Y la guarda: solo cuentas de ALUMNO. Sin ella este endpoint cambiaba
+    // el correo de acceso de otro admin o de un secretario (secuestro de la
+    // cuenta: el nuevo correo recibe el «olvidé mi contraseña»).
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id)
+    if ('error' in objetivo) return objetivo.error
 
-    if (!previo) {
-      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
-    }
-
-    const anterior = previo as { nombre: string | null; apellidos: string | null; email: string | null; telefono: string | null }
+    const anterior = objetivo.usuario
 
     // ── Correo: validar y comprobar que no lo tenga otra cuenta ─────────────
     const emailNuevo = typeof body.email === 'string' ? body.email.trim().toLowerCase() : null
