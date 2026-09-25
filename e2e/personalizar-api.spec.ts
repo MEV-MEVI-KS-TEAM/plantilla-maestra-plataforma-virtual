@@ -676,6 +676,37 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
   })
 
   // ══════════════════════════════════════════════════════════════════════════
+  // b7 — Quitar el WhatsApp y volver a ponerlo (A7)
+  // ══════════════════════════════════════════════════════════════════════════
+  test('b7 — se puede quitar el WhatsApp desde el panel y volver a ponerlo', async () => {
+    // Dos esperas de hasta 30 s por la purga de la landing.
+    test.setTimeout(180_000)
+
+    // Lo que manda el editor al vaciar el número: las TRES claves en blanco
+    // (escribirNumeroWhatsApp). Antes de A7 era un 400 («El campo WhatsApp
+    // (como se muestra) no puede quedar vacío»): la escuela no podía quitarlo.
+    const sin = await admin.put('/api/admin/configuracion', {
+      data: { whatsapp: '', contactoTelefono: '', whatsappDisplay: '' },
+    })
+    const putSin = await json<RespuestaPut>(sin)
+    expect(sin.status(), `PUT sin WhatsApp → 200 (${JSON.stringify(putSin)})`).toBe(200)
+    expect(putSin.overrides.whatsapp, 'Sin número').toBe('')
+    expect(putSin.overrides.whatsappUrl, 'Sin número no hay enlace').toBe('')
+    expect(putSin.overrides.whatsappDisplay, 'Ni texto que mostrar').toBe('')
+    await esperarHtml(anonimo, '/', 'href="https://wa.me/', false)
+
+    // De vuelta: 10 dígitos entran con su 52 y los botones regresan.
+    const con = await admin.put('/api/admin/configuracion', {
+      data: { whatsapp: '3312345678', contactoTelefono: '3312345678', whatsappDisplay: '33 1234 5678' },
+    })
+    const putCon = await json<RespuestaPut>(con)
+    expect(con.status(), `PUT con WhatsApp → 200 (${JSON.stringify(putCon)})`).toBe(200)
+    expect(putCon.overrides.whatsappUrl, 'El enlace sale con 52').toBe('https://wa.me/523312345678')
+    expect(putCon.overrides.whatsappDisplay, 'Y el texto con su formato').toBe('33 1234 5678')
+    await esperarHtml(anonimo, '/', 'href="https://wa.me/523312345678', true)
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
   // d — "Restaurar diseño original"
   // ══════════════════════════════════════════════════════════════════════════
   test('d — el DELETE restaura los defaults, vacía la fila y limpia el bucket', async () => {

@@ -678,6 +678,12 @@ function validarModalidades(
 interface Contexto {
   base: SiteConfig
   origenStorage: string | undefined
+  /**
+   * ¿Queda la escuela SIN WhatsApp? (el número del cuerpo si lo trae; si no, el
+   * de la base). Sin número, «como se muestra» puede ir vacío aunque su default
+   * de fábrica no lo esté: no hay nada que mostrar.
+   */
+  sinWhatsApp: boolean
 }
 
 function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio<unknown> | Fallo {
@@ -695,7 +701,11 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
         etiqueta: campo.etiqueta,
         max,
         multilinea: campo.tipo === 'textarea',
-        admiteVacio: defaultBase === '',
+        // Quitar el WhatsApp vacía también «como se muestra» (el panel escribe
+        // las tres claves juntas). Sin esta excepción el default de fábrica
+        // («521 234-567-8901») hacía obligatorio ese texto y la escuela no podía
+        // publicar «no uso WhatsApp» desde el panel. Con número sigue obligatorio.
+        admiteVacio: defaultBase === '' || (ruta === 'whatsappDisplay' && ctx.sinWhatsApp),
       })
     case 'hex':
       return validarHex(valor, campo.etiqueta)
@@ -879,7 +889,12 @@ export function validarOverrides(
   if (!esObjetoPlano(body)) {
     return { ok: false, error: 'El cuerpo debe ser un objeto con los campos a guardar' }
   }
-  const ctx: Contexto = { base, origenStorage: normalizarOrigen(opciones.origenStorage) }
+  // El número que quedará publicado: el del cuerpo si lo trae (normalizado con la
+  // misma regla que `validarTelefono`), si no el de la base. `null` (inválido)
+  // no es «sin WhatsApp»: ese cuerpo lo rechaza `validarTelefono`.
+  const numeroCuerpo = typeof body.whatsapp === 'string' ? normalizarWhatsApp(body.whatsapp) : undefined
+  const sinWhatsApp = (numeroCuerpo === undefined ? (base.whatsapp ?? '') : numeroCuerpo) === ''
+  const ctx: Contexto = { base, origenStorage: normalizarOrigen(opciones.origenStorage), sinWhatsApp }
   const salida: ObjetoPlano = {}
 
   const err = recorrer(body, '', salida, ctx)

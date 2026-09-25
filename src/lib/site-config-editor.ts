@@ -28,7 +28,7 @@ import { CLAVE_MENSUALIDAD_POR_NIVEL, inscripcionDe, mensualidadDe, type NivelCo
 import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { esSoloCursos } from '@/lib/modo'
-import { formatearWhatsApp } from '@/lib/contacto-ui'
+import { formatearWhatsApp, whatsappEscuelaDisponible } from '@/lib/contacto-ui'
 import type { ModalidadPrograma } from '@/lib/modalidades'
 import {
   PALETAS,
@@ -266,11 +266,32 @@ export const CLAVES_NUMERO_WHATSAPP = ['whatsapp', 'contactoTelefono', 'whatsapp
  * («33 1234 5678») en `whatsappDisplay`. El admin puede ajustar ese texto antes
  * de publicar; lo que no puede pasar es que el número cambie y el texto se
  * quede con el viejo, que era lo que pasaba con dos campos independientes.
+ *
+ * Borrar el número deja las TRES en `''`: la escuela no usa WhatsApp. El
+ * validador admite ese texto vacío cuando no hay número (antes lo rechazaba
+ * por su default de fábrica y el panel no podía publicar «sin WhatsApp»).
  */
 export function escribirNumeroWhatsApp(overrides: SiteConfigOverrides, capturado: string): SiteConfigOverrides {
   const numero = normalizarTelefono(capturado)
   const conNumero = escribirRuta(escribirRuta(overrides, 'whatsapp', numero), 'contactoTelefono', numero)
   return escribirRuta(conNumero, 'whatsappDisplay', formatearWhatsApp(numero))
+}
+
+/**
+ * Lo que enseñan, en gris, los campos del WhatsApp cuando están vacíos.
+ *
+ * NUNCA el número de config.ts: con el campo vacío, la escuela veía el número de
+ * fábrica («5212345678901», «521 234-567-8901») y parecía que seguía ahí
+ * aunque lo acababa de quitar.
+ */
+export const PLACEHOLDER_SIN_WHATSAPP = 'Sin WhatsApp'
+
+/**
+ * El de «como se muestra»: el número capturado con su formato si es un WhatsApp
+ * real; si no (vacío, inválido o el marcador de ceros), «Sin WhatsApp».
+ */
+export function placeholderWhatsAppDisplay(numeroCapturado: string): string {
+  return whatsappEscuelaDisponible(numeroCapturado) ? formatearWhatsApp(numeroCapturado) : PLACEHOLDER_SIN_WHATSAPP
 }
 
 // ─── Modalidades ─────────────────────────────────────────────────────────────

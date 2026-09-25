@@ -192,7 +192,8 @@ export default async function AvisoPrivacidadPage() {
             </p>
             <p>Para ejercer sus derechos ARCO, envíe su solicitud a:</p>
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '20px 24px', margin: '12px 0' }}>
-              <p style={{ margin: 0, color: '#fff', fontWeight: 600 }}>{MAILTO ? 'Correo electrónico:' : WHATSAPP_URL ? 'WhatsApp:' : 'Contacto:'}</p>
+              <p style={{ margin: 0, color: '#fff', fontWeight: 600 }}>{/* Por WhatsApp el enlace ya dice «WhatsApp (…)»: el rótulo «WhatsApp:» lo repetía. */}
+              {MAILTO ? 'Correo electrónico:' : 'Contacto:'}</p>
               <Contacto size="1rem" />
               <p style={{ margin: '12px 0 4px', color: '#fff', fontWeight: 600 }}>Asunto:</p>
               <p style={{ margin: 0, color: 'rgba(224,235,255,0.7)' }}>Ejercicio de Derechos ARCO — [Acceso / Rectificación / Cancelación / Oposición]</p>

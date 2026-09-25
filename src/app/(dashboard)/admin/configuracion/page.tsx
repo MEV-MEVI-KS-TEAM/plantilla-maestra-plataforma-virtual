@@ -43,6 +43,7 @@ import { validarOverrides } from '@/lib/site-config-validacion'
 import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
 import { campoPorClave } from '@/lib/site-config-campos'
 import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } from '@/lib/site-config-textos'
+import { whatsappComoSeVera } from '@/lib/contacto-ui'
 import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
@@ -379,7 +380,8 @@ export default function PersonalizarPage() {
       nombre: txt('nombre'),
       nombreCompleto: txt('nombreCompleto'),
       tagline: txt('tagline'),
-      whatsapp: txt('whatsapp'),
+      // {whatsapp} como lo pintarán las dos landings («33 1234 5678»), no los dígitos crudos.
+      whatsapp: whatsappComoSeVera(txt('whatsapp'), txt('whatsappDisplay')),
       heroTitulo: txt('landing.hero_titulo'),
       heroHighlight: txt('landing.hero_highlight'),
       heroSubtitulo: txt('landing.hero_subtitulo'),

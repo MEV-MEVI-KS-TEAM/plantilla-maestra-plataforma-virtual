@@ -200,6 +200,45 @@ export function canalEscuela(cfg: ConfigContacto, mensaje?: string): CanalEscuel
 }
 
 /**
+ * El WhatsApp de la escuela tal como se LEE, el mismo en toda la plataforma:
+ * el texto publicado («33 1234 5678», que ya sigue al número) o, si faltara,
+ * el número formateado. `''` sin número.
+ *
+ * El perfil del alumno y la FAQ de la landing clásica pintaban los dígitos
+ * crudos («523312345678») mientras el pie y la portada animada enseñaban el
+ * número con su formato.
+ */
+export function whatsappVisible(cfg: ConfigContacto): string {
+  return cfg.whatsappDisplay || formatearWhatsApp(cfg.whatsapp || cfg.contactoTelefono || '')
+}
+
+/**
+ * Lo que la página enseñará con ESE número y ESE texto, con la misma regla que
+ * aplica la lectura (`normalizarContactoWhatsApp`): el texto si dice ese
+ * número; si no, el número formateado; sin WhatsApp real, nada. Para lo que
+ * todavía no se publica (la vista previa del panel).
+ */
+export function whatsappComoSeVera(numero: string | null | undefined, display: string | null | undefined): string {
+  if (whatsappDisplayCuadra(display, numero)) return String(display)
+  return whatsappEscuelaDisponible(numero) ? formatearWhatsApp(numero) : ''
+}
+
+/**
+ * La línea de contacto del encabezado del recibo PDF: el sitio y, SOLO si la
+ * escuela tiene WhatsApp, «· WhatsApp 33 1234 5678».
+ *
+ * Sin número el recibo imprimía «https://… · WhatsApp » con la palabra
+ * colgando: una escuela que quitó su WhatsApp lo seguía anunciando, vacío, en
+ * cada comprobante nuevo.
+ */
+export function lineaContactoRecibo(urlBase: string, cfg: ConfigContacto): string {
+  const visible = whatsappVisible(cfg)
+  return whatsappEscuelaDisponible(cfg.whatsapp || cfg.contactoTelefono || '') && visible
+    ? `${urlBase} · WhatsApp ${visible}`
+    : urlBase
+}
+
+/**
  * `mailto:` del correo PÚBLICO de la escuela, o `null` si no tiene. Sin esto
  * cada pantalla armaba `mailto:${correo}` a mano y, con el correo vacío,
  * publicaba un enlace sin destinatario y con el texto visible vacío.
