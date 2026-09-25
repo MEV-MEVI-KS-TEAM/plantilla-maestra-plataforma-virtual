@@ -15,9 +15,10 @@ import { CONFIG } from '@/lib/config'
  * panel pintaba "No hay planes activos" / "0 Planes activos" en un cliente con
  * 89 materias sembradas y alumnos ya inscritos (TICKET-2026-09-02-26).
  *
- * La fuente de verdad de los planes es `CONFIG.modalidades` (Sec/Prepa) más
- * `CONFIG.licenciaturas.modalidades` — las mismas que consume el registro
- * público y `src/lib/modalidades.ts`. No hay tabla que consultar.
+ * La fuente de verdad de los planes es el config: `modalidades` (Sec/Prepa) y
+ * la tabla de licenciatura, con lo publicado en el panel encima — las mismas
+ * que consume el registro público y `src/lib/modalidades.ts`. No hay tabla en
+ * la base que consultar.
  *
  * F3B: el programa se lee del config FUSIONADO (`getSiteConfig()`), no del
  * literal de config.ts. Este endpoint publica un PRECIO (`precio_mensual`) y

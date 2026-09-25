@@ -273,7 +273,16 @@ export const CLAVES_EDITABLES = [
   'licenciaturas.inscripcion',
   'licenciaturas.certificacion',
   'licenciaturas.modalidades',
-] as const satisfies ReadonlyArray<RutasHoja<SiteConfig>>
+] as const satisfies ReadonlyArray<RutasHoja<SiteConfig> | RutaLicenciatura>
+
+/**
+ * Las rutas de precio de licenciatura, fuera de `RutasHoja` A PROPÓSITO: un
+ * cliente puede traer el bloque con forma propia (tarifas por plan, objetos por
+ * moneda, sin `inscripcion`), y ahí la ruta no es una hoja de su config.ts.
+ * Con `RutasHoja` su build dejaría de compilar; el merge y el validador ya las
+ * tratan aparte y no aplican nada sobre una forma propia (fail-closed).
+ */
+type RutaLicenciatura = 'licenciaturas.inscripcion' | 'licenciaturas.certificacion' | 'licenciaturas.modalidades'
 
 export type ClaveEditable = (typeof CLAVES_EDITABLES)[number]
 

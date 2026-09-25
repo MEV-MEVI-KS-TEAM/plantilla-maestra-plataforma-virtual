@@ -84,7 +84,7 @@ const { inscripcionDe, mensualidadDe, certificacionDe } =
   await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-nivel.ts')).href)
 // Los precios de LICENCIATURA publicados en el panel se aplican con la MISMA
 // regla que usa la plataforma al fusionar (Bloque B): también es puro.
-const { licenciaturaEfectiva } =
+const { licenciaturaEfectiva, bloqueLicEditable } =
   await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-licenciatura.ts')).href)
 
 
@@ -185,15 +185,24 @@ const ALUMNOS_PRUEBA = Array.isArray(D.alumnosPrueba) && D.alumnosPrueba.length
  * ⚠️ Los de Secundaria y Preparatoria todavía NO: el documento los toma de
  * config.ts (decisión 14 de la Fase 2). Si hay alguno publicado, se avisa.
  *
- * Si la lectura FALLA (base caída, pausada, llave inválida) se aborta: un
+ * Si la lectura FALLA (base caída, pausada, llave inválida, `.env.local` sin
+ * llaves) y la escuela PUEDE publicar precios de licenciatura, se aborta: un
  * documento oficial con precios que quizá ya no son los de la escuela es peor
- * que no tenerlo. `--solo-config` genera con los de config.ts a sabiendas.
+ * que no tenerlo. `--solo-config` genera con los de config.ts a sabiendas. Si
+ * la escuela no vende licenciatura o su tabla tiene forma propia, lo publicado
+ * no puede cambiar el documento: se avisa y se sigue.
  */
+const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG.licenciaturas)
+const sinLoPublicado = (motivo, ayuda) => {
+  if (PUEDE_PUBLICAR_LIC) abortar(motivo, ayuda)
+  log(`  ⚠ ${motivo} — los precios salen de config.ts (esta escuela no publica precios de licenciatura)`)
+  return {}
+}
 function leerEnvLocal() {
   const env = path.join(RAIZ, '.env.local')
   if (!fs.existsSync(env)) return null
-  // `\r?\n`: un .env.local guardado en Windows (CRLF) también se lee.
-  return Object.fromEntries(fs.readFileSync(env, 'utf8').split(/\r?\n/)
+  // `\r?\n`: un .env.local guardado en Windows (CRLF) también se lee; sin BOM.
+  return Object.fromEntries(fs.readFileSync(env, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)
     .map(l => l.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean)
     .map(m => [m[1], m[2].trim().replace(/^["']|["']$/g, '')]))
 }
@@ -203,14 +212,15 @@ async function leerPublicado() {
   if (!vars) { log('  · sin .env.local — los precios salen de config.ts'); return {} }
   // Basta la anon key: `site_config` se lee en abierto (la landing la lee así).
   const url = vars.NEXT_PUBLIC_SUPABASE_URL, key = vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) { log('  · .env.local sin credenciales — los precios salen de config.ts'); return {} }
+  if (!url || !key) return sinLoPublicado('.env.local sin NEXT_PUBLIC_SUPABASE_URL o sin llave',
+    'Sin llaves no se puede leer lo publicado en el panel.\nCompleta .env.local (vercel env pull .env.local) o usa --solo-config para generar solo con config.ts.')
   const { createClient } = await import('@supabase/supabase-js')
   const sb = createClient(url, key, { auth: { persistSession: false } })
   const { data, error } = await sb.from('site_config').select('data').eq('id', 1).maybeSingle()
   if (error) {
     // Base sin la tabla: nadie ha publicado nada. Mismos códigos que site-config.ts.
     if (error.code === 'PGRST205' || error.code === '42P01') { log('  · la base no tiene site_config — los precios salen de config.ts'); return {} }
-    abortar(`No se pudo leer lo publicado en el panel (site_config): ${error.message}`,
+    return sinLoPublicado(`No se pudo leer lo publicado en el panel (site_config): ${error.message}`,
       'El documento podría decir precios que ya no son los de la escuela.\nRevisa la base y vuelve a correr, o usa --solo-config para generar solo con config.ts.')
   }
   const pub = data?.data
@@ -220,9 +230,15 @@ log('· Leyendo lo publicado en el panel…')
 const PUBLICADO = await leerPublicado()
 /** La tabla de licenciatura con lo publicado encima (la de config.ts si no hay nada). */
 const LIC = licenciaturaEfectiva(CONFIG.licenciaturas, PUBLICADO.licenciaturas)
-if (LIC !== CONFIG.licenciaturas) log('  · licenciatura: con los precios publicados en el panel')
-if (PUBLICADO.precios || PUBLICADO.modalidades)
-  log('  ⚠ hay precios de Secundaria/Preparatoria publicados en el panel: este documento todavía los toma de config.ts')
+if (JSON.stringify(LIC) !== JSON.stringify(CONFIG.licenciaturas)) log('  · licenciatura: con los precios publicados en el panel')
+{
+  const secPrepa = [
+    ...Object.keys(PUBLICADO.precios && typeof PUBLICADO.precios === 'object' ? PUBLICADO.precios : {}).map(k => `precios.${k}`),
+    ...Object.keys(PUBLICADO.modalidades && typeof PUBLICADO.modalidades === 'object' ? PUBLICADO.modalidades : {}).map(k => `plan ${k}`),
+  ]
+  if (secPrepa.length)
+    log(`  ⚠ precios de Secundaria/Preparatoria publicados en el panel (${secPrepa.join(', ')}): este documento todavía los toma de config.ts`)
+}
 
 /* ── 3. Conteo real de contenido ─────────────────────────────────────────── */
 async function inventario() {

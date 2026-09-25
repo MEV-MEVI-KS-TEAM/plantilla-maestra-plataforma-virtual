@@ -72,6 +72,9 @@ const esPlano = (v: unknown): v is Plano => typeof v === 'object' && v !== null 
 /** Número finito y >= 0: lo único que se publica como precio. */
 const esPrecio = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0
 
+/** Lo mínimo que se publica desde el panel: una cifra finita >= 1. */
+const esPublicable = (v: unknown): v is number => esPrecio(v) && v >= 1
+
 /** Número finito >= 0 (o cadena numérica); cualquier otra cosa, `null`. */
 const cifra = (v: unknown): number | null => {
   if (typeof v !== 'number' && !(typeof v === 'string' && v.trim() !== '')) return null
@@ -155,10 +158,13 @@ export function planesLicEditables(lic: unknown): Array<Plano & { id: string; me
  * usa exactamente el objeto de config.ts (la invariancia del PDF depende de
  * esto). Si aplica algo, devuelve un objeto NUEVO: nunca muta `lic`.
  *
- * Se aplica solo lo que valida el panel, y nada más: inscripción y titulación
- * finitas >= 0 sobre una cifra numérica; mensualidad >= 1 sobre un plan
- * editable que ya existe (un 0 escondería el plan de la landing mientras el
- * registro lo sigue ofreciendo). Un id desconocido se ignora.
+ * Se aplica solo lo que admite el panel: cifras >= 1 sobre una cifra numérica
+ * de config.ts (inscripción y titulación) o sobre un plan editable que ya
+ * existe (mensualidad). Un 0 no se publica: la sección de la landing diría
+ * «$0 de inscripción» o «¿Por qué la titulación cuesta $0?», y un plan en 0 se
+ * esconde de la landing mientras el registro lo sigue ofreciendo. Una
+ * licenciatura sin inscripción o sin titulación se configura en config.ts. Un
+ * id desconocido se ignora.
  */
 export function licenciaturaEfectiva<T>(lic: T, ov: unknown): T {
   if (!esPlano(ov) || !bloqueLicEditable(lic)) return lic
@@ -167,15 +173,15 @@ export function licenciaturaEfectiva<T>(lic: T, ov: unknown): T {
     salida = salida ?? { ...lic }
     salida[k] = v
   }
-  if (esPrecio(ov.inscripcion) && esPrecio(lic.inscripcion)) poner('inscripcion', ov.inscripcion)
-  if (esPrecio(ov.certificacion) && esPrecio(lic.certificacion)) poner('certificacion', ov.certificacion)
+  if (esPublicable(ov.inscripcion) && esPrecio(lic.inscripcion)) poner('inscripcion', ov.inscripcion)
+  if (esPublicable(ov.certificacion) && esPrecio(lic.certificacion)) poner('certificacion', ov.certificacion)
   const mods = ov.modalidades
   if (esPlano(mods)) {
     let cambio = false
     const planes = (lic.modalidades as unknown[]).map((m) => {
       if (!planLicEditable(m) || !Object.prototype.hasOwnProperty.call(mods, m.id)) return m
       const o = mods[m.id]
-      if (!esPlano(o) || !esPrecio(o.mensualidad) || o.mensualidad < 1) return m
+      if (!esPlano(o) || !esPublicable(o.mensualidad)) return m
       cambio = true
       return { ...m, mensualidad: o.mensualidad }
     })

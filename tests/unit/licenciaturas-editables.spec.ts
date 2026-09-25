@@ -97,7 +97,7 @@ test('1b. aplica inscripción, titulación y mensualidad por id, sin mutar la ta
 test('1c. valores que el panel no admite se ignoran: 0 en mensualidad, negativos, texto, NaN, id desconocido', () => {
   const lic = LIC()
   for (const ov of [
-    { inscripcion: -1 }, { inscripcion: '1500' }, { inscripcion: NaN }, { certificacion: Infinity },
+    { inscripcion: -1 }, { inscripcion: 0 }, { certificacion: 0 }, { inscripcion: '1500' }, { inscripcion: NaN }, { certificacion: Infinity },
     { modalidades: { '12_meses': { mensualidad: 0 } } },
     { modalidades: { '12_meses': { mensualidad: -5 } } },
     { modalidades: { '12_meses': { mensualidad: '1500' } } },
@@ -115,7 +115,9 @@ test('1d. fail-closed: formas propias de la flota no se tocan', () => {
     ['`rutas` que duplican los planes (SÉNDERI)', { ...LIC(), rutas: [] }],
     ['titulacionIncluida', { ...LIC(), titulacionIncluida: true }],
     ['modalidadesDiplomado', { ...LIC(), modalidadesDiplomado: [] }],
-    ['precios por tarifa (Universidad Azteca)', { ...LIC(), precios: {} }],
+    // La forma REAL de Universidad Azteca: sin `inscripcion` arriba, tarifas en `precios`.
+    ['precios por tarifa (Universidad Azteca)', { activas: true, carreras: LIC().carreras, modalidades: LIC().modalidades,
+      modalidadUnica: true, precios: { normal: { inscripcion: 4000 }, beca: { inscripcion: 2000 } }, becaCondicion: 'x' }],
     ['carrera con precio propio (TOTAL ACADEMY)', { ...LIC(), carreras: [{ slug: 'x', nombre: 'X', mensualidad: 1490 }] }],
     ['carrera con preciosPorModalidad (The Living Faith)', { ...LIC(), carreras: [{ slug: 'x', nombre: 'X', preciosPorModalidad: {} }] }],
     ['sin tabla de planes', { ...LIC(), modalidades: undefined }],
@@ -124,6 +126,14 @@ test('1d. fail-closed: formas propias de la flota no se tocan', () => {
     expect(bloqueLicEditable(lic), nombre).toBe(false)
     expect(licenciaturaEfectiva(lic, PUBLICADO), nombre).toBe(lic)
   }
+  // Titulación POR PLAN y sin `certificacion` arriba (Invictoss): ni la titulación
+  // ni esos planes se publican; la inscripción, que sí es una cifra, sí.
+  const invictoss: Plano = { ...LIC(), modalidades: LIC().modalidades.map((m) => ({ ...m, certificacion: 20000 })) }
+  delete invictoss.certificacion
+  const ri = licenciaturaEfectiva(invictoss, PUBLICADO) as Plano & { modalidades: Plano[] }
+  expect(ri.inscripcion).toBe(1700)
+  expect('certificacion' in ri).toBe(false)
+  expect(ri.modalidades).toBe(invictoss.modalidades)
   // Una pieza con forma propia se salta; lo demás sí se aplica.
   const conObjeto = { ...LIC(), inscripcion: { mxn: 1000, usd: 75 }, certificacion: null }
   const r = licenciaturaEfectiva(conObjeto, PUBLICADO) as Plano & { modalidades: Plano[] }
@@ -214,7 +224,10 @@ test('3b. el PUT rechaza lo que no es un precio publicable, con la clave exacta'
   falla(v({ inscripcion: -1 }), 'licenciaturas.inscripcion')
   falla(v({ inscripcion: 50001 }), 'licenciaturas.inscripcion')
   falla(v({ certificacion: 100001 }), 'licenciaturas.certificacion')
-  expect(ok(v({ certificacion: 100000, inscripcion: 0 }))).toEqual({ licenciaturas: { certificacion: 100000, inscripcion: 0 } })
+  // El 0 no se publica: la sección diría «$0 de inscripción» o «¿Por qué la titulación cuesta $0?».
+  falla(v({ inscripcion: 0 }), 'licenciaturas.inscripcion')
+  falla(v({ certificacion: 0 }), 'licenciaturas.certificacion')
+  expect(ok(v({ certificacion: 100000, inscripcion: 1 }))).toEqual({ licenciaturas: { certificacion: 100000, inscripcion: 1 } })
   falla(v({ activas: true }), 'licenciaturas.activas', /Clave no editable/)
   falla(v({ carreras: [] }), 'licenciaturas.carreras', /Clave no editable/)
 })
@@ -241,6 +254,45 @@ test('3d. el GET recorta la fila: solo números y solo planes que la escuela pue
   expect(recortarOverrides(fila, base)).toEqual({ licenciaturas: { inscripcion: 1700, modalidades: { '12_meses': { mensualidad: 1500 } } } })
   // Si la tabla dejó de ser estándar, no se devuelve nada de licenciatura.
   expect(recortarOverrides(fila, mergeSiteConfig(baseCon({ ...LIC(), rutas: [] }), {}))).toEqual({})
+})
+
+test('3e. ids heredados, mapa vacío, `licenciaturas: {}` y `null`: nada se aplica y nada revienta', () => {
+  const lic = LIC()
+  for (const id of ['constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
+    expect(licenciaturaEfectiva(lic, { modalidades: { [id]: { mensualidad: 1 } } }), id).toBe(lic)
+  }
+  const base = mergeSiteConfig(baseCon(LIC()), {})
+  expect(ok(validarOverrides({ licenciaturas: {} }, base))).toEqual({})
+  expect(ok(validarOverrides({ licenciaturas: null }, base))).toEqual({})
+  // Sobre una base que NO se edita, un cuerpo que no cambia nada tampoco pide soporte.
+  const apagada = mergeSiteConfig(baseCon({ ...LIC(), activas: false }), {})
+  for (const cuerpo of [{ modalidades: {} }, { modalidades: { '12_meses': null } }, { modalidades: { '12_meses': {} } }, { inscripcion: null }]) {
+    expect(ok(validarOverrides({ licenciaturas: cuerpo }, apagada)), JSON.stringify(cuerpo)).toEqual({})
+  }
+})
+
+test('3f. lo que devuelve el GET siempre se puede reenviar: una fila escrita a mano no bloquea el editor', () => {
+  const base = mergeSiteConfig(baseCon(LIC()), {})
+  const fila = { licenciaturas: {
+    inscripcion: 1500.5, certificacion: 200000,
+    modalidades: { '12_meses': { mensualidad: 0 }, '18_meses': { mensualidad: 1450.5 }, '6_meses': { mensualidad: 2600 } },
+  } }
+  const r = recortarOverrides(fila, base)
+  expect(r).toEqual({ licenciaturas: { modalidades: { '6_meses': { mensualidad: 2600 } } } })
+  ok(validarOverrides(r, base))
+  // Y el ciclo GET → PUT de lo publicado de verdad.
+  ok(validarOverrides(recortarOverrides({ licenciaturas: PUBLICADO }, base), base))
+})
+
+test('3g. un "6_meses" de licenciatura y uno de Sec/Prepa en el MISMO cuerpo: cada uno en su mapa', () => {
+  const base = mergeSiteConfig(baseCon(LIC()), {})
+  const tiene6 = (base.modalidades as ReadonlyArray<{ id: string }>).some(m => m.id === '6_meses')
+  const cuerpo = { licenciaturas: { modalidades: { '6_meses': { mensualidad: 2700 } } }, ...(tiene6 ? { modalidades: { '6_meses': { mensualidad: 1999 } } } : {}) }
+  const r = ok(validarOverrides(cuerpo, base))
+  expect(r.licenciaturas).toEqual({ modalidades: { '6_meses': { mensualidad: 2700 } } })
+  const m = mergeSiteConfig(baseCon(LIC()), r)
+  expect(licDe(m).modalidades.find(p => p.id === '6_meses')?.mensualidad).toBe(2700)
+  if (tiene6) expect((m.modalidades as ReadonlyArray<{ id: string; mensualidad: number }>).find(p => p.id === '6_meses')?.mensualidad).toBe(1999)
 })
 
 // ─── 4. Los lectores leen lo PUBLICADO ───────────────────────────────────────
@@ -295,10 +347,15 @@ test('4d. la sección de licenciaturas recibe el desglose de la landing, no lo r
 
 test('5. la entrega aplica lo publicado con la MISMA regla y solo toca la tabla de licenciatura', () => {
   const gen = sinComentarios(leer('scripts/entrega/generar-entrega.mjs'))
-  expect(gen).toMatch(/const \{ licenciaturaEfectiva \} =\s*await import\(pathToFileURL\(path\.join\(RAIZ, 'src\/lib\/precios-licenciatura\.ts'\)\)\.href\)/)
+  expect(gen).toMatch(/const \{ licenciaturaEfectiva, bloqueLicEditable \} =\s*await import\(pathToFileURL\(path\.join\(RAIZ, 'src\/lib\/precios-licenciatura\.ts'\)\)\.href\)/)
   expect(gen).toContain('const LIC = licenciaturaEfectiva(CONFIG.licenciaturas, PUBLICADO.licenciaturas)')
-  // Toda lectura de la tabla pasa por LIC: `CONFIG.licenciaturas` solo en su definición y en el aviso.
-  expect(gen.match(/CONFIG\.licenciaturas/g)).toHaveLength(2)
+  // Toda lectura de la tabla pasa por LIC: `CONFIG.licenciaturas` solo para decidir si la escuela
+  // puede publicar, para definir LIC y para el aviso.
+  expect(gen.match(/CONFIG\.licenciaturas/g)).toHaveLength(3)
+  expect(gen).toContain('const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG.licenciaturas)')
+  // Aborta solo si la escuela puede publicar licenciatura; si no, avisa y sigue.
+  expect(gen).toContain('if (PUEDE_PUBLICAR_LIC) abortar(motivo, ayuda)')
+  expect(gen).toContain(".replace(/^\\uFEFF/, '')")
   // Un .env.local en CRLF también se lee, y hay salida a sabiendas.
   expect(gen).toContain('split(/\\r?\\n/)')
   expect(gen).toContain("flag('solo-config')")

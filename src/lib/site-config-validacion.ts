@@ -696,6 +696,17 @@ const esquemaOverrideModalidadLic = z.strictObject({
 /** La tabla de licenciatura de la base, con cast: hay clones sin el bloque. */
 const licDe = (base: SiteConfig): unknown => (base as unknown as { licenciaturas?: unknown }).licenciaturas
 
+/** ¿El mapa de planes trae algo que publicar? `{}`, `{ id: null }` y `{ id: {} }` no. */
+function mapaConEfecto(valor: unknown): boolean {
+  if (!esObjetoPlano(valor)) return true
+  return Object.values(valor).some((ov) =>
+    ov !== null && ov !== undefined && !(esObjetoPlano(ov) && Object.values(ov).every((x) => x === null || x === undefined)))
+}
+
+/** Entero en [min, max]: lo único que el GET le devuelve al editor (lo demás el PUT lo rechazaría). */
+const enteroEn = (v: unknown, min: number, max: number): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max
+
 function validarModalidadesLic(
   valor: unknown,
   campo: Campo,
@@ -713,9 +724,9 @@ function validarModalidadesLic(
   for (const id of Object.keys(valor)) {
     const clave = `${raiz}.${id}`
     if (CLAVES_PROHIBIDAS.has(id)) return fallo(`Clave no editable: ${clave}`, clave)
-    if (!ids.has(id)) return fallo(`Plan de licenciatura desconocido: ${id}`, clave)
     const ov = valor[id]
-    if (ov === null || ov === undefined) continue
+    if (ov === null || ov === undefined) continue // quitar un override que no hay: nada que validar
+    if (!ids.has(id)) return fallo(`Plan de licenciatura desconocido: ${id}`, clave)
     if (esObjetoPlano(ov)) {
       for (const k of Object.keys(ov)) {
         if (CLAVES_PROHIBIDAS.has(k)) return fallo(`Clave no editable: ${clave}.${k}`, `${clave}.${k}`)
@@ -771,6 +782,9 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
     const editable = ruta === 'licenciaturas.inscripcion' ? inscripcionLicEditable(lic)
       : ruta === 'licenciaturas.certificacion' ? titulacionLicEditable(lic)
       : bloqueLicEditable(lic)
+    // Un mapa de planes que no cambia nada (`{}`, `{ id: null }`) no es un
+    // intento de publicar: se acepta vacío en vez de pedir soporte.
+    if (!editable && ruta === 'licenciaturas.modalidades' && !mapaConEfecto(valor)) return { ok: true, valor: {} }
     if (!editable) {
       return fallo(`${campo.etiqueta}: los precios de licenciatura de tu escuela no se editan desde aquí; pídeselo a soporte`, ruta)
     }
@@ -1084,8 +1098,15 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
   if (esObjetoPlano(licData)) {
     const licBase = base ? licDe(base) : undefined
     const l: ObjetoPlano = {}
-    if (typeof licData.inscripcion === 'number' && (!base || inscripcionLicEditable(licBase))) l.inscripcion = licData.inscripcion
-    if (typeof licData.certificacion === 'number' && (!base || titulacionLicEditable(licBase))) l.certificacion = licData.certificacion
+    // Solo lo que el PUT aceptaría: una cifra escrita a mano fuera de rango (por
+    // SQL) volvería en cada guardado y bloquearía TODO el editor sin un campo
+    // donde corregirla.
+    if (enteroEn(licData.inscripcion, LIMITES.precioNivelMin, LIMITES.precioMax) && (!base || inscripcionLicEditable(licBase))) {
+      l.inscripcion = licData.inscripcion
+    }
+    if (enteroEn(licData.certificacion, LIMITES.precioNivelMin, LIMITES.titulacionMax) && (!base || titulacionLicEditable(licBase))) {
+      l.certificacion = licData.certificacion
+    }
     const idsLic = base ? new Set(planesLicEditables(licBase).map((m) => m.id)) : null
     const modsLic = licData.modalidades
     if (esObjetoPlano(modsLic)) {
@@ -1094,7 +1115,7 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
         if (CLAVES_PROHIBIDAS.has(id)) continue
         if (idsLic && !idsLic.has(id)) continue
         const ov = modsLic[id]
-        if (esObjetoPlano(ov) && typeof ov.mensualidad === 'number') limpias[id] = { mensualidad: ov.mensualidad }
+        if (esObjetoPlano(ov) && enteroEn(ov.mensualidad, LIMITES.precioNivelMin, LIMITES.precioMax)) limpias[id] = { mensualidad: ov.mensualidad }
       }
       if (Object.keys(limpias).length > 0) l.modalidades = limpias
     }

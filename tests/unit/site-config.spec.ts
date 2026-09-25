@@ -287,7 +287,12 @@ test('cada ruta de CLAVES_EDITABLES existe en CONFIG (guardia de typos en runtim
   // esto lo hace visible en la salida de pruebas y cubre un `as const` mal
   // tipado que dejara pasar algo.
   const cfg = esperado() as unknown as Record<string, unknown>
+  // Licenciatura: con una forma propia (tarifas, sin `inscripcion` arriba) sus
+  // rutas de precio no existen, y no se editan desde el panel (fail-closed).
+  const lic = cfg.licenciaturas as Record<string, unknown> | undefined
+  const licConForma = !!lic && typeof lic.inscripcion === 'number' && typeof lic.certificacion === 'number' && Array.isArray(lic.modalidades)
   for (const ruta of CLAVES_EDITABLES) {
+    if (ruta.startsWith('licenciaturas.') && !licConForma) continue
     let actual: unknown = cfg
     for (const seg of ruta.split('.')) actual = (actual as Record<string, unknown>)[seg]
     expect(actual, `la ruta '${ruta}' no existe en CONFIG`).not.toBeUndefined()

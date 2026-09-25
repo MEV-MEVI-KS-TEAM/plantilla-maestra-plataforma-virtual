@@ -477,11 +477,13 @@ export const CAMPOS: ReadonlyArray<Campo> = [
   // Solo con el add-on encendido y la forma estándar de la plantilla
   // (precios-licenciatura.ts). Las etiquetas NO son «Inscripción» ni
   // «Mensualidad» a secas: la e2e del editor busca esos rótulos anclados.
+  // Mínimo 1: un 0 publicado haría decir «$0» a la sección de la landing. Una
+  // licenciatura sin inscripción o sin titulación se configura en config.ts.
   { clave: 'licenciaturas.inscripcion', seccion: 'precios', etiqueta: 'Inscripción de licenciatura', tipo: 'entero',
-    min: LIMITES.precioMin, max: LIMITES.precioMax,
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax,
     ayuda: 'Pago único al inscribirse, igual en todas las carreras. Sin centavos.' },
   { clave: 'licenciaturas.certificacion', seccion: 'precios', etiqueta: 'Titulación', tipo: 'entero',
-    min: LIMITES.precioMin, max: LIMITES.titulacionMax,
+    min: LIMITES.precioNivelMin, max: LIMITES.titulacionMax,
     ayuda: 'Título y cédula profesional. Entra en el costo total de cada plan.' },
   { clave: 'licenciaturas.modalidades', seccion: 'precios', etiqueta: 'Planes de licenciatura', tipo: 'modalidades-lic',
     min: LIMITES.precioNivelMin, max: LIMITES.precioMax,

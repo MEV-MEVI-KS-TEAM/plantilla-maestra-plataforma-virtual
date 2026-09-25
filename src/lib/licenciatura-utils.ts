@@ -189,9 +189,13 @@ export function getDesglosesLicenciatura(lic: TablaLic = cfgPrecios()): Desglose
     })
 }
 
-export function getDesgloseLicenciatura(modalidadId: string | null | undefined): DesgloseLicenciatura | null {
+/** El desglose de un plan. `lic`: la tabla efectiva, como en `getDesglosesLicenciatura`. */
+export function getDesgloseLicenciatura(
+  modalidadId: string | null | undefined,
+  lic: TablaLic = cfgPrecios(),
+): DesgloseLicenciatura | null {
   if (!modalidadId) return null
-  return getDesglosesLicenciatura().find(d => d.modalidadId === modalidadId) ?? null
+  return getDesglosesLicenciatura(lic).find(d => d.modalidadId === modalidadId) ?? null
 }
 
 /**
