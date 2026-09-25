@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import {
   errorDeRpcCurso, esConceptoCurso, esMetodoPago, fechaValida,
 } from '@/lib/cursos/inscripciones'
@@ -44,7 +45,11 @@ export async function POST(
       return NextResponse.json({ error: 'fecha_pago inválida. Usa una fecha real en formato YYYY-MM-DD' }, { status: 400 })
     }
 
-    const abrirMes = body?.abrir_mes !== false
+    // Con acceso total (pago único, C3b) no hay meses que abrir: se registra el
+    // pago sin abrir mes, en vez de rechazarlo con 22023 y no guardar nada.
+    const { data: insc } = await conAccesoTotal<{ acceso_total?: boolean | null }>('id', campos => supabase
+      .from('curso_inscripciones').select(campos).eq('id', params.id).maybeSingle())
+    const abrirMes = body?.abrir_mes !== false && insc?.acceso_total !== true
     const esperados =
       typeof body?.meses_esperados === 'number' && Number.isInteger(body.meses_esperados)
         ? body.meses_esperados

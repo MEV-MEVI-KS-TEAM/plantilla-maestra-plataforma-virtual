@@ -116,6 +116,10 @@ IMMUTABLE
 SET search_path = public
 AS $$
   SELECT CASE
+    -- NUMERIC admite 'NaN' y en Postgres NaN es MAYOR que todo: sin esta rama,
+    -- un precio 'NaN' abría acceso total mientras la página (Number('NaN') > 0
+    -- es falso) decía «Pide informes».
+    WHEN p_inscripcion = 'NaN' OR p_mensualidad = 'NaN' THEN 'mes1'
     WHEN COALESCE(p_mensualidad, 0) > 0 THEN 'mes1'
     WHEN COALESCE(p_inscripcion, 0) > 0 THEN 'total'
     ELSE 'mes1'
@@ -238,7 +242,20 @@ $$;
 -- La misma regla para todos, en una sola sentencia. La pantalla confirma DOS
 -- veces y dice cuántos alumnos y, si el curso es de pago único, que es ACCESO
 -- TOTAL. Los ya inscritos no se tocan.
-CREATE OR REPLACE FUNCTION public.curso_inscribir_todos(p_curso_id UUID)
+--   p_simular = true  → no inscribe: devuelve cuántos serían (el número que la
+--                        confirmación muestra lo da el servidor, no la pantalla);
+--   p_esperados       → el número que el admin confirmó: si hoy son otros (otro
+--                        admin asignó, se dio de alta a alguien…), 40001 y nada;
+--   p_regla_esperada  → la regla que la confirmación le dijo ('total' o 'mes1'):
+--                        si alguien cambió el precio en medio, 40001 y nada.
+DROP FUNCTION IF EXISTS public.curso_inscribir_todos(UUID);
+DROP FUNCTION IF EXISTS public.curso_inscribir_todos(UUID, INTEGER, BOOLEAN);
+CREATE OR REPLACE FUNCTION public.curso_inscribir_todos(
+  p_curso_id       UUID,
+  p_esperados      INTEGER DEFAULT NULL,
+  p_regla_esperada TEXT    DEFAULT NULL,
+  p_simular        BOOLEAN DEFAULT false
+)
 RETURNS TABLE (agregados INTEGER, total_activos INTEGER, regla TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -268,6 +285,30 @@ BEGIN
   v_meses := CASE WHEN v_total THEN 0 ELSE 1 END;
 
   SELECT count(*)::integer INTO v_act FROM public.alumnos a WHERE a.activo = true;
+
+  -- Lo mismo que insertaría el INSERT de abajo (activos sin inscripción).
+  SELECT count(*)::integer INTO v_n
+    FROM public.alumnos a
+   WHERE a.activo = true
+     AND NOT EXISTS (SELECT 1 FROM public.curso_inscripciones ci
+                      WHERE ci.curso_id = p_curso_id AND ci.alumno_id = a.id);
+
+  IF p_simular THEN
+    RETURN QUERY SELECT v_n, v_act, v_regla;
+    RETURN;
+  END IF;
+
+  IF p_regla_esperada IS NOT NULL AND p_regla_esperada <> v_regla THEN
+    RAISE EXCEPTION
+      'La confirmación decía que se abriría «%» y el curso hoy abre «%» (alguien cambió su precio). Vuelve a abrir la asignación masiva.',
+      p_regla_esperada, v_regla USING ERRCODE = '40001';
+  END IF;
+
+  IF p_esperados IS NOT NULL AND p_esperados <> v_n THEN
+    RAISE EXCEPTION
+      'La confirmación decía % alumno(s) nuevo(s) y hoy son %. Vuelve a abrir la asignación masiva para ver el número actual.',
+      p_esperados, v_n USING ERRCODE = '40001';
+  END IF;
 
   WITH nuevas AS (
     INSERT INTO public.curso_inscripciones AS ci (curso_id, alumno_id, meses_desbloqueados, acceso_total)
@@ -576,7 +617,7 @@ $$;
 -- adentro). anon: nunca.
 REVOKE ALL ON FUNCTION public.curso_regla_apertura(NUMERIC, NUMERIC)        FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.curso_inscribir(UUID, UUID)                   FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.curso_inscribir_todos(UUID)                   FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.curso_inscribir_todos(UUID, INTEGER, TEXT, BOOLEAN) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.curso_abrir_todo(UUID)                        FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.curso_quitar_acceso_total(UUID, TEXT)         FROM PUBLIC;
 
@@ -584,7 +625,7 @@ DO $grants$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.curso_inscribir(UUID, UUID) FROM anon';
-    EXECUTE 'REVOKE ALL ON FUNCTION public.curso_inscribir_todos(UUID) FROM anon';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.curso_inscribir_todos(UUID, INTEGER, TEXT, BOOLEAN) FROM anon';
     EXECUTE 'REVOKE ALL ON FUNCTION public.curso_abrir_todo(UUID) FROM anon';
     EXECUTE 'REVOKE ALL ON FUNCTION public.curso_quitar_acceso_total(UUID, TEXT) FROM anon';
     EXECUTE 'REVOKE ALL ON FUNCTION public.curso_regla_apertura(NUMERIC, NUMERIC) FROM anon';
@@ -592,19 +633,38 @@ BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_regla_apertura(NUMERIC, NUMERIC) TO authenticated';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_inscribir(UUID, UUID) TO authenticated';
-    EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_inscribir_todos(UUID) TO authenticated';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_inscribir_todos(UUID, INTEGER, TEXT, BOOLEAN) TO authenticated';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_abrir_todo(UUID) TO authenticated';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_quitar_acceso_total(UUID, TEXT) TO authenticated';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_regla_apertura(NUMERIC, NUMERIC) TO service_role';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_inscribir(UUID, UUID) TO service_role';
-    EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_inscribir_todos(UUID) TO service_role';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_inscribir_todos(UUID, INTEGER, TEXT, BOOLEAN) TO service_role';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_abrir_todo(UUID) TO service_role';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_quitar_acceso_total(UUID, TEXT) TO service_role';
   END IF;
 END
 $grants$;
+
+-- El techo de CUALQUIER alumno no se lee por RPC (antes, anon o un alumno
+-- podían consultar el de otro y, con C3b, saber quién compró de pago único). Las
+-- políticas lo usan por los ayudantes SECURITY DEFINER de B2, que corren como el
+-- dueño: no necesitan este EXECUTE. service_role lo conserva.
+REVOKE EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) FROM PUBLIC;
+DO $techo$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) FROM authenticated';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) TO service_role';
+  END IF;
+END
+$techo$;
 
 NOTIFY pgrst, 'reload schema';
 

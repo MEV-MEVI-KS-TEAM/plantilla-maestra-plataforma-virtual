@@ -43,6 +43,19 @@
 -- para esa sí basta CREATE OR REPLACE.
 
 -- ── PREFLIGHT ───────────────────────────────────────────────────────────────
+DO $c3b$
+BEGIN
+  -- Re-correr esta migración en una base que YA tiene C3b (acceso total) revierte
+  -- su parte: se avisa. Correr la cadena completa en orden llega a C3b (paso 14
+  -- de la lista 7bis de SETUP.md) y lo restaura.
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'curso_inscripciones'
+                AND column_name = 'acceso_total') THEN
+    RAISE WARNING 'Esta base ya tiene C3b (acceso total). Al terminar, vuelve a correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql o los alumnos de pago único se quedan sin acceso.';
+  END IF;
+END
+$c3b$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (

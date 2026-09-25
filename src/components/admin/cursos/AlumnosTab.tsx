@@ -19,12 +19,22 @@ interface AlumnosTabProps {
   onError: (mensaje: string) => void
 }
 
+/** ¿La inscripción concede hoy lo que tiene abierto? Los mismos filtros del candado. */
+function accesoVigente(i: CursoInscrito): boolean {
+  if (i.estado !== 'activa' && i.estado !== 'completada') return false
+  if (i.fecha_vencimiento && i.fecha_vencimiento < new Date().toISOString().slice(0, 10)) return false
+  return true
+}
+
 export function AlumnosTab({ cursoId, inscritos, apertura, onChanged, onError }: AlumnosTabProps) {
   const [alumnos, setAlumnos] = useState<AlumnoAdminRow[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
   const [confirmTodos, setConfirmTodos] = useState<0 | 1 | 2>(0) // doble confirmación
   const [asignandoTodos, setAsignandoTodos] = useState(false)
+  // Lo que la masiva haría, contado por el SERVIDOR (D3): cuántos nuevos y con
+  // qué regla. La confirmación muestra esto, y la ejecución lo manda de vuelta.
+  const [simulacion, setSimulacion] = useState<{ nuevos: number; totalActivos: number; regla: string | null } | null>(null)
 
   // El buscador usa el endpoint admin existente (usuarios con rol alumno)
   useEffect(() => {
@@ -186,13 +196,30 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
     () => (alumnos ?? []).filter(a => a.activo).length,
     [alumnos]
   )
-  // Los que la asignación masiva va a inscribir de verdad (los ya asignados no
-  // se tocan): el número que la confirmación tiene que decir (D3).
-  const nuevosActivos = useMemo(
-    () => (alumnos ?? []).filter(a => a.activo && !inscritosIds.has(a.id)).length,
-    [alumnos, inscritosIds]
-  )
-  const esPagoUnico = apertura === 'total'
+  // El número de la confirmación masiva lo da el servidor (simulación): la
+  // lista de /api/admin/alumnos no sirve para contar (tope de 1000 filas, omite
+  // a quien no tiene usuario, y sale en 0 si falla la carga).
+  const nuevosActivos = simulacion?.nuevos ?? 0
+  const esPagoUnico = simulacion ? simulacion.regla === 'total' : apertura === 'total'
+
+  async function abrirMasiva() {
+    setAsignandoTodos(true)
+    try {
+      const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones?simular=todos`)
+      const json = await res.json().catch(() => ({} as { error?: string }))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo contar a los alumnos activos')
+      if (!json.nuevos) {
+        onError(`Nadie nuevo que asignar: los ${json.totalActivos} alumnos activos ya están en el curso`)
+        return
+      }
+      setSimulacion(json)
+      setConfirmTodos(1)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo contar a los alumnos activos')
+    } finally {
+      setAsignandoTodos(false)
+    }
+  }
 
   async function asignar(alumnoId: string, nombre: string) {
     setOcupadoId(alumnoId)
@@ -202,7 +229,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alumno_id: alumnoId }),
       })
-      const json = await res.json().catch(() => ({} as { error?: string; acceso_total?: boolean }))
+      const json = await res.json().catch(() => ({} as { error?: string; acceso_total?: boolean; sin_precio?: boolean }))
       if (res.status === 409) {
         onError(json.error ?? 'Este alumno ya está asignado al curso')
         return
@@ -211,7 +238,9 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       // Lo que se abrió lo decide el servidor con el precio del curso: se dice tal cual.
       onChanged(json.acceso_total
         ? `${nombre} asignado: acceso total al curso (pago único)`
-        : `${nombre} asignado: mes 1 abierto`)
+        : json.sin_precio
+          ? `${nombre} asignado: mes 1 abierto (el curso no tiene precio; si cobraste un pago único, usa «Abrir todo»)`
+          : `${nombre} asignado: mes 1 abierto`)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Error al asignar')
     } finally {
@@ -220,6 +249,13 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
   }
 
   async function quitar(alumnoId: string, nombre: string) {
+    // Borra la inscripción (y con ella su acceso y su bitácora): se confirma,
+    // sobre todo ahora que «Quitar acceso total» vive en la misma fila.
+    if (!window.confirm(`Quitar a ${nombre} de este curso.
+
+Se borra su inscripción y deja de ver el curso.
+
+¿Continuar?`)) return
     setOcupadoId(alumnoId)
     try {
       const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones/${alumnoId}`, { method: 'DELETE' })
@@ -241,14 +277,19 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todos_activos: true }),
+        body: JSON.stringify({ todos_activos: true, esperados: simulacion?.nuevos, regla_esperada: simulacion?.regla }),
       })
       const json = await res.json().catch(() => ({} as { agregados?: number; totalActivos?: number; regla?: string; error?: string }))
       if (!res.ok) throw new Error(json.error ?? 'Error en la asignación masiva')
-      onChanged(`${json.agregados} alumno(s) nuevos asignados (de ${json.totalActivos} activos): ${
-        json.regla === 'total' ? 'acceso total al curso' : 'mes 1 abierto'}`)
+      onChanged(json.agregados
+        ? `${json.agregados} alumno(s) nuevos asignados (de ${json.totalActivos} activos): ${
+          json.regla === 'total' ? 'acceso total al curso' : 'mes 1 abierto'}`
+        : `Nadie nuevo que asignar: los ${json.totalActivos} alumnos activos ya estaban en el curso`)
       setConfirmTodos(0)
+      setSimulacion(null)
     } catch (e) {
+      setConfirmTodos(0)
+      setSimulacion(null)
       onError(e instanceof Error ? e.message : 'Error en la asignación masiva')
     } finally {
       setAsignandoTodos(false)
@@ -265,8 +306,8 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-bold" style={{ color: 'var(--color-primario)' }}>Asignar alumnos</h2>
           <button
-            onClick={() => setConfirmTodos(1)}
-            disabled={asignandoTodos || alumnos === null}
+            onClick={abrirMasiva}
+            disabled={asignandoTodos}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
             style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: '#fff' }}
           >
@@ -344,10 +385,12 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
             {inscritos.map(i => (
               <div
                 key={i.alumno_id}
-                className="flex items-center gap-3 rounded-xl px-3 py-2"
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-3 py-2"
                 style={{ background: 'var(--color-fondo)', border: '1px solid #EEF2F6' }}
               >
-                <div className="flex-1 min-w-0">
+                {/* flex-wrap: a 360 px las acciones bajan a otra línea en vez de
+                    aplastar el nombre. */}
+                <div className="flex-1 min-w-[10rem]">
                   <p className="text-sm font-medium truncate" style={{ color: 'var(--color-primario)' }}>{i.nombre}</p>
                   <p className="text-xs truncate" style={{ color: '#9CA3AF' }}>
                     {i.email}{i.matricula ? ` · ${i.matricula}` : ''}
@@ -369,11 +412,21 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
 
                 {/* Ventana de pago: lo que el alumno ve hoy */}
                 {i.acceso_total ? (
-                  <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(16,185,129,0.12)', color: '#047857' }}
-                    title="Pago único: ve el curso completo, también los módulos que se agreguen">
-                    Acceso total
-                  </span>
+                  // Solo cuenta con la inscripción activa o completada y vigente,
+                  // como el candado (curso_ventana_limite): si no, se dice.
+                  accesoVigente(i) ? (
+                    <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(16,185,129,0.12)', color: '#047857' }}
+                      title="Pago único: ve el curso completo, también los módulos que se agreguen">
+                      Acceso total
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(148,163,184,0.15)', color: '#475569' }}
+                      title="Tiene acceso total, pero su inscripción no está vigente: hoy no ve nada">
+                      Acceso total (sin efecto)
+                    </span>
+                  )
                 ) : (
                   <span className="text-xs font-semibold flex-shrink-0 tabular-nums"
                     style={{ color: 'var(--color-primario)' }}
@@ -458,7 +511,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         message={
           <>
             Se asignará este curso a <strong>{nuevosActivos}</strong> alumno(s) activo(s) nuevo(s)
-            ({totalActivos - nuevosActivos} ya estaban asignados y no se tocan).{' '}
+            ({(simulacion?.totalActivos ?? 0) - nuevosActivos} ya estaban asignados y no se tocan).{' '}
             {esPagoUnico
               ? <>Como el curso es de <strong>pago único</strong>, cada uno tendrá <strong>ACCESO TOTAL</strong> al curso completo desde ahora.</>
               : <>A cada uno se le abre el <strong>mes 1</strong>.</>}
@@ -467,7 +520,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         }
         confirmLabel="Sí, continuar"
         onConfirm={() => setConfirmTodos(2)}
-        onCancel={() => setConfirmTodos(0)}
+        onCancel={() => { setConfirmTodos(0); setSimulacion(null) }}
       />
       <ConfirmDialog
         open={confirmTodos === 2}

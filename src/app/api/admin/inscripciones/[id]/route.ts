@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { errorDeRpcCurso, esEstadoInscripcion, fechaValida } from '@/lib/cursos/inscripciones'
@@ -19,11 +20,13 @@ export async function GET(
 
     const admin = createAdminClient()
 
-    const { data: insc } = await admin
-      .from('curso_inscripciones')
-      .select('id, curso_id, alumno_id, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento, created_at, acceso_total')
-      .eq('id', params.id)
-      .maybeSingle()
+    const { data: insc } = await conAccesoTotal<Record<string, unknown>>(
+      'id, curso_id, alumno_id, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento, created_at',
+      campos => admin
+        .from('curso_inscripciones')
+        .select(campos)
+        .eq('id', params.id)
+        .maybeSingle())
     if (!insc) return NextResponse.json({ error: 'Inscripción no encontrada' }, { status: 404 })
 
     const i = insc as Record<string, unknown>

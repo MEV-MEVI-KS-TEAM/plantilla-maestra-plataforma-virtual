@@ -5,6 +5,8 @@ import {
   ORDEN_SIN_DEFINIR, aperturaAlAsignar, limiteVentana, modulosVisibles, motivoBloqueo,
 } from '@/lib/cursos/acceso'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
+import { conAccesoTotal, faltaAccesoTotal } from '@/lib/cursos/acceso-total'
+import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 
 /**
  * Bloque C · C3b (#183): el pago único da ACCESO TOTAL, fotografiado al asignar.
@@ -37,6 +39,10 @@ test('1. paridad SQL ↔ TS ↔ catálogo: la regla de apertura al asignar', () 
   const otro = /ELSE '(\w+)'/.exec(sql)?.[1]
   expect(whens).toEqual([['p_mensualidad', 'mes1'], ['p_inscripcion', 'total']])
   expect(otro).toBe('mes1')
+  // Primero la rama NaN: en Postgres NaN es mayor que todo; en TS, NaN > 0 es falso.
+  expect(sql.indexOf("WHEN p_inscripcion = 'NaN' OR p_mensualidad = 'NaN' THEN 'mes1'")).toBeGreaterThan(-1)
+  expect(sql.indexOf("'NaN'")).toBeLessThan(sql.indexOf('WHEN COALESCE'))
+  expect(aperturaAlAsignar({ precio_inscripcion: Number.NaN, precio_mensualidad: 0 })).toBe('mes1')
   const evalSql = (ins: number | null, men: number | null) => {
     const v: Record<string, number | null> = { p_inscripcion: ins, p_mensualidad: men }
     for (const [param, res] of whens) if ((v[param] ?? 0) > 0) return res
@@ -112,6 +118,16 @@ test('4. la migración: idempotente, en transacción, NOTIFY, sin políticas, co
   expect(MIG).not.toMatch(/GRANT[^;]*TO anon/)
 })
 
+test('4b. re-correr B2, B4 o B6 en una base con C3b avisa; B4 acepta los eventos de C3b; nadie lee el techo por RPC', () => {
+  for (const f of ['20260730130000_b2_gate_ventana_cursos.sql', '20260730150000_b4_constancia_y_eventos.sql', '20260730160000_b6_reportes_por_vertical.sql']) {
+    expect(leer(`supabase/migrations/${f}`), f).toContain("RAISE WARNING 'Esta base ya tiene C3b (acceso total).")
+  }
+  const b4 = plano(sinComentariosSql(leer('supabase/migrations/20260730150000_b4_constancia_y_eventos.sql')))
+  expect(b4).toContain("'inscripcion', 'abrir_todo', 'quitar_acceso_total'")
+  expect(MIG).toContain('REVOKE EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) FROM PUBLIC;')
+  expect(MIG).toContain("REVOKE EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) FROM authenticated")
+})
+
 test('5. las tres puertas del ADMIN asignan con la regla; el registro público no', () => {
   const ruta = sinComentariosTs(leer('src/app/api/admin/cursos/[id]/inscripciones/route.ts'))
   expect(ruta).toContain("supabase.rpc('curso_inscribir',")
@@ -131,11 +147,38 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   expect(reg).toMatch(/meses_desbloqueados:\s*0/)
 })
 
-test('6. quien calcula la ventana lee acceso_total (sin él, el candado TS diría 0 a quien ve todo)', () => {
+test('6. quien calcula la ventana lee acceso_total, y una base sin C3b no se rompe', async () => {
   for (const f of ['src/lib/cursos/alumno-data.ts', 'src/lib/cursos/examen.ts', 'src/app/api/admin/alumnos/route.ts',
     'src/app/api/admin/cursos/[id]/route.ts', 'src/app/api/admin/inscripciones/[id]/route.ts']) {
-    expect(leer(f), f).toMatch(/from\('curso_inscripciones'\)\s*\.select\('[^']*acceso_total[^']*'\)/)
+    const src = sinComentariosTs(leer(f))
+    expect(src, f).toMatch(/conAccesoTotal<[\s\S]*?>\(\s*'[^']*'\s*,\s*campos => admin\s*\.from\('curso_inscripciones'\)\s*\.select\(campos\)/)
+    expect(src, f).not.toMatch(/from\('curso_inscripciones'\)\s*\.select\('[^']*acceso_total/)
   }
+  // El lector: pide acceso_total; si la columna no existe (42703), repite sin ella.
+  const pedidas: string[] = []
+  const falsa = (campos: string) => {
+    pedidas.push(campos)
+    return Promise.resolve(campos.includes('acceso_total')
+      ? { data: null, error: { code: '42703', message: 'column curso_inscripciones.acceso_total does not exist' } }
+      : { data: { meses_desbloqueados: 1 }, error: null })
+  }
+  const r = await conAccesoTotal<{ meses_desbloqueados: number }>('meses_desbloqueados', falsa)
+  expect(pedidas).toEqual(['meses_desbloqueados, acceso_total', 'meses_desbloqueados'])
+  expect(r.data).toEqual({ meses_desbloqueados: 1 })
+  // Otro error NO se esconde.
+  const otro = await conAccesoTotal('x', () => Promise.resolve({ data: null, error: { code: '42501', message: 'permiso' } }))
+  expect(otro.error?.code).toBe('42501')
+  expect(faltaAccesoTotal({ code: 'PGRST116' })).toBe(false)
+})
+
+test('6b. errores de las funciones: 23505 → 409, 22P02 → 400, función ausente → 503 con qué migración', () => {
+  const e = (code: string, message = 'x') => errorDeRpcCurso({ code, message, details: '', hint: '', name: 'PostgrestError' } as never)
+  expect(e('23505').status).toBe(409)
+  expect(e('22P02').status).toBe(400)
+  expect(e('42501').status).toBe(403)
+  expect(e('P0002').status).toBe(404)
+  expect(e('PGRST202').status).toBe(503)
+  expect(e('PGRST202').mensaje).toContain('20260926120000_c3b_acceso_total_cursos.sql')
 })
 
 test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dice cuántos y qué (D3)', () => {
@@ -148,6 +191,16 @@ test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dic
   // La confirmación masiva da el número de nuevos y, en pago único, ACCESO TOTAL.
   expect(tab.match(/\{nuevosActivos\}/g)?.length).toBeGreaterThanOrEqual(3)
   expect(tab).toContain('ACCESO TOTAL')
+  // …y ese número lo cuenta el SERVIDOR (simulación), no la lista de alumnos, y
+  // viaja de vuelta como `esperados` para que el SQL rechace si cambió.
+  expect(tab).toContain('/inscripciones?simular=todos')
+  expect(tab).toContain('const nuevosActivos = simulacion?.nuevos ?? 0')
+  expect(tab).toContain('JSON.stringify({ todos_activos: true, esperados: simulacion?.nuevos, regla_esperada: simulacion?.regla })')
+  expect(tab).not.toMatch(/filter\(a => a\.activo && !inscritosIds\.has\(a\.id\)\)/)
+  const ruta = sinComentariosTs(leer('src/app/api/admin/cursos/[id]/inscripciones/route.ts'))
+  expect(ruta).toContain("supabase.rpc('curso_inscribir_todos', { p_curso_id: params.id, p_simular: true })")
+  expect(ruta).toMatch(/p_esperados: esperados/)
+  expect(plano(cuerpo(MIG, 'curso_inscribir_todos'))).toContain('IF p_esperados IS NOT NULL AND p_esperados <> v_n THEN RAISE EXCEPTION')
   const pagina = sinComentariosTs(leer('src/app/(dashboard)/admin/cursos/[id]/page.tsx'))
   expect(pagina).toContain('apertura={aperturaAlAsignar(curso)}')
 })

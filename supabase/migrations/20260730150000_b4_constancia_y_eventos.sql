@@ -23,6 +23,14 @@ BEGIN
   IF to_regproc('public.curso_abrir_mes') IS NULL THEN
     RAISE EXCEPTION 'Falta public.curso_abrir_mes(). Corre antes B3.';
   END IF;
+  -- Re-correr esta migración en una base que YA tiene C3b (acceso total) revierte
+  -- su parte: se avisa. Correr la cadena completa en orden llega a C3b (paso 14
+  -- de la lista 7bis de SETUP.md) y lo restaura.
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'curso_inscripciones'
+                AND column_name = 'acceso_total') THEN
+    RAISE WARNING 'Esta base ya tiene C3b (acceso total). Al terminar, vuelve a correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql o los alumnos de pago único se quedan sin acceso.';
+  END IF;
 END
 $preflight$;
 
@@ -108,7 +116,10 @@ ALTER TABLE public.curso_inscripcion_eventos
   DROP CONSTRAINT IF EXISTS curso_inscripcion_eventos_tipo_check;
 ALTER TABLE public.curso_inscripcion_eventos
   ADD CONSTRAINT curso_inscripcion_eventos_tipo_check
-  CHECK (tipo IN ('abrir_mes', 'cerrar_mes', 'cambio_estado', 'constancia_emitida'));
+  -- Incluye los tipos de C3b (inscripcion, abrir_todo, quitar_acceso_total): si
+  -- esta migración se re-corre en una base que ya los tiene, el CHECK no truena.
+  CHECK (tipo IN ('abrir_mes', 'cerrar_mes', 'cambio_estado', 'constancia_emitida',
+                  'inscripcion', 'abrir_todo', 'quitar_acceso_total'));
 
 CREATE INDEX IF NOT EXISTS idx_curso_eventos_inscripcion
   ON public.curso_inscripcion_eventos (inscripcion_id, created_at DESC);

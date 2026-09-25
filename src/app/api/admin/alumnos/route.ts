@@ -11,6 +11,7 @@ import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 import { limiteVentana, hayModuloVisible } from '@/lib/cursos/acceso'
+import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 
 // ─── Verificar rol ADMIN (normaliza mayúsculas) ───────────────────────────────
 async function checkAdmin(userId: string): Promise<boolean> {
@@ -78,12 +79,13 @@ async function anexarCursoIngreso<T extends { id: string }>(
   // Y «activado» exige ACCESO REAL (la misma ventana que la RLS, limiteVentana),
   // no solo que exista la fila: una inscripción con 0 meses abiertos salía
   // «Activado» mientras el alumno veía «no tiene lecciones» (#183, Bug 106).
-  type FilaIns = { alumno_id: string; curso_id: string; meses_desbloqueados: number | null; estado: string | null; fecha_vencimiento: string | null; acceso_total: boolean | null }
+  type FilaIns = { alumno_id: string; curso_id: string; meses_desbloqueados: number | null; estado: string | null; fecha_vencimiento: string | null; acceso_total?: boolean | null }
   const inscritos = new Map<string, Map<string, FilaIns>>()
-  const { data: ins } = await admin
-    .from('curso_inscripciones')
-    .select('alumno_id, curso_id, meses_desbloqueados, estado, fecha_vencimiento, acceso_total')
-    .in('alumno_id', [...pedido.keys()])
+  const { data: ins } = await conAccesoTotal<FilaIns[]>('alumno_id, curso_id, meses_desbloqueados, estado, fecha_vencimiento',
+    campos => admin
+      .from('curso_inscripciones')
+      .select(campos)
+      .in('alumno_id', [...pedido.keys()]))
   for (const r of (ins ?? []) as FilaIns[]) {
     if (!inscritos.has(r.alumno_id)) inscritos.set(r.alumno_id, new Map())
     inscritos.get(r.alumno_id)!.set(r.curso_id, r)

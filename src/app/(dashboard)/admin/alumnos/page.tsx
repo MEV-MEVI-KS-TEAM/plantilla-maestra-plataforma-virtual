@@ -183,6 +183,13 @@ export default function AlumnosPage() {
       setForm({ nombre_completo: '', email: '', password: '', telefono: '', nivel: '', modalidad: '', carrera: '', cursos_ids: [] })
       await cargarAlumnos()
       showToast(`✓ Alumno ${nombre} creado${matricula ? ` con matrícula ${matricula}` : ''}`, 'success')
+      // El alta inscribe con la regla de «Asignar» (curso_inscribir). Si algún
+      // curso no quedó, se dice: antes solo quedaba un console.error en el servidor.
+      const pedidos = form.cursos_ids.length
+      const asignados = typeof data.cursos_asignados === 'number' ? data.cursos_asignados : pedidos
+      if (pedidos > 0 && asignados < pedidos) {
+        showToast(`No se pudo asignar ${pedidos - asignados} de ${pedidos} curso(s): asígnalo desde Gestionar cursos → el curso → Alumnos`, 'error')
+      }
     } catch {
       setFormError('Error inesperado. Intenta de nuevo.')
     } finally {
@@ -195,8 +202,9 @@ export default function AlumnosPage() {
    *
    * Es el paso que cierra el circuito: el alumno elige el curso en /register, y
    * el admin se lo asigna aquí cuando confirma el pago. Sin esto el alumno se
-   * registraba y nadie sabía qué había contratado. Asignar crea la inscripción;
-   * el acceso se abre aparte, en la pestaña Alumnos del curso.
+   * registraba y nadie sabía qué había contratado. Asignar crea la inscripción
+   * y abre el acceso con la regla del curso (C3b): pago único → todo; mensual o
+   * sin precio → el mes 1.
    *
    * Recorre `curso_solicitado_ids` porque una oferta puede ser un paquete de
    * varios cursos. Recarga desde el servidor en vez de actualizar el estado
@@ -209,6 +217,7 @@ export default function AlumnosPage() {
     try {
       const fallos: string[] = []
       const abiertos: boolean[] = []   // acceso_total de cada curso asignado ahora
+      let sinPrecio = false            // alguna ficha en 0/0: se abrió el mes 1
       for (const cursoId of a.curso_solicitado_ids) {
         const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones`, {
           method:  'POST',
@@ -218,22 +227,30 @@ export default function AlumnosPage() {
         // 409 = ya estaba inscrito: no es un fallo, es el resultado deseado.
         if (!res.ok && res.status !== 409) fallos.push(cursoId)
         if (res.ok) {
-          const json = await res.json().catch(() => ({} as { acceso_total?: boolean }))
+          const json = await res.json().catch(() => ({} as { acceso_total?: boolean; sin_precio?: boolean }))
           abiertos.push(json.acceso_total === true)
+          if (json.sin_precio) sinPrecio = true
         }
       }
       if (fallos.length) {
         showToast(`No se pudo asignar ${fallos.length} de ${a.curso_solicitado_ids.length} curso(s)`, 'error')
       } else {
-        // Asignar crea la inscripción; el acceso se abre aparte (pestaña Alumnos
-        // del curso). La lista recargada dice si quedó «Activado» o «Acceso pendiente».
-        // Asignar ya abre acceso con la regla del curso (C3b): pago único → todo;
-        // mensual o sin precio → el mes 1. Se dice lo que el servidor abrió.
-        const queSeAbrio = abiertos.length === 0 ? 'ya estaba asignado'
-          : abiertos.every(Boolean) ? 'acceso total (pago único)'
-          : abiertos.some(Boolean) ? 'acceso abierto según cada curso'
-          : 'mes 1 abierto'
-        showToast(`✓ Curso asignado a ${a.nombre_completo}: ${queSeAbrio}.`, 'success')
+        // Asignar abre acceso con la regla del curso (C3b): pago único → todo;
+        // mensual o sin precio → el mes 1. Se dice lo que el servidor abrió; la
+        // lista recargada dice si quedó «Activado» o «Acceso pendiente».
+        if (abiertos.length === 0) {
+          showToast(`${a.nombre_completo} ya estaba asignado a ${a.curso_solicitado_ids.length === 1 ? 'ese curso' : 'esos cursos'}.`, 'success')
+        } else {
+          const queSeAbrio = abiertos.every(Boolean) ? 'acceso total (pago único)'
+            : abiertos.some(Boolean) ? 'acceso abierto según cada curso'
+            : 'mes 1 abierto'
+          showToast(`✓ Curso asignado a ${a.nombre_completo}: ${queSeAbrio}.`, 'success')
+          // El registro puede anunciar un pago único con el precio de config.ts
+          // aunque la ficha del curso esté en 0/0: ahí «Asignar» abre solo el mes 1.
+          if (sinPrecio) {
+            showToast('Ojo: el curso no tiene precio en su ficha y se abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en Gestionar cursos → el curso → Alumnos, y ponle precio al curso.', 'error')
+          }
+        }
       }
       await cargarAlumnos()
     } catch {
@@ -827,8 +844,10 @@ export default function AlumnosPage() {
                     })}
                   </div>
                   <p className="text-xs" style={{ color: '#64748B' }}>
-                    Se inscribe al alumno al curso. Para que vea el contenido, abre su
-                    Mes 1 desde la ficha del alumno cuando el pago esté registrado.
+                    Se inscribe al alumno al curso y se le abre el acceso con la regla
+                    del curso: en uno de pago único, completo; en uno mensual o sin
+                    precio, el mes 1. Los meses siguientes se abren en Gestionar
+                    cursos → el curso → Alumnos.
                   </p>
                 </div>
               )}

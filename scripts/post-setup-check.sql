@@ -239,3 +239,23 @@ SELECT
     ELSE '✅ OK (no admite ' || ids || ': solo hace falta si config.ts vende alguno → correr supabase/migrations/20260925120000_licenciatura_plan_6_meses.sql de la plantilla maestra)'
   END AS resultado
 FROM faltan;
+
+-- ─── CHECK 15: acceso total de cursos (C3b) ─────────────────────────────────
+-- Solo aplica si la base tiene el módulo de cursos. Sin esta migración, el código
+-- de hoy no puede asignar un curso («Asignar», la asignación masiva y el alta con
+-- cursos llaman a curso_inscribir) y el candado no conoce el pago único.
+SELECT
+  'Acceso total de cursos (C3b)' AS check_name,
+  CASE WHEN to_regclass('public.curso_inscripciones') IS NULL THEN 'sin módulo de cursos'
+       ELSE (SELECT count(*) FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'curso_inscripciones' AND column_name = 'acceso_total')::text
+            || ' columna / ' || (to_regproc('public.curso_inscribir') IS NOT NULL)::text || ' función'
+  END AS valor,
+  CASE
+    WHEN to_regclass('public.curso_inscripciones') IS NULL THEN '✅ OK (esta base no vende cursos)'
+    WHEN EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_schema = 'public' AND table_name = 'curso_inscripciones' AND column_name = 'acceso_total')
+         AND to_regproc('public.curso_inscribir') IS NOT NULL
+      THEN '✅ OK (curso_inscripciones.acceso_total y curso_inscribir)'
+    ELSE '❌ FALTA → correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql (después de los 20260730*)'
+  END AS resultado;
