@@ -10,7 +10,7 @@ import { nivelesPermitidos } from '@/lib/niveles'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
-import { limiteVentana } from '@/lib/cursos/acceso'
+import { limiteVentana, hayModuloVisible } from '@/lib/cursos/acceso'
 
 // ─── Verificar rol ADMIN (normaliza mayúsculas) ───────────────────────────────
 async function checkAdmin(userId: string): Promise<boolean> {
@@ -48,6 +48,9 @@ function sinPlanEscolar(nivel: string | null | undefined): boolean {
 async function anexarCursoIngreso<T extends { id: string }>(
   admin: ReturnType<typeof createAdminClient>,
   filas: T[],
+  // Asignar (POST inscripciones) y abrir meses son solo de ADMIN. El SECRETARIO
+  // ve la columna pero sin botón ni enlace: /admin/cursos lo manda a /alumno.
+  puedeGestionar: boolean,
 ) {
   const sinCurso = {
     curso_solicitado:        null as string | null,
@@ -55,6 +58,7 @@ async function anexarCursoIngreso<T extends { id: string }>(
     curso_solicitado_ids:    [] as string[],
     curso_activado:          false,
     curso_acceso_pendiente:  false,
+    curso_puede_gestionar:   false,
   }
   if (filas.length === 0) return filas.map(f => ({ ...f, ...sinCurso }))
 
@@ -90,13 +94,24 @@ async function anexarCursoIngreso<T extends { id: string }>(
     const { data: cs } = await admin.from('cursos').select('id, modulos_por_mes, estado').in('id', idsCursos)
     for (const c of (cs ?? []) as { id: string; modulos_por_mes: number | null; estado: string | null }[]) cursos.set(c.id, c)
   }
+  // Los `orden` de sus módulos: «activado» exige ver al menos uno (orden < límite),
+  // el mismo eje que la RLS, no solo que la ventana sea > 0 (#204, base 1).
+  const ordenes = new Map<string, (number | null)[]>()
+  if (idsCursos.length > 0) {
+    const { data: ms } = await admin.from('curso_modulos').select('curso_id, orden').in('curso_id', idsCursos)
+    for (const m of (ms ?? []) as { curso_id: string; orden: number | null }[]) {
+      if (!ordenes.has(m.curso_id)) ordenes.set(m.curso_id, [])
+      ordenes.get(m.curso_id)!.push(m.orden)
+    }
+  }
 
   return filas.map(f => {
     const oferta = getOfertaIngreso(pedido.get(f.id))
     if (!oferta) return { ...f, ...sinCurso }
     const ya = inscritos.get(f.id) ?? new Map<string, FilaIns>()
     const inscritoEnTodos = oferta.cursoIds.every(id => ya.has(id))
-    const conAcceso = oferta.cursoIds.every(id => limiteVentana(ya.get(id), cursos.get(id)) > 0)
+    const conAcceso = oferta.cursoIds.every(id =>
+      hayModuloVisible(ordenes.get(id) ?? [], limiteVentana(ya.get(id), cursos.get(id))))
     return {
       ...f,
       curso_solicitado:        pedido.get(f.id) ?? null,
@@ -106,6 +121,7 @@ async function anexarCursoIngreso<T extends { id: string }>(
       curso_activado:          inscritoEnTodos && conAcceso,
       // Inscrito en todos, pero sin acceso abierto todavía (0 meses, suspendida…).
       curso_acceso_pendiente:  inscritoEnTodos && !conAcceso,
+      curso_puede_gestionar:   puedeGestionar,
     }
   })
 }
@@ -119,6 +135,7 @@ export async function GET() {
     // Lectura de la lista: staff (ADMIN o SECRETARIO)
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+    const esAdmin = await checkAdmin(user.id)
 
     const admin = createAdminClient()
 
@@ -188,7 +205,7 @@ export async function GET() {
           telefono:             u?.telefono ?? null,
         }
       })
-      return NextResponse.json(await anexarCursoIngreso(admin, result))
+      return NextResponse.json(await anexarCursoIngreso(admin, result, esAdmin))
     }
 
     // ── Intento 2: schema antiguo — alumnos.usuario_id → usuarios.id ─────────
@@ -249,7 +266,7 @@ export async function GET() {
           telefono:             u?.telefono ?? null,
         }
       })
-      return NextResponse.json(await anexarCursoIngreso(admin, result2))
+      return NextResponse.json(await anexarCursoIngreso(admin, result2, esAdmin))
     }
 
     // ── Fallback: alumnos sin join + usuarios por separado ────────────────────
@@ -294,7 +311,7 @@ export async function GET() {
         telefono:             (u as {telefono?:string|null}|null)?.telefono ?? null,
       })
     }
-    return NextResponse.json(await anexarCursoIngreso(admin, resultFallback))
+    return NextResponse.json(await anexarCursoIngreso(admin, resultFallback, esAdmin))
 
   } catch (err) {
     console.error('[GET /api/admin/alumnos] excepción:', err)

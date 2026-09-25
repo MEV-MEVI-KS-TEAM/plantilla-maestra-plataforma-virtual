@@ -46,7 +46,11 @@ export interface VentanaCurso {
   limite: number
   modulos_totales: number
   modulos_bloqueados: number
-  /** Mes (1-based) que hay que abrir para liberar el siguiente. null si no queda ninguno. */
+  /**
+   * Mes (1-based) que hay que abrir para liberar el siguiente. null si no queda
+   * ninguno, o si ese mes no se puede abrir (inscripción no activa, o pasa del
+   * tope del curso): entonces el visor no promete ningún pago.
+   */
   proximo_mes: number | null
   estado_inscripcion: string | null
   /**

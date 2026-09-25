@@ -29,12 +29,14 @@ interface Alumno {
   curso_solicitado: string | null
   /** Nombre comercial de esa oferta, ya resuelto por la API. */
   curso_solicitado_nombre: string | null
-  /** UUID(s) de `cursos` a inscribir al activar. El paquete trae varios. */
+  /** UUID(s) de `cursos` a inscribir al asignar. El paquete trae varios. */
   curso_solicitado_ids: string[]
   /** Derivado de curso_inscripciones Y de la ventana real (limiteVentana), no es un flag guardado. */
   curso_activado: boolean
   /** Inscrito en la oferta pero sin acceso abierto todavía (#183). */
   curso_acceso_pendiente: boolean
+  /** Solo ADMIN asigna y abre meses; el SECRETARIO ve el estado sin acciones. */
+  curso_puede_gestionar: boolean
 }
 
 
@@ -192,8 +194,9 @@ export default function AlumnosPage() {
    * Inscribe al alumno en el/los curso(s) de la oferta que pidió al registrarse.
    *
    * Es el paso que cierra el circuito: el alumno elige el curso en /register, y
-   * el admin se lo activa aquí cuando confirma el pago. Sin esto el alumno se
-   * registraba y nadie sabía qué había contratado.
+   * el admin se lo asigna aquí cuando confirma el pago. Sin esto el alumno se
+   * registraba y nadie sabía qué había contratado. Asignar crea la inscripción;
+   * el acceso se abre aparte, en la pestaña Alumnos del curso.
    *
    * Recorre `curso_solicitado_ids` porque una oferta puede ser un paquete de
    * varios cursos. Recarga desde el servidor en vez de actualizar el estado
@@ -215,7 +218,7 @@ export default function AlumnosPage() {
         if (!res.ok && res.status !== 409) fallos.push(cursoId)
       }
       if (fallos.length) {
-        showToast(`No se pudo activar ${fallos.length} de ${a.curso_solicitado_ids.length} curso(s)`, 'error')
+        showToast(`No se pudo asignar ${fallos.length} de ${a.curso_solicitado_ids.length} curso(s)`, 'error')
       } else {
         // Asignar crea la inscripción; el acceso se abre aparte (pestaña Alumnos
         // del curso). La lista recargada dice si quedó «Activado» o «Acceso pendiente».
@@ -223,7 +226,7 @@ export default function AlumnosPage() {
       }
       await cargarAlumnos()
     } catch {
-      showToast('Error de red al activar el curso', 'error')
+      showToast('Error de red al asignar el curso', 'error')
     } finally {
       setActivando(null)
     }
@@ -546,21 +549,32 @@ export default function AlumnosPage() {
                             style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>
                             Activado
                           </span>
-                        ) : a.curso_acceso_pendiente ? (
+                        ) : a.curso_acceso_pendiente && a.curso_puede_gestionar ? (
                           <a href={a.curso_solicitado_ids.length === 1 ? `/admin/cursos/${a.curso_solicitado_ids[0]}` : '/admin/cursos'}
                             className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
                             style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
                             title="Asignado, pero todavía sin acceso: ábrelo en la pestaña Alumnos del curso">
                             Acceso pendiente
                           </a>
-                        ) : (
+                        ) : a.curso_acceso_pendiente ? (
+                          <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
+                            title="Asignado, pero todavía sin acceso: lo abre el administrador">
+                            Acceso pendiente
+                          </span>
+                        ) : a.curso_puede_gestionar ? (
                           <button
                             onClick={() => activarCurso(a)}
                             disabled={activando === a.id}
                             className="flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-50"
                             style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>
-                            {activando === a.id ? 'Activando…' : 'Activar'}
+                            {activando === a.id ? 'Asignando…' : 'Asignar'}
                           </button>
+                        ) : (
+                          <span className="flex-shrink-0 text-xs" style={{ color: '#94A3B8' }}
+                            title="Lo asigna el administrador">
+                            Sin asignar
+                          </span>
                         )}
                       </div>
                     )}
@@ -610,22 +624,33 @@ export default function AlumnosPage() {
                                 title={a.curso_solicitado_nombre}>
                                 Activado
                               </span>
-                            ) : a.curso_acceso_pendiente ? (
+                            ) : a.curso_acceso_pendiente && a.curso_puede_gestionar ? (
                               <a href={a.curso_solicitado_ids.length === 1 ? `/admin/cursos/${a.curso_solicitado_ids[0]}` : '/admin/cursos'}
                                 className="px-2 py-0.5 rounded-full text-xs font-medium"
                                 style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
                                 title={`${a.curso_solicitado_nombre}: asignado, pero todavía sin acceso. Ábrelo en la pestaña Alumnos del curso.`}>
                                 Acceso pendiente
                               </a>
-                            ) : (
+                            ) : a.curso_acceso_pendiente ? (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium"
+                                style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
+                                title={`${a.curso_solicitado_nombre}: asignado, pero todavía sin acceso. Lo abre el administrador.`}>
+                                Acceso pendiente
+                              </span>
+                            ) : a.curso_puede_gestionar ? (
                               <button
                                 onClick={() => activarCurso(a)}
                                 disabled={activando === a.id}
                                 className="px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-50"
                                 style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}
-                                title={`Activar: ${a.curso_solicitado_nombre}`}>
-                                {activando === a.id ? 'Activando…' : 'Activar'}
+                                title={`Asignar: ${a.curso_solicitado_nombre}`}>
+                                {activando === a.id ? 'Asignando…' : 'Asignar'}
                               </button>
+                            ) : (
+                              <span className="text-xs" style={{ color: '#94A3B8' }}
+                                title={`${a.curso_solicitado_nombre}: lo asigna el administrador`}>
+                                Sin asignar
+                              </span>
                             )}
                           </td>
                         )}

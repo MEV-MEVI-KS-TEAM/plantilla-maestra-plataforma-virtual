@@ -173,7 +173,9 @@ export default function VisorCursoPage() {
           <Lock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
           <span>
             {porAbrir.modulos_bloqueados === 1 ? 'Queda 1 módulo por abrir' : `Quedan ${porAbrir.modulos_bloqueados} módulos por abrir`}
-            {porAbrir.proximo_mes ? `: el siguiente se abre con el mes ${porAbrir.proximo_mes}, cuando tu escuela registre ese pago.` : '.'}
+            {porAbrir.proximo_mes
+              ? `: el siguiente se abre con el mes ${porAbrir.proximo_mes}, cuando tu escuela registre ese pago.`
+              : `. Pregúntale a tu escuela por ${porAbrir.modulos_bloqueados === 1 ? 'él' : 'ellos'}.`}
           </span>
         </div>
       )}
