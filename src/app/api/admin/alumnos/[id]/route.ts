@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo } from '@/lib/admin-alumno'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { CONFIG } from '@/lib/config'
@@ -288,6 +289,13 @@ export async function DELETE(
     }
 
     const admin = createAdminClient()
+
+    // 🛑 Solo cuentas de ALUMNO. Sin esto, `?definitivo=true` con el id de otro
+    // admin o de un secretario borraba su `usuarios` y su Auth: el delete de
+    // `alumnos` no encuentra fila, no da error, y el flujo seguía.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id)
+    if ('error' in objetivo) return objetivo.error
+
     const definitivo = request.nextUrl.searchParams.get('definitivo') === 'true'
 
     if (!definitivo) {

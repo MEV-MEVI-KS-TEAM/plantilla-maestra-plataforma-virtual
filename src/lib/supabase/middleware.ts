@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { destinoSiEsRutaDeProgama, aterrizajeAlumno } from '@/lib/modo'
 import { destinoSiEsRutaDePagoAjena } from '@/lib/periodicidad'
+import { esPublicaAunConSesion } from '@/lib/rutas-sesion'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -59,13 +60,13 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Usuario autenticado intentando acceder a ruta pública → redirigir a su dashboard
-  // Excepciones: la landing "/" y el catálogo "/diplomados" son páginas públicas
-  // de consulta. Un alumno o un admin con sesión abierta que abre el link de un
-  // diplomado quiere VERLO, no que lo boten a su panel — y ese link circula por
-  // WhatsApp, así que lo abre gente con y sin sesión indistintamente.
-  const isLandingRoot = request.nextUrl.pathname === '/'
-  const isCatalogo = request.nextUrl.pathname.startsWith('/diplomados')
-  if (user && isPublicRoute && !isLandingRoot && !isCatalogo) {
+  // Excepciones (`esPublicaAunConSesion`): la landing "/", el catálogo
+  // "/diplomados" y la validación de constancias "/validar" + "/api/validar"
+  // son páginas públicas de CONSULTA. Un alumno o un admin con sesión abierta
+  // que abre el link de un diplomado, o que comprueba un folio, quiere VERLO,
+  // no que lo boten a su panel — y la API de validación respondería un 307
+  // hacia HTML en vez del JSON.
+  if (user && isPublicRoute && !esPublicaAunConSesion(request.nextUrl.pathname)) {
     const { data: usuario } = await supabase
       .from('usuarios')
       .select('rol')
