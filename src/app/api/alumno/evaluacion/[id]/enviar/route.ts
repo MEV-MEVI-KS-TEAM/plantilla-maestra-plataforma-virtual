@@ -67,7 +67,9 @@ export async function POST(
     // SIN filtro de `activa` a propósito: esto CALIFICA lo que el alumno ya
     // respondió. Si el admin archiva una pregunta con el examen abierto,
     // filtrar aquí le cambiaría la nota.
-    const { data: rawPreguntas, error: pregError } = await supabase
+    // La clave se lee con service_role: authenticated no puede leer
+    // respuesta_correcta (Bug 221).
+    const { data: rawPreguntas, error: pregError } = await createAdminClient()
       .from('preguntas')
       .select('id, orden, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta')
       .eq('evaluacion_id', params.id)
