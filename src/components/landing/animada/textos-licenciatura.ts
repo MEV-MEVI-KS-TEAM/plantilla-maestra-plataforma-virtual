@@ -2,9 +2,10 @@
  * Lo que la sección de Licenciaturas afirma CON CIFRAS.
  *
  * Vive fuera del componente para poder probarlo. Toda frase con un número sale
- * del desglose que calcula `getDesglosesLicenciatura()`: si mañana cambia un
- * precio en `CONFIG.licenciaturas`, la portada y sus preguntas frecuentes
- * cambian con él y ninguna queda afirmando algo que ya no es cierto.
+ * del desglose que calcula `getDesglosesLicenciatura()` con la tabla EFECTIVA
+ * (config.ts más lo publicado en el panel): si cambia un precio, la portada y
+ * sus preguntas frecuentes cambian con él y ninguna queda afirmando algo que ya
+ * no es cierto.
  *
  * ⚠️ Lo que no está confirmado no se afirma: por ejemplo, CUÁNDO se paga la
  *    titulación. Si una escuela lo confirma, va a sus preguntas frecuentes.

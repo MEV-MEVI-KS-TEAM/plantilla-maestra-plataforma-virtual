@@ -80,7 +80,10 @@ test('2. cuerpo que no es objeto plano → error', () => {
 test('3. claves fuera de la lista blanca → "Clave no editable" con la ruta', () => {
   error(v({ modo: 'solo_cursos' }), 'modo', 'Clave no editable: modo')
   error(v({ prefijoMatricula: 'X' }), 'prefijoMatricula', 'Clave no editable: prefijoMatricula')
-  error(v({ licenciaturas: { activas: true } }), 'licenciaturas', 'Clave no editable: licenciaturas')
+  // De `licenciaturas` solo se publican sus tres precios (Bloque B): encender el
+  // add-on o tocar las carreras sigue siendo el producto.
+  error(v({ licenciaturas: { activas: true } }), 'licenciaturas.activas', 'Clave no editable: licenciaturas.activas')
+  error(v({ licenciaturas: { carreras: [] } }), 'licenciaturas.carreras', 'Clave no editable: licenciaturas.carreras')
   error(v({ landing: { mostrarCatalogoCursos: false } }), 'landing.mostrarCatalogoCursos',
     'Clave no editable: landing.mostrarCatalogoCursos')
   error(v({ colores: { inventado: '#000000' } }), 'colores.inventado', 'Clave no editable: colores.inventado')
@@ -913,9 +916,12 @@ test('31. recortarAEditables: solo claves editables, modalidades completas, sin 
   const preciosDeConfig = CONFIG.precios as unknown as Record<string, unknown>
   expect(r.precios).toEqual(Object.fromEntries(clavesPrecios.map((k) => [k, preciosDeConfig[k]])))
   expect(Object.keys(r.colores as object).sort()).toEqual(Object.keys(CONFIG.colores).sort())
-  // Toda clave editable está presente (salvo modalidades, que va como arreglo)
+  // Toda clave editable está presente (salvo modalidades, que va como arreglo).
+  // Los precios de licenciatura NO viajan todavía al editor: los manda su
+  // tarjeta (Bloque B, B3).
+  expect(r).not.toHaveProperty('licenciaturas')
   for (const ruta of CLAVES_EDITABLES) {
-    if (ruta === 'modalidades') continue
+    if (ruta === 'modalidades' || ruta.startsWith('licenciaturas.')) continue
     let actual: unknown = r
     for (const seg of ruta.split('.')) actual = (actual as Record<string, unknown>)[seg]
     expect(actual, ruta).not.toBeUndefined()

@@ -29,6 +29,7 @@
  */
 import { CONFIG } from '@/lib/config'
 import { PLACEHOLDERS, type ClaveEditable, type Placeholder } from '@/lib/site-config-core'
+import { LIMITES_LIC } from '@/lib/precios-licenciatura'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,8 @@ export type TipoCampo =
   | 'lista-texto'
   | 'lista-objetos'
   | 'modalidades'
+  /** `licenciaturas.modalidades`: objeto por id de plan de LICENCIATURA, solo `mensualidad`. */
+  | 'modalidades-lic'
 
 export type TipoSubcampo = 'texto' | 'textarea' | 'entero'
 
@@ -176,6 +179,12 @@ export const LIMITES = {
    */
   cuotaSemanalMin: 1,
   cuotaSemanalMax: 15000,
+  /**
+   * Titulación de licenciatura (título y cédula). Tope propio: es el pago más
+   * grande del programa y en la flota ya llega a $49,500, al filo de
+   * `precioMax`. Cerrado, para que un cero de más no se publique.
+   */
+  titulacionMax: LIMITES_LIC.titulacionMax,
   // Tipo de cambio: 0 = "no mostrar equivalencia". El techo es deliberadamente
   // holgado (ninguna moneda que la flota vaya a cobrar se acerca) pero cerrado:
   // sin él, un dedazo de 16.90 a 1690 multiplicaría por cien todos los precios
@@ -464,6 +473,22 @@ export const CAMPOS: ReadonlyArray<Campo> = [
   { clave: 'precios.mensualidadPreparatoria6Meses', seccion: 'precios', etiqueta: 'Preparatoria · 6 meses', tipo: 'entero',
     min: LIMITES.precioNivelMin, max: LIMITES.precioMax, opcional: true,
     ayuda: 'Vacío = sigue la general de hoy para Preparatoria en este plan.' },
+
+  // ── Licenciatura (Bloque B): sus tres precios, en su sitio ──
+  // Solo con el add-on encendido y la forma estándar de la plantilla
+  // (precios-licenciatura.ts). Las etiquetas NO son «Inscripción» ni
+  // «Mensualidad» a secas: la e2e del editor busca esos rótulos anclados.
+  // Mínimo 1: un 0 publicado haría decir «$0» a la sección de la landing. Una
+  // licenciatura sin inscripción o sin titulación se configura en config.ts.
+  { clave: 'licenciaturas.inscripcion', seccion: 'precios', etiqueta: 'Inscripción de licenciatura', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax,
+    ayuda: 'Pago único al inscribirse, igual en todas las carreras. Sin centavos.' },
+  { clave: 'licenciaturas.certificacion', seccion: 'precios', etiqueta: 'Titulación', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES.titulacionMax,
+    ayuda: 'Título y cédula profesional. Entra en el costo total de cada plan.' },
+  { clave: 'licenciaturas.modalidades', seccion: 'precios', etiqueta: 'Planes de licenciatura', tipo: 'modalidades-lic',
+    min: LIMITES.precioNivelMin, max: LIMITES.precioMax,
+    ayuda: 'Por plan: solo la mensualidad. La duración y las materias por mes no se editan.' },
 
   // ── Tipo de cambio (solo se pinta si la escuela NO cobra en pesos) ──
   { clave: 'tipoCambioMXN', seccion: 'precios', etiqueta: 'Tipo de cambio (pesos por dólar)', tipo: 'decimal',

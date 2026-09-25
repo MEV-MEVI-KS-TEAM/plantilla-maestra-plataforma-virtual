@@ -29,11 +29,23 @@ import {
 
 const TIPOS: ReadonlyArray<TipoCampo> = [
   'texto', 'textarea', 'hex', 'url', 'telefono', 'email', 'entero', 'decimal', 'lista-texto', 'lista-objetos', 'modalidades',
+  'modalidades-lic',
 ]
 const TIPOS_SUB: ReadonlyArray<TipoSubcampo> = ['texto', 'textarea', 'entero']
 const SECCIONES_VALIDAS: ReadonlyArray<SeccionCampo> = [
   'identidad', 'contacto', 'redes', 'colores', 'landing', 'precios', 'modalidades',
 ]
+
+/**
+ * ¿El bloque de licenciatura del clon tiene la forma de la plantilla (cifras y
+ * arreglo)? Con una forma propia (tarifas, objetos por moneda), sus rutas de
+ * precio no son hojas y no se editan desde el panel: no hay default que medir.
+ */
+const LIC_CON_FORMA = ES_PLANTILLA || (() => {
+  const l = (CONFIG as unknown as { licenciaturas?: Record<string, unknown> }).licenciaturas
+  return !!l && typeof l.inscripcion === 'number' && typeof l.certificacion === 'number' && Array.isArray(l.modalidades)
+})()
+const sinDefaultQueMedir = (clave: string) => clave.startsWith('licenciaturas.') && !LIC_CON_FORMA
 
 function leer(ruta: string): unknown {
   let actual: unknown = JSON.parse(JSON.stringify(CONFIG))
@@ -133,7 +145,7 @@ test('3. tipos y secciones válidos; toda lista tiene maxItems; lista-objetos ti
     }
 
     if (c.tipo === 'lista-texto') expect(c.max, `${c.clave}: lista-texto sin max por elemento`).toBeGreaterThan(0)
-    if (c.tipo === 'entero' || c.tipo === 'decimal' || c.tipo === 'modalidades') {
+    if (c.tipo === 'entero' || c.tipo === 'decimal' || c.tipo === 'modalidades' || c.tipo === 'modalidades-lic') {
       expect(c.min, `${c.clave}: sin min`).toBeDefined()
       expect(c.max, `${c.clave}: sin max`).toBeDefined()
       expect(c.min!).toBeLessThanOrEqual(c.max!)
@@ -148,6 +160,7 @@ test('3. tipos y secciones válidos; toda lista tiene maxItems; lista-objetos ti
 
 test('4. el tipo del descriptor coincide con el tipo del default en CONFIG', () => {
   for (const c of CAMPOS) {
+    if (sinDefaultQueMedir(c.clave)) continue
     const v = leer(c.clave)
     switch (c.tipo) {
       case 'entero':
@@ -174,6 +187,7 @@ test('4. el tipo del descriptor coincide con el tipo del default en CONFIG', () 
         break
       }
       case 'modalidades':
+      case 'modalidades-lic':
         expect(Array.isArray(v), c.clave).toBe(true)
         break
       default:
@@ -191,6 +205,7 @@ test('6. los defaults de config.ts caben en los límites del catálogo', () => {
   // Si esto falla, el editor prellenado con los defaults no dejaría guardar un
   // formulario sin tocar: el admin vería "no guarda" en un campo que nunca editó.
   for (const c of CAMPOS) {
+    if (sinDefaultQueMedir(c.clave)) continue
     const v = leer(c.clave)
     switch (c.tipo) {
       case 'entero':
@@ -198,6 +213,9 @@ test('6. los defaults de config.ts caben en los límites del catálogo', () => {
         // Vacío no es un valor fuera de rango: el editor lo reenvía como `null`
         // y el validador lo lee como "sin override".
         if (c.opcional && v === null) break
+        // Licenciatura: el 0 de config.ts es «sin costo» y el panel no lo
+        // reenvía (el editor lo lee de CONFIG y solo publica lo que se escribe).
+        if (c.clave.startsWith('licenciaturas.') && v === 0) break
         expect(v as number, c.clave).toBeGreaterThanOrEqual(c.min!)
         expect(v as number, c.clave).toBeLessThanOrEqual(c.max!)
         break
@@ -205,6 +223,14 @@ test('6. los defaults de config.ts caben en los límites del catálogo', () => {
         for (const m of v as Array<{ id: string; mensualidad: number }>) {
           expect(m.mensualidad, `modalidades.${m.id}`).toBeGreaterThanOrEqual(c.min!)
           expect(m.mensualidad, `modalidades.${m.id}`).toBeLessThanOrEqual(c.max!)
+        }
+        break
+      case 'modalidades-lic':
+        // Un plan en 0 es «sin precio todavía»: el admin se lo pone desde el panel.
+        for (const m of v as Array<{ id: string; mensualidad: unknown }>) {
+          if (typeof m.mensualidad !== 'number' || m.mensualidad === 0) continue
+          expect(m.mensualidad, `licenciaturas.modalidades.${m.id}`).toBeGreaterThanOrEqual(c.min!)
+          expect(m.mensualidad, `licenciaturas.modalidades.${m.id}`).toBeLessThanOrEqual(c.max!)
         }
         break
       case 'lista-texto': {

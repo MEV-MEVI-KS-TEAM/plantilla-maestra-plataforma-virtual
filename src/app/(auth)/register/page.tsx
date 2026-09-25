@@ -271,7 +271,8 @@ export default function RegisterPage() {
    * asimétrica —Secundaria solo 3 meses, Preparatoria solo 6— eso le ofrece al
    * aspirante dos planes que la escuela no vende, y al que elige uno de ellos
    * no hay nada que cobrarle. Las de licenciatura siguen aparte: tienen su
-   * propia tabla (6/9 meses) y no se editan desde el panel.
+   * propia tabla, y de ella el panel solo publica PRECIOS (aquí no se pintan):
+   * la lista de planes sigue siendo la de config.ts.
    */
   const planesDelNivel = esLicenciatura
     ? getModalidadesLicenciatura()

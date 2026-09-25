@@ -139,15 +139,25 @@ type ModalidadBase = {
   activa?: boolean
 }
 
-function modalidadesLic(): readonly ModalidadBase[] {
-  const lic = (CONFIG as { licenciaturas?: { activas?: boolean; modalidades?: readonly ModalidadBase[] } }).licenciaturas
+type TablaLic = { activas?: boolean; modalidades?: readonly ModalidadBase[] } | undefined
+
+function modalidadesLic(
+  lic: TablaLic = (CONFIG as { licenciaturas?: TablaLic }).licenciaturas,
+): readonly ModalidadBase[] {
   if (!lic?.activas) return []
   return lic.modalidades ?? []
 }
 
-/** Modalidades de licenciatura activas, para los selectores de carrera. */
-export function getModalidadesLicenciatura(): readonly ModalidadBase[] {
-  return modalidadesLic().filter(m => m.activa !== false)
+/**
+ * Modalidades de licenciatura activas, para los selectores de carrera.
+ *
+ * `lic`: la tabla EFECTIVA (`cfg.licenciaturas`, con los precios publicados del
+ * Bloque B), para quien pinta una mensualidad. Sin ella, la de CONFIG: el
+ * registro y las altas solo usan id y label, que no se publican. Los helpers
+ * ACADÉMICOS de abajo siguen siempre sobre CONFIG (regla de alcance).
+ */
+export function getModalidadesLicenciatura(lic?: unknown): readonly ModalidadBase[] {
+  return modalidadesLic(lic === undefined ? undefined : (lic as TablaLic)).filter(m => m.activa !== false)
 }
 
 /**
