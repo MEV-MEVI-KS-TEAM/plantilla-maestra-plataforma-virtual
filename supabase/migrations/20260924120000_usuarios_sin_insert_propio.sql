@@ -1,5 +1,5 @@
 -- ============================================================
--- Bug 202 — escalada a admin por INSERT de la fila propia en usuarios
+-- Bug 220 — escalada a admin por INSERT de la fila propia en usuarios
 --
 -- La política "usuarios: admin puede insertar" aceptaba id = auth.uid() y el
 -- rol authenticated tenía INSERT (incluida la columna rol). Donde el trigger

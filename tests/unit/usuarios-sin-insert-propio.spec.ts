@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-// Bug 202: nadie inserta su propia fila en usuarios (sería rol='admin' a voluntad).
+// Bug 220: nadie inserta su propia fila en usuarios (sería rol='admin' a voluntad).
 const leer = (r: string) => readFileSync(join(process.cwd(), r), 'utf8')
 
 for (const archivo of ['supabase/schema.sql', 'scripts/schema.sql',

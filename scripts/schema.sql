@@ -1815,7 +1815,7 @@ REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
 REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
 GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
 
--- Bug 202 (MEDERI, 24-sep-2026): el alta de la fila propia en usuarios/documentos
+-- Bug 220 (MEDERI, 24-sep-2026): el alta de la fila propia en usuarios/documentos
 -- NO va con la sesión del usuario. register-complete, /api/admin/* y la subida de
 -- documentos escriben con service_role. Sin este REVOKE, un signUp con la anon key
 -- (sin trigger on_auth_user_created) podía insertar su propia fila con rol='admin'.
