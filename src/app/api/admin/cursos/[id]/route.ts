@@ -74,7 +74,7 @@ export async function GET(
     // Inscritos con datos del usuario (alumnos.id = usuarios.id)
     const { data: inscripciones } = await admin
       .from('curso_inscripciones')
-      .select('id, alumno_id, created_at, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento')
+      .select('id, alumno_id, created_at, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento, acceso_total')
       .eq('curso_id', params.id)
       .order('created_at', { ascending: false })
 
@@ -94,6 +94,7 @@ export async function GET(
           id: string; alumno_id: string; created_at: string
           meses_desbloqueados: number | null; estado: string | null
           fecha_inscripcion: string | null; fecha_vencimiento: string | null
+          acceso_total: boolean | null
         }
         return {
           inscripcion_id: row.id,
@@ -107,6 +108,7 @@ export async function GET(
           estado: row.estado ?? 'activa',
           fecha_inscripcion: row.fecha_inscripcion,
           fecha_vencimiento: row.fecha_vencimiento,
+          acceso_total: row.acceso_total === true,
         }
       })
     }

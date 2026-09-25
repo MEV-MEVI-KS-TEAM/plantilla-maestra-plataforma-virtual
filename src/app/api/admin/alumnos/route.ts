@@ -78,11 +78,11 @@ async function anexarCursoIngreso<T extends { id: string }>(
   // Y «activado» exige ACCESO REAL (la misma ventana que la RLS, limiteVentana),
   // no solo que exista la fila: una inscripción con 0 meses abiertos salía
   // «Activado» mientras el alumno veía «no tiene lecciones» (#183, Bug 106).
-  type FilaIns = { alumno_id: string; curso_id: string; meses_desbloqueados: number | null; estado: string | null; fecha_vencimiento: string | null }
+  type FilaIns = { alumno_id: string; curso_id: string; meses_desbloqueados: number | null; estado: string | null; fecha_vencimiento: string | null; acceso_total: boolean | null }
   const inscritos = new Map<string, Map<string, FilaIns>>()
   const { data: ins } = await admin
     .from('curso_inscripciones')
-    .select('alumno_id, curso_id, meses_desbloqueados, estado, fecha_vencimiento')
+    .select('alumno_id, curso_id, meses_desbloqueados, estado, fecha_vencimiento, acceso_total')
     .in('alumno_id', [...pedido.keys()])
   for (const r of (ins ?? []) as FilaIns[]) {
     if (!inscritos.has(r.alumno_id)) inscritos.set(r.alumno_id, new Map())
@@ -515,25 +515,23 @@ export async function POST(request: NextRequest) {
     // y en la MISMA llamada para que el alumno no quede a medias si el admin
     // cierra la pestaña.
     //
-    // ⚠️ `meses_desbloqueados` queda en 0 a propósito: inscribir NO abre el
-    // contenido. Abrir el Mes 1 sigue siendo un acto deliberado contra un pago
-    // verificado, igual que en el registro público.
+    // Con la MISMA regla que «Asignar» (C3b): curso_inscribir, con la SESIÓN del
+    // admin (es_admin() usa auth.uid()), abre todo en un curso de pago único y
+    // el mes 1 en uno mensual o sin precio, y deja el evento con actor. Es el
+    // admin dando de alta a alguien que ya pagó; el registro público, en
+    // cambio, sigue creando la inscripción con 0 meses (register-complete).
     let cursosAsignados = 0
-    if (cursosValidados.length > 0) {
-      const { error: insError } = await admin
-        .from('curso_inscripciones')
-        .insert(cursosValidados.map(curso_id => ({
-          curso_id,
-          alumno_id:           newUserId,
-          meses_desbloqueados: 0,
-        })))
+    for (const curso_id of cursosValidados) {
+      const { error: insError } = await supabase.rpc('curso_inscribir', {
+        p_curso_id: curso_id, p_alumno_id: newUserId,
+      })
       if (insError && insError.code !== '23505') {
         // No es fatal: el alumno ya existe y es válido. Tumbar el alta por esto
         // dejaría una cuenta de Auth huérfana; el admin puede inscribirlo desde
         // la ficha. Se registra para que quede rastro.
-        console.error('[POST /api/admin/alumnos] curso_inscripciones:', insError.message)
+        console.error('[POST /api/admin/alumnos] curso_inscribir:', insError.message)
       } else {
-        cursosAsignados = cursosValidados.length
+        cursosAsignados++
       }
     }
 

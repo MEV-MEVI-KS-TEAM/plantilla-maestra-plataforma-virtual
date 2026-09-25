@@ -208,6 +208,7 @@ export default function AlumnosPage() {
     setActivando(a.id)
     try {
       const fallos: string[] = []
+      const abiertos: boolean[] = []   // acceso_total de cada curso asignado ahora
       for (const cursoId of a.curso_solicitado_ids) {
         const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones`, {
           method:  'POST',
@@ -216,13 +217,23 @@ export default function AlumnosPage() {
         })
         // 409 = ya estaba inscrito: no es un fallo, es el resultado deseado.
         if (!res.ok && res.status !== 409) fallos.push(cursoId)
+        if (res.ok) {
+          const json = await res.json().catch(() => ({} as { acceso_total?: boolean }))
+          abiertos.push(json.acceso_total === true)
+        }
       }
       if (fallos.length) {
         showToast(`No se pudo asignar ${fallos.length} de ${a.curso_solicitado_ids.length} curso(s)`, 'error')
       } else {
         // Asignar crea la inscripción; el acceso se abre aparte (pestaña Alumnos
         // del curso). La lista recargada dice si quedó «Activado» o «Acceso pendiente».
-        showToast(`✓ Curso asignado a ${a.nombre_completo}. Ábrele el acceso en la pestaña Alumnos del curso.`, 'success')
+        // Asignar ya abre acceso con la regla del curso (C3b): pago único → todo;
+        // mensual o sin precio → el mes 1. Se dice lo que el servidor abrió.
+        const queSeAbrio = abiertos.length === 0 ? 'ya estaba asignado'
+          : abiertos.every(Boolean) ? 'acceso total (pago único)'
+          : abiertos.some(Boolean) ? 'acceso abierto según cada curso'
+          : 'mes 1 abierto'
+        showToast(`✓ Curso asignado a ${a.nombre_completo}: ${queSeAbrio}.`, 'success')
       }
       await cargarAlumnos()
     } catch {

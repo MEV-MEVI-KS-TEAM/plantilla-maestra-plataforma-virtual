@@ -4,15 +4,22 @@ import { useEffect, useMemo, useState } from 'react'
 import { Search, UserMinus, UserPlus, Users } from 'lucide-react'
 import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
+import type { AperturaAlAsignar } from '@/lib/cursos/acceso'
 
 interface AlumnosTabProps {
   cursoId: string
   inscritos: CursoInscrito[]
+  /**
+   * Qué abre «Asignar» en ESTE curso, con su precio de hoy (aperturaAlAsignar):
+   * 'total' si es de pago único, 'mes1' si es mensual o no tiene precio. Solo
+   * para los textos: la decisión la toma curso_inscribir en SQL.
+   */
+  apertura: AperturaAlAsignar
   onChanged: (mensaje?: string) => void | Promise<void>
   onError: (mensaje: string) => void
 }
 
-export function AlumnosTab({ cursoId, inscritos, onChanged, onError }: AlumnosTabProps) {
+export function AlumnosTab({ cursoId, inscritos, apertura, onChanged, onError }: AlumnosTabProps) {
   const [alumnos, setAlumnos] = useState<AlumnoAdminRow[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
@@ -99,6 +106,45 @@ Esto REVOCA acceso que el alumno ya tenia: ` +
    * Por eso aquí no se comprueba nada: preguntarle al cliente si el alumno
    * aprobó sería confiar en el caller justo en el dato que decide el folio.
    */
+  /**
+   * Abre el curso completo (pago único cobrado a quien entró por meses) o quita
+   * el acceso total (corrección). Las dos dejan evento con actor en la
+   * bitácora. Quitarlo REVOCA acceso: se confirma antes.
+   */
+  const cambiarAccesoTotal = async (
+    inscripcionId: string,
+    accion: 'abrir-todo' | 'quitar-acceso-total',
+    nombre: string
+  ) => {
+    const ok = window.confirm(accion === 'abrir-todo'
+      ? `Abrir TODO el curso a ${nombre}.
+
+Tendrá acceso total (pago único): todos los módulos, también los que se agreguen después.
+
+¿Continuar?`
+      : `Quitar el acceso total a ${nombre}.
+
+Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró por pago único).
+
+¿Continuar?`)
+    if (!ok) return
+    setOcupadoId(inscripcionId)
+    try {
+      const res = await fetch(`/api/admin/inscripciones/${inscripcionId}/${accion}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo actualizar')
+      onChanged(accion === 'abrir-todo' ? `${nombre}: acceso total al curso` : `${nombre}: se quitó el acceso total`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo actualizar')
+    } finally {
+      setOcupadoId(null)
+    }
+  }
+
   const emitirConstancia = async (inscripcionId: string, nombre: string) => {
     const ok = window.confirm(
       `Emitir la constancia de ${nombre}.
@@ -140,6 +186,13 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
     () => (alumnos ?? []).filter(a => a.activo).length,
     [alumnos]
   )
+  // Los que la asignación masiva va a inscribir de verdad (los ya asignados no
+  // se tocan): el número que la confirmación tiene que decir (D3).
+  const nuevosActivos = useMemo(
+    () => (alumnos ?? []).filter(a => a.activo && !inscritosIds.has(a.id)).length,
+    [alumnos, inscritosIds]
+  )
+  const esPagoUnico = apertura === 'total'
 
   async function asignar(alumnoId: string, nombre: string) {
     setOcupadoId(alumnoId)
@@ -149,13 +202,16 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alumno_id: alumnoId }),
       })
-      const json = await res.json().catch(() => ({} as { error?: string }))
+      const json = await res.json().catch(() => ({} as { error?: string; acceso_total?: boolean }))
       if (res.status === 409) {
         onError(json.error ?? 'Este alumno ya está asignado al curso')
         return
       }
       if (!res.ok) throw new Error(json.error ?? 'Error al asignar')
-      onChanged(`${nombre} asignado al curso`)
+      // Lo que se abrió lo decide el servidor con el precio del curso: se dice tal cual.
+      onChanged(json.acceso_total
+        ? `${nombre} asignado: acceso total al curso (pago único)`
+        : `${nombre} asignado: mes 1 abierto`)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Error al asignar')
     } finally {
@@ -187,9 +243,10 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todos_activos: true }),
       })
-      const json = await res.json().catch(() => ({} as { agregados?: number; totalActivos?: number; error?: string }))
+      const json = await res.json().catch(() => ({} as { agregados?: number; totalActivos?: number; regla?: string; error?: string }))
       if (!res.ok) throw new Error(json.error ?? 'Error en la asignación masiva')
-      onChanged(`${json.agregados} alumno(s) nuevos asignados (de ${json.totalActivos} activos)`)
+      onChanged(`${json.agregados} alumno(s) nuevos asignados (de ${json.totalActivos} activos): ${
+        json.regla === 'total' ? 'acceso total al curso' : 'mes 1 abierto'}`)
       setConfirmTodos(0)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Error en la asignación masiva')
@@ -311,31 +368,62 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
                 )}
 
                 {/* Ventana de pago: lo que el alumno ve hoy */}
-                <span className="text-xs font-semibold flex-shrink-0 tabular-nums"
-                  style={{ color: 'var(--color-primario)' }}
-                  title="Meses abiertos de esta inscripción">
-                  {i.meses_desbloqueados} {i.meses_desbloqueados === 1 ? 'mes' : 'meses'}
-                </span>
+                {i.acceso_total ? (
+                  <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(16,185,129,0.12)', color: '#047857' }}
+                    title="Pago único: ve el curso completo, también los módulos que se agreguen">
+                    Acceso total
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold flex-shrink-0 tabular-nums"
+                    style={{ color: 'var(--color-primario)' }}
+                    title="Meses abiertos de esta inscripción">
+                    {i.meses_desbloqueados} {i.meses_desbloqueados === 1 ? 'mes' : 'meses'}
+                  </span>
+                )}
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => moverMes(i.inscripcion_id, 'cerrar-mes', i.meses_desbloqueados, i.nombre)}
-                    disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0}
-                    title="Cerrar un mes (revoca acceso)"
-                    className="px-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
-                    style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
-                  >
-                    −
-                  </button>
-                  <button
-                    onClick={() => moverMes(i.inscripcion_id, 'abrir-mes', i.meses_desbloqueados, i.nombre)}
-                    disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
-                    title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala para abrir meses` : 'Abrir el siguiente mes'}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
-                    style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
-                  >
-                    + Abrir mes
-                  </button>
+                  {i.acceso_total ? (
+                    <button
+                      onClick={() => cambiarAccesoTotal(i.inscripcion_id, 'quitar-acceso-total', i.nombre)}
+                      disabled={ocupadoId === i.inscripcion_id}
+                      title="Quitar el acceso total (revoca acceso)"
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+                      style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
+                    >
+                      Quitar acceso total
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => moverMes(i.inscripcion_id, 'cerrar-mes', i.meses_desbloqueados, i.nombre)}
+                        disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0}
+                        title="Cerrar un mes (revoca acceso)"
+                        className="px-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+                        style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
+                      >
+                        −
+                      </button>
+                      <button
+                        onClick={() => moverMes(i.inscripcion_id, 'abrir-mes', i.meses_desbloqueados, i.nombre)}
+                        disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
+                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala para abrir meses` : 'Abrir el siguiente mes'}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+                        style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+                      >
+                        + Abrir mes
+                      </button>
+                      <button
+                        onClick={() => cambiarAccesoTotal(i.inscripcion_id, 'abrir-todo', i.nombre)}
+                        disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
+                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala primero` : 'Acceso total: todo el curso (pago único)'}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+                        style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
+                      >
+                        Abrir todo
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}
                     disabled={ocupadoId === i.inscripcion_id}
@@ -362,14 +450,19 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         )}
       </div>
 
-      {/* Doble confirmación para asignación masiva */}
+      {/* Doble confirmación para asignación masiva. Dice CUÁNTOS y QUÉ se abre
+          (D3): en un curso de pago único, es acceso total para todos ellos. */}
       <ConfirmDialog
         open={confirmTodos === 1}
         title="Asignar a todos los alumnos activos"
         message={
           <>
-            Se asignará este curso a los <strong>{totalActivos}</strong> alumnos activos
-            (los que ya están asignados no se duplican). ¿Continuar?
+            Se asignará este curso a <strong>{nuevosActivos}</strong> alumno(s) activo(s) nuevo(s)
+            ({totalActivos - nuevosActivos} ya estaban asignados y no se tocan).{' '}
+            {esPagoUnico
+              ? <>Como el curso es de <strong>pago único</strong>, cada uno tendrá <strong>ACCESO TOTAL</strong> al curso completo desde ahora.</>
+              : <>A cada uno se le abre el <strong>mes 1</strong>.</>}
+            {' '}¿Continuar?
           </>
         }
         confirmLabel="Sí, continuar"
@@ -382,7 +475,10 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
         title="¿Seguro? Segunda confirmación"
         message={
           <>
-            Esta es una asignación masiva a <strong>{totalActivos}</strong> alumnos activos.
+            Esta es una asignación masiva a <strong>{nuevosActivos}</strong> alumno(s) activo(s).{' '}
+            {esPagoUnico
+              ? <><strong>Los {nuevosActivos} verán TODO el curso (acceso total).</strong> </>
+              : <>Los {nuevosActivos} verán el mes 1. </>}
             Confirma una vez más para ejecutarla.
           </>
         }

@@ -20,6 +20,10 @@ export function errorDeRpcCurso(error: PostgrestError): { status: number; mensaj
       return { status: 404, mensaje }
     case '40001': // serialization_failure — el valor esperado no coincide (doble clic)
       return { status: 409, mensaje }
+    case '23505': // unique_violation — curso_inscribir: el alumno ya estaba asignado
+      return { status: 409, mensaje }
+    case '22P02': // invalid_text_representation — un id que no es UUID
+      return { status: 400, mensaje: 'Identificador inválido.' }
     case '22023': // invalid_parameter_value — tope alcanzado, estado inválido, monto <= 0
       return { status: 422, mensaje }
     default:

@@ -21,7 +21,7 @@ export async function GET(
 
     const { data: insc } = await admin
       .from('curso_inscripciones')
-      .select('id, curso_id, alumno_id, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento, created_at')
+      .select('id, curso_id, alumno_id, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento, created_at, acceso_total')
       .eq('id', params.id)
       .maybeSingle()
     if (!insc) return NextResponse.json({ error: 'Inscripción no encontrada' }, { status: 404 })
@@ -64,6 +64,7 @@ export async function GET(
 
     const porMes = (curso?.modulos_por_mes as number | undefined) ?? 0
     const meses = (i.meses_desbloqueados as number) ?? 0
+    const accesoTotal = i.acceso_total === true
 
     // Bitácora: solo la ve el admin (RLS de curso_inscripcion_eventos).
     const { data: eventos } = await admin
@@ -85,6 +86,7 @@ export async function GET(
         id: i.id,
         estado: i.estado,
         meses_desbloqueados: meses,
+        acceso_total: accesoTotal,
         fecha_inscripcion: i.fecha_inscripcion,
         fecha_vencimiento: i.fecha_vencimiento,
         created_at: i.created_at,
@@ -98,8 +100,9 @@ export async function GET(
       curso: curso ?? null,
       tope_meses: typeof tope === 'number' ? tope : null,
       modulos_totales: modulosTotales ?? 0,
-      // Lo que el alumno ve HOY, con la misma aritmética del gate de B2.
-      modulos_visibles: Math.min(meses * porMes, modulosTotales ?? 0),
+      // Lo que el alumno ve HOY, con la misma aritmética del gate de B2 (y de
+      // reporte_curso_inscripciones): con acceso total, todos.
+      modulos_visibles: accesoTotal ? (modulosTotales ?? 0) : Math.min(meses * porMes, modulosTotales ?? 0),
       pagos: pagos ?? [],
     })
   } catch (err) {

@@ -124,7 +124,7 @@ export async function puedeExamenFinal(
 ): Promise<boolean> {
   const { data: insc } = await admin
     .from('curso_inscripciones')
-    .select('meses_desbloqueados, estado, fecha_vencimiento')
+    .select('meses_desbloqueados, estado, fecha_vencimiento, acceso_total')
     .eq('curso_id', cursoId)
     .eq('alumno_id', alumnoId)
     .maybeSingle()

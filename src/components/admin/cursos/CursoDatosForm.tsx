@@ -359,8 +359,10 @@ export function CursoDatosForm({ curso, inscritosActivos = 0, onChanged, onError
           Precios y ritmo
         </h3>
         <p className="text-xs mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
-          Lo que anuncia el catálogo y el ritmo con que se abre el contenido. El acceso de
-          cada alumno se abre en la pestaña Alumnos (el contenido no se libera solo).
+          Lo que anuncia el catálogo y el ritmo con que se abre el contenido. Al asignar
+          un alumno, un curso de PAGO ÚNICO (inscripción con mensualidad en 0) le abre
+          todo; uno mensual o sin precio, el mes 1. Cambiar el precio después no cambia
+          el acceso de los ya inscritos.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

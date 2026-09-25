@@ -7,6 +7,7 @@ import { ArrowLeft, BookOpen, ClipboardCheck, Globe, Users } from 'lucide-react'
 import { CursoDatosForm } from '@/components/admin/cursos/CursoDatosForm'
 import { ModulosEditor } from '@/components/admin/cursos/ModulosEditor'
 import { AlumnosTab } from '@/components/admin/cursos/AlumnosTab'
+import { aperturaAlAsignar } from '@/lib/cursos/acceso'
 import { ExamenTab } from '@/components/admin/cursos/ExamenTab'
 import { PublicacionTab } from '@/components/admin/cursos/PublicacionTab'
 import { ToastContainer, useToast } from '@/components/ui/toast'
@@ -197,7 +198,8 @@ export default function EditorCursoPage() {
       )}
 
       {tab === 'alumnos' && (
-        <AlumnosTab cursoId={curso.id} inscritos={inscritos} onChanged={onChanged} onError={onError} />
+        <AlumnosTab cursoId={curso.id} inscritos={inscritos} apertura={aperturaAlAsignar(curso)}
+          onChanged={onChanged} onError={onError} />
       )}
 
       {tab === 'publicacion' && (
