@@ -107,6 +107,10 @@ export const MENSAJES_CANDADO: Record<string, string> = {
   quiz:                'Este alumno ya respondió quizzes de sus semanas. Para cambiar su plan de estudio debe registrarse como alumno nuevo.',
 }
 
+// 'sin_cambios' NO es un candado (el alumno no inició nada): es una petición
+// que no corrige nada. Va aparte y responde 400, no 409 (Bug 231).
+export const MENSAJE_SIN_CAMBIOS = 'El plan elegido es el mismo que ya tiene el alumno. No hay nada que corregir.'
+
 /** Mensaje para un código de candado que el servidor no reconoce. */
 export function mensajeCandado(candado: string): string {
   return MENSAJES_CANDADO[candado]

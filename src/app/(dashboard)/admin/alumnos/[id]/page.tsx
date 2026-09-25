@@ -433,6 +433,18 @@ export default function AlumnoDetallePage() {
       return
     }
     if (!corregirForm.modalidad) { setCorregirError('Selecciona la modalidad.'); return }
+    // Mismo plan que ya tiene: el servidor lo rechaza con 400 ('sin_cambios');
+    // aquí solo se ahorra el viaje (Bug 231).
+    const carreraPedida = corregirForm.nivel === 'licenciatura' ? corregirForm.carrera : null
+    if (
+      alumno &&
+      corregirForm.nivel === (alumno.nivel ?? '') &&
+      (carreraPedida || null) === (alumno.carrera || null) &&
+      corregirForm.modalidad === (alumno.modalidad ?? '')
+    ) {
+      setCorregirError('Es el mismo plan que ya tiene. Cambia algún dato o cancela.')
+      return
+    }
     setCorrigiendo(true)
     try {
       const res = await fetch(`/api/admin/alumnos/${id}/corregir-plan`, {
