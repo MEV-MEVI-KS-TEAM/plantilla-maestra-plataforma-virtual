@@ -222,7 +222,7 @@ export default function AlumnosPage() {
       } else {
         // Asignar crea la inscripción; el acceso se abre aparte (pestaña Alumnos
         // del curso). La lista recargada dice si quedó «Activado» o «Acceso pendiente».
-        showToast(`✓ Curso asignado a ${a.nombre_completo}`, 'success')
+        showToast(`✓ Curso asignado a ${a.nombre_completo}. Ábrele el acceso en la pestaña Alumnos del curso.`, 'success')
       }
       await cargarAlumnos()
     } catch {
@@ -552,14 +552,16 @@ export default function AlumnosPage() {
                         ) : a.curso_acceso_pendiente && a.curso_puede_gestionar ? (
                           <a href={a.curso_solicitado_ids.length === 1 ? `/admin/cursos/${a.curso_solicitado_ids[0]}` : '/admin/cursos'}
                             className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
-                            title="Asignado, pero todavía sin acceso: ábrelo en la pestaña Alumnos del curso">
+                            style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', textDecoration: 'underline' }}
+                            title="Asignado, pero todavía sin acceso: ábrelo en la pestaña Alumnos del curso"
+                            aria-label="Acceso pendiente: asignado, pero todavía sin acceso. Ábrelo en la pestaña Alumnos del curso">
                             Acceso pendiente
                           </a>
                         ) : a.curso_acceso_pendiente ? (
                           <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
                             style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
-                            title="Asignado, pero todavía sin acceso: lo abre el administrador">
+                            title="Asignado, pero todavía sin acceso: lo abre el administrador"
+                            aria-label="Acceso pendiente: asignado, pero todavía sin acceso. Lo abre el administrador">
                             Acceso pendiente
                           </span>
                         ) : a.curso_puede_gestionar ? (
@@ -572,7 +574,7 @@ export default function AlumnosPage() {
                           </button>
                         ) : (
                           <span className="flex-shrink-0 text-xs" style={{ color: '#94A3B8' }}
-                            title="Lo asigna el administrador">
+                            title="Lo asigna el administrador" aria-label="Sin asignar: lo asigna el administrador">
                             Sin asignar
                           </span>
                         )}
@@ -627,14 +629,16 @@ export default function AlumnosPage() {
                             ) : a.curso_acceso_pendiente && a.curso_puede_gestionar ? (
                               <a href={a.curso_solicitado_ids.length === 1 ? `/admin/cursos/${a.curso_solicitado_ids[0]}` : '/admin/cursos'}
                                 className="px-2 py-0.5 rounded-full text-xs font-medium"
-                                style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
-                                title={`${a.curso_solicitado_nombre}: asignado, pero todavía sin acceso. Ábrelo en la pestaña Alumnos del curso.`}>
+                                style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', textDecoration: 'underline' }}
+                                title={`${a.curso_solicitado_nombre}: asignado, pero todavía sin acceso. Ábrelo en la pestaña Alumnos del curso.`}
+                                aria-label={`Acceso pendiente a ${a.curso_solicitado_nombre}: ábrelo en la pestaña Alumnos del curso`}>
                                 Acceso pendiente
                               </a>
                             ) : a.curso_acceso_pendiente ? (
                               <span className="px-2 py-0.5 rounded-full text-xs font-medium"
                                 style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
-                                title={`${a.curso_solicitado_nombre}: asignado, pero todavía sin acceso. Lo abre el administrador.`}>
+                                title={`${a.curso_solicitado_nombre}: asignado, pero todavía sin acceso. Lo abre el administrador.`}
+                                aria-label={`Acceso pendiente a ${a.curso_solicitado_nombre}: lo abre el administrador`}>
                                 Acceso pendiente
                               </span>
                             ) : a.curso_puede_gestionar ? (
@@ -648,7 +652,8 @@ export default function AlumnosPage() {
                               </button>
                             ) : (
                               <span className="text-xs" style={{ color: '#94A3B8' }}
-                                title={`${a.curso_solicitado_nombre}: lo asigna el administrador`}>
+                                title={`${a.curso_solicitado_nombre}: lo asigna el administrador`}
+                                aria-label={`Sin asignar ${a.curso_solicitado_nombre}: lo asigna el administrador`}>
                                 Sin asignar
                               </span>
                             )}

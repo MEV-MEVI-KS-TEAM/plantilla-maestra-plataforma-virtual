@@ -88,7 +88,9 @@ async function anexarCursoIngreso<T extends { id: string }>(
     if (!inscritos.has(r.alumno_id)) inscritos.set(r.alumno_id, new Map())
     inscritos.get(r.alumno_id)!.set(r.curso_id, r)
   }
-  const idsCursos = [...new Set((ins ?? []).map(r => (r as FilaIns).curso_id))]
+  // Solo los cursos de las ofertas pedidas: son los únicos que se evalúan, y así
+  // la consulta de módulos no crece con todo lo inscrito (PostgREST corta en 1000).
+  const idsCursos = [...new Set([...pedido.values()].flatMap(o => getOfertaIngreso(o)?.cursoIds ?? []))]
   const cursos = new Map<string, { modulos_por_mes: number | null; estado: string | null }>()
   if (idsCursos.length > 0) {
     const { data: cs } = await admin.from('cursos').select('id, modulos_por_mes, estado').in('id', idsCursos)

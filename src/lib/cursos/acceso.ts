@@ -156,7 +156,10 @@ export function mesDeLiberacion(
  *   null            → tiene acceso (a todo o a una parte).
  *
  * Usa EXACTAMENTE los mismos filtros que `limiteVentana`, en el mismo orden,
- * para que el motivo y el candado no puedan discrepar.
+ * para que el motivo y el candado no puedan discrepar. Con `ordenes` exige
+ * además ver al menos un módulo (orden < límite), la misma regla que el
+ * «Activado» de /admin/alumnos: con la ventana abierta pero ningún orden por
+ * debajo del límite (base 1 con un módulo por mes, #204) no ve nada.
  */
 export type MotivoBloqueo = 'sin_contenido' | 'no_publicado' | 'no_vigente' | 'vencida' | 'sin_apertura'
 
@@ -218,6 +221,7 @@ export function motivoBloqueo(args: {
   inscripcion: InscripcionVentana | null | undefined
   curso: CursoVentana | null | undefined
   modulosTotales: number
+  ordenes?: readonly (number | null | undefined)[]
 }): MotivoBloqueo | null {
   const { inscripcion, curso, modulosTotales } = args
   if (!(modulosTotales > 0)) return 'sin_contenido'
@@ -228,5 +232,8 @@ export function motivoBloqueo(args: {
     const hoy = new Date().toISOString().slice(0, 10)
     if (inscripcion.fecha_vencimiento < hoy) return 'vencida'
   }
-  return limiteVentana(inscripcion, curso) > 0 ? null : 'sin_apertura'
+  const limite = limiteVentana(inscripcion, curso)
+  if (!(limite > 0)) return 'sin_apertura'
+  if (args.ordenes && !hayModuloVisible(args.ordenes, limite)) return 'sin_apertura'
+  return null
 }

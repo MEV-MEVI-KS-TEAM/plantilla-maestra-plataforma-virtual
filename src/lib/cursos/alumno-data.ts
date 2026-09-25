@@ -200,6 +200,6 @@ export async function resumenVentana(
     // Mes (1-based) del primer módulo bloqueado; null si no se puede abrir.
     proximo_mes: proximoMes,
     estado_inscripcion: inscripcion.estado ?? null,
-    motivo: motivoBloqueo({ inscripcion, curso: cursoV, modulosTotales: totales }),
+    motivo: motivoBloqueo({ inscripcion, curso: cursoV, modulosTotales: totales, ordenes }),
   }
 }

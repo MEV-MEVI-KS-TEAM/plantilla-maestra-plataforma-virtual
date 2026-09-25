@@ -33,14 +33,25 @@ test('1. motivoBloqueo: cada caso tiene su motivo', () => {
   for (const [nombre, args, esperado] of casos) expect(motivoBloqueo(args), nombre).toBe(esperado)
 })
 
-test('2. paridad con el candado: motivo null ⇔ limiteVentana > 0 (con contenido)', () => {
+test('2. paridad con el candado: motivo null ⇔ ve al menos un módulo (el eje de la RLS)', () => {
   const estados = ['activa', 'completada', 'suspendida', 'cancelada', '', null]
-  const cursos = [publicado, { ...publicado, estado: 'borrador' }, { modulos_por_mes: 0, estado: 'publicado' }, null]
-  for (const estado of estados) for (const meses of [0, 1, 3, null]) for (const venc of [null, ayer, manana]) for (const curso of cursos) {
+  const cursos = [publicado, { ...publicado, estado: 'borrador' }, { modulos_por_mes: 1, estado: 'publicado' }, { modulos_por_mes: 0, estado: 'publicado' }, null]
+  const juegos = [[0, 1, 2, 3, 4], [1, 2, 3, 4, 5]]   // base 0 y base 1 (#204)
+  for (const estado of estados) for (const meses of [0, 1, 3, null]) for (const venc of [null, ayer, manana]) for (const curso of cursos) for (const ordenes of juegos) {
     const inscripcion = { meses_desbloqueados: meses, estado, fecha_vencimiento: venc }
-    const m = motivoBloqueo({ inscripcion, curso, modulosTotales: 5 })
-    expect(m === null, JSON.stringify({ estado, meses, venc, curso })).toBe(limiteVentana(inscripcion, curso) > 0)
+    const m = motivoBloqueo({ inscripcion, curso, modulosTotales: ordenes.length, ordenes })
+    const ve = modulosVisibles(ordenes.map(orden => ({ orden })), inscripcion, curso).length > 0
+    expect(m === null, JSON.stringify({ estado, meses, venc, curso, ordenes })).toBe(ve)
+    expect(m === null).toBe(hayModuloVisible(ordenes, limiteVentana(inscripcion, curso)))
   }
+  // Sin `ordenes` se queda en la regla de la ventana sola (límite > 0).
+  for (const meses of [0, 1]) {
+    const inscripcion = { meses_desbloqueados: meses, estado: 'activa' }
+    expect(motivoBloqueo({ inscripcion, curso: publicado, modulosTotales: 5 }) === null).toBe(limiteVentana(inscripcion, publicado) > 0)
+  }
+  // Base 1 con un módulo por mes y 1 mes pagado: ventana 1, nada visible → espera, no «sin lecciones».
+  const base1 = { inscripcion: { meses_desbloqueados: 1, estado: 'activa' }, curso: { modulos_por_mes: 1, estado: 'publicado' }, modulosTotales: 5, ordenes: [1, 2, 3, 4, 5] }
+  expect(motivoBloqueo(base1)).toBe('sin_apertura')
 })
 
 test('3. el visor solo dice «no tiene lecciones» cuando de verdad no tiene', () => {
@@ -99,7 +110,7 @@ test('4. el visor usa el motivo y pinta los módulos por abrir; ya no escribe la
   expect(page).toMatch(/ventana\.limite > 0 && ventana\.modulos_bloqueados > 0/)
   expect(page).toMatch(/Pregúntale a tu escuela/)
   const data = sinComentarios(leer('src/lib/cursos/alumno-data.ts'))
-  expect(data).toContain('motivo: motivoBloqueo({ inscripcion, curso: cursoV, modulosTotales: totales })')
+  expect(data).toContain('motivo: motivoBloqueo({ inscripcion, curso: cursoV, modulosTotales: totales, ordenes })')
   // La banda sale de modulosPorAbrir (eje de la RLS + tope), no de «totales − límite».
   expect(data).toContain('modulosPorAbrir({')
   expect(data).toContain('tope: topeMeses(cursoV?.duracion_meses, totales, porMes)')
@@ -113,10 +124,11 @@ test('5. «Activado» sale de la ventana real, no de que exista la fila (Bug 106
   expect(api).toContain('curso_activado:          inscritoEnTodos && conAcceso')
   expect(api).toContain('curso_acceso_pendiente:  inscritoEnTodos && !conAcceso')
   const page = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
-  expect(page.match(/Acceso pendiente/g)?.length).toBe(4) // móvil y tabla, con y sin enlace
+  expect(page.match(/>\s*Acceso pendiente\s*</g)?.length).toBe(4) // móvil y tabla, con y sin enlace
   expect(page).not.toContain('✓ Curso activado')
   // El botón ya no promete «Activar»: asignar crea la inscripción, no abre el acceso.
-  expect(page).not.toMatch(/>\s*\{?[^<]*'Activar'|Activando…|No se pudo activar|al activar el curso|`Activar:/)
+  // Ni texto ni título «Activar» (los nombres internos activarCurso y setActivando no cuentan).
+  expect(page).not.toMatch(/\bActivar\b|\bActivando\b|No se pudo activar|al activar el curso/)
   expect(page.match(/'Asignando…' : 'Asignar'/g)?.length).toBe(2)
 })
 
