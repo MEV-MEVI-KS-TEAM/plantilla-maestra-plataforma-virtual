@@ -3,7 +3,7 @@
 import { AvisoMoneda, Equivalencia } from '@/components/moneda-equivalencia'
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -14,6 +14,10 @@ import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatur
 import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
+import {
+  TEXTO_SIN_PRECIO, lineaPrecio, precioCatalogo, precioCursoNumerico, resolverPrecioOferta,
+  type PrecioOferta, type PreciosCurso,
+} from '@/lib/cursos/precio-curso'
 // Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
 // provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
 import { useSiteConfig } from '@/components/site-config-provider'
@@ -62,6 +66,40 @@ const selectStyle: React.CSSProperties = {
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────────
+/**
+ * Precio de una oferta de curso de ingreso en su tarjeta. Sale de
+ * resolverPrecioOferta: la ficha del curso manda y config.ts es el respaldo.
+ * «pago único» va en CADA tarjeta: el texto general lo decía de todas, y una
+ * ficha con mensualidad lo volvía falso.
+ */
+function PrecioDeOferta({ p }: { p: PrecioOferta }) {
+  const estilo = { color: 'var(--color-acento-texto)' }
+  if (p.tipo === 'informes') {
+    return <span className="flex-shrink-0 text-sm font-bold" style={estilo}>{TEXTO_SIN_PRECIO}</span>
+  }
+  if (p.tipo === 'mensual') {
+    return (
+      <span className="flex-shrink-0 text-sm font-bold text-right" style={estilo}>
+        {formatearMoneda(p.mensualidad, CONFIG, { conCodigo: true })}
+        <span className="font-normal text-xs"> /mes</span>
+        <Equivalencia monto={p.mensualidad} />
+        {p.inscripcion !== null && (
+          <span className="block font-normal text-xs" style={{ color: '#64748B' }}>
+            + inscripción {formatearMoneda(p.inscripcion, CONFIG, { conCodigo: true })}
+          </span>
+        )}
+      </span>
+    )
+  }
+  return (
+    <span className="flex-shrink-0 text-sm font-bold text-right" style={estilo}>
+      {formatearMoneda(p.monto, CONFIG, { conCodigo: true })}
+      <Equivalencia monto={p.monto} />
+      <span className="block font-normal text-xs" style={{ color: '#64748B' }}>pago único</span>
+    </span>
+  )
+}
+
 function Label({ text, required: req }: { text: string; required?: boolean }) {
   return (
     <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
@@ -239,8 +277,21 @@ export default function RegisterPage() {
   // inscribirse directo a uno y no solo a un plan de Sec/Prepa/Lic. Se pide al
   // servidor y no a Supabase: este componente es 'use client' y ningún
   // componente cliente lee las tablas curso_*.
-  const [diplomados,  setDiplomados]  = useState<{ id: string; nombre: string; tipo: string }[]>([])
+  const [diplomados,  setDiplomados]  = useState<({ id: string; nombre: string; tipo: string } & PreciosCurso)[]>([])
   const [diplomadoId, setDiplomadoId] = useState('')
+  // El precio de las ofertas espera al catálogo: pintar primero el de config.ts
+  // y cambiarlo al llegar la ficha haría que el alumno viera dos cifras. Si el
+  // catálogo falla, `diplomados` queda vacío y manda el respaldo de config.ts.
+  const [catalogoListo, setCatalogoListo] = useState(false)
+  const preciosPublicados = useMemo(
+    () => new Map<string, PreciosCurso>(diplomados.map(d => [d.id, d])),
+    [diplomados],
+  )
+  const cursoElegido  = diplomados.find(d => d.id === diplomadoId) ?? null
+  const precioElegido = cursoElegido ? precioCatalogo(cursoElegido) : null
+  const numElegido    = cursoElegido ? precioCursoNumerico(cursoElegido) : null
+  const montoElegido  = numElegido?.tipo === 'mensual' ? numElegido.mensualidad
+    : numElegido?.tipo === 'unico' ? numElegido.monto : 0
   // ⚠️ `nivel` guarda el VALOR DE LA OPCIÓN, no el nivel de BD. «Diplomados» es
   // presentación de `nivel='licenciatura'`; se traduce con nivelDeOpcion() justo
   // antes de mandar. Ver src/lib/niveles.ts (TICKET-2026-09-07-52).
@@ -254,6 +305,7 @@ export default function RegisterPage() {
       .then(r => r.ok ? r.json() : [])
       .then(d => { if (vivo && Array.isArray(d)) setDiplomados(d) })
       .catch(() => {})   // sin catálogo, el registro sigue funcionando igual
+      .finally(() => { if (vivo) setCatalogoListo(true) })
     return () => { vivo = false }
   }, [])
 
@@ -578,6 +630,20 @@ export default function RegisterPage() {
                           <option key={d.id} value={d.id}>{d.nombre}</option>
                         ))}
                       </select>
+                      {/* El precio de la ficha del curso, con la misma regla que
+                          la portada y /diplomados (Bloque C): antes el registro
+                          solo daba el nombre. */}
+                      {precioElegido && (
+                        <div className="mt-1.5">
+                          <p className="text-xs font-semibold" style={{ color: 'var(--color-acento-texto)' }}>
+                            {lineaPrecio(precioElegido)}
+                            {montoElegido > 0 && <Equivalencia monto={montoElegido} />}
+                          </p>
+                          {precioElegido.tipo !== 'informes' && (
+                            <AvisoMoneda className="text-xs mt-0.5" style={{ color: '#64748B' }} />
+                          )}
+                        </div>
+                      )}
                     </>
                   ) : (
                   <>
@@ -636,8 +702,8 @@ export default function RegisterPage() {
                 <div className="mt-4 pt-4" style={{ borderTop: '1px solid #E8F0F7' }}>
                   <Label text="Curso de preparación para examen de ingreso (opcional)" />
                   <p className="text-xs mb-2.5" style={{ color: '#64748B' }}>
-                    Pago único, independiente del plan. Un asesor te contacta para
-                    el pago y te lo activa.
+                    Independiente del plan. Un asesor te contacta para el pago y
+                    te lo activa.
                   </p>
 
                   <div className="space-y-2">
@@ -665,12 +731,7 @@ export default function RegisterPage() {
                               <span className="block text-xs mt-0.5" style={{ color: '#64748B' }}>{o.detalle}</span>
                             )}
                           </span>
-                          {o.precio > 0 && (
-                            <span className="flex-shrink-0 text-sm font-bold" style={{ color: 'var(--color-acento-texto)' }}>
-                              {formatearMoneda(o.precio, CONFIG, { conCodigo: true })}
-                              <Equivalencia monto={o.precio} />
-                            </span>
-                          )}
+                          {catalogoListo && <PrecioDeOferta p={resolverPrecioOferta(o, preciosPublicados)} />}
                         </button>
                       )
                     })}

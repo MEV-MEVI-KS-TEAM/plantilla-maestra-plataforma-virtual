@@ -52,7 +52,7 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
   if (!curso) notFound()
 
   const cfg = await getSiteConfig()
-  const canal = canalDiplomado(cfg, curso.nombre)
+  const canal = canalDiplomado(cfg, curso.nombre, curso.tipo)
   const etiqueta = curso.tipo === 'diplomado' ? 'Diplomado' : 'Curso'
 
   return (

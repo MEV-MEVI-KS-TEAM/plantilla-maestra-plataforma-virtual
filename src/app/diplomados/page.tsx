@@ -33,14 +33,18 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * El precio de la tarjeta. Sin precio capturado (los dos en 0) dice «Pide
  * informes»: antes ponía «$0», y un curso sembrado sin precio se anunciaba
- * gratis (ver `precioCatalogo`).
+ * gratis (ver `precioCatalogo`). El pago único lleva su rótulo, como en las
+ * portadas y la ficha: «$2,490» a secas no decía si era al mes.
  */
 function PrecioTarjeta({ curso }: { curso: CursoCatalogoPublico }) {
   const p = precioCatalogo(curso)
   if (p.tipo === 'mensual') {
     return <>{p.mensualidad}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> /mes</span></>
   }
-  return <>{p.tipo === 'unico' ? p.monto : TEXTO_SIN_PRECIO}</>
+  if (p.tipo === 'unico') {
+    return <>{p.monto}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> · pago único</span></>
+  }
+  return <>{TEXTO_SIN_PRECIO}</>
 }
 
 export default async function DiplomadosPage() {

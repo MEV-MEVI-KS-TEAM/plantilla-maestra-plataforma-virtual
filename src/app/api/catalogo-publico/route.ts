@@ -25,8 +25,16 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const catalogo = await listarCatalogoPublico()
-    // Al formulario solo le hacen falta el id y el nombre para poblar el select.
-    return NextResponse.json(catalogo.map(c => ({ id: c.id, nombre: c.nombre, tipo: c.tipo })))
+    // Lista EXPLÍCITA, nunca `...c`: el select del registro necesita id, nombre y
+    // tipo, y el precio de la ficha (Bloque C) para anunciar lo mismo que la
+    // portada y /diplomados, que ya lo publican. Sin rebuild: la ruta es dinámica.
+    return NextResponse.json(catalogo.map(c => ({
+      id: c.id,
+      nombre: c.nombre,
+      tipo: c.tipo,
+      precio_inscripcion: c.precio_inscripcion,
+      precio_mensualidad: c.precio_mensualidad,
+    })))
   } catch {
     // Un fallo aquí no debe tumbar el registro: el formulario simplemente no
     // ofrecerá la opción de diplomado.

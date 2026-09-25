@@ -18,15 +18,22 @@
  * Los TÍTULOS de módulos sí son públicos: son el temario, y el temario es
  * material de venta.
  */
-import { CONFIG } from '@/lib/config'
-import { formatearMoneda } from '@/lib/moneda'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { canalEscuela, type CanalEscuela } from '@/lib/contacto-ui'
 
+// La regla del precio vive en un módulo PURO (sin el cliente admin de aquí), para
+// que el registro y la landing clásica, que son 'use client', la importen sin
+// arrastrarlo. Se re-exporta para no mover los imports de siempre.
+export {
+  TEXTO_SIN_PRECIO, lineaPrecio, precioCatalogo, precioCursoNumerico, precioPublico,
+  type PrecioCatalogo, type PrecioNumerico,
+} from './precio-curso'
+
 // La purga del catálogo (revalidatePath al publicar/editar/borrar) vive en
-// src/lib/cursos/purga.ts, NO aquí: este archivo lo importa LandingClient
-// ('use client') por precioPublico, y traer next/cache por esa cadena metía código
-// de caché de servidor al bundle del navegador (+14 kB en la landing de los 144).
+// src/lib/cursos/purga.ts, NO aquí: LandingClient ('use client') importaba este
+// archivo por precioPublico, y traer next/cache por esa cadena metía código de
+// caché de servidor al bundle del navegador (+14 kB en la landing de los 144).
+// Desde el Bloque C los componentes cliente toman el precio de precio-curso.ts.
 
 /** Lista blanca de campos del catálogo. Todo lo que no esté aquí, no sale. */
 const CAMPOS_CATALOGO =
@@ -132,52 +139,11 @@ export async function detallePublico(cursoId: string): Promise<DetallePublico | 
 }
 
 /**
- * Precio de catálogo, sin decimales — los precios de la plantilla son enteros.
- *
- * Se llamaba `precioMXN` y forzaba pesos. El nombre era el bug: en una escuela
- * que cobra en dólares anunciaba un diplomado de 450 USD como "$450", en la
- * misma página y con el mismo aspecto que los precios en pesos del resto de la
- * flota.
+ * El mensaje con el que se piden informes de un curso o diplomado concreto.
+ * Con el tipo: un curso de ingreso (tipo 'curso') decía «el diplomado».
  */
-export function precioPublico(n: number): string {
-  return formatearMoneda(n, CONFIG, { conCodigo: true })
-}
-
-/** Lo que el catálogo dice de un curso SIN precio capturado. */
-export const TEXTO_SIN_PRECIO = 'Pide informes'
-
-/**
- * Qué anuncia el catálogo del precio de un curso.
- *
- * 🛑 UN CURSO SIN PRECIO NO ES UN CURSO GRATIS. La tabla `cursos` guarda
- * `DEFAULT 0` en los dos precios, y los bancos de cursos siembran el curso
- * PUBLICADO sin precio: la portada animada lo anunciaba «Sin costo» y
- * `/diplomados` ponía «$0» hasta que alguien se acordara de capturarlo. La tabla
- * no tiene un campo explícito de «gratis», así que con los dos precios en 0 (o
- * negativos) el curso dice «Pide informes» y el visitante pregunta.
- *
- *   · mensualidad > 0 → `mensual` (con la inscripción, si la hay);
- *   · solo inscripción > 0 → `unico` (pago único);
- *   · ninguno → `informes`.
- */
-export type PrecioCatalogo =
-  | { tipo: 'mensual'; mensualidad: string; inscripcion: string | null }
-  | { tipo: 'unico'; monto: string }
-  | { tipo: 'informes' }
-
-export function precioCatalogo(c: { precio_inscripcion: number | null; precio_mensualidad: number | null }): PrecioCatalogo {
-  const mensualidad = Number(c.precio_mensualidad ?? 0)
-  const inscripcion = Number(c.precio_inscripcion ?? 0)
-  if (mensualidad > 0) {
-    return { tipo: 'mensual', mensualidad: precioPublico(mensualidad), inscripcion: inscripcion > 0 ? precioPublico(inscripcion) : null }
-  }
-  if (inscripcion > 0) return { tipo: 'unico', monto: precioPublico(inscripcion) }
-  return { tipo: 'informes' }
-}
-
-/** El mensaje con el que se piden informes de un diplomado concreto. */
-export function mensajeDiplomado(nombreCurso: string): string {
-  return `Hola, me interesa el diplomado "${nombreCurso}". ¿Me dan informes?`
+export function mensajeDiplomado(nombreCurso: string, tipo?: string | null): string {
+  return `Hola, me interesa el ${tipo === 'curso' ? 'curso' : 'diplomado'} "${nombreCurso}". ¿Me dan informes?`
 }
 
 /**
@@ -186,6 +152,6 @@ export function mensajeDiplomado(nombreCurso: string): string {
  * no tiene ninguno. Antes se armaba sobre `whatsappUrl` tal cual: un número de
  * 10 dígitos sin lada no llegaba a nadie y, sin número, el botón quedaba vacío.
  */
-export function canalDiplomado(cfg: Parameters<typeof canalEscuela>[0], nombreCurso: string): CanalEscuela | null {
-  return canalEscuela(cfg, mensajeDiplomado(nombreCurso))
+export function canalDiplomado(cfg: Parameters<typeof canalEscuela>[0], nombreCurso: string, tipo?: string | null): CanalEscuela | null {
+  return canalEscuela(cfg, mensajeDiplomado(nombreCurso, tipo))
 }

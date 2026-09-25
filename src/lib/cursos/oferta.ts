@@ -26,10 +26,17 @@ export interface OfertaIngreso {
   nombre: string
   /** Detalle corto (examen o destino). Vacío si el config no lo trae. */
   detalle: string
-  /** Pago único en MXN. 0 si el config no lo declara. */
+  /**
+   * Pago único de config.ts, en la moneda de la escuela. 0 si el config no lo
+   * declara. Es el RESPALDO: el registro anuncia el precio de la ficha del
+   * curso cuando la tiene (ver resolverPrecioOferta en precio-curso.ts). En el
+   * paquete es `precioPaquete`, que la tabla no tiene.
+   */
   precio: number
-  /** UUID(s) de `cursos` a inscribir al activar. El paquete trae varios. */
+  /** UUID(s) de `cursos` a inscribir al asignar. El paquete trae varios. */
   cursoIds: string[]
+  /** true = los cursos se venden juntos por `precioPaquete` (una sola oferta). */
+  esPaquete: boolean
 }
 
 type CursoConfig = {
@@ -69,6 +76,7 @@ export function getOfertasIngreso(): OfertaIngreso[] {
       detalle: cursos.map(c => c.examen ?? c.slug ?? '').filter(Boolean).join(' · '),
       precio: precioPaquete,
       cursoIds: ids,
+      esPaquete: true,
     }]
   }
 
@@ -84,6 +92,7 @@ export function getOfertasIngreso(): OfertaIngreso[] {
       detalle: c.examen ?? c.destino ?? c.desc ?? '',
       precio: Number(c.precio ?? 0),
       cursoIds,
+      esPaquete: false,
     }]
   })
 }

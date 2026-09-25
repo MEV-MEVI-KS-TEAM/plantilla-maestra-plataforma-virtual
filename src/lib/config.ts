@@ -531,12 +531,18 @@ export const CONFIG = {
   //              UUID v5 deterministas, así que el mismo curso tiene el mismo
   //              UUID en todos los clientes. Van en arreglo porque una oferta
   //              puede ser un paquete de varios cursos.
-  //   precio   → pago único en MXN. El módulo no tiene checkout: el alumno paga
-  //              por fuera y el admin le activa el curso desde /admin/alumnos.
+  //   precio   → pago único, en la moneda de la escuela, de RESPALDO: si el
+  //              curso tiene precio en su ficha (/admin/cursos/[id] → «Precios
+  //              y ritmo»), el registro anuncia ese, que es el que la escuela
+  //              edita. Este número solo sale si la ficha está en 0 / 0. El
+  //              módulo no tiene checkout: el alumno paga por fuera y el admin
+  //              le asigna el curso desde /admin/alumnos.
+  //   pagoUnico → no lo lee ningún código: se conserva por compatibilidad.
   //
   // Para vender varios cursos como PAQUETE ÚNICO en vez de sueltos, usar
   // `precioPaquete: <monto>` en lugar de `precio` por curso: src/lib/cursos/
-  // oferta.ts los colapsa en una sola oferta que inscribe a todos.
+  // oferta.ts los colapsa en una sola oferta que inscribe a todos. El precio
+  // del paquete SÍ sale siempre de aquí: la ficha de cada curso no lo tiene.
   // === ADD-ON LICENCIATURAS =================================================
   // Tercer programa, junto a Secundaria y Preparatoria.
   //
