@@ -52,7 +52,10 @@ import { formatearMoneda } from '@/lib/moneda'
 import { planesPorNivel, getDuracionLabel, getPlanLabelPublico, getPlanLabelConDuracion } from '@/lib/modalidades'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { resolverLanding } from '@/lib/landing-textos'
-import { TEXTO_SIN_PRECIO, precioCatalogo, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
+// Del módulo puro, no de catalogo.ts: este componente es 'use client' y
+// catalogo.ts trae el cliente admin.
+import { lineaPrecio, precioCatalogo } from '@/lib/cursos/precio-curso'
+import type { CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela, faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
 import { subtituloMarca } from '@/lib/marca'
@@ -399,10 +402,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
   // Un curso sin precio NO se anuncia «Sin costo»: la tabla guarda 0 cuando
   // nadie capturó el precio (ver `precioCatalogo`). Dice «Pide informes».
-  const precioCurso = (c: CursoCatalogoPublico) => {
-    const p = precioCatalogo(c)
-    return p.tipo === 'mensual' ? `${p.mensualidad} al mes` : p.tipo === 'unico' ? `${p.monto} · pago único` : TEXTO_SIN_PRECIO
-  }
+  // La línea sale de lineaPrecio, la misma que usa el registro.
+  const precioCurso = (c: CursoCatalogoPublico) => lineaPrecio(precioCatalogo(c))
 
   return (
     <div className="la-landing" style={{ background: paleta.blanco, color: paleta.tinta, minHeight: '100vh' }}>

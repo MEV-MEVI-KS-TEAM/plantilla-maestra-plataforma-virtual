@@ -92,7 +92,7 @@ export default function AlumnosPage() {
 
   // Catálogo de cursos y diplomados PUBLICADOS de esta escuela. Se pide al
   // mismo endpoint que usa el registro público, que ya filtra por
-  // `estado = 'publicado'` y devuelve solo id, nombre y tipo. Sin él, la opción
+  // `estado = 'publicado'` y devuelve id, nombre, tipo y precios. Sin él, la opción
   // «Curso o diplomado» no se ofrece y el admin no tiene dónde inscribir.
   const [cursos, setCursos] = useState<{ id: string; nombre: string; tipo: string }[]>([])
   useEffect(() => {

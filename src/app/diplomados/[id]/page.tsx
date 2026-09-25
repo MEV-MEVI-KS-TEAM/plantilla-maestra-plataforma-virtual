@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { TEXTO_SIN_PRECIO, canalDiplomado, detallePublico, precioCatalogo, precioPublico } from '@/lib/cursos/catalogo'
+import { TEXTO_SIN_PRECIO, canalDiplomado, detallePublico, precioCatalogo } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
 
@@ -52,7 +52,9 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
   if (!curso) notFound()
 
   const cfg = await getSiteConfig()
-  const canal = canalDiplomado(cfg, curso.nombre)
+  const canal = canalDiplomado(cfg, curso.nombre, curso.tipo)
+  // La regla ÚNICA del precio (precio-curso.ts), la misma de las portadas.
+  const precio = precioCatalogo(curso)
   const etiqueta = curso.tipo === 'diplomado' ? 'Diplomado' : 'Curso'
 
   return (
@@ -88,25 +90,25 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
           {/* ⚠️ Un curso SIN mensualidad se cobra de una sola vez. Etiquetarlo
               «Inscripción única de $X» se lee como un anticipo al que seguirán
               pagos, que es justo lo contrario. Se distinguen los dos casos. */}
-          {(curso.precio_mensualidad > 0 || curso.precio_inscripcion > 0) && (
+          {precio.tipo !== 'informes' && (
             <div className="mt-6 rounded-xl p-4"
               style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
-              {curso.precio_mensualidad > 0 ? (
+              {precio.tipo === 'mensual' ? (
                 <>
                   <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>
-                    {precioPublico(curso.precio_mensualidad)}
+                    {precio.mensualidad}
                     <span className="text-sm font-normal" style={{ color: 'var(--color-texto-secundario)' }}> / mes</span>
                   </p>
-                  {curso.precio_inscripcion > 0 && (
+                  {precio.inscripcion && (
                     <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
-                      Inscripción de {precioPublico(curso.precio_inscripcion)}
+                      Inscripción de {precio.inscripcion}
                     </p>
                   )}
                 </>
               ) : (
                 <>
                   <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>
-                    {precioPublico(curso.precio_inscripcion)}
+                    {precio.monto}
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>Pago único</p>
                 </>

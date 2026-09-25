@@ -15,7 +15,9 @@ import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-con
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
-import { precioPublico } from '@/lib/cursos/catalogo'
+// Del módulo puro, no de catalogo.ts: este componente es 'use client' y
+// catalogo.ts trae el cliente admin.
+import { TEXTO_SIN_PRECIO, precioCatalogo } from '@/lib/cursos/precio-curso'
 import { faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela, whatsappVisible } from '@/lib/contacto-ui'
 import { escuelaCertifica, inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
@@ -231,6 +233,48 @@ function Card3D({ children, className, style }: { children: React.ReactNode; cla
 }
 
 /* ─── FAQ Item ────────────────────────────────────────────────────────── */
+/**
+ * Precio de una tarjeta del catálogo, con la regla ÚNICA (precioCatalogo), la
+ * misma de la animada, /diplomados y la ficha. Hasta el Bloque C esta portada
+ * tenía su propio ternario y, sin precio capturado, no decía nada: la tarjeta
+ * terminaba en «Ver temario →» sin invitar a preguntar. Sin precio NO es
+ * gratis: «Pide informes», nunca «$0».
+ */
+function PrecioTarjetaClasica({ curso, color }: {
+  curso: { precio_inscripcion: number; precio_mensualidad: number }
+  color: string
+}) {
+  // `precio` y no `p`: el guardián de consumidores-precio-nivel vigila `p.inscripcion`
+  // (la inscripción de los planes), y esta es la de un curso.
+  const precio = precioCatalogo(curso)
+  if (precio.tipo === 'mensual') {
+    return (
+      <>
+        <p className="text-sm font-bold" style={{ color }}>
+          {precio.mensualidad}
+          <span className="font-normal text-xs" style={{ color: '#94A3B8' }}> / mes</span>
+        </p>
+        {precio.inscripcion && (
+          <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>
+            Inscripción {precio.inscripcion}
+          </p>
+        )}
+      </>
+    )
+  }
+  // Un curso sin mensualidad se cobra de una vez: decir «Inscripción $X» lo
+  // haría parecer un anticipo.
+  if (precio.tipo === 'unico') {
+    return (
+      <>
+        <p className="text-sm font-bold" style={{ color }}>{precio.monto}</p>
+        <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>Pago único</p>
+      </>
+    )
+  }
+  return <p className="text-sm font-bold" style={{ color }}>{TEXTO_SIN_PRECIO}</p>
+}
+
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -912,28 +956,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                     </div>
 
                     <div className="mt-auto pt-4" style={{ borderTop: '1px solid #F1F5F9' }}>
-                      {/* Un curso sin mensualidad se cobra de una vez: decir
-                          «Inscripción $X» lo haría parecer un anticipo. */}
-                      {c.precio_mensualidad > 0 ? (
-                        <>
-                          <p className="text-sm font-bold" style={{ color: C.navy }}>
-                            {precioPublico(c.precio_mensualidad)}
-                            <span className="font-normal text-xs" style={{ color: '#94A3B8' }}> / mes</span>
-                          </p>
-                          {c.precio_inscripcion > 0 && (
-                            <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>
-                              Inscripción {precioPublico(c.precio_inscripcion)}
-                            </p>
-                          )}
-                        </>
-                      ) : c.precio_inscripcion > 0 ? (
-                        <>
-                          <p className="text-sm font-bold" style={{ color: C.navy }}>
-                            {precioPublico(c.precio_inscripcion)}
-                          </p>
-                          <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>Pago único</p>
-                        </>
-                      ) : null}
+                      <PrecioTarjetaClasica curso={c} color={C.navy} />
                       <p className="text-xs font-semibold mt-2" style={{ color: C.royalTexto }}>Ver temario →</p>
                     </div>
                   </Link>
