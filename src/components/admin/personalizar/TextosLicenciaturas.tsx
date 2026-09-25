@@ -28,7 +28,14 @@ import {
   getDesglosesLicenciatura,
   getEtiquetaLicenciatura,
 } from '@/lib/licenciatura-utils'
-import { escribirRuta, estaSobrescrito, quitarRuta, valorEfectivo } from '@/lib/site-config-editor'
+import {
+  escribirRuta,
+  estaSobrescrito,
+  licenciaturaDeBorrador,
+  quitarRuta,
+  valorEfectivo,
+} from '@/lib/site-config-editor'
+import type { SiteConfigOverrides } from '@/lib/site-config-core'
 import {
   PASOS_LICENCIATURA,
   textosAutoLicenciaturas,
@@ -41,11 +48,15 @@ import { Ayuda, TXT_SUAVE, type PropsPestana } from './Comunes'
 const CLAVE_CARRERAS = 'landing.licenciaturas_carreras'
 const CLAVE_PASOS = 'landing.licenciaturas_pasos'
 
-/** Los textos automáticos de la sección, para los placeholders. */
-export function autoLicenciaturas() {
+/**
+ * Los textos automáticos de la sección, para los placeholders. Con el
+ * BORRADOR de precios de licenciatura (Bloque B): el paso «Inscripción única
+ * de $X» dice la cifra que el admin está por publicar, no la de config.ts.
+ */
+export function autoLicenciaturas(overrides: SiteConfigOverrides = {}) {
   return textosAutoLicenciaturas(
     getCarrerasLicenciatura(),
-    getDesglosesLicenciatura(),
+    getDesglosesLicenciatura(licenciaturaDeBorrador(overrides) as Parameters<typeof getDesglosesLicenciatura>[0]),
     getEtiquetaLicenciatura(),
     (n) => formatearMoneda(n, CONFIG),
   )
@@ -66,7 +77,7 @@ type Props = Pick<PropsPestana, 'defaults' | 'overrides' | 'actualizar' | 'puede
 export function ListasLicenciaturas({
   defaults, overrides, actualizar, puedeEditar, claveConError, campoCarreras, campoPasos,
 }: Props) {
-  const auto = autoLicenciaturas()
+  const auto = autoLicenciaturas(overrides)
   const carreras = getCarrerasLicenciatura()
 
   // ── Carreras: una fila por carrera del config, casada por slug ──────────

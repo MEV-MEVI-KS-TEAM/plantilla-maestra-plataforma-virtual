@@ -28,6 +28,8 @@ import { CLAVE_MENSUALIDAD_POR_NIVEL, inscripcionDe, mensualidadDe, type NivelCo
 import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { esSoloCursos } from '@/lib/modo'
+import { licenciaturaEfectiva } from '@/lib/precios-licenciatura'
+import { nivelesTexto } from '@/lib/niveles-ui'
 import { formatearWhatsApp, whatsappEscuelaDisponible } from '@/lib/contacto-ui'
 import type { ModalidadPrograma } from '@/lib/modalidades'
 import {
@@ -646,8 +648,108 @@ export function hayCambiosDePrecio(
 export function hayCambiosDePreciosOPlanes(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
   return (
     !mismoContenido(antes.precios, despues.precios) ||
-    !mismoContenido(antes.modalidades, despues.modalidades)
+    !mismoContenido(antes.modalidades, despues.modalidades) ||
+    hayCambiosDeLicenciatura(antes, despues)
   )
+}
+
+/**
+ * ¿Cambió algún precio de licenciatura (Bloque B)? Cuenta para el modal de
+ * precios, y le dice además si hay que avisar que una portada clásica no los
+ * muestra.
+ */
+export function hayCambiosDeLicenciatura(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
+  return !mismoContenido(antes.licenciaturas, despues.licenciaturas)
+}
+
+// ─── Licenciatura (Bloque B, B3) ─────────────────────────────────────────────
+
+/** La tabla de licenciatura de config.ts, con cast: hay clones sin el bloque. */
+const tablaDeFabrica = (): unknown => (CONFIG as unknown as { licenciaturas?: unknown }).licenciaturas
+
+/**
+ * ¿La escuela vende licenciaturas? Add-on encendido, con carreras y fuera de
+ * solo cursos (la misma regla del registro y de PestanaTextos).
+ *
+ * 🛑 NO se decide con `CONFIG.niveles`: la plantilla trae 'licenciatura' con el
+ * add-on apagado, y 69 de los 77 clones con el add-on no la declaran.
+ */
+export function ofreceLicenciaturas(lic: unknown = tablaDeFabrica()): boolean {
+  const l = lic as { activas?: unknown; carreras?: unknown } | null | undefined
+  return l?.activas === true && Array.isArray(l.carreras) && l.carreras.length > 0 && !esSoloCursos()
+}
+
+/**
+ * El título de las tarjetas de Secundaria y Preparatoria cuando la escuela
+ * también vende licenciaturas: «Inscripción · Secundaria y Preparatoria».
+ * Sin licenciaturas, el de siempre. Respeta «Bachillerato» y las escuelas de
+ * un solo nivel.
+ */
+export function tituloSecPrepa(base: string, conLic: boolean, niveles: readonly string[] = CONFIG.niveles): string {
+  if (!conLic) return base
+  // Siempre en este orden, aunque `niveles` venga al revés.
+  const propios = ['secundaria', 'preparatoria'].filter((n) => niveles.includes(n))
+  return `${base} · ${propios.length > 0 ? nivelesTexto(propios) : 'Secundaria y Preparatoria'}`
+}
+
+/**
+ * La tabla de licenciatura del BORRADOR: la de config.ts con lo que el admin
+ * lleva escrito encima, con la MISMA regla del merge (`licenciaturaEfectiva`).
+ * Con `sin`, sin esa clave: lo que quedaría si el campo se vacía.
+ *
+ * 🛑 No sale de `defaults`: el editor no recibe la tabla (la lee de CONFIG,
+ * como `precioNivelEfectivo`), y así el JSON del editor no cambia.
+ */
+export function licenciaturaDeBorrador(overrides: SiteConfigOverrides, sin?: string): unknown {
+  const ov = prepararParaPublicar(sin ? quitarRuta(overrides, sin) : overrides)
+  return licenciaturaEfectiva(tablaDeFabrica(), ov.licenciaturas)
+}
+
+/** Un campo de la tarjeta «Licenciaturas». */
+export type CampoLicenciatura =
+  | { clave: 'licenciaturas.inscripcion'; tipo: 'inscripcion' }
+  | { clave: 'licenciaturas.certificacion'; tipo: 'titulacion' }
+  /** `clave` = `licenciaturas.modalidades.<id>` (la que señala el validador); se escribe en `.mensualidad`. */
+  | { clave: string; tipo: 'mensualidad'; planId: string }
+
+/** La ruta del borrador donde se escribe ese campo. */
+export function rutaLicenciatura(campo: CampoLicenciatura): string {
+  return campo.tipo === 'mensualidad' ? `${campo.clave}.mensualidad` : campo.clave
+}
+
+/**
+ * Lo que cobraría ese precio con el borrador; con `vacio`, sin su clave (la
+ * cifra de config.ts). Sale del mismo bloque efectivo que leen la landing, la
+ * ficha y el PDF. Una forma que no es número da 0 (el campo no se pinta ahí).
+ */
+export function precioLicenciaturaEfectivo(
+  overrides: SiteConfigOverrides,
+  campo: CampoLicenciatura,
+  { vacio = false }: { vacio?: boolean } = {},
+): number {
+  const lic = licenciaturaDeBorrador(overrides, vacio ? rutaLicenciatura(campo) : undefined) as
+    { inscripcion?: unknown; certificacion?: unknown; modalidades?: unknown } | null | undefined
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+  if (campo.tipo === 'inscripcion') return num(lic?.inscripcion)
+  if (campo.tipo === 'titulacion') return num(lic?.certificacion)
+  const planes = Array.isArray(lic?.modalidades) ? (lic.modalidades as Array<{ id?: unknown; mensualidad?: unknown }>) : []
+  return num(planes.find((m) => m?.id === campo.planId)?.mensualidad)
+}
+
+/**
+ * El marcador de un campo de licenciatura vacío: «Vacío: usa el de fábrica,
+ * $1,500» (o «sin costo»). Una MENSUALIDAD en 0 es un plan sin precio todavía:
+ * «Vacío: sin precio». Nunca «$0».
+ */
+export function textoVacioLicenciatura(monto: number, tipo: CampoLicenciatura['tipo'], moneda: Moneda = CONFIG.moneda): string {
+  if (monto <= 0 && tipo === 'mensualidad') return 'Vacío: sin precio'
+  return textoVacioNivel(monto, moneda, 'fabrica')
+}
+
+/** El final del error del campo («…o déjalo vacío para usar ___.»), con la misma cifra que el marcador. */
+export function textoVacioErrorLicenciatura(monto: number, tipo: CampoLicenciatura['tipo'], moneda: Moneda = CONFIG.moneda): string {
+  if (monto <= 0 && tipo === 'mensualidad') return 'el plan sin precio (tu página no lo muestra)'
+  return textoVacioError(monto, moneda, 'fabrica')
 }
 
 // ─── Precios por nivel (Fase 2, F2-9) ────────────────────────────────────────

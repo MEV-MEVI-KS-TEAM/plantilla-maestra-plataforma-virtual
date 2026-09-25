@@ -24,25 +24,59 @@
  * general de hoy, y con los seis vacíos la escuela cobra exactamente lo de
  * antes. No hay campo por nivel en los planes con `nivel` (ya son de uno
  * solo), en los de otra duración ni en una escuela semanal.
+ *
+ * LICENCIATURAS (Bloque B, B3). Solo si la escuela las vende
+ * (`ofreceLicenciaturas`: add-on encendido con carreras, NUNCA `CONFIG.niveles`).
+ * Entonces las tres tarjetas de arriba se rotulan «· Secundaria y
+ * Preparatoria» y aparece la tarjeta «Licenciaturas»: inscripción, titulación
+ * y la mensualidad de cada plan, cada una OPCIONAL (vacío = la cifra de
+ * config.ts, con el marcador «Vacío: usa el de fábrica, $X»). Sin interruptor
+ * ni `activa`: los planes de licenciatura son el producto. Las claves son
+ * `licenciaturas.*`, así que sus ids en la página nunca chocan con los de
+ * `modalidades.<id>` (hay clones con '6_meses' en las dos tablas). Las
+ * etiquetas de los campos de Sec/Prepa NO cambian: la e2e las busca ancladas.
  */
 import Link from 'next/link'
-import { ArrowLeftRight, BadgeDollarSign, ExternalLink, GraduationCap, Layers } from 'lucide-react'
+import { ArrowLeftRight, BadgeDollarSign, ExternalLink, GraduationCap, Landmark, Layers } from 'lucide-react'
 import { CONFIG } from '@/lib/config'
 import { esSoloCursos } from '@/lib/modo'
 import { esSemanal } from '@/lib/periodicidad'
 import { equivalenteMXN, type Moneda } from '@/lib/moneda'
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
 import {
+  AVISO_LIC_FORMA_PROPIA,
   AYUDA_CUOTA_SEMANAL,
+  AYUDA_INSCRIPCION_SEC_PREPA,
+  AYUDA_LIC_INSCRIPCION,
+  AYUDA_LIC_MENSUALIDAD,
+  AYUDA_LIC_MENSUALIDAD_CERO,
+  AYUDA_LIC_SIN_PLANES,
+  AYUDA_LIC_TITULACION,
   AYUDA_NIVEL_CIFRA_PROPIA,
   AYUDA_NIVEL_DE_FABRICA,
   NOTA_PRECIOS,
   NOTA_PRECIOS_POR_NIVEL,
+  notaPreciosLicenciatura,
 } from '@/lib/site-config-textos'
+import {
+  bloqueLicEditable,
+  inscripcionLicEditable,
+  planesLicEditables,
+  titulacionLicEditable,
+} from '@/lib/precios-licenciatura'
+import { landingAnimadaActiva } from '@/lib/landing-estilo'
+import { unirConO } from '@/components/landing/animada/textos-licenciatura'
 import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
   clavesPorNivelDePlan,
   escribirModalidad,
+  ofreceLicenciaturas,
+  precioLicenciaturaEfectivo,
+  rutaLicenciatura,
+  textoVacioErrorLicenciatura,
+  textoVacioLicenciatura,
+  tituloSecPrepa,
+  type CampoLicenciatura,
   escribirRuta,
   estaSobrescrito,
   formatoDinero,
@@ -99,6 +133,20 @@ function semanasDe(m: unknown): number {
   return Number((m as { semanas?: number }).semanas ?? 0)
 }
 
+/**
+ * Lo que cobra un precio de licenciatura, junto al input. Un 0 no es «$0»:
+ * la inscripción o la titulación en 0 es «Sin costo», y una mensualidad en 0 es
+ * un plan «Sin precio» todavía (la landing no lo muestra).
+ */
+function CobraLicenciatura({ valor, moneda, mensualidad }: { valor: number; moneda: Moneda; mensualidad: boolean }) {
+  if (valor > 0) return <EnPesos valor={valor} moneda={moneda} />
+  return (
+    <span className="text-sm font-semibold" style={{ color: TXT_SUAVE }}>
+      {mensualidad ? 'Sin precio' : 'Sin costo'}
+    </span>
+  )
+}
+
 /** El mismo número, ya formateado, junto al input. */
 function EnPesos({ valor, moneda }: { valor: number; moneda: Moneda }) {
   return (
@@ -153,6 +201,14 @@ export function PestanaPrecios({
   // Solo con Secundaria Y Preparatoria (y fuera de solo cursos): con un
   // nivel, «por nivel» y «general» serían el mismo campo dos veces.
   const porNivel = preciosPorNivelVisibles()
+  // Licenciaturas: solo si la escuela las vende. Los precios se publican sobre
+  // la forma estándar de la plantilla; con una forma propia, la tarjeta lo dice.
+  const conLic = ofreceLicenciaturas()
+  const tablaLic = (CONFIG as unknown as { licenciaturas?: unknown }).licenciaturas
+  const licEditable = conLic && bloqueLicEditable(tablaLic)
+  const planesLic = licEditable ? planesLicEditables(tablaLic) : []
+  /** «12 o 18 meses», «6, 12 o 18 meses»: por su duración, nunca por periodos. */
+  const ritmosLic = `${unirConO([...new Set(planesLic.map((p) => p.meses))].sort((a, b) => a - b).map(String))} meses`
 
   function campoPrecio(clave: string, etiqueta?: string) {
     const campo = campoPorClave(clave)
@@ -217,6 +273,41 @@ export function PestanaPrecios({
     )
   }
 
+  /**
+   * Un precio de licenciatura: vacío = la cifra de config.ts. Gemelo de
+   * `campoNivel`: el marcador y la cifra de la derecha salen de
+   * `precioLicenciaturaEfectivo`, el mismo bloque efectivo que leen la landing,
+   * la ficha y el PDF. Nunca escribe `null` ni 0: vaciar quita la clave.
+   */
+  function campoLic(campo: CampoLicenciatura, etiqueta: string, ayuda: string) {
+    const ruta = rutaLicenciatura(campo)
+    const catalogo = campoPorClave(campo.tipo === 'mensualidad' ? 'licenciaturas.modalidades' : campo.clave)
+    const siVacio = precioLicenciaturaEfectivo(overrides, campo, { vacio: true })
+    const cobra = precioLicenciaturaEfectivo(overrides, campo)
+    const sobrescrito = precioNivelSobrescrito(overrides, ruta)
+    return (
+      <CampoPrecioNivel
+        key={campo.clave}
+        clave={campo.clave}
+        etiqueta={etiqueta}
+        ayuda={campo.tipo === 'mensualidad' && siVacio <= 0 && !sobrescrito ? `${ayuda} ${AYUDA_LIC_MENSUALIDAD_CERO}` : ayuda}
+        valor={valorEfectivo({}, overrides, ruta)}
+        vacio={textoVacioLicenciatura(siVacio, campo.tipo, CONFIG.moneda)}
+        vacioError={textoVacioErrorLicenciatura(siVacio, campo.tipo, CONFIG.moneda)}
+        min={catalogo?.min ?? LIMITES.precioMin}
+        max={catalogo?.max ?? LIMITES.precioMax}
+        sufijo={<CobraLicenciatura valor={cobra} moneda={CONFIG.moneda} mensualidad={campo.tipo === 'mensualidad'} />}
+        deshabilitado={!puedeEditar}
+        sobrescrito={sobrescrito}
+        resaltado={claveConError === campo.clave}
+        onChange={(n) => actualizar((prev) => escribirRuta(prev, ruta, n))}
+        onVaciar={() => actualizar((prev) => quitarRuta(prev, ruta))}
+        onReponer={(crudo) => actualizar((prev) => escribirRuta(prev, ruta, crudo))}
+        onRestaurar={() => actualizar((prev) => quitarRuta(prev, ruta))}
+      />
+    )
+  }
+
   function campoTipoCambio() {
     const clave = 'tipoCambioMXN'
     const campo = campoPorClave(clave)
@@ -251,7 +342,11 @@ export function PestanaPrecios({
 
   return (
     <div className="space-y-5">
-      <Tarjeta titulo="Inscripción" icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
+      <Tarjeta
+        titulo={tituloSecPrepa('Inscripción', conLic)}
+        icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}
+        descripcion={conLic ? AYUDA_INSCRIPCION_SEC_PREPA : undefined}
+      >
         {campoPrecio('precios.inscripcion', porNivel ? 'Inscripción general' : undefined)}
         {porNivel && (
           <div className="space-y-3">
@@ -262,7 +357,7 @@ export function PestanaPrecios({
       </Tarjeta>
 
       <Tarjeta
-        titulo="Planes"
+        titulo={tituloSecPrepa('Planes', conLic)}
         icono={<Layers {...ICONO} aria-hidden="true" />}
         descripcion="La duración y las materias por mes no se editan: definen el programa."
       >
@@ -400,9 +495,55 @@ export function PestanaPrecios({
           Con la bandera en `true`, que es el default, la pestaña se ve
           exactamente igual que antes de este cambio. */}
       {CONFIG.ofreceCertificacion && (
-        <Tarjeta titulo="Certificación" icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
+        <Tarjeta titulo={tituloSecPrepa('Certificación', conLic)} icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
           {campoPrecio('precios.certificacionSecundaria')}
           {campoPrecio('precios.certificacionPreparatoria')}
+        </Tarjeta>
+      )}
+
+      {/* Bloque B, B3. No va gateada por `ofreceCertificacion`: la titulación
+          es parte del costo de la licenciatura y la landing la pinta siempre. */}
+      {conLic && (
+        <Tarjeta
+          titulo="Licenciaturas"
+          icono={<Landmark {...ICONO} aria-hidden="true" />}
+          descripcion={planesLic.length > 0
+            ? `Planes de ${ritmosLic}. La duración y las materias por mes no se editan: definen el programa.`
+            : undefined}
+        >
+          {!licEditable ? (
+            <Ayuda>{AVISO_LIC_FORMA_PROPIA}</Ayuda>
+          ) : (
+            <>
+              {inscripcionLicEditable(tablaLic) &&
+                campoLic({ clave: 'licenciaturas.inscripcion', tipo: 'inscripcion' }, 'Inscripción de licenciatura', AYUDA_LIC_INSCRIPCION)}
+              {titulacionLicEditable(tablaLic) &&
+                campoLic({ clave: 'licenciaturas.certificacion', tipo: 'titulacion' }, 'Titulación', AYUDA_LIC_TITULACION)}
+              {planesLic.length === 0 ? (
+                <Ayuda>{AYUDA_LIC_SIN_PLANES}</Ayuda>
+              ) : (
+                <div className="space-y-3">
+                  <Subtitulo>Mensualidad por plan</Subtitulo>
+                  {planesLic.map((p) => (
+                    <div key={p.id} className="rounded-xl p-4 space-y-3" style={FIELD_BG}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: TXT }}>{String(p.label ?? p.id)}</p>
+                        <p className="text-xs mt-0.5" style={{ color: TXT_TENUE }}>
+                          {p.meses} {p.meses === 1 ? 'mes' : 'meses'}
+                          {typeof p.materiasPorMes === 'number' && ` · ${p.materiasPorMes} materias por mes`}
+                        </p>
+                      </div>
+                      {campoLic(
+                        { clave: `licenciaturas.modalidades.${p.id}`, tipo: 'mensualidad', planId: p.id },
+                        `Mensualidad · ${String(p.label ?? p.id)}`,
+                        AYUDA_LIC_MENSUALIDAD,
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </Tarjeta>
       )}
 
@@ -446,6 +587,7 @@ export function PestanaPrecios({
         style={{ background: 'rgba(21,101,192,0.08)', border: `1px solid rgba(21,101,192,0.2)`, color: TXT_SUAVE }}>
         {NOTA_PRECIOS}
         {porNivel && ` ${NOTA_PRECIOS_POR_NIVEL}`}
+        {conLic && ` ${notaPreciosLicenciatura(landingAnimadaActiva())}`}
       </div>
     </div>
   )

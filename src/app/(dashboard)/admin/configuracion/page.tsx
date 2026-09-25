@@ -45,11 +45,13 @@ import { campoPorClave } from '@/lib/site-config-campos'
 import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } from '@/lib/site-config-textos'
 import { whatsappComoSeVera } from '@/lib/contacto-ui'
 import { esSemanal } from '@/lib/periodicidad'
+import { landingAnimadaActiva } from '@/lib/landing-estilo'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
   claveASenalar,
   coloresEfectivos,
   hayCambioDeTipoCambio,
+  hayCambiosDeLicenciatura,
   hayCambiosDePreciosOPlanes,
   inscripcionesDeBorrador,
   mismoContenido,
@@ -102,7 +104,8 @@ function pestanaDeClave(clave: string): IdPestana {
 
   if (clave.startsWith('colores.')) return 'colores'
   if (clave.startsWith('landing.')) return 'textos'
-  if (clave.startsWith('precios.') || clave.startsWith('modalidades')) return 'precios'
+  // `licenciaturas.modalidades.<id>` la compone el validador (Bloque B).
+  if (clave.startsWith('precios.') || clave.startsWith('modalidades') || clave.startsWith('licenciaturas.')) return 'precios'
   return 'identidad'
 }
 
@@ -549,6 +552,11 @@ export default function PersonalizarPage() {
           cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides),
           cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
           porNivel: preciosPorNivelVisibles(),
+          // Solo la portada animada tiene sección de licenciaturas: en la clásica
+          // el modal lo dice en vez de prometer que se verán en la página.
+          licenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides)
+            ? (landingAnimadaActiva() ? 'animada' : 'clasica')
+            : undefined,
         })}
         etiquetaConfirmar="Publicar cambios"
         ocupado={publicando}
