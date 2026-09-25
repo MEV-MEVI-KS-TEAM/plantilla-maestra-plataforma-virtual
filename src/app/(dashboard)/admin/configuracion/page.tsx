@@ -49,8 +49,11 @@ import type { TokensColores } from '@/lib/site-config-paletas'
 import {
   claveASenalar,
   coloresEfectivos,
+  estadoSeccionLicenciatura,
   hayCambioDeTipoCambio,
+  hayCambiosDeLicenciatura,
   hayCambiosDePreciosOPlanes,
+  hayCambiosDeSecPrepa,
   inscripcionesDeBorrador,
   mismoContenido,
   modalidadesEfectivas,
@@ -102,7 +105,8 @@ function pestanaDeClave(clave: string): IdPestana {
 
   if (clave.startsWith('colores.')) return 'colores'
   if (clave.startsWith('landing.')) return 'textos'
-  if (clave.startsWith('precios.') || clave.startsWith('modalidades')) return 'precios'
+  // `licenciaturas.modalidades.<id>` la compone el validador (Bloque B).
+  if (clave.startsWith('precios.') || clave.startsWith('modalidades') || clave.startsWith('licenciaturas.')) return 'precios'
   return 'identidad'
 }
 
@@ -549,6 +553,12 @@ export default function PersonalizarPage() {
           cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides),
           cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
           porNivel: preciosPorNivelVisibles(),
+          // El MISMO estado que la nota de la pestaña Precios: en la clásica, o en
+          // la animada sin ningún plan con mensualidad, el modal no promete la sección.
+          licenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides)
+            ? estadoSeccionLicenciatura(overrides)
+            : undefined,
+          soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides),
         })}
         etiquetaConfirmar="Publicar cambios"
         ocupado={publicando}

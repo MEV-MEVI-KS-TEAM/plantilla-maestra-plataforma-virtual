@@ -267,7 +267,10 @@ test('9. PestanaPrecios pinta un campo por clave nueva, y sigue con tipo de camb
   const fuente = leer(PESTANA)
   const codigo = sinComentarios(fuente)
   // Inscripción: los dos niveles, en un subbloque que solo sale con porNivel.
-  const insc = codigo.slice(codigo.indexOf('<Tarjeta titulo="Inscripción"'), codigo.indexOf('</Tarjeta>', codigo.indexOf('<Tarjeta titulo="Inscripción"')))
+  // (Con licenciaturas, el título dice «· Secundaria y Preparatoria», Bloque B.)
+  const ANCLA = "titulo={tituloSecPrepa('Inscripción', conLic)}"
+  expect(codigo).toContain(ANCLA)
+  const insc = codigo.slice(codigo.indexOf(ANCLA), codigo.indexOf('</Tarjeta>', codigo.indexOf(ANCLA)))
   expect(insc).toContain("campoPrecio('precios.inscripcion', porNivel ? 'Inscripción general' : undefined)")
   expect(insc).toContain('{porNivel && (')
   expect(insc).toContain('NIVELES_CON_PRECIO.map((n) => campoNivel(`precios.${CLAVE_INSCRIPCION_POR_NIVEL[n]}`, n))')
@@ -368,7 +371,7 @@ test('12. el modal mensual y la nota remiten al campo vacío («Vacío: usa…»
   expect(textoVacioNivel(599, 'MXN').startsWith('Vacío: usa ')).toBe(true)
   // El editor le pasa al modal si la pestaña enseña los campos por nivel.
   const pagina = sinComentarios(leer('src/app/(dashboard)/admin/configuracion/page.tsx'))
-  expect(pagina).toMatch(/confirmacionDePrecios\(\{[^}]*porNivel: preciosPorNivelVisibles\(\),\s*\}\)/)
+  expect(pagina).toMatch(/confirmacionDePrecios\(\{[^}]*porNivel: preciosPorNivelVisibles\(\),\s*licenciaturas: hayCambiosDeLicenciatura\(overridesBase, overrides\)/)
 })
 
 test('13. hayCambiosDePrecio ve cada clave por nivel', () => {

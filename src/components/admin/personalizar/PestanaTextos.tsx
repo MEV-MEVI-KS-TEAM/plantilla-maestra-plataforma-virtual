@@ -89,7 +89,7 @@ export function PestanaTextos({
   const grupos = agrupar(
     CAMPOS_POR_SECCION.landing.filter((c) => conLicenciaturas || !c.clave.startsWith('landing.licenciaturas_')),
   )
-  const autoLic = conLicenciaturas ? autoLicenciaturas() : null
+  const autoLic = conLicenciaturas ? autoLicenciaturas(overrides) : null
   /** Placeholder = el texto automático que se ve hoy, para los tres sueltos. */
   const placeholderLic: Record<string, string | undefined> = {
     'landing.licenciaturas_kicker': autoLic?.kicker,
