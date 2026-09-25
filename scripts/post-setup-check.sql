@@ -205,3 +205,37 @@ SELECT
     ELSE 'FAIL CHECK 13: ' || COUNT(*) || ' tablas sin SELECT: ' || string_agg(tabla, ', ')
   END AS resultado
 FROM tablas_sin_policy;
+
+-- ─── CHECK 14: un solo CHECK sobre alumnos.modalidad, y qué planes admite ─────
+-- Se busca por CATÁLOGO (conkey), no por nombre (Bug 72). ❌ solo cuando SIEMPRE
+-- es defecto: ningún CHECK, o más de uno. Si el CHECK no admite algún plan
+-- canónico (p. ej. '6_meses_lic', el de 6 meses de licenciatura del Bloque B),
+-- lo LISTA sin marcar ❌: solo importa si config.ts VENDE ese plan (sin él, esa
+-- alta falla con 23514 y la ruta borra el usuario de Auth que acababa de crear,
+-- Bug 68), y este script no puede leer config.ts. Compáralo contra los ids de
+-- `modalidades` y `licenciaturas.modalidades`. Un clon anterior a B5 está sano.
+WITH col AS (
+  SELECT attnum FROM pg_attribute
+   WHERE attrelid = 'public.alumnos'::regclass AND attname = 'modalidad' AND NOT attisdropped
+), checks AS (
+  SELECT pg_get_constraintdef(c.oid) AS def
+    FROM pg_constraint c, col
+   WHERE c.conrelid = 'public.alumnos'::regclass AND c.contype = 'c' AND c.conkey = ARRAY[col.attnum]
+), faltan AS (
+  -- strpos y no LIKE: en LIKE el '_' de los ids es comodín.
+  SELECT (SELECT COUNT(*) FROM checks) AS n,
+         string_agg(x, ', ' ORDER BY o) AS ids
+    FROM unnest(ARRAY['3_meses','6_meses','6_meses_lic','9_meses','12_meses','18_meses','24_meses','36_meses'])
+         WITH ORDINALITY AS t(x, o)
+   WHERE NOT EXISTS (SELECT 1 FROM checks WHERE strpos(def, '''' || x || '''') > 0)
+)
+SELECT
+  'CHECK de alumnos.modalidad (uno solo)' AS check_name,
+  n::text AS valor,
+  CASE
+    WHEN n = 0 THEN '❌ FALTA el CHECK de alumnos.modalidad → correr supabase/migrations/20260925120000_licenciatura_plan_6_meses.sql (lo crea con los planes canónicos y los que ya usan los alumnos; revisa su WARNING contra config.ts)'
+    WHEN n > 1 THEN '❌ HAY ' || n || ' CHECK sobre modalidad (Bug 72): consolidar con supabase/migrations/20260925120000_licenciatura_plan_6_meses.sql'
+    WHEN ids IS NULL THEN '✅ OK (admite los 8 planes canónicos, 6_meses_lic incluido)'
+    ELSE '✅ OK (no admite ' || ids || ': solo hace falta si config.ts vende alguno → correr supabase/migrations/20260925120000_licenciatura_plan_6_meses.sql de la plantilla maestra)'
+  END AS resultado
+FROM faltan;

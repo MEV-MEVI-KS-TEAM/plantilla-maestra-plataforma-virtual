@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
 import { ES_PLANTILLA } from './es-plantilla'
 import { LIMITES_LIC, bloqueLicEditable, inscripcionLicEditable, planesLicEditables, titulacionLicEditable } from '@/lib/precios-licenciatura'
-import { rangoMateriasDelMes } from '@/lib/acceso-materias'
+import { calcularDisponibilidad, materiasPorMesDePlan, rangoMateriasDelMes, type MateriaVentana } from '@/lib/acceso-materias'
+import { getMateriasPorMesByModalidad } from '@/lib/modalidades'
 import { getDesglosesLicenciatura } from '@/lib/licenciatura-utils'
 
 /**
@@ -22,12 +23,13 @@ const leer = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace
 
 test.skip(!ES_PLANTILLA, 'Los sugeridos son de la plantilla; cada clon trae su tabla.')
 
-test('1. los sugeridos: inscripción 1,500 · 12 meses 1,450 · 18 meses 1,050 · titulación 38,000', () => {
+test('1. los sugeridos: inscripción 1,500 · 6 meses 2,500 · 12 meses 1,450 · 18 meses 1,050 · titulación 38,000', () => {
   const l = lic()
   expect(l.activas).toBe(false) // el add-on sigue apagado: la plantilla no cambia para nadie
   expect(l.inscripcion).toBe(1500)
   expect(l.certificacion).toBe(38000)
   expect(l.modalidades.map((m) => [m.id, m.meses, m.mensualidad, m.activa])).toEqual([
+    ['6_meses_lic', 6, 2500, true],
     ['12_meses', 12, 1450, true],
     ['18_meses', 18, 1050, true],
   ])
@@ -38,10 +40,14 @@ test('1. los sugeridos: inscripción 1,500 · 12 meses 1,450 · 18 meses 1,050 �
   }
 })
 
-test('2. sin plan de 6 meses: la base todavía no admite un id propio para él (B5)', () => {
-  // '6_meses' choca con el plan de Sec/Prepa (Bug 121) y '6_meses_lic' no pasa el
-  // CHECK de alumnos.modalidad (Bug 68). Hasta la migración de B5, ninguno.
-  expect(lic().modalidades.some((m) => m.meses === 6 || /^6_meses/.test(m.id))).toBe(false)
+test('2. el plan de 6 meses usa su propio id, nunca el de Sec/Prepa (B5)', () => {
+  // '6_meses' es el plan del programa: un alumno de licenciatura heredaría su
+  // ritmo y su precio (Bug 121). El de licenciatura es '6_meses_lic', que la
+  // migración 20260925120000 (y scripts/schema.sql) admiten.
+  const seis = lic().modalidades.filter((m) => m.meses === 6)
+  expect(seis.map((m) => m.id)).toEqual(['6_meses_lic'])
+  expect(lic().modalidades.some((m) => m.id === '6_meses')).toBe(false)
+  expect(seis[0].materiasPorMes).toBe(5.34)
 })
 
 test('3. cada plan cabe en el CHECK de alumnos.modalidad del instalador', () => {
@@ -76,7 +82,7 @@ test('5. al encender el add-on con una carrera, la tarjeta los edita y la landin
   expect(bloqueLicEditable(encendida)).toBe(true)
   expect(inscripcionLicEditable(encendida)).toBe(true)
   expect(titulacionLicEditable(encendida)).toBe(true)
-  expect(planesLicEditables(encendida).map((p) => p.id)).toEqual(['12_meses', '18_meses'])
+  expect(planesLicEditables(encendida).map((p) => p.id)).toEqual(['6_meses_lic', '12_meses', '18_meses'])
   // Dentro de lo que el panel publica.
   const l = lic()
   expect(l.inscripcion).toBeGreaterThanOrEqual(LIMITES_LIC.min)
@@ -85,7 +91,41 @@ test('5. al encender el add-on con una carrera, la tarjeta los edita y la landin
   for (const m of l.modalidades) expect(m.mensualidad).toBeLessThanOrEqual(LIMITES_LIC.precioMax)
   // El costo completo que anunciaría la landing.
   expect(getDesglosesLicenciatura(encendida).map((d) => [d.modalidadId, d.total])).toEqual([
+    ['6_meses_lic', 1500 + 6 * 2500 + 38000],
     ['12_meses', 1500 + 12 * 1450 + 38000],
     ['18_meses', 1500 + 18 * 1050 + 38000],
   ])
+})
+
+test('6. un alumno de licenciatura en 6_meses_lic abre 32 de 32 materias en el mes 6, con la ventana REAL', () => {
+  // La misma función que usan /api/alumno/materias y los gates de contenido,
+  // evaluación y quiz. Una carrera del banco: 32 materias regulares + tutorial.
+  const materias: MateriaVentana[] = [
+    { id: 'tutorial', nombre: 'Tutorial de la plataforma', nivel: 'licenciatura', orden: 0, numero_mes: 1 },
+    ...Array.from({ length: 32 }, (_, i) => ({ id: `m${i + 1}`, nombre: `Materia ${i + 1}`, nivel: 'licenciatura', orden: i + 1, numero_mes: 1 })),
+  ]
+  const alumno = { nivel: 'licenciatura', modalidad: '6_meses_lic', duracion_meses: 6, meses_desbloqueados: 0 }
+  // Los helpers académicos leen CONFIG y, con el add-on apagado, no ven la tabla
+  // de licenciatura. Se enciende SOLO aquí, como en una escuela que la vende
+  // (la prueba es síncrona y lo restaura).
+  const tabla = lic() as { activas: boolean }
+  const antes = tabla.activas
+  tabla.activas = true
+  try {
+    // Su ritmo es el de licenciatura (5.34), nunca el del '6_meses' de Sec/Prepa (Bug 121).
+    expect(materiasPorMesDePlan(alumno, 32)).toBe(5.34)
+    expect(getMateriasPorMesByModalidad('6_meses')).not.toBe(5.34)
+    const abiertas = (mes: number) => {
+      const d = calcularDisponibilidad({ ...alumno, meses_desbloqueados: mes }, materias, new Set())
+      return materias.filter((m) => m.id !== 'tutorial' && d.get(m.id)).length
+    }
+    expect([1, 2, 3, 4, 5, 6].map(abiertas)).toEqual([6, 11, 17, 22, 27, 32])
+    expect(abiertas(6)).toBe(32) // 32 de 32 en el último mes
+    expect(abiertas(5)).toBeLessThan(32) // y no antes
+    // El tutorial sigue abierto desde el primer día y sin ocupar lugar.
+    expect(calcularDisponibilidad({ ...alumno, meses_desbloqueados: 1 }, materias, new Set()).get('tutorial')).toBe(true)
+  } finally {
+    tabla.activas = antes
+  }
+  expect(lic().activas).toBe(false)
 })

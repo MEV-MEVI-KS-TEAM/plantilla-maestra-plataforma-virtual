@@ -563,10 +563,13 @@ export const CONFIG = {
   // PRECIOS SUGERIDOS (Bloque B): el paquete que ya venden varias escuelas de
   // la flota. Con el add-on apagado no se ven en ningún lado. Al encenderlo, el
   // admin los ajusta en «Personalizar mi página» (tarjeta «Licenciaturas») o
-  // soporte los cambia aquí. Sin plan de 6 meses: la base todavía no admite un
-  // id propio para él (el de Sec/Prepa choca, Bug 121).
-  // Ritmos para una carrera de 32 materias: 2.67 al mes en 12 meses y 1.78 al
-  // mes en 18 (se redondea hacia arriba: el último mes abre la última materia).
+  // soporte los cambia aquí.
+  // El plan de 6 meses usa el id '6_meses_lic', NO '6_meses': ese es el de
+  // Sec/Prepa y un alumno de licenciatura heredaría su ritmo y su precio (Bug
+  // 121). Requiere la migración 20260925120000_licenciatura_plan_6_meses.sql (o
+  // el scripts/schema.sql de esta versión): sin ella el alta falla con 23514.
+  // Ritmos para una carrera de 32 materias: 5.34 al mes en 6 meses, 2.67 en 12
+  // y 1.78 en 18 (se redondea hacia arriba: el último mes abre la última materia).
   licenciaturas: {
     activas: false,
     /** Pago único al inscribirse. */
@@ -585,6 +588,7 @@ export const CONFIG = {
       incluye: readonly string[]
     }>,
     modalidades: [
+      { id: '6_meses_lic', label: 'Intensivo 6 meses', sublabel: '6 meses', meses: 6, mensualidad: 2500, activa: true, materiasPorMes: 5.34 },
       { id: '12_meses', label: 'Ejecutivo 12 meses', sublabel: '12 meses', meses: 12, mensualidad: 1450, activa: true, materiasPorMes: 2.67 },
       { id: '18_meses', label: 'Extendido 18 meses', sublabel: '18 meses', meses: 18, mensualidad: 1050, activa: true, materiasPorMes: 1.78 },
     ] as ReadonlyArray<{

@@ -257,6 +257,7 @@ CREATE TABLE public.alumnos (
 CASE modalidad
     WHEN '3_meses'::text THEN 3
     WHEN '6_meses'::text THEN 6
+    WHEN '6_meses_lic'::text THEN 6
     WHEN '9_meses'::text THEN 9
     WHEN '12_meses'::text THEN 12
     WHEN '18_meses'::text THEN 18
@@ -277,7 +278,9 @@ END) STORED,
     -- Con los planes de licenciatura (20260812): sin ampliarlo, dar de alta un
     -- alumno en '9_meses'+ falla con 23514 y la ruta de alta borra el usuario
     -- de Auth que acababa de crear (Bug 68).
-    CONSTRAINT alumnos_modalidad_check CHECK ((modalidad IS NULL OR modalidad = ANY (ARRAY['3_meses'::text, '6_meses'::text, '9_meses'::text, '12_meses'::text, '18_meses'::text, '24_meses'::text, '36_meses'::text]))),
+    -- '6_meses_lic' (20260925120000): el plan de 6 meses de LICENCIATURA, con id
+    -- propio porque '6_meses' es el de Sec/Prepa (Bug 121).
+    CONSTRAINT alumnos_modalidad_check CHECK ((modalidad IS NULL OR modalidad = ANY (ARRAY['3_meses'::text, '6_meses'::text, '6_meses_lic'::text, '9_meses'::text, '12_meses'::text, '18_meses'::text, '24_meses'::text, '36_meses'::text]))),
     -- 'diplomado' habilita la línea Solo-Cursos (B1). Debe coincidir con
     -- supabase/migrations/20260730120000_b1_fundacion_solo_cursos.sql
     -- ⚠️ NO copiar el CHECK de 20260812120000_licenciaturas.sql, que lo recrea
