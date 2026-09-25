@@ -111,16 +111,24 @@ test('6. la guarda y el extractor de literales leen con la MISMA gramática', ()
   expect(sql).toContain("regexp_matches(c.def, '''([^'']*)''::text', 'g')")
 })
 
-test('7. post-setup CHECK 14: ❌ solo cuando siempre es defecto (0 o más de 1 CHECK)', () => {
+test('7. post-setup CHECK 14: ❌ solo cuando siempre es defecto (0 o más de 1 CHECK); si no, lista lo que falta', () => {
   // Un clon anterior a B5 está sano sin '6_meses_lic' (si no vende ese plan):
-  // marcarle ❌ lo frenaría en la TAREA 7 del onboarding por nada.
+  // marcarle ❌ lo frenaría en la TAREA 7 del onboarding por nada. Pero tiene
+  // que decir QUÉ planes canónicos no admite, no solo '6_meses_lic'.
   const post = leer('scripts/post-setup-check.sql')
-  const i = post.indexOf('CHECK 14')
+  const i = post.indexOf('-- ─── CHECK 14')
   expect(i).toBeGreaterThan(-1)
-  const bloque = post.slice(i)
+  const bloque = post.slice(i, post.indexOf('FROM faltan;', i))
   const cruces = bloque.split('\n').filter((l) => l.includes("'❌"))
   expect(cruces).toHaveLength(2)
-  expect(cruces.join('\n')).toMatch(/COUNT\(\*\) = 0 THEN '❌ FALTA/)
-  expect(cruces.join('\n')).toMatch(/COUNT\(\*\) > 1 THEN '❌ HAY/)
-  expect(bloque).toContain("THEN '✅ OK (admite 6_meses_lic)'")
+  // El orden del CASE importa: con 2 CHECK que admiten todo, tiene que salir ❌.
+  const pos = (s: string) => { const k = bloque.indexOf(s); expect(k, s).toBeGreaterThan(-1); return k }
+  expect(pos("WHEN n = 0 THEN '❌ FALTA")).toBeLessThan(pos('WHEN ids IS NULL THEN'))
+  expect(pos("WHEN n > 1 THEN '❌ HAY")).toBeLessThan(pos('WHEN ids IS NULL THEN'))
+  // Lista los canónicos que faltan (los mismos de la migración), con strpos.
+  const lista = /unnest\(ARRAY\[([^\]]+)\]\)/.exec(bloque)
+  expect(lista).not.toBeNull()
+  expect([...lista![1].matchAll(/'([^']+)'/g)].map((x) => x[1]).sort()).toEqual([...idsDeLaMigracion()].sort())
+  expect(bloque).toContain("strpos(def, '''' || x || '''') > 0")
+  expect(bloque).toContain("'✅ OK (no admite ' || ids")
 })
