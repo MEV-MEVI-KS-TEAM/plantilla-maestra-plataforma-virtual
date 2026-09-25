@@ -40,7 +40,7 @@ export interface OpcionesConfirmaPrecios {
    * animada tiene sección de licenciaturas: en la clásica, «se verán en tu
    * página pública» sería falso para ellos. Sin él, el modal de siempre.
    */
-  licenciaturas?: 'animada' | 'clasica'
+  licenciaturas?: 'animada' | 'clasica' | 'sinSeccion'
   /**
    * Lo ÚNICO que cambió son precios de licenciatura: el modal no habla de
    * planes, cuotas ni calendarios de Secundaria y Preparatoria que nadie tocó.
@@ -56,13 +56,18 @@ export function textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel = fal
   const tipoCambio = cambiaTipoCambio
     ? ' El tipo de cambio nuevo solo cambia la equivalencia en pesos que se muestra; los pagos ya registrados conservan la suya.'
     : ''
+  if (soloLicenciaturas && licenciaturas) {
+    const soloLic = licenciaturas === 'clasica' ? TEXTO_CONFIRMA_LIC_CLASICA
+      : licenciaturas === 'sinSeccion' ? TEXTO_CONFIRMA_LIC_SIN_SECCION
+      : TEXTO_CONFIRMA_LIC_ANIMADA
+    return `${soloLic}${tipoCambio} ¿Publicar?`
+  }
   // Solo en el mensual: en el semanal lo que se cobra es la cuota del plan,
   // que no tiene precio por nivel.
-  if (soloLicenciaturas && licenciaturas) {
-    return `${licenciaturas === 'clasica' ? TEXTO_CONFIRMA_LIC_CLASICA : TEXTO_CONFIRMA_LIC_ANIMADA}${tipoCambio} ¿Publicar?`
-  }
   const nivel = porNivel && !semanal ? ` ${AVISO_PRECIO_POR_NIVEL}` : ''
-  const lic = licenciaturas === 'clasica' ? ` ${AVISO_LIC_PORTADA_CLASICA}` : ''
+  const lic = licenciaturas === 'clasica' ? ` ${AVISO_LIC_PORTADA_CLASICA}`
+    : licenciaturas === 'sinSeccion' ? ` ${AVISO_LIC_SIN_SECCION}`
+    : ''
   return `${base}${nivel}${lic}${tipoCambio} ¿Publicar?`
 }
 
@@ -72,7 +77,15 @@ export const TEXTO_CONFIRMA_LIC_ANIMADA =
 
 /** Lo mismo, en la portada clásica, que no tiene sección de licenciaturas. */
 export const TEXTO_CONFIRMA_LIC_CLASICA =
-  'Los precios nuevos de licenciatura se guardan, pero tu portada no tiene sección de licenciaturas: no se verán en tu página pública. Los pagos que ya registraste no cambian.'
+  'Los precios nuevos de licenciatura se aplican en unos segundos, pero tu portada no tiene sección de licenciaturas: no se verán en tu página pública. Los pagos que ya registraste no cambian.'
+
+/** Lo mismo, en la animada, cuando con estos precios ningún plan tiene mensualidad. */
+export const TEXTO_CONFIRMA_LIC_SIN_SECCION =
+  'Los precios nuevos de licenciatura se aplican en unos segundos, pero con ellos tu página no mostrará la sección de licenciaturas: aparece cuando al menos un plan tiene mensualidad. Los pagos que ya registraste no cambian.'
+
+/** Se añade al modal mixto (cambió también Sec/Prepa) en el caso de arriba. */
+export const AVISO_LIC_SIN_SECCION =
+  'Con estos precios, tu página no mostrará la sección de licenciaturas: aparece cuando al menos un plan tiene mensualidad.'
 
 /**
  * Se añade al modal cuando cambió un precio de licenciatura y la escuela sirve
@@ -162,6 +175,12 @@ export const AYUDA_INSCRIPCION_SEC_PREPA = 'No aplica a licenciatura: su inscrip
 /** Lo mismo cuando la inscripción de licenciatura NO se edita desde el panel (forma propia). */
 export const AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO = 'No aplica a licenciatura.'
 
+/**
+ * Cuando la licenciatura no trae una inscripción propia (ausente, o un objeto
+ * por moneda): su alumno paga ESTA, la general (`inscripcionDelAlumno`).
+ */
+export const AYUDA_INSCRIPCION_TAMBIEN_LIC = 'También la pagan tus alumnos de licenciatura.'
+
 export const AYUDA_LIC_INSCRIPCION =
   'Pago único al inscribirse, igual en todas las carreras. Vacío = vuelve al precio que trae la configuración de tu escuela.'
 
@@ -196,7 +215,7 @@ export function notaPreciosLicenciatura(estado: 'animada' | 'clasica' | 'sinSecc
   }
   return estado === 'clasica'
     ? 'Tu portada no tiene sección de licenciaturas: sus precios no se muestran en tu página pública.'
-    : 'Tu página todavía no muestra la sección de licenciaturas: aparece cuando al menos un plan tiene mensualidad.'
+    : AVISO_LIC_SIN_SECCION
 }
 
 /** Nota al pie de la pestaña Precios. */

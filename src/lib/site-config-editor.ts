@@ -31,6 +31,7 @@ import { esSoloCursos } from '@/lib/modo'
 import { licenciaturaEfectiva } from '@/lib/precios-licenciatura'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura } from '@/lib/licenciatura-utils'
 import { nivelesTexto } from '@/lib/niveles-ui'
+import { landingAnimadaActiva } from '@/lib/landing-estilo'
 import { formatearWhatsApp, whatsappEscuelaDisponible } from '@/lib/contacto-ui'
 import type { ModalidadPrograma } from '@/lib/modalidades'
 import {
@@ -685,13 +686,27 @@ export function ofreceLicenciaturas(lic: unknown = tablaDeFabrica()): boolean {
 }
 
 /**
- * ¿La landing animada pinta hoy la sección de licenciaturas con el borrador?
- * La misma condición que LandingAnimada: carreras y al menos un plan con
- * mensualidad (el desglose filtra `mensualidad > 0`).
+ * ¿La landing animada pintará la sección de licenciaturas CON ESTE BORRADOR?
+ * La misma condición que LandingAnimada (`hayLicenciaturas`): carreras y al
+ * menos un plan con mensualidad (el desglose filtra `mensualidad > 0`).
  */
 export function seccionLicenciaturaVisible(overrides: SiteConfigOverrides): boolean {
   return getCarrerasLicenciatura().length > 0
     && getDesglosesLicenciatura(licenciaturaDeBorrador(overrides) as Parameters<typeof getDesglosesLicenciatura>[0]).length > 0
+}
+
+/**
+ * Dónde se verán los precios de licenciatura con este borrador. Lo usan la nota
+ * de la pestaña Precios y el modal de publicar: los dos dicen lo mismo.
+ *   'clasica'    la portada no tiene sección de licenciaturas;
+ *   'animada'    la animada la pintará;
+ *   'sinSeccion' la animada NO la pintará (ningún plan con mensualidad).
+ */
+export type EstadoSeccionLicenciatura = 'animada' | 'clasica' | 'sinSeccion'
+
+export function estadoSeccionLicenciatura(overrides: SiteConfigOverrides): EstadoSeccionLicenciatura {
+  if (!landingAnimadaActiva()) return 'clasica'
+  return seccionLicenciaturaVisible(overrides) ? 'animada' : 'sinSeccion'
 }
 
 /**

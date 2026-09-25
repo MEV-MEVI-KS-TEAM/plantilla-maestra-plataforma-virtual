@@ -48,6 +48,7 @@ import {
   AYUDA_CUOTA_SEMANAL,
   AYUDA_INSCRIPCION_SEC_PREPA,
   AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO,
+  AYUDA_INSCRIPCION_TAMBIEN_LIC,
   AYUDA_LIC_INSCRIPCION,
   AYUDA_LIC_MENSUALIDAD,
   AYUDA_LIC_MENSUALIDAD_CERO,
@@ -62,19 +63,19 @@ import {
 } from '@/lib/site-config-textos'
 import {
   bloqueLicEditable,
+  inscripcionLicenciaturaDe,
   inscripcionLicEditable,
   planesLicEditables,
   titulacionLicEditable,
 } from '@/lib/precios-licenciatura'
-import { landingAnimadaActiva } from '@/lib/landing-estilo'
 import { unirConO } from '@/components/landing/animada/textos-licenciatura'
 import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
   clavesPorNivelDePlan,
   escribirModalidad,
+  estadoSeccionLicenciatura,
   ofreceLicenciaturas,
   precioLicenciaturaEfectivo,
-  seccionLicenciaturaVisible,
   rutaLicenciatura,
   textoVacioErrorLicenciatura,
   textoVacioLicenciatura,
@@ -210,10 +211,20 @@ export function PestanaPrecios({
   const tablaLic = (CONFIG as unknown as { licenciaturas?: unknown }).licenciaturas
   const licEditable = conLic && bloqueLicEditable(tablaLic)
   const planesLic = licEditable ? planesLicEditables(tablaLic) : []
-  // ¿Hay planes, aunque ninguno se pueda editar? Entonces no es «sin planes».
-  const hayPlanesLic = Array.isArray((tablaLic as { modalidades?: unknown } | undefined)?.modalidades)
-    && ((tablaLic as { modalidades: unknown[] }).modalidades.length > 0)
+  // ¿Hay planes de licenciatura (activos y que no sean de diplomado), aunque
+  // ninguno se pueda editar? Entonces no es «sin planes».
+  const modalidadesLic = (tablaLic as { modalidades?: unknown } | undefined)?.modalidades
+  const hayPlanesLic = Array.isArray(modalidadesLic) && modalidadesLic.some((m) => {
+    const plan = m as { id?: unknown; activa?: unknown } | null
+    return !!plan && plan.activa !== false && !/_dip$/.test(String(plan.id))
+  })
   const inscripcionLicEnPanel = licEditable && inscripcionLicEditable(tablaLic)
+  // Bajo la tarjeta de Inscripción: dónde está la de licenciatura, o que no
+  // aplica, o —sin inscripción propia— que su alumno también paga ésta.
+  const ayudaInscripcion = !conLic ? undefined
+    : inscripcionLicEnPanel ? AYUDA_INSCRIPCION_SEC_PREPA
+    : inscripcionLicenciaturaDe(tablaLic as Parameters<typeof inscripcionLicenciaturaDe>[0]) !== null ? AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO
+    : AYUDA_INSCRIPCION_TAMBIEN_LIC
   /** «12 o 18 meses», «6, 12 o 18 meses»: por su duración, nunca por periodos. */
   const ritmosLic = `${unirConO([...new Set(planesLic.map((p) => p.meses))].sort((a, b) => a - b).map(String))} meses`
 
@@ -352,7 +363,7 @@ export function PestanaPrecios({
       <Tarjeta
         titulo={tituloSecPrepa('Inscripción', conLic)}
         icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}
-        descripcion={conLic ? (inscripcionLicEnPanel ? AYUDA_INSCRIPCION_SEC_PREPA : AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO) : undefined}
+        descripcion={ayudaInscripcion}
       >
         {campoPrecio('precios.inscripcion', porNivel ? 'Inscripción general' : undefined)}
         {porNivel && (
@@ -594,7 +605,7 @@ export function PestanaPrecios({
         style={{ background: 'rgba(21,101,192,0.08)', border: `1px solid rgba(21,101,192,0.2)`, color: TXT_SUAVE }}>
         {NOTA_PRECIOS}
         {porNivel && ` ${NOTA_PRECIOS_POR_NIVEL}`}
-        {conLic && ` ${notaPreciosLicenciatura(!landingAnimadaActiva() ? 'clasica' : seccionLicenciaturaVisible(overrides) ? 'animada' : 'sinSeccion')}`}
+        {conLic && ` ${notaPreciosLicenciatura(estadoSeccionLicenciatura(overrides))}`}
       </div>
     </div>
   )

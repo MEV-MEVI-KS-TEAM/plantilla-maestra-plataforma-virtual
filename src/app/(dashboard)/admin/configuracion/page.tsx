@@ -45,11 +45,11 @@ import { campoPorClave } from '@/lib/site-config-campos'
 import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } from '@/lib/site-config-textos'
 import { whatsappComoSeVera } from '@/lib/contacto-ui'
 import { esSemanal } from '@/lib/periodicidad'
-import { landingAnimadaActiva } from '@/lib/landing-estilo'
 import type { TokensColores } from '@/lib/site-config-paletas'
 import {
   claveASenalar,
   coloresEfectivos,
+  estadoSeccionLicenciatura,
   hayCambioDeTipoCambio,
   hayCambiosDeLicenciatura,
   hayCambiosDePreciosOPlanes,
@@ -553,10 +553,10 @@ export default function PersonalizarPage() {
           cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides),
           cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
           porNivel: preciosPorNivelVisibles(),
-          // Solo la portada animada tiene sección de licenciaturas: en la clásica
-          // el modal lo dice en vez de prometer que se verán en la página.
+          // El MISMO estado que la nota de la pestaña Precios: en la clásica, o en
+          // la animada sin ningún plan con mensualidad, el modal no promete la sección.
           licenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides)
-            ? (landingAnimadaActiva() ? 'animada' : 'clasica')
+            ? estadoSeccionLicenciatura(overrides)
             : undefined,
           soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides),
         })}

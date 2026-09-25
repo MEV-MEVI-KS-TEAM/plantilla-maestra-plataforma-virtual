@@ -13,6 +13,7 @@ import {
   licenciaturaDeBorrador,
   ofreceLicenciaturas,
   precioLicenciaturaEfectivo,
+  estadoSeccionLicenciatura,
   seccionLicenciaturaVisible,
   textoVacioErrorLicenciatura,
   textoVacioLicenciatura,
@@ -20,11 +21,15 @@ import {
   tituloSecPrepa,
 } from '@/lib/site-config-editor'
 import { nivelesTexto } from '@/lib/niveles-ui'
+import { landingAnimadaActiva } from '@/lib/landing-estilo'
 import {
   AVISO_LIC_FORMA_PROPIA,
   AVISO_LIC_PORTADA_CLASICA,
   AYUDA_INSCRIPCION_SEC_PREPA,
   AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO,
+  AYUDA_INSCRIPCION_TAMBIEN_LIC,
+  AVISO_LIC_SIN_SECCION,
+  TEXTO_CONFIRMA_LIC_SIN_SECCION,
   AYUDA_LIC_INSCRIPCION,
   AYUDA_LIC_MENSUALIDAD,
   AYUDA_LIC_MENSUALIDAD_CERO,
@@ -157,6 +162,15 @@ test('2c. la sección de la landing se pinta con carreras y al menos un plan con
   })
   conLic({ ...LIC(), carreras: [] }, () => expect(seccionLicenciaturaVisible({})).toBe(false))
   conLic(LIC(), () => expect(seccionLicenciaturaVisible({})).toBe(true))
+  // El estado que comparten la nota y el modal.
+  const animada = landingAnimadaActiva()
+  conLic(sinPrecio, () => expect(estadoSeccionLicenciatura({})).toBe(animada ? 'sinSeccion' : 'clasica'))
+  conLic(LIC(), () => expect(estadoSeccionLicenciatura({})).toBe(animada ? 'animada' : 'clasica'))
+  // Atado a la condición REAL de la landing: si cambia allá, esta prueba lo avisa.
+  const landing = sinComentarios(leer('src/components/landing/animada/LandingAnimada.tsx'))
+  expect(landing).toContain('const carrerasLic = getCarrerasLicenciatura()')
+  expect(landing).toContain('const planesLic = getDesglosesLicenciatura(config.licenciaturas)')
+  expect(landing).toContain('const hayLicenciaturas = carrerasLic.length > 0 && planesLic.length > 0')
 })
 
 // ─── 3. Detección de cambios y modal ─────────────────────────────────────────
@@ -191,7 +205,16 @@ test('3b. el modal: igual que siempre sin licenciatura; en portada clásica avis
     expect(textoConfirmaPrecios({ semanal, cambiaTipoCambio: false, licenciaturas: 'clasica', soloLicenciaturas: true }))
       .toBe(`${TEXTO_CONFIRMA_LIC_CLASICA} ¿Publicar?`)
   }
-  for (const t of [TEXTO_CONFIRMA_LIC_ANIMADA, TEXTO_CONFIRMA_LIC_CLASICA]) expect(t).not.toMatch(/cuota|calendario|Cobranza|nivel/i)
+  expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, licenciaturas: 'sinSeccion', soloLicenciaturas: true }))
+    .toBe(`${TEXTO_CONFIRMA_LIC_SIN_SECCION} ¿Publicar?`)
+  // Mixto (cambió también Sec/Prepa) en una animada sin sección: el aviso.
+  expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, licenciaturas: 'sinSeccion' }))
+    .toBe(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false }).replace(' ¿Publicar?', ` ${AVISO_LIC_SIN_SECCION} ¿Publicar?`))
+  for (const t of [TEXTO_CONFIRMA_LIC_ANIMADA, TEXTO_CONFIRMA_LIC_CLASICA, TEXTO_CONFIRMA_LIC_SIN_SECCION]) {
+    expect(t).not.toMatch(/cuota|calendario|Cobranza|nivel/i)
+  }
+  // Nota y modal dicen lo mismo del caso «sin sección».
+  expect(notaPreciosLicenciatura('sinSeccion')).toBe(AVISO_LIC_SIN_SECCION)
   // `soloLicenciaturas` sin `licenciaturas` no cambia nada.
   expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, soloLicenciaturas: true }))
     .toBe(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false }))
@@ -204,6 +227,7 @@ test('3c. los textos no dicen cuatrimestre ni cuándo se paga la titulación, y 
   const textos = [AVISO_LIC_FORMA_PROPIA, AVISO_LIC_PORTADA_CLASICA, AYUDA_INSCRIPCION_SEC_PREPA, AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO,
     AYUDA_LIC_INSCRIPCION, AYUDA_LIC_MENSUALIDAD, AYUDA_LIC_MENSUALIDAD_CERO, AYUDA_LIC_PLANES_FORMA_PROPIA,
     AYUDA_LIC_SIN_PLANES, AYUDA_LIC_TITULACION, TEXTO_CONFIRMA_LIC_ANIMADA, TEXTO_CONFIRMA_LIC_CLASICA,
+    TEXTO_CONFIRMA_LIC_SIN_SECCION, AVISO_LIC_SIN_SECCION, AYUDA_INSCRIPCION_TAMBIEN_LIC,
     notaPreciosLicenciatura('animada'), notaPreciosLicenciatura('clasica'), notaPreciosLicenciatura('sinSeccion')]
   for (const t of textos) {
     expect(t, t).not.toMatch(/cuatrimestr/i)
@@ -261,11 +285,13 @@ test('4c. las tres tarjetas de Sec/Prepa se rotulan; sus campos conservan la eti
   for (const t of ['Inscripción', 'Planes', 'Certificación']) expect(codigo).toContain(`tituloSecPrepa('${t}', conLic)`)
   expect(codigo).toContain("campoPrecio('precios.inscripcion', porNivel ? 'Inscripción general' : undefined)")
   expect(codigo).toContain("etiqueta={semanal ? 'Cuota semanal' : conSubbloque ? 'Mensualidad general' : 'Mensualidad'}")
-  // «…está en la tarjeta Licenciaturas» solo si ahí hay un campo de inscripción.
-  expect(codigo).toContain('descripcion={conLic ? (inscripcionLicEnPanel ? AYUDA_INSCRIPCION_SEC_PREPA : AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO) : undefined}')
+  // «…está en la tarjeta Licenciaturas» solo si ahí hay un campo; sin inscripción
+  // propia, su alumno paga ÉSTA (inscripcionDelAlumno cae a la general).
+  expect(codigo).toContain('descripcion={ayudaInscripcion}')
   expect(codigo).toContain('const inscripcionLicEnPanel = licEditable && inscripcionLicEditable(tablaLic)')
-  // La nota dice lo que la página pinta de verdad.
-  expect(codigo).toContain("notaPreciosLicenciatura(!landingAnimadaActiva() ? 'clasica' : seccionLicenciaturaVisible(overrides) ? 'animada' : 'sinSeccion')")
+  expect(codigo).toMatch(/inscripcionLicEnPanel \? AYUDA_INSCRIPCION_SEC_PREPA\s*: inscripcionLicenciaturaDe\([^)]*\) !== null \? AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO\s*: AYUDA_INSCRIPCION_TAMBIEN_LIC/)
+  // La nota y el modal usan el MISMO estado.
+  expect(codigo).toContain('{conLic && ` ${notaPreciosLicenciatura(estadoSeccionLicenciatura(overrides))}`}')
   // Ninguna etiqueta de licenciatura casa con los rótulos anclados de la e2e.
   for (const etiqueta of ['Inscripción de licenciatura', 'Titulación', 'Mensualidad · Ejecutivo 12 meses']) {
     expect(etiqueta).not.toMatch(/^Inscripción( general)?$/)
@@ -304,7 +330,7 @@ test('4f. ninguna pantalla calcula el desglose de licenciatura sin la tabla efec
 test('4e. un error de licenciatura lleva a la pestaña Precios y el modal sabe de la portada', () => {
   const pagina = sinComentarios(leer('src/app/(dashboard)/admin/configuracion/page.tsx'))
   expect(pagina).toContain("clave.startsWith('licenciaturas.')) return 'precios'")
-  expect(pagina).toContain("? (landingAnimadaActiva() ? 'animada' : 'clasica')")
+  expect(pagina).toContain('? estadoSeccionLicenciatura(overrides)')
   expect(pagina).toContain('soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides),')
   // Los placeholders de «Textos de mi página» siguen el borrador de precios.
   const textos = sinComentarios(leer('src/components/admin/personalizar/TextosLicenciaturas.tsx'))
