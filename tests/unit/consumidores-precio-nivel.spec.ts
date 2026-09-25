@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { ES_PLANTILLA } from './es-plantilla'
 import { getTotalPlan, type ModalidadPrograma } from '@/lib/modalidades'
 import { inscripcionDe, mensualidadPropiaDe } from '@/lib/precios-nivel'
+import { inscripcionDelAlumno } from '@/lib/licenciatura-utils'
 
 /**
  * F2-6 — los consumidores que faltaban leen el precio del NIVEL: la landing
@@ -91,10 +92,15 @@ test('3. ningún consumidor lee la inscripción general a pelo, salvo el comodí
   expect(animada).toContain('inscripcion: inscripcionTexto,')
 })
 
-test('4. api/alumno/pagos: total_plan con la inscripción del nivel y el campo aditivo `inscripcion`', () => {
+/** El add-on de licenciaturas apagado: la forma de fábrica de la plantilla. */
+const LIC_APAGADA = { activas: false, inscripcion: 1000 }
+
+test('4. api/alumno/pagos: total_plan con la inscripción del alumno y el campo aditivo `inscripcion`', () => {
   const ruta = leer('src/app/api/alumno/pagos/route.ts')
-  expect(ruta).toContain('inscripcion:   inscripcionDe(nivel, precios),')
-  expect(ruta).toContain('total_plan:    plan ? getTotalPlan(plan, inscripcionDe(nivel, precios)) : 0,')
+  expect(ruta).toContain('const inscripcion = inscripcionDelAlumno(nivel, precios, lic)')
+  expect(ruta).toContain('const lic = tablaLicenciaturas(cfg)')
+  expect(ruta).toMatch(/\n\s+inscripcion,\n/)
+  expect(ruta).toContain('total_plan:    plan ? getTotalPlan(plan, inscripcion) : 0,')
   // Sigue leyendo el config PUBLICADO (plan-semanal.spec 4 lo exige).
   expect(ruta).toMatch(/import \{[^}]*\bgetSiteConfig\b[^}]*\} from '@\/lib\/site-config'/)
 
@@ -102,9 +108,10 @@ test('4. api/alumno/pagos: total_plan con la inscripción del nivel y el campo a
   const plan = { id: '3_meses', label: '3', meses: 3, semanas: 12, cuotaSemanal: 250, mensualidad: 250, materiasPorMes: 4, activa: true } as unknown as ModalidadPrograma
   const sinClaves = { inscripcion: 500, inscripcionSecundaria: null, inscripcionPreparatoria: null }
   const conClaves = { inscripcion: 500, inscripcionSecundaria: 1000, inscripcionPreparatoria: 1500 }
-  const total = (nivel: string | null, p: Record<string, unknown>) => getTotalPlan(plan, inscripcionDe(nivel, p))
+  const total = (nivel: string | null, p: Record<string, unknown>, lic: object = LIC_APAGADA) =>
+    getTotalPlan(plan, inscripcionDelAlumno(nivel, p, lic))
   const cuotas = getTotalPlan(plan, 0)
-  // Sin claves: lo de antes, `Number(precios.inscripcion ?? 0)`, en cualquier nivel.
+  // Sin claves y sin el add-on: lo de antes, `Number(precios.inscripcion ?? 0)`, en cualquier nivel.
   for (const nivel of ['secundaria', 'preparatoria', 'licenciatura', null]) {
     expect(total(nivel, sinClaves)).toBe(getTotalPlan(plan, Number(sinClaves.inscripcion ?? 0)))
   }
@@ -112,14 +119,23 @@ test('4. api/alumno/pagos: total_plan con la inscripción del nivel y el campo a
   expect(total('secundaria', conClaves)).toBe(1000 + cuotas)
   expect(total('preparatoria', conClaves)).toBe(1500 + cuotas)
   expect(total('licenciatura', conClaves)).toBe(500 + cuotas)
+  // #164: con el add-on encendido, licenciatura suma la inscripción de SU programa.
+  expect(total('licenciatura', conClaves, { activas: true, inscripcion: 1000 })).toBe(1000 + cuotas)
 })
 
-test('5. la ficha confirma la inscripción del nivel del alumno, con el mismo formato crudo', () => {
+test('5. la ficha confirma la inscripción del programa del alumno, con el mismo formato crudo', () => {
   const ficha = leer('src/app/(dashboard)/admin/alumnos/[id]/page.tsx')
-  expect(ficha).toContain("<span style={{ color: 'var(--color-acento)' }}>${inscripcionDe(alumno.nivel, cfg.precios)}</span>?")
+  expect(ficha).toContain("<span style={{ color: 'var(--color-acento)' }}>${alumno.monto_inscripcion}</span>?")
+  // La calcula el servidor: la ficha solo tiene el config PÚBLICO, que no trae
+  // la tabla de licenciaturas (#164).
+  const api = leer('src/app/api/admin/alumnos/[id]/route.ts')
+  expect(api).toContain('monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg)),')
+  expect(api).toMatch(/const cfg = await getSiteConfig\(\)/)
   // Sin claves por nivel es la cifra de siempre (la e2e del editor busca `$750`).
-  expect(`$${inscripcionDe('secundaria', { inscripcion: 750, inscripcionSecundaria: null })}`).toBe('$750')
-  expect(`$${inscripcionDe(null, { inscripcion: 750 })}`).toBe('$750')
+  expect(`$${inscripcionDelAlumno('secundaria', { inscripcion: 750, inscripcionSecundaria: null }, LIC_APAGADA)}`).toBe('$750')
+  expect(`$${inscripcionDelAlumno(null, { inscripcion: 750 }, LIC_APAGADA)}`).toBe('$750')
+  // Habsburgo (#164): el alumno de licenciatura confirma $1000, no la general.
+  expect(`$${inscripcionDelAlumno('licenciatura', { inscripcion: 399 }, { activas: true, inscripcion: 1000 })}`).toBe('$1000')
 })
 
 test('6. la mensualidad propia solo existe con clave: sin ella, cada tarjeta usa su respaldo de siempre', () => {

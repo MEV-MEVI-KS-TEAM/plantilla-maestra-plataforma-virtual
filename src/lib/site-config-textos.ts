@@ -21,6 +21,7 @@
  * «Mis pagos» (api/alumno/pagos/route.ts) toma la cuota y el total del plan
  * PUBLICADO, pero solo si el nivel del alumno tiene UN plan activo
  * (`modalidadPorNivel`); con 0 o 2+ la pantalla dice que no hay calendario.
+ * Licenciatura y diplomado solo cuentan un plan que los nombre con `nivel`.
  * Las filas de cada semana conservan su `monto` hasta que se regenera.
  */
 

@@ -150,6 +150,8 @@ test('2b. una cadena numérica cuenta como precio (se lee con Number(), como cer
 })
 
 test('2c. licenciatura, diplomado y null reciben el general aunque haya claves', () => {
+  // Es la regla del RESOLVER de Sec/Prepa. Lo que paga un alumno de
+  // licenciatura lo decide `inscripcionDelAlumno` con su propia tabla (#164).
   const plan3 = { meses: 3, mensualidad: 2000 }
   const p: Precios = { inscripcion: 599, inscripcionSecundaria: 1000, inscripcionPreparatoria: 1500, mensualidadSecundaria3Meses: 1500, mensualidadPreparatoria3Meses: 2600 }
   for (const n of ['licenciatura', 'diplomado', '', null, undefined]) {

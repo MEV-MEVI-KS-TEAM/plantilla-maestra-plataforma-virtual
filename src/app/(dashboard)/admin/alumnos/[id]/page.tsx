@@ -13,7 +13,6 @@ import { useSiteConfig } from '@/components/site-config-provider'
 // Mismos catálogos que el select de alta: el modal de corrección ofrece
 // exactamente lo que el alta ofrece, ni más ni menos.
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
-import { inscripcionDe } from '@/lib/precios-ui'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
 
@@ -25,6 +24,9 @@ interface AlumnoDetalle {
   modalidad: string
   meses_desbloqueados: number
   inscripcion_pagada: boolean
+  // La inscripción que confirma el modal «Confirmar pago»: la del programa del
+  // alumno, calculada por el servidor con la config publicada (#164).
+  monto_inscripcion: number
   created_at: string
   notas_admin: string | null
   // Rol del usuario que consulta (lo calcula el servidor): 'ADMIN' | 'SECRETARIO'
@@ -1655,7 +1657,7 @@ export default function AlumnoDetallePage() {
               <p className="text-4xl mb-2">💳</p>
               <p className="text-sm font-medium text-gray-100">
                 ¿Confirmas que el alumno pagó su inscripción de{' '}
-                <span style={{ color: 'var(--color-acento)' }}>${inscripcionDe(alumno.nivel, cfg.precios)}</span>?
+                <span style={{ color: 'var(--color-acento)' }}>${alumno.monto_inscripcion}</span>?
               </p>
               <p className="text-sm font-bold mt-0.5 text-gray-100">
                 {alumno.usuario.nombre_completo}

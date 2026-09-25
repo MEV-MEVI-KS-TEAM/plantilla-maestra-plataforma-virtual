@@ -118,6 +118,23 @@ test('3b. con 0 o con 2+ planes devuelve undefined y NO adivina', () => {
   expect(modalidadPorNivel('secundaria', MIXTA)).toBeUndefined()
 })
 
+test('3c. licenciatura y diplomado no heredan el plan único sin nivel de Sec/Prepa (#164)', () => {
+  // Su precio vive en otra tabla (el add-on y el catálogo de cursos). Con UN
+  // plan sin `nivel`, el calendario semanal y el total de «Mis pagos» del
+  // alumno de licenciatura salían del plan de Sec/Prepa.
+  const UNICO = SIMETRICA.slice(0, 1)
+  for (const n of ['secundaria', 'preparatoria', null]) {
+    expect(modalidadPorNivel(n, UNICO)?.id, String(n)).toBe('3_meses')
+  }
+  expect(modalidadPorNivel('licenciatura', UNICO)).toBeUndefined()
+  expect(modalidadPorNivel('diplomado', UNICO)).toBeUndefined()
+  // Un plan que los NOMBRE sí les toca.
+  const PROPIO = [...UNICO, { ...SIMETRICA[1], id: '12_meses', nivel: 'licenciatura' }]
+  expect(modalidadPorNivel('licenciatura', PROPIO)?.id).toBe('12_meses')
+  // planesPorNivel no cambia: la landing y el registro siguen con su regla.
+  expect(planesPorNivel('licenciatura', UNICO).map(m => m.id)).toEqual(['3_meses'])
+})
+
 // ─── 4. La frase de duración por nivel ───────────────────────────────────────
 
 test('4. la duración se cuenta por nivel, no por escuela', () => {

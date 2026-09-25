@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
-import { getPlanNombre } from '@/lib/licenciatura-utils'
+import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
+import { getSiteConfig } from '@/lib/site-config'
 import { CONFIG } from '@/lib/config'
 
 export async function GET(
@@ -137,6 +138,12 @@ export async function GET(
       }
     }
 
+    // La inscripción que el modal «Confirmar pago» de la ficha le pregunta al
+    // admin: la del PROGRAMA del alumno (#164), de la config PUBLICADA. Se
+    // calcula aquí porque la ficha solo tiene el subconjunto público del
+    // config, que no trae la tabla de licenciaturas.
+    const cfg = await getSiteConfig()
+
     return NextResponse.json({
       id:                  a.id,
       matricula:           a.matricula ?? `${CONFIG.prefijoMatricula}-0000`,
@@ -146,6 +153,7 @@ export async function GET(
       duracion_meses:      duracion,
       meses_desbloqueados: a.meses_desbloqueados ?? 0,
       inscripcion_pagada:  a.inscripcion_pagada ?? false,
+      monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg)),
       sindicalizado:       Boolean(a.es_sindicalizado ?? a.sindicalizado),
       sindicato:           a.sindicato ?? null,
       // Notas internas: solo visibles para admin (el secretario recibe null)

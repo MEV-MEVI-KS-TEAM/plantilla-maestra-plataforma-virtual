@@ -178,6 +178,19 @@ test('5b. apagar el plan de un nivel no deja de sincronizar su cuota', () => {
   expect(valor(filas, 'plan_cuota_preparatoria')).toBe('350')
 })
 
+test('6. licenciatura y diplomado no reciben el calendario del plan de Sec/Prepa (#164)', () => {
+  // La plantilla trae 'licenciatura' en `niveles`: una escuela semanal nueva
+  // con UN plan sin `nivel` escribía plan_*_licenciatura con ese plan.
+  const UNICO = SIMETRICA.slice(0, 1)
+  const filas = filasPlanSemanal(['secundaria', 'licenciatura', 'diplomado'], UNICO, UNICO, AHORA)
+  expect(filas.map(f => f.clave)).toEqual(['plan_semanas_secundaria', 'plan_cuota_secundaria'])
+  // Con un plan que la nombre, licenciatura sí lleva calendario.
+  const conLic = [...UNICO, { ...SIMETRICA[1], id: '12_meses', nivel: 'licenciatura' }]
+  const filasLic = filasPlanSemanal(['licenciatura'], conLic, conLic, AHORA)
+  expect(valor(filasLic, 'plan_semanas_licenciatura')).toBe('26')
+  expect(valor(filasLic, 'plan_cuota_licenciatura')).toBe('250')
+})
+
 test('4c. la parte pura no arrastra código de servidor', () => {
   // Si importara site-config.ts, esta misma spec dejaría de poder cargarla.
   // Cubre también los import de varias líneas (se mira el `from`).
