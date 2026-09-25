@@ -41,10 +41,15 @@ export interface OpcionesConfirmaPrecios {
    * página pública» sería falso para ellos. Sin él, el modal de siempre.
    */
   licenciaturas?: 'animada' | 'clasica'
+  /**
+   * Lo ÚNICO que cambió son precios de licenciatura: el modal no habla de
+   * planes, cuotas ni calendarios de Secundaria y Preparatoria que nadie tocó.
+   */
+  soloLicenciaturas?: boolean
 }
 
 /** El modal que sale al publicar un cambio de precios, planes o tipo de cambio. */
-export function textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel = false, licenciaturas }: OpcionesConfirmaPrecios): string {
+export function textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel = false, licenciaturas, soloLicenciaturas = false }: OpcionesConfirmaPrecios): string {
   const base = semanal
     ? 'La cuota nueva se verá en tu página pública en unos segundos y se usará en el calendario de quien se inscriba a partir de ahora. Tus alumnos ya inscritos la verán como referencia en «Mis pagos» (si su nivel tiene un solo plan activo), pero sus semanas ya generadas conservan su monto hasta que regeneres su calendario en Cobranza (ahí se recalculan las pendientes y vencidas).'
     : 'Los precios nuevos se verán en tu página pública en unos segundos. Los pagos que ya registraste no cambian. Si apagaste o encendiste un plan, también cambia lo que se ofrece al registrarse.'
@@ -53,10 +58,21 @@ export function textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel = fal
     : ''
   // Solo en el mensual: en el semanal lo que se cobra es la cuota del plan,
   // que no tiene precio por nivel.
+  if (soloLicenciaturas && licenciaturas) {
+    return `${licenciaturas === 'clasica' ? TEXTO_CONFIRMA_LIC_CLASICA : TEXTO_CONFIRMA_LIC_ANIMADA}${tipoCambio} ¿Publicar?`
+  }
   const nivel = porNivel && !semanal ? ` ${AVISO_PRECIO_POR_NIVEL}` : ''
   const lic = licenciaturas === 'clasica' ? ` ${AVISO_LIC_PORTADA_CLASICA}` : ''
   return `${base}${nivel}${lic}${tipoCambio} ¿Publicar?`
 }
+
+/** El modal cuando lo único que cambió son precios de licenciatura, en la portada animada. */
+export const TEXTO_CONFIRMA_LIC_ANIMADA =
+  'Los precios nuevos de licenciatura se verán en su sección de tu página pública en unos segundos. Los pagos que ya registraste no cambian.'
+
+/** Lo mismo, en la portada clásica, que no tiene sección de licenciaturas. */
+export const TEXTO_CONFIRMA_LIC_CLASICA =
+  'Los precios nuevos de licenciatura se guardan, pero tu portada no tiene sección de licenciaturas: no se verán en tu página pública. Los pagos que ya registraste no cambian.'
 
 /**
  * Se añade al modal cuando cambió un precio de licenciatura y la escuela sirve
@@ -94,11 +110,12 @@ export function confirmacionDePrecios({
   cambiaTipoCambio,
   porNivel,
   licenciaturas,
+  soloLicenciaturas,
 }: OpcionesConfirmaPrecios & { cambiaPrecios: boolean }): { titulo: string; mensaje: string } {
   if (!cambiaPrecios && cambiaTipoCambio) {
     return { titulo: TITULO_CONFIRMA_TIPO_CAMBIO, mensaje: TEXTO_CONFIRMA_SOLO_TIPO_CAMBIO }
   }
-  return { titulo: TITULO_CONFIRMA_PRECIOS, mensaje: textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel, licenciaturas }) }
+  return { titulo: TITULO_CONFIRMA_PRECIOS, mensaje: textoConfirmaPrecios({ semanal, cambiaTipoCambio, porNivel, licenciaturas, soloLicenciaturas }) }
 }
 
 /**
@@ -142,6 +159,9 @@ export const AYUDA_NIVEL_CIFRA_PROPIA = 'Este nivel ya cobra hoy una cifra disti
 /** Bajo la tarjeta «Inscripción · Secundaria y Preparatoria», si la escuela vende licenciaturas. */
 export const AYUDA_INSCRIPCION_SEC_PREPA = 'No aplica a licenciatura: su inscripción está en la tarjeta «Licenciaturas».'
 
+/** Lo mismo cuando la inscripción de licenciatura NO se edita desde el panel (forma propia). */
+export const AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO = 'No aplica a licenciatura.'
+
 export const AYUDA_LIC_INSCRIPCION =
   'Pago único al inscribirse, igual en todas las carreras. Vacío = vuelve al precio que trae la configuración de tu escuela.'
 
@@ -157,15 +177,26 @@ export const AYUDA_LIC_MENSUALIDAD_CERO =
 export const AYUDA_LIC_SIN_PLANES =
   'Tu escuela todavía no tiene planes de licenciatura. Los da de alta soporte (duración y materias por mes); después les pones precio aquí.'
 
+/** Hay planes, pero ninguno con la forma estándar (opciones de pago, precio por moneda…). */
+export const AYUDA_LIC_PLANES_FORMA_PROPIA =
+  'Los planes de licenciatura de tu escuela tienen una forma propia: su mensualidad no se edita desde aquí. Pide el cambio a soporte.'
+
 /** Una tabla con forma propia (precios por moneda, por carrera, rutas…): el merge no le aplicaría nada. */
 export const AVISO_LIC_FORMA_PROPIA =
-  'Los precios de licenciatura de tu escuela tienen una forma propia y no se editan desde aquí. Pídeselos a soporte.'
+  'Los precios de licenciatura de tu escuela tienen una forma propia y no se editan desde aquí. Pide el cambio a soporte.'
 
-/** La nota al pie, según la portada: solo la animada tiene sección de licenciaturas. */
-export function notaPreciosLicenciatura(animada: boolean): string {
-  return animada
-    ? 'Los precios de licenciatura se ven en su sección de tu página, con el costo total de cada plan: inscripción, mensualidades y titulación.'
-    : 'Tu portada no tiene sección de licenciaturas: sus precios no se muestran en tu página pública.'
+/**
+ * La nota al pie, según lo que la página pinta de verdad: solo la animada tiene
+ * sección de licenciaturas, y solo la pinta con carreras y al menos un plan con
+ * mensualidad.
+ */
+export function notaPreciosLicenciatura(estado: 'animada' | 'clasica' | 'sinSeccion'): string {
+  if (estado === 'animada') {
+    return 'Los precios de licenciatura se ven en su sección de tu página, con el costo total de cada plan: inscripción, mensualidades y titulación.'
+  }
+  return estado === 'clasica'
+    ? 'Tu portada no tiene sección de licenciaturas: sus precios no se muestran en tu página pública.'
+    : 'Tu página todavía no muestra la sección de licenciaturas: aparece cuando al menos un plan tiene mensualidad.'
 }
 
 /** Nota al pie de la pestaña Precios. */

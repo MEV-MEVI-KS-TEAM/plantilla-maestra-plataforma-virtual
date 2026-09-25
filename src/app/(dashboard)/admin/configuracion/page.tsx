@@ -53,6 +53,7 @@ import {
   hayCambioDeTipoCambio,
   hayCambiosDeLicenciatura,
   hayCambiosDePreciosOPlanes,
+  hayCambiosDeSecPrepa,
   inscripcionesDeBorrador,
   mismoContenido,
   modalidadesEfectivas,
@@ -557,6 +558,7 @@ export default function PersonalizarPage() {
           licenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides)
             ? (landingAnimadaActiva() ? 'animada' : 'clasica')
             : undefined,
+          soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides),
         })}
         etiquetaConfirmar="Publicar cambios"
         ocupado={publicando}

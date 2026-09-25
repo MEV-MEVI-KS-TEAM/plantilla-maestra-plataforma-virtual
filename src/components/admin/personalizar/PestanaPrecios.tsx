@@ -47,9 +47,11 @@ import {
   AVISO_LIC_FORMA_PROPIA,
   AYUDA_CUOTA_SEMANAL,
   AYUDA_INSCRIPCION_SEC_PREPA,
+  AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO,
   AYUDA_LIC_INSCRIPCION,
   AYUDA_LIC_MENSUALIDAD,
   AYUDA_LIC_MENSUALIDAD_CERO,
+  AYUDA_LIC_PLANES_FORMA_PROPIA,
   AYUDA_LIC_SIN_PLANES,
   AYUDA_LIC_TITULACION,
   AYUDA_NIVEL_CIFRA_PROPIA,
@@ -72,6 +74,7 @@ import {
   escribirModalidad,
   ofreceLicenciaturas,
   precioLicenciaturaEfectivo,
+  seccionLicenciaturaVisible,
   rutaLicenciatura,
   textoVacioErrorLicenciatura,
   textoVacioLicenciatura,
@@ -207,6 +210,10 @@ export function PestanaPrecios({
   const tablaLic = (CONFIG as unknown as { licenciaturas?: unknown }).licenciaturas
   const licEditable = conLic && bloqueLicEditable(tablaLic)
   const planesLic = licEditable ? planesLicEditables(tablaLic) : []
+  // ¿Hay planes, aunque ninguno se pueda editar? Entonces no es «sin planes».
+  const hayPlanesLic = Array.isArray((tablaLic as { modalidades?: unknown } | undefined)?.modalidades)
+    && ((tablaLic as { modalidades: unknown[] }).modalidades.length > 0)
+  const inscripcionLicEnPanel = licEditable && inscripcionLicEditable(tablaLic)
   /** «12 o 18 meses», «6, 12 o 18 meses»: por su duración, nunca por periodos. */
   const ritmosLic = `${unirConO([...new Set(planesLic.map((p) => p.meses))].sort((a, b) => a - b).map(String))} meses`
 
@@ -345,7 +352,7 @@ export function PestanaPrecios({
       <Tarjeta
         titulo={tituloSecPrepa('Inscripción', conLic)}
         icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}
-        descripcion={conLic ? AYUDA_INSCRIPCION_SEC_PREPA : undefined}
+        descripcion={conLic ? (inscripcionLicEnPanel ? AYUDA_INSCRIPCION_SEC_PREPA : AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO) : undefined}
       >
         {campoPrecio('precios.inscripcion', porNivel ? 'Inscripción general' : undefined)}
         {porNivel && (
@@ -515,12 +522,12 @@ export function PestanaPrecios({
             <Ayuda>{AVISO_LIC_FORMA_PROPIA}</Ayuda>
           ) : (
             <>
-              {inscripcionLicEditable(tablaLic) &&
+              {inscripcionLicEnPanel &&
                 campoLic({ clave: 'licenciaturas.inscripcion', tipo: 'inscripcion' }, 'Inscripción de licenciatura', AYUDA_LIC_INSCRIPCION)}
               {titulacionLicEditable(tablaLic) &&
                 campoLic({ clave: 'licenciaturas.certificacion', tipo: 'titulacion' }, 'Titulación', AYUDA_LIC_TITULACION)}
               {planesLic.length === 0 ? (
-                <Ayuda>{AYUDA_LIC_SIN_PLANES}</Ayuda>
+                <Ayuda>{hayPlanesLic ? AYUDA_LIC_PLANES_FORMA_PROPIA : AYUDA_LIC_SIN_PLANES}</Ayuda>
               ) : (
                 <div className="space-y-3">
                   <Subtitulo>Mensualidad por plan</Subtitulo>
@@ -587,7 +594,7 @@ export function PestanaPrecios({
         style={{ background: 'rgba(21,101,192,0.08)', border: `1px solid rgba(21,101,192,0.2)`, color: TXT_SUAVE }}>
         {NOTA_PRECIOS}
         {porNivel && ` ${NOTA_PRECIOS_POR_NIVEL}`}
-        {conLic && ` ${notaPreciosLicenciatura(landingAnimadaActiva())}`}
+        {conLic && ` ${notaPreciosLicenciatura(!landingAnimadaActiva() ? 'clasica' : seccionLicenciaturaVisible(overrides) ? 'animada' : 'sinSeccion')}`}
       </div>
     </div>
   )

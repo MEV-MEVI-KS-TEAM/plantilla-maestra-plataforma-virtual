@@ -9,22 +9,30 @@ import {
   hayCambiosDeLicenciatura,
   hayCambiosDePrecio,
   hayCambiosDePreciosOPlanes,
+  hayCambiosDeSecPrepa,
   licenciaturaDeBorrador,
   ofreceLicenciaturas,
   precioLicenciaturaEfectivo,
+  seccionLicenciaturaVisible,
   textoVacioErrorLicenciatura,
   textoVacioLicenciatura,
+  textoVacioNivel,
   tituloSecPrepa,
 } from '@/lib/site-config-editor'
+import { nivelesTexto } from '@/lib/niveles-ui'
 import {
   AVISO_LIC_FORMA_PROPIA,
   AVISO_LIC_PORTADA_CLASICA,
   AYUDA_INSCRIPCION_SEC_PREPA,
+  AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO,
   AYUDA_LIC_INSCRIPCION,
   AYUDA_LIC_MENSUALIDAD,
   AYUDA_LIC_MENSUALIDAD_CERO,
+  AYUDA_LIC_PLANES_FORMA_PROPIA,
   AYUDA_LIC_SIN_PLANES,
   AYUDA_LIC_TITULACION,
+  TEXTO_CONFIRMA_LIC_ANIMADA,
+  TEXTO_CONFIRMA_LIC_CLASICA,
   confirmacionDePrecios,
   notaPreciosLicenciatura,
   textoConfirmaPrecios,
@@ -78,6 +86,10 @@ test('1. la tarjeta sale con el add-on encendido y carreras; nunca por CONFIG.ni
   expect(ofreceLicenciaturas({ ...LIC(), activas: false })).toBe(false)
   expect(ofreceLicenciaturas({ ...LIC(), activas: 'true' })).toBe(false)
   expect(ofreceLicenciaturas({ ...LIC(), carreras: [] })).toBe(false)
+  // Solo diplomados montados en el riel (SFX): no vende licenciaturas. Es la
+  // regla del registro, que tampoco ofrece «Licenciatura» ahí.
+  expect(ofreceLicenciaturas({ ...LIC(), carreras: [{ slug: 'd', nombre: 'Diplomado', esDiplomado: true }] })).toBe(false)
+  expect(ofreceLicenciaturas({ ...LIC(), carreras: [...LIC().carreras, { slug: 'd', nombre: 'Diplomado', esDiplomado: true }] })).toBe(vende)
   expect(ofreceLicenciaturas(undefined)).toBe(false)
   expect(ofreceLicenciaturas(null)).toBe(false)
   // La plantilla trae 'licenciatura' en niveles con el add-on APAGADO: sin tarjeta.
@@ -90,7 +102,8 @@ test('1b. con licenciaturas, las tarjetas de Sec/Prepa dicen de qué nivel son; 
   expect(tituloSecPrepa('Planes', false, ['secundaria', 'preparatoria'])).toBe('Planes')
   expect(tituloSecPrepa('Inscripción', true, ['secundaria', 'preparatoria', 'licenciatura'])).toMatch(/^Inscripción · \S+ y \S+$/)
   expect(tituloSecPrepa('Inscripción', true, ['preparatoria', 'licenciatura'])).not.toContain(' y ')
-  expect(tituloSecPrepa('Certificación', true, [])).toBe('Certificación · Secundaria y Preparatoria')
+  // Sin Sec/Prepa en `niveles` (GreenHill), el respaldo también respeta la etiqueta de cada nivel («Bachillerato»).
+  expect(tituloSecPrepa('Certificación', true, [])).toBe(`Certificación · ${nivelesTexto(['secundaria', 'preparatoria'])}`)
   // Siempre «Secundaria y Preparatoria», aunque el config los liste al revés.
   const alReves = tituloSecPrepa('Planes', true, ['preparatoria', 'secundaria'])
   expect(alReves).toBe(tituloSecPrepa('Planes', true, ['secundaria', 'preparatoria']))
@@ -128,8 +141,22 @@ test('2b. los marcadores nunca dicen «$0» ni «NaN»; un plan en 0 es «sin pr
   for (const t of [textoVacioLicenciatura(0, 'titulacion', 'MXN'), textoVacioLicenciatura(NaN, 'mensualidad', 'MXN')]) {
     expect(t).not.toMatch(/\$0\b|NaN/)
   }
-  // Cabe en el campo (340 px): no más largo que el marcador más largo de la Fase 2.
-  expect(textoVacioLicenciatura(38000, 'titulacion', 'MXN').length).toBeLessThanOrEqual('Vacío: usa el de fábrica, $38,000'.length)
+  // Cabe en el campo (max-w-xs, 340 px): el más largo posible —la titulación en su
+  // techo— mide a lo más un carácter más que el más largo de la Fase 2 ($50,000).
+  const masLargo = textoVacioLicenciatura(LIMITES.titulacionMax, 'titulacion', 'MXN')
+  expect(masLargo).toBe('Vacío: usa el de fábrica, $100,000')
+  expect(masLargo.length).toBeLessThanOrEqual(textoVacioNivel(LIMITES.precioMax, 'MXN', 'fabrica').length + 1)
+})
+
+test('2c. la sección de la landing se pinta con carreras y al menos un plan con mensualidad (en el borrador)', () => {
+  const sinPrecio = { ...LIC(), modalidades: LIC().modalidades.map((m) => ({ ...m, mensualidad: 0 })) }
+  conLic(sinPrecio, () => {
+    expect(seccionLicenciaturaVisible({})).toBe(false)
+    // Con la mensualidad que el admin está por publicar, sí.
+    expect(seccionLicenciaturaVisible({ licenciaturas: { modalidades: { '12_meses': { mensualidad: 1450 } } } })).toBe(true)
+  })
+  conLic({ ...LIC(), carreras: [] }, () => expect(seccionLicenciaturaVisible({})).toBe(false))
+  conLic(LIC(), () => expect(seccionLicenciaturaVisible({})).toBe(true))
 })
 
 // ─── 3. Detección de cambios y modal ─────────────────────────────────────────
@@ -141,8 +168,10 @@ test('3. cambiar un precio de licenciatura pide confirmar precios', () => {
   expect(hayCambiosDePreciosOPlanes(antes, despues)).toBe(true)
   expect(hayCambiosDePrecio(antes, despues, 'MXN')).toBe(true)
   expect(hayCambiosDeLicenciatura(despues, JSON.parse(JSON.stringify(despues)))).toBe(false)
-  // Un cambio de Sec/Prepa no se confunde con uno de licenciatura.
+  // Un cambio de Sec/Prepa no se confunde con uno de licenciatura, ni al revés.
   expect(hayCambiosDeLicenciatura({}, { precios: { inscripcion: 1 } })).toBe(false)
+  expect(hayCambiosDeSecPrepa(antes, despues)).toBe(false)
+  expect(hayCambiosDeSecPrepa({}, { modalidades: { '3_meses': { mensualidad: 1 } } })).toBe(true)
 })
 
 test('3b. el modal: igual que siempre sin licenciatura; en portada clásica avisa que no se verán', () => {
@@ -154,15 +183,28 @@ test('3b. el modal: igual que siempre sin licenciatura; en portada clásica avis
   }
   expect(confirmacionDePrecios({ semanal: false, cambiaPrecios: true, cambiaTipoCambio: false, licenciaturas: 'clasica' }).mensaje)
     .toContain(AVISO_LIC_PORTADA_CLASICA)
+  // Si lo ÚNICO que cambió es licenciatura, un texto propio: sin la frase de
+  // Sec/Prepa (que en la clásica se contradecía) ni cuotas o calendarios (semanal).
+  for (const semanal of [false, true]) {
+    expect(textoConfirmaPrecios({ semanal, cambiaTipoCambio: false, porNivel: true, licenciaturas: 'animada', soloLicenciaturas: true }))
+      .toBe(`${TEXTO_CONFIRMA_LIC_ANIMADA} ¿Publicar?`)
+    expect(textoConfirmaPrecios({ semanal, cambiaTipoCambio: false, licenciaturas: 'clasica', soloLicenciaturas: true }))
+      .toBe(`${TEXTO_CONFIRMA_LIC_CLASICA} ¿Publicar?`)
+  }
+  for (const t of [TEXTO_CONFIRMA_LIC_ANIMADA, TEXTO_CONFIRMA_LIC_CLASICA]) expect(t).not.toMatch(/cuota|calendario|Cobranza|nivel/i)
+  // `soloLicenciaturas` sin `licenciaturas` no cambia nada.
+  expect(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false, soloLicenciaturas: true }))
+    .toBe(textoConfirmaPrecios({ semanal: false, cambiaTipoCambio: false }))
   // La portada clásica de verdad no tiene sección de licenciaturas: si algún día
   // la tiene, este aviso miente y hay que quitarlo.
   expect(leer('src/components/landing/LandingClient.tsx')).not.toMatch(/licenciatura/i)
 })
 
 test('3c. los textos no dicen cuatrimestre ni cuándo se paga la titulación, y no prometen de más', () => {
-  const textos = [AVISO_LIC_FORMA_PROPIA, AVISO_LIC_PORTADA_CLASICA, AYUDA_INSCRIPCION_SEC_PREPA, AYUDA_LIC_INSCRIPCION,
-    AYUDA_LIC_MENSUALIDAD, AYUDA_LIC_MENSUALIDAD_CERO, AYUDA_LIC_SIN_PLANES, AYUDA_LIC_TITULACION,
-    notaPreciosLicenciatura(true), notaPreciosLicenciatura(false)]
+  const textos = [AVISO_LIC_FORMA_PROPIA, AVISO_LIC_PORTADA_CLASICA, AYUDA_INSCRIPCION_SEC_PREPA, AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO,
+    AYUDA_LIC_INSCRIPCION, AYUDA_LIC_MENSUALIDAD, AYUDA_LIC_MENSUALIDAD_CERO, AYUDA_LIC_PLANES_FORMA_PROPIA,
+    AYUDA_LIC_SIN_PLANES, AYUDA_LIC_TITULACION, TEXTO_CONFIRMA_LIC_ANIMADA, TEXTO_CONFIRMA_LIC_CLASICA,
+    notaPreciosLicenciatura('animada'), notaPreciosLicenciatura('clasica'), notaPreciosLicenciatura('sinSeccion')]
   for (const t of textos) {
     expect(t, t).not.toMatch(/cuatrimestr/i)
     expect(t, t).not.toMatch(/al (concluir|terminar|egresar)|al final del/i)
@@ -192,7 +234,8 @@ test('4. la tarjeta solo con licenciaturas, sin interruptores ni claves de Sec/P
   expect(bloque).toContain("campoLic({ clave: 'licenciaturas.inscripcion', tipo: 'inscripcion' }, 'Inscripción de licenciatura', AYUDA_LIC_INSCRIPCION)")
   expect(bloque).toContain("campoLic({ clave: 'licenciaturas.certificacion', tipo: 'titulacion' }, 'Titulación', AYUDA_LIC_TITULACION)")
   expect(bloque).toContain("{ clave: `licenciaturas.modalidades.${p.id}`, tipo: 'mensualidad', planId: p.id }")
-  expect(bloque).toContain('<Ayuda>{AYUDA_LIC_SIN_PLANES}</Ayuda>')
+  // Con planes que no se editan, no dice «no tiene planes».
+  expect(bloque).toContain('<Ayuda>{hayPlanesLic ? AYUDA_LIC_PLANES_FORMA_PROPIA : AYUDA_LIC_SIN_PLANES}</Ayuda>')
   // Por su duración: «6, 12 o 18 meses».
   expect(codigo).toContain('const ritmosLic = `${unirConO(')
 })
@@ -218,8 +261,11 @@ test('4c. las tres tarjetas de Sec/Prepa se rotulan; sus campos conservan la eti
   for (const t of ['Inscripción', 'Planes', 'Certificación']) expect(codigo).toContain(`tituloSecPrepa('${t}', conLic)`)
   expect(codigo).toContain("campoPrecio('precios.inscripcion', porNivel ? 'Inscripción general' : undefined)")
   expect(codigo).toContain("etiqueta={semanal ? 'Cuota semanal' : conSubbloque ? 'Mensualidad general' : 'Mensualidad'}")
-  expect(codigo).toContain('descripcion={conLic ? AYUDA_INSCRIPCION_SEC_PREPA : undefined}')
-  expect(codigo).toContain('{conLic && ` ${notaPreciosLicenciatura(landingAnimadaActiva())}`}')
+  // «…está en la tarjeta Licenciaturas» solo si ahí hay un campo de inscripción.
+  expect(codigo).toContain('descripcion={conLic ? (inscripcionLicEnPanel ? AYUDA_INSCRIPCION_SEC_PREPA : AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO) : undefined}')
+  expect(codigo).toContain('const inscripcionLicEnPanel = licEditable && inscripcionLicEditable(tablaLic)')
+  // La nota dice lo que la página pinta de verdad.
+  expect(codigo).toContain("notaPreciosLicenciatura(!landingAnimadaActiva() ? 'clasica' : seccionLicenciaturaVisible(overrides) ? 'animada' : 'sinSeccion')")
   // Ninguna etiqueta de licenciatura casa con los rótulos anclados de la e2e.
   for (const etiqueta of ['Inscripción de licenciatura', 'Titulación', 'Mensualidad · Ejecutivo 12 meses']) {
     expect(etiqueta).not.toMatch(/^Inscripción( general)?$/)
@@ -259,6 +305,7 @@ test('4e. un error de licenciatura lleva a la pestaña Precios y el modal sabe d
   const pagina = sinComentarios(leer('src/app/(dashboard)/admin/configuracion/page.tsx'))
   expect(pagina).toContain("clave.startsWith('licenciaturas.')) return 'precios'")
   expect(pagina).toContain("? (landingAnimadaActiva() ? 'animada' : 'clasica')")
+  expect(pagina).toContain('soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides),')
   // Los placeholders de «Textos de mi página» siguen el borrador de precios.
   const textos = sinComentarios(leer('src/components/admin/personalizar/TextosLicenciaturas.tsx'))
   expect(textos).toContain('getDesglosesLicenciatura(licenciaturaDeBorrador(overrides)')

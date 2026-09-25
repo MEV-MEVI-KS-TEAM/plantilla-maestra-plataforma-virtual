@@ -29,6 +29,7 @@ import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConf
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { esSoloCursos } from '@/lib/modo'
 import { licenciaturaEfectiva } from '@/lib/precios-licenciatura'
+import { getCarrerasLicenciatura, getDesglosesLicenciatura } from '@/lib/licenciatura-utils'
 import { nivelesTexto } from '@/lib/niveles-ui'
 import { formatearWhatsApp, whatsappEscuelaDisponible } from '@/lib/contacto-ui'
 import type { ModalidadPrograma } from '@/lib/modalidades'
@@ -646,11 +647,12 @@ export function hayCambiosDePrecio(
  * en pesos y no hable de precios que nadie tocó.
  */
 export function hayCambiosDePreciosOPlanes(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
-  return (
-    !mismoContenido(antes.precios, despues.precios) ||
-    !mismoContenido(antes.modalidades, despues.modalidades) ||
-    hayCambiosDeLicenciatura(antes, despues)
-  )
+  return hayCambiosDeSecPrepa(antes, despues) || hayCambiosDeLicenciatura(antes, despues)
+}
+
+/** ¿Cambió un precio o un plan de Secundaria y Preparatoria (`precios` o `modalidades`)? */
+export function hayCambiosDeSecPrepa(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
+  return !mismoContenido(antes.precios, despues.precios) || !mismoContenido(antes.modalidades, despues.modalidades)
 }
 
 /**
@@ -668,15 +670,28 @@ export function hayCambiosDeLicenciatura(antes: SiteConfigOverrides, despues: Si
 const tablaDeFabrica = (): unknown => (CONFIG as unknown as { licenciaturas?: unknown }).licenciaturas
 
 /**
- * ¿La escuela vende licenciaturas? Add-on encendido, con carreras y fuera de
- * solo cursos (la misma regla del registro y de PestanaTextos).
+ * ¿La escuela vende licenciaturas? Add-on encendido, con al menos una carrera
+ * que NO sea un diplomado montado en el riel, y fuera de solo cursos: la misma
+ * condición con la que el registro ofrece «Licenciatura» (niveles.ts).
  *
  * 🛑 NO se decide con `CONFIG.niveles`: la plantilla trae 'licenciatura' con el
  * add-on apagado, y 69 de los 77 clones con el add-on no la declaran.
  */
 export function ofreceLicenciaturas(lic: unknown = tablaDeFabrica()): boolean {
   const l = lic as { activas?: unknown; carreras?: unknown } | null | undefined
-  return l?.activas === true && Array.isArray(l.carreras) && l.carreras.length > 0 && !esSoloCursos()
+  return l?.activas === true && Array.isArray(l.carreras)
+    && l.carreras.some((c) => (c as { esDiplomado?: unknown } | null)?.esDiplomado !== true)
+    && !esSoloCursos()
+}
+
+/**
+ * ¿La landing animada pinta hoy la sección de licenciaturas con el borrador?
+ * La misma condición que LandingAnimada: carreras y al menos un plan con
+ * mensualidad (el desglose filtra `mensualidad > 0`).
+ */
+export function seccionLicenciaturaVisible(overrides: SiteConfigOverrides): boolean {
+  return getCarrerasLicenciatura().length > 0
+    && getDesglosesLicenciatura(licenciaturaDeBorrador(overrides) as Parameters<typeof getDesglosesLicenciatura>[0]).length > 0
 }
 
 /**
@@ -689,7 +704,7 @@ export function tituloSecPrepa(base: string, conLic: boolean, niveles: readonly 
   if (!conLic) return base
   // Siempre en este orden, aunque `niveles` venga al revés.
   const propios = ['secundaria', 'preparatoria'].filter((n) => niveles.includes(n))
-  return `${base} · ${propios.length > 0 ? nivelesTexto(propios) : 'Secundaria y Preparatoria'}`
+  return `${base} · ${nivelesTexto(propios.length > 0 ? propios : ['secundaria', 'preparatoria'])}`
 }
 
 /**
