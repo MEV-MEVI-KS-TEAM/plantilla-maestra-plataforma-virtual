@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
 import {
+  LIMITES_LIC,
   bloqueLicEditable,
   licenciaturaEfectiva,
   planesLicEditables,
 } from '@/lib/precios-licenciatura'
+import { LIMITES } from '@/lib/site-config-campos'
 import { mergeSiteConfig, toLandingConfig, type BaseSiteConfig, type SiteConfig } from '@/lib/site-config-core'
 import { recortarOverrides, validarOverrides, type ResultadoValidacion } from '@/lib/site-config-validacion'
 import {
@@ -115,9 +117,13 @@ test('1d. fail-closed: formas propias de la flota no se tocan', () => {
     ['`rutas` que duplican los planes (SÉNDERI)', { ...LIC(), rutas: [] }],
     ['titulacionIncluida', { ...LIC(), titulacionIncluida: true }],
     ['modalidadesDiplomado', { ...LIC(), modalidadesDiplomado: [] }],
-    // La forma REAL de Universidad Azteca: sin `inscripcion` arriba, tarifas en `precios`.
-    ['precios por tarifa (Universidad Azteca)', { activas: true, carreras: LIC().carreras, modalidades: LIC().modalidades,
-      modalidadUnica: true, precios: { normal: { inscripcion: 4000 }, beca: { inscripcion: 2000 } }, becaCondicion: 'x' }],
+    // Como Universidad Azteca: sin `inscripcion` arriba, tarifas en `precios`.
+    ['precios por tarifa (Universidad Azteca)', { activas: true, modalidadUnica: true, certificacion: 35000,
+      precios: { normal: { inscripcion: 4000, mensualidad: 1500, label: 'Normal' }, beca: { inscripcion: 2000, mensualidad: 1100, label: 'Beca' } },
+      becaCondicion: 'x', carreras: LIC().carreras, modalidades: LIC().modalidades }],
+    // Como Academia Invictoss: pago único y titulación por plan.
+    ['pago único y titulación por plan (Invictoss)', { activas: true, inscripcion: 500, pagoUnico: 62000, carreras: LIC().carreras,
+      modalidades: LIC().modalidades.map((m) => ({ ...m, certificacion: 20000 })) }],
     ['carrera con precio propio (TOTAL ACADEMY)', { ...LIC(), carreras: [{ slug: 'x', nombre: 'X', mensualidad: 1490 }] }],
     ['carrera con preciosPorModalidad (The Living Faith)', { ...LIC(), carreras: [{ slug: 'x', nombre: 'X', preciosPorModalidad: {} }] }],
     ['sin tabla de planes', { ...LIC(), modalidades: undefined }],
@@ -126,8 +132,8 @@ test('1d. fail-closed: formas propias de la flota no se tocan', () => {
     expect(bloqueLicEditable(lic), nombre).toBe(false)
     expect(licenciaturaEfectiva(lic, PUBLICADO), nombre).toBe(lic)
   }
-  // Titulación POR PLAN y sin `certificacion` arriba (Invictoss): ni la titulación
-  // ni esos planes se publican; la inscripción, que sí es una cifra, sí.
+  // Caso sintético (no está en la flota): sin `certificacion` arriba y titulación
+  // en cada plan. Ni la titulación ni esos planes se publican; la inscripción sí.
   const invictoss: Plano = { ...LIC(), modalidades: LIC().modalidades.map((m) => ({ ...m, certificacion: 20000 })) }
   delete invictoss.certificacion
   const ri = licenciaturaEfectiva(invictoss, PUBLICADO) as Plano & { modalidades: Plano[] }
@@ -258,9 +264,12 @@ test('3d. el GET recorta la fila: solo números y solo planes que la escuela pue
 
 test('3e. ids heredados, mapa vacío, `licenciaturas: {}` y `null`: nada se aplica y nada revienta', () => {
   const lic = LIC()
-  for (const id of ['constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
-    expect(licenciaturaEfectiva(lic, { modalidades: { [id]: { mensualidad: 1 } } }), id).toBe(lic)
-  }
+  // Un id que el mapa HEREDA (no propio) no cuenta: sin `hasOwnProperty` se aplicaría.
+  expect(licenciaturaEfectiva(lic, { modalidades: Object.create({ '12_meses': { mensualidad: 1111 } }) })).toBe(lic)
+  // En una base editable, quitar el override de un plan que no existe tampoco es un error.
+  const editable = mergeSiteConfig(baseCon(LIC()), {})
+  expect(ok(validarOverrides({ licenciaturas: { modalidades: { '24_meses': null, '6_meses_dip': {} } } }, editable))).toEqual({})
+  falla(validarOverrides({ licenciaturas: { modalidades: { '24_meses': { mensualidad: 1 } } } }, editable), 'licenciaturas.modalidades.24_meses')
   const base = mergeSiteConfig(baseCon(LIC()), {})
   expect(ok(validarOverrides({ licenciaturas: {} }, base))).toEqual({})
   expect(ok(validarOverrides({ licenciaturas: null }, base))).toEqual({})
@@ -269,6 +278,8 @@ test('3e. ids heredados, mapa vacío, `licenciaturas: {}` y `null`: nada se apli
   for (const cuerpo of [{ modalidades: {} }, { modalidades: { '12_meses': null } }, { modalidades: { '12_meses': {} } }, { inscripcion: null }]) {
     expect(ok(validarOverrides({ licenciaturas: cuerpo }, apagada)), JSON.stringify(cuerpo)).toEqual({})
   }
+  // Una clave prohibida nunca pasa por el atajo.
+  expect(validarOverrides({ licenciaturas: { modalidades: JSON.parse('{"__proto__": null}') } }, apagada).ok).toBe(false)
 })
 
 test('3f. lo que devuelve el GET siempre se puede reenviar: una fila escrita a mano no bloquea el editor', () => {
@@ -282,17 +293,45 @@ test('3f. lo que devuelve el GET siempre se puede reenviar: una fila escrita a m
   ok(validarOverrides(r, base))
   // Y el ciclo GET → PUT de lo publicado de verdad.
   ok(validarOverrides(recortarOverrides({ licenciaturas: PUBLICADO }, base), base))
+  // Los topes, en los dos bordes.
+  const r2 = (lic: unknown) => recortarOverrides({ licenciaturas: lic }, base).licenciaturas
+  expect(r2({ inscripcion: 0 })).toBeUndefined()
+  expect(r2({ inscripcion: 50000 })).toEqual({ inscripcion: 50000 })
+  expect(r2({ inscripcion: 50001 })).toBeUndefined()
+  expect(r2({ certificacion: 100000 })).toEqual({ certificacion: 100000 })
+  expect(r2({ certificacion: 100001 })).toBeUndefined()
+  expect(r2({ modalidades: { '12_meses': { mensualidad: 50000 } } })).toEqual({ modalidades: { '12_meses': { mensualidad: 50000 } } })
+  expect(r2({ modalidades: { '12_meses': { mensualidad: 50001 } } })).toBeUndefined()
+})
+
+test('3f2. el merge aplica la MISMA regla que el GET y el PUT: nada fuera de rango sale en la página', () => {
+  const lic = LIC()
+  for (const ov of [
+    { inscripcion: 1500.5 }, { inscripcion: 60000 }, { certificacion: 250000 }, { certificacion: 38000.5 },
+    { modalidades: { '12_meses': { mensualidad: 99999 } } }, { modalidades: { '12_meses': { mensualidad: 1.5 } } },
+  ]) {
+    expect(licenciaturaEfectiva(lic, ov), JSON.stringify(ov)).toBe(lic)
+  }
+  // Los bordes sí.
+  expect((licenciaturaEfectiva(lic, { inscripcion: 50000, certificacion: 100000 }) as Plano).certificacion).toBe(100000)
+  // Un solo juego de límites: el del módulo puro y el del catálogo son el mismo.
+  expect(LIMITES_LIC.precioMax).toBe(LIMITES.precioMax)
+  expect(LIMITES_LIC.titulacionMax).toBe(LIMITES.titulacionMax)
+  expect(LIMITES_LIC.min).toBe(LIMITES.precioNivelMin)
 })
 
 test('3g. un "6_meses" de licenciatura y uno de Sec/Prepa en el MISMO cuerpo: cada uno en su mapa', () => {
   const base = mergeSiteConfig(baseCon(LIC()), {})
-  const tiene6 = (base.modalidades as ReadonlyArray<{ id: string }>).some(m => m.id === '6_meses')
-  const cuerpo = { licenciaturas: { modalidades: { '6_meses': { mensualidad: 2700 } } }, ...(tiene6 ? { modalidades: { '6_meses': { mensualidad: 1999 } } } : {}) }
+  // El de Sec/Prepa se reenvía con la cifra que YA tiene: así no depende de la
+  // regla del escalón de cada clon (3 meses no más barato que 6).
+  const plan6 = (base.modalidades as ReadonlyArray<{ id: string; mensualidad: number }>).find(m => m.id === '6_meses')
+  const cuerpo = { licenciaturas: { modalidades: { '6_meses': { mensualidad: 2700 } } }, ...(plan6 ? { modalidades: { '6_meses': { mensualidad: plan6.mensualidad } } } : {}) }
   const r = ok(validarOverrides(cuerpo, base))
   expect(r.licenciaturas).toEqual({ modalidades: { '6_meses': { mensualidad: 2700 } } })
   const m = mergeSiteConfig(baseCon(LIC()), r)
   expect(licDe(m).modalidades.find(p => p.id === '6_meses')?.mensualidad).toBe(2700)
-  if (tiene6) expect((m.modalidades as ReadonlyArray<{ id: string; mensualidad: number }>).find(p => p.id === '6_meses')?.mensualidad).toBe(1999)
+  // El de Sec/Prepa no se contamina con el de licenciatura.
+  if (plan6) expect((m.modalidades as ReadonlyArray<{ id: string; mensualidad: number }>).find(p => p.id === '6_meses')?.mensualidad).toBe(plan6.mensualidad)
 })
 
 // ─── 4. Los lectores leen lo PUBLICADO ───────────────────────────────────────

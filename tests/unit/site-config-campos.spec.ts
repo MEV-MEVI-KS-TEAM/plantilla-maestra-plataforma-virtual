@@ -41,7 +41,7 @@ const SECCIONES_VALIDAS: ReadonlyArray<SeccionCampo> = [
  * arreglo)? Con una forma propia (tarifas, objetos por moneda), sus rutas de
  * precio no son hojas y no se editan desde el panel: no hay default que medir.
  */
-const LIC_CON_FORMA = (() => {
+const LIC_CON_FORMA = ES_PLANTILLA || (() => {
   const l = (CONFIG as unknown as { licenciaturas?: Record<string, unknown> }).licenciaturas
   return !!l && typeof l.inscripcion === 'number' && typeof l.certificacion === 'number' && Array.isArray(l.modalidades)
 })()

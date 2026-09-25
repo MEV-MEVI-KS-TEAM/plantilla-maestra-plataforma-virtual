@@ -29,6 +29,7 @@
  */
 import { CONFIG } from '@/lib/config'
 import { PLACEHOLDERS, type ClaveEditable, type Placeholder } from '@/lib/site-config-core'
+import { LIMITES_LIC } from '@/lib/precios-licenciatura'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ export const LIMITES = {
    * grande del programa y en la flota ya llega a $49,500, al filo de
    * `precioMax`. Cerrado, para que un cero de más no se publique.
    */
-  titulacionMax: 100000,
+  titulacionMax: LIMITES_LIC.titulacionMax,
   // Tipo de cambio: 0 = "no mostrar equivalencia". El techo es deliberadamente
   // holgado (ninguna moneda que la flota vaya a cobrar se acerca) pero cerrado:
   // sin él, un dedazo de 16.90 a 1690 multiplicaría por cien todos los precios

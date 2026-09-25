@@ -41,6 +41,7 @@ import { planesPorNivel, type ModalidadPrograma } from '@/lib/modalidades'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, mensualidadDe, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
+  LIMITES_LIC,
   bloqueLicEditable,
   inscripcionLicEditable,
   planesLicEditables,
@@ -696,11 +697,17 @@ const esquemaOverrideModalidadLic = z.strictObject({
 /** La tabla de licenciatura de la base, con cast: hay clones sin el bloque. */
 const licDe = (base: SiteConfig): unknown => (base as unknown as { licenciaturas?: unknown }).licenciaturas
 
-/** ¿El mapa de planes trae algo que publicar? `{}`, `{ id: null }` y `{ id: {} }` no. */
+/** Una entrada del mapa que no cambia nada: `null`, `{}` o `{ mensualidad: null }`. */
+const sinEfecto = (ov: unknown): boolean =>
+  ov === null || ov === undefined || (esObjetoPlano(ov) && Object.values(ov).every((x) => x === null || x === undefined))
+
+/**
+ * ¿El mapa de planes trae algo que publicar? `{}`, `{ id: null }` y `{ id: {} }`
+ * no. Una clave prohibida (`__proto__`…) cuenta como algo: se rechaza abajo.
+ */
 function mapaConEfecto(valor: unknown): boolean {
   if (!esObjetoPlano(valor)) return true
-  return Object.values(valor).some((ov) =>
-    ov !== null && ov !== undefined && !(esObjetoPlano(ov) && Object.values(ov).every((x) => x === null || x === undefined)))
+  return Object.keys(valor).some((id) => CLAVES_PROHIBIDAS.has(id) || !sinEfecto(valor[id]))
 }
 
 /** Entero en [min, max]: lo único que el GET le devuelve al editor (lo demás el PUT lo rechazaría). */
@@ -725,7 +732,9 @@ function validarModalidadesLic(
     const clave = `${raiz}.${id}`
     if (CLAVES_PROHIBIDAS.has(id)) return fallo(`Clave no editable: ${clave}`, clave)
     const ov = valor[id]
-    if (ov === null || ov === undefined) continue // quitar un override que no hay: nada que validar
+    // Quitar un override (o mandar uno vacío) no cambia nada: da igual si el
+    // plan existe. Así la respuesta no depende de si la tabla es editable.
+    if (sinEfecto(ov)) continue
     if (!ids.has(id)) return fallo(`Plan de licenciatura desconocido: ${id}`, clave)
     if (esObjetoPlano(ov)) {
       for (const k of Object.keys(ov)) {
@@ -1101,10 +1110,10 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
     // Solo lo que el PUT aceptaría: una cifra escrita a mano fuera de rango (por
     // SQL) volvería en cada guardado y bloquearía TODO el editor sin un campo
     // donde corregirla.
-    if (enteroEn(licData.inscripcion, LIMITES.precioNivelMin, LIMITES.precioMax) && (!base || inscripcionLicEditable(licBase))) {
+    if (enteroEn(licData.inscripcion, LIMITES_LIC.min, LIMITES_LIC.precioMax) && (!base || inscripcionLicEditable(licBase))) {
       l.inscripcion = licData.inscripcion
     }
-    if (enteroEn(licData.certificacion, LIMITES.precioNivelMin, LIMITES.titulacionMax) && (!base || titulacionLicEditable(licBase))) {
+    if (enteroEn(licData.certificacion, LIMITES_LIC.min, LIMITES_LIC.titulacionMax) && (!base || titulacionLicEditable(licBase))) {
       l.certificacion = licData.certificacion
     }
     const idsLic = base ? new Set(planesLicEditables(licBase).map((m) => m.id)) : null
@@ -1115,7 +1124,7 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
         if (CLAVES_PROHIBIDAS.has(id)) continue
         if (idsLic && !idsLic.has(id)) continue
         const ov = modsLic[id]
-        if (esObjetoPlano(ov) && enteroEn(ov.mensualidad, LIMITES.precioNivelMin, LIMITES.precioMax)) limpias[id] = { mensualidad: ov.mensualidad }
+        if (esObjetoPlano(ov) && enteroEn(ov.mensualidad, LIMITES_LIC.min, LIMITES_LIC.precioMax)) limpias[id] = { mensualidad: ov.mensualidad }
       }
       if (Object.keys(limpias).length > 0) l.modalidades = limpias
     }

@@ -209,13 +209,28 @@ function leerEnvLocal() {
 async function leerPublicado() {
   if (flag('solo-config')) { log('  · --solo-config: los precios salen solo de config.ts'); return {} }
   const vars = leerEnvLocal()
-  if (!vars) { log('  · sin .env.local — los precios salen de config.ts'); return {} }
+  if (!vars) {
+    // Sin .env.local no se aborta (así se generaba siempre), pero en una escuela
+    // que puede publicar licenciatura se avisa: si el admin ya publicó, el
+    // documento no lo refleja.
+    log(PUEDE_PUBLICAR_LIC
+      ? '  ⚠ sin .env.local — los precios de licenciatura salen de config.ts; si el admin ya publicó otros en su panel, este documento no los refleja'
+      : '  · sin .env.local — los precios salen de config.ts')
+    return {}
+  }
   // Basta la anon key: `site_config` se lee en abierto (la landing la lee así).
   const url = vars.NEXT_PUBLIC_SUPABASE_URL, key = vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) return sinLoPublicado('.env.local sin NEXT_PUBLIC_SUPABASE_URL o sin llave',
     'Sin llaves no se puede leer lo publicado en el panel.\nCompleta .env.local (vercel env pull .env.local) o usa --solo-config para generar solo con config.ts.')
   const { createClient } = await import('@supabase/supabase-js')
-  const sb = createClient(url, key, { auth: { persistSession: false } })
+  let sb
+  try {
+    sb = createClient(url, key, { auth: { persistSession: false } })
+  } catch (e) {
+    // Una URL mal escrita hace que supabase-js lance aquí («Invalid supabaseUrl»).
+    return sinLoPublicado(`.env.local con una URL de Supabase inválida (${e?.message ?? e})`,
+      'Corrige NEXT_PUBLIC_SUPABASE_URL en .env.local o usa --solo-config para generar solo con config.ts.')
+  }
   const { data, error } = await sb.from('site_config').select('data').eq('id', 1).maybeSingle()
   if (error) {
     // Base sin la tabla: nadie ha publicado nada. Mismos códigos que site-config.ts.

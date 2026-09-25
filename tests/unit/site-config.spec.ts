@@ -290,7 +290,8 @@ test('cada ruta de CLAVES_EDITABLES existe en CONFIG (guardia de typos en runtim
   // Licenciatura: con una forma propia (tarifas, sin `inscripcion` arriba) sus
   // rutas de precio no existen, y no se editan desde el panel (fail-closed).
   const lic = cfg.licenciaturas as Record<string, unknown> | undefined
-  const licConForma = !!lic && typeof lic.inscripcion === 'number' && typeof lic.certificacion === 'number' && Array.isArray(lic.modalidades)
+  // En la PLANTILLA se exige siempre: un typo en sus rutas no puede pasar.
+  const licConForma = ES_PLANTILLA || (!!lic && typeof lic.inscripcion === 'number' && typeof lic.certificacion === 'number' && Array.isArray(lic.modalidades))
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta.startsWith('licenciaturas.') && !licConForma) continue
     let actual: unknown = cfg

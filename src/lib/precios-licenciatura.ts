@@ -72,8 +72,24 @@ const esPlano = (v: unknown): v is Plano => typeof v === 'object' && v !== null 
 /** Número finito y >= 0: lo único que se publica como precio. */
 const esPrecio = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0
 
-/** Lo mínimo que se publica desde el panel: una cifra finita >= 1. */
-const esPublicable = (v: unknown): v is number => esPrecio(v) && v >= 1
+/**
+ * Los límites de lo que se PUBLICA. Viven aquí (y no solo en el catálogo) para
+ * que el merge, el validador, el recorte del GET y el PDF usen los mismos: una
+ * cifra escrita a mano fuera de rango no puede salir en la página si el panel
+ * no la puede ni mostrar ni reenviar. `site-config-campos.ts` los reexporta.
+ */
+export const LIMITES_LIC = {
+  /** Nada se publica en 0: la sección diría «$0». */
+  min: 1,
+  /** Inscripción y mensualidad: el mismo techo que `LIMITES.precioMax`. */
+  precioMax: 50000,
+  /** La titulación ya llega a 49,500 en la flota: techo propio. */
+  titulacionMax: 100000,
+} as const
+
+/** Entero en [min, max]: lo único que se publica desde el panel. */
+const esPublicable = (v: unknown, max: number): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= LIMITES_LIC.min && v <= max
 
 /** Número finito >= 0 (o cadena numérica); cualquier otra cosa, `null`. */
 const cifra = (v: unknown): number | null => {
@@ -158,9 +174,9 @@ export function planesLicEditables(lic: unknown): Array<Plano & { id: string; me
  * usa exactamente el objeto de config.ts (la invariancia del PDF depende de
  * esto). Si aplica algo, devuelve un objeto NUEVO: nunca muta `lic`.
  *
- * Se aplica solo lo que admite el panel: cifras >= 1 sobre una cifra numérica
- * de config.ts (inscripción y titulación) o sobre un plan editable que ya
- * existe (mensualidad). Un 0 no se publica: la sección de la landing diría
+ * Se aplica solo lo que admite el panel (`LIMITES_LIC`: enteros de 1 al techo)
+ * sobre una cifra numérica de config.ts (inscripción y titulación) o sobre un
+ * plan editable que ya existe (mensualidad). Un 0 no se publica: la sección de la landing diría
  * «$0 de inscripción» o «¿Por qué la titulación cuesta $0?», y un plan en 0 se
  * esconde de la landing mientras el registro lo sigue ofreciendo. Una
  * licenciatura sin inscripción o sin titulación se configura en config.ts. Un
@@ -173,15 +189,15 @@ export function licenciaturaEfectiva<T>(lic: T, ov: unknown): T {
     salida = salida ?? { ...lic }
     salida[k] = v
   }
-  if (esPublicable(ov.inscripcion) && esPrecio(lic.inscripcion)) poner('inscripcion', ov.inscripcion)
-  if (esPublicable(ov.certificacion) && esPrecio(lic.certificacion)) poner('certificacion', ov.certificacion)
+  if (esPublicable(ov.inscripcion, LIMITES_LIC.precioMax) && esPrecio(lic.inscripcion)) poner('inscripcion', ov.inscripcion)
+  if (esPublicable(ov.certificacion, LIMITES_LIC.titulacionMax) && esPrecio(lic.certificacion)) poner('certificacion', ov.certificacion)
   const mods = ov.modalidades
   if (esPlano(mods)) {
     let cambio = false
     const planes = (lic.modalidades as unknown[]).map((m) => {
       if (!planLicEditable(m) || !Object.prototype.hasOwnProperty.call(mods, m.id)) return m
       const o = mods[m.id]
-      if (!esPlano(o) || !esPublicable(o.mensualidad)) return m
+      if (!esPlano(o) || !esPublicable(o.mensualidad, LIMITES_LIC.precioMax)) return m
       cambio = true
       return { ...m, mensualidad: o.mensualidad }
     })
