@@ -161,6 +161,14 @@ export function getModalidadesLicenciatura(lic?: unknown): readonly ModalidadBas
 }
 
 /**
+ * CONVENCIÓN (Bloque B, B5): un plan de licenciatura cuya duración YA existe en
+ * Sec/Prepa lleva el sufijo `_lic` ('6_meses_lic'), y la base lo admite con su
+ * propio id (migración 20260925120000). Así nunca se resuelve con la tabla del
+ * programa. Los clones que venden '6_meses' de licenciatura siguen protegidos
+ * por las funciones de abajo, que preguntan primero a licenciatura.
+ */
+
+/**
  * materiasPorMes de una modalidad DE LICENCIATURA, sin pasar por buscarModalidad().
  *
  * ⚠️ Existe porque los ids de las dos tablas COLISIONAN. `buscarModalidad()`

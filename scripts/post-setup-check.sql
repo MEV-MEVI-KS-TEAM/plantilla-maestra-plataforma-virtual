@@ -205,3 +205,28 @@ SELECT
     ELSE 'FAIL CHECK 13: ' || COUNT(*) || ' tablas sin SELECT: ' || string_agg(tabla, ', ')
   END AS resultado
 FROM tablas_sin_policy;
+
+-- ─── CHECK 14: el CHECK de alumnos.modalidad admite los planes de la escuela ──
+-- Sin '6_meses_lic' (u otro id de config.ts), dar de alta a un alumno en ese
+-- plan falla con 23514 y la ruta de alta borra el usuario de Auth que acababa
+-- de crear (Bug 68). Se busca por CATÁLOGO (conkey), no por nombre (Bug 72):
+-- tiene que haber UN solo CHECK de una columna sobre `modalidad`, y admitir el
+-- plan de 6 meses de licenciatura (migración 20260925120000).
+WITH col AS (
+  SELECT attnum FROM pg_attribute
+   WHERE attrelid = 'public.alumnos'::regclass AND attname = 'modalidad' AND NOT attisdropped
+), checks AS (
+  SELECT pg_get_constraintdef(c.oid) AS def
+    FROM pg_constraint c, col
+   WHERE c.conrelid = 'public.alumnos'::regclass AND c.contype = 'c' AND c.conkey = ARRAY[col.attnum]
+)
+SELECT
+  'CHECK de alumnos.modalidad (uno solo, con 6_meses_lic)' AS check_name,
+  COUNT(*)::text AS valor,
+  CASE
+    WHEN COUNT(*) = 1 AND bool_and(def LIKE '%''6_meses_lic''%') THEN '✅ OK'
+    WHEN COUNT(*) = 0 THEN '❌ FALTA el CHECK de alumnos.modalidad'
+    WHEN COUNT(*) > 1 THEN '❌ HAY ' || COUNT(*) || ' CHECK sobre modalidad (Bug 72): consolidar con 20260925120000'
+    ELSE '❌ El CHECK no admite 6_meses_lic: correr 20260925120000_licenciatura_plan_6_meses.sql'
+  END AS resultado
+FROM checks;
