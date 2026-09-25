@@ -1518,7 +1518,7 @@ CREATE POLICY "usuarios: actualizar propio perfil" ON public.usuarios FOR UPDATE
 -- Name: usuarios usuarios: admin puede insertar; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "usuarios: admin puede insertar" ON public.usuarios FOR INSERT WITH CHECK ((public.es_admin() OR (id = auth.uid())));
+CREATE POLICY "usuarios: admin puede insertar" ON public.usuarios FOR INSERT WITH CHECK (public.es_admin());
 
 --
 -- Name: usuarios usuarios: ver propio perfil; Type: POLICY; Schema: public; Owner: -
@@ -1814,6 +1814,14 @@ $$;
 REVOKE UPDATE ON public.usuarios FROM anon, authenticated;
 REVOKE UPDATE (id, email, rol, created_at) ON public.usuarios FROM anon, authenticated;
 GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
+
+-- Bug 202 (MEDERI, 24-sep-2026): el alta de la fila propia en usuarios/documentos
+-- NO va con la sesión del usuario. register-complete, /api/admin/* y la subida de
+-- documentos escriben con service_role. Sin este REVOKE, un signUp con la anon key
+-- (sin trigger on_auth_user_created) podía insertar su propia fila con rol='admin'.
+REVOKE INSERT ON public.usuarios FROM anon, authenticated;
+REVOKE INSERT ON public.documentos_alumno FROM anon, authenticated;
+
 REVOKE UPDATE ON public.alumnos  FROM anon, authenticated;
 
 -- =============================================================
