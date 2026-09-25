@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
-import { validarCorreccionPlan, mensajeCandado } from '@/lib/corregir-plan'
+import { validarCorreccionPlan, mensajeCandado, MENSAJE_SIN_CAMBIOS } from '@/lib/corregir-plan'
 import { getSiteConfig } from '@/lib/site-config'
 
 // Corrige la CAPTURA del plan de estudio (nivel/carrera/modalidad) de un
@@ -35,6 +35,22 @@ export async function POST(
     const { nivel, carrera, modalidad } = validacion.plan
 
     const admin = createAdminClient()
+
+    // El id de la URL debe ser un ALUMNO (rol 'alumno' + fila en alumnos)
+    // antes de tocar la RPC. La función SQL solo mira `alumnos`; esta guarda
+    // impide que el endpoint opere sobre la cuenta de un admin o secretario
+    // que por cualquier motivo tenga fila en `alumnos` (Bug 231).
+    const [{ data: objetivo }, { data: filaAlumno }] = await Promise.all([
+      admin.from('usuarios').select('id, rol').eq('id', params.id).maybeSingle(),
+      admin.from('alumnos').select('id').eq('id', params.id).maybeSingle(),
+    ])
+    if (!objetivo || !filaAlumno) {
+      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
+    }
+    if (String((objetivo as { rol?: string | null }).rol ?? '').toLowerCase() !== 'alumno') {
+      return NextResponse.json({ error: 'Esta acción solo aplica a cuentas de alumno.' }, { status: 403 })
+    }
+
     const { data, error } = await admin.rpc('corregir_plan_estudio', {
       p_alumno:    params.id,
       p_nivel:     nivel,
@@ -67,6 +83,11 @@ export async function POST(
     if (!resultado.ok) {
       if (resultado.candado === 'no_existe') {
         return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
+      }
+      // Mismo plan que ya tiene: no es un candado (409), es una petición que
+      // no corrige nada (400). La RPC no escribió nada (Bug 231).
+      if (resultado.candado === 'sin_cambios') {
+        return NextResponse.json({ error: MENSAJE_SIN_CAMBIOS, candado: 'sin_cambios' }, { status: 400 })
       }
       return NextResponse.json(
         { error: mensajeCandado(resultado.candado ?? ''), candado: resultado.candado },

@@ -1925,6 +1925,9 @@ CREATE POLICY "alumno_plan_eventos: solo admin lee" ON public.alumno_plan_evento
 DO $g$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    -- REVOKE ALL antes: un GRANT previo (o los default privileges de Supabase)
+    -- no debe dejar INSERT/UPDATE/DELETE vivos junto al SELECT (Bug 231).
+    EXECUTE 'REVOKE ALL ON public.alumno_plan_eventos FROM authenticated';
     EXECUTE 'GRANT SELECT ON public.alumno_plan_eventos TO authenticated';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
@@ -2059,6 +2062,14 @@ BEGIN
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object('ok', false, 'candado', 'no_existe');
+  END IF;
+
+  -- Sin cambios: el plan pedido es el mismo que ya tiene. No se borran notas
+  -- ni se escribe un evento vacío en la bitácora (Bug 231).
+  IF v_antes.nivel     IS NOT DISTINCT FROM p_nivel
+     AND v_antes.carrera   IS NOT DISTINCT FROM p_carrera
+     AND v_antes.modalidad IS NOT DISTINCT FROM p_modalidad THEN
+    RETURN jsonb_build_object('ok', false, 'candado', 'sin_cambios');
   END IF;
 
   v_candado := public.candado_corregir_plan(p_alumno);
