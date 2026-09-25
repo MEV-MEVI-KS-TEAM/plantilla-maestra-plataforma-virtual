@@ -140,3 +140,100 @@ export function mesDeLiberacion(
   if (orden === ORDEN_SIN_DEFINIR) return null
   return Math.floor(orden / Math.floor(porMes)) + 1
 }
+
+/**
+ * POR QUÉ el alumno no ve contenido (o parte de él). Solo presentación: no
+ * autoriza nada — el candado sigue siendo la RLS y `limiteVentana`.
+ *
+ * El visor decía «Este curso todavía no tiene lecciones» ante CUALQUIER
+ * ventana en 0, y el alumno creía que el curso estaba vacío cuando en realidad
+ * esperaba su pago (issue #183). Este es el motivo que le da el texto correcto:
+ *   'sin_contenido' → el curso de verdad no tiene módulos.
+ *   'no_publicado'  → el curso no está publicado.
+ *   'no_vigente'    → la inscripción está suspendida o cancelada.
+ *   'vencida'       → la inscripción venció.
+ *   'sin_apertura'  → inscrito y vigente, pero aún no se le abre nada.
+ *   null            → tiene acceso (a todo o a una parte).
+ *
+ * Usa EXACTAMENTE los mismos filtros que `limiteVentana`, en el mismo orden,
+ * para que el motivo y el candado no puedan discrepar. Con `ordenes` exige
+ * además ver al menos un módulo (orden < límite), la misma regla que el
+ * «Activado» de /admin/alumnos: con la ventana abierta pero ningún orden por
+ * debajo del límite (base 1 con un módulo por mes, #204) no ve nada.
+ */
+export type MotivoBloqueo = 'sin_contenido' | 'no_publicado' | 'no_vigente' | 'vencida' | 'sin_apertura'
+
+/**
+ * Espejo de public.curso_tope_meses (B3): hasta qué mes se puede abrir un
+ * curso. `duracion_meses` manda; si es null, ceil(módulos / módulos por mes).
+ * Nunca negativo. Solo presentación: el tope real lo aplica curso_abrir_mes.
+ */
+export function topeMeses(
+  duracionMeses: number | null | undefined,
+  modulosTotales: number,
+  porMes: number | null | undefined,
+): number {
+  if (typeof duracionMeses === 'number' && Number.isFinite(duracionMeses)) return Math.max(Math.trunc(duracionMeses), 0)
+  if (typeof porMes !== 'number' || !(porMes > 0)) return 0
+  return Math.max(Math.ceil(modulosTotales / porMes), 0)
+}
+
+/**
+ * Cuántos módulos quedan fuera de la ventana y con qué mes se abre el primero,
+ * con el MISMO eje que la RLS de B2: un módulo se ve si `orden < límite` (NULL
+ * al final). No supone que el orden sea 0..N-1: los clones sembrados en base 1
+ * (#204) no lo cumplen, y `totales − límite` les daba un conteo falso.
+ *
+ * `proximoMes` es null cuando ese mes NO se puede abrir: la inscripción no está
+ * 'activa' (curso_abrir_mes solo abre esas) o el mes pasa del tope del curso.
+ * Así la banda del visor no le promete al alumno un pago que la escuela no
+ * puede registrar.
+ */
+export function modulosPorAbrir(args: {
+  ordenes: readonly (number | null | undefined)[]
+  limite: number
+  porMes: number | null | undefined
+  tope: number
+  estado: string | null | undefined
+}): { bloqueados: number; proximoMes: number | null } {
+  const fuera = args.ordenes
+    .map(o => resolverOrden({ orden: o }))
+    .filter(o => o >= args.limite)
+  if (fuera.length === 0) return { bloqueados: 0, proximoMes: null }
+  const mes = mesDeLiberacion({ orden: Math.min(...fuera) }, { modulos_por_mes: args.porMes })
+  const abrible = mes !== null && args.estado === 'activa' && mes <= args.tope
+  return { bloqueados: fuera.length, proximoMes: abrible ? mes : null }
+}
+
+/**
+ * ¿Ve el alumno al menos un módulo? El mismo eje que la RLS de B2. Con la
+ * ventana abierta pero ningún `orden` por debajo del límite (base 1 con un
+ * módulo por mes, #204) el alumno no ve nada, así que eso no es «Activado».
+ * Un curso sin módulos cuenta con la ventana sola: no hay nada que ocultarle.
+ */
+export function hayModuloVisible(ordenes: readonly (number | null | undefined)[], limite: number): boolean {
+  if (!(limite > 0)) return false
+  if (ordenes.length === 0) return true
+  return ordenes.some(o => resolverOrden({ orden: o }) < limite)
+}
+
+export function motivoBloqueo(args: {
+  inscripcion: InscripcionVentana | null | undefined
+  curso: CursoVentana | null | undefined
+  modulosTotales: number
+  ordenes?: readonly (number | null | undefined)[]
+}): MotivoBloqueo | null {
+  const { inscripcion, curso, modulosTotales } = args
+  if (!(modulosTotales > 0)) return 'sin_contenido'
+  if (!curso || curso.estado !== 'publicado') return 'no_publicado'
+  if (!inscripcion) return 'sin_apertura'
+  if (!(ESTADOS_CON_ACCESO as readonly string[]).includes(inscripcion.estado ?? '')) return 'no_vigente'
+  if (inscripcion.fecha_vencimiento) {
+    const hoy = new Date().toISOString().slice(0, 10)
+    if (inscripcion.fecha_vencimiento < hoy) return 'vencida'
+  }
+  const limite = limiteVentana(inscripcion, curso)
+  if (!(limite > 0)) return 'sin_apertura'
+  if (args.ordenes && !hayModuloVisible(args.ordenes, limite)) return 'sin_apertura'
+  return null
+}

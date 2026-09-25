@@ -359,17 +359,18 @@ export function CursoDatosForm({ curso, inscritosActivos = 0, onChanged, onError
           Precios y ritmo
         </h3>
         <p className="text-xs mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
-          Con esto el diplomado queda listo para venderse y para liberar contenido solo.
+          Lo que anuncia el catálogo y el ritmo con que se abre el contenido. El acceso de
+          cada alumno se abre en la pestaña Alumnos (el contenido no se libera solo).
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <CampoNumero
             id="curso-precio-inscripcion" label={`Inscripción (${CONFIG.moneda})`} valor={precioInscripcion} onChange={setPrecioInscripcion}
-            min={0} step="0.01" ayuda="Cuota única al inscribirse. Deja 0 si no cobras inscripción."
+            min={0} step="0.01" ayuda="Cuota única al inscribirse. Un curso de PAGO ÚNICO lleva aquí su precio y la mensualidad en 0. Deja 0 si no cobras inscripción."
           />
           <CampoNumero
             id="curso-precio-mensualidad" label={`Mensualidad (${CONFIG.moneda})`} valor={precioMensualidad} onChange={setPrecioMensualidad}
-            min={0} step="0.01" ayuda="Lo que paga cada mes; es lo que anuncia el catálogo. Con los dos precios en 0, el catálogo dice «Pide informes», no «gratis»."
+            min={0} step="0.01" ayuda="Lo que paga cada mes; es lo que anuncia el catálogo. Con mensualidad 0 y una inscripción, anuncia el pago único; con los dos precios en 0, el catálogo dice «Pide informes», no «gratis»."
           />
           <CampoNumero
             id="curso-horas" label="Horas" valor={horas} onChange={setHoras}

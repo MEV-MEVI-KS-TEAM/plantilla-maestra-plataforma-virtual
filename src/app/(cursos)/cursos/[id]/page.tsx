@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight,
-  Circle, Download, Eye, FileText, GraduationCap, List, Loader2, PartyPopper, X,
+  Circle, Download, Eye, FileText, GraduationCap, List, Loader2, Lock, PartyPopper, X,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -12,11 +12,17 @@ import { VideoPlayer } from '@/components/cursos/VideoPlayer'
 import { ProgressBar } from '@/components/cursos/ProgressBar'
 import { porcentajeProgreso, cursoCompletado } from '@/lib/cursos/progreso'
 import type { CursoDetalleAlumno, LeccionAlumno } from '@/types/cursos-alumno'
+import { useSiteConfig } from '@/components/site-config-provider'
+import { canalEscuela } from '@/lib/contacto-ui'
+import { textoSinLecciones } from '@/lib/cursos/visor-textos'
+
 
 export default function VisorCursoPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const cursoId = params.id
+  // El contacto PUBLICADO de la escuela (Bloque A), para «tu acceso aún no está abierto».
+  const canal = canalEscuela(useSiteConfig())
 
   const [detalle, setDetalle] = useState<CursoDetalleAlumno | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -155,8 +161,24 @@ export default function VisorCursoPage() {
   const { curso, modoPreview } = detalle
 
   // ── Índice de módulos/lecciones (reutilizado en drawer móvil y panel desktop) ──
+  // Módulos que el alumno todavía no puede ver (solo el número, nunca sus nombres).
+  const ventana = detalle.ventana
+  const porAbrir = ventana && ventana.limite > 0 && ventana.modulos_bloqueados > 0 ? ventana : null
+
   const Indice = (
     <div className="space-y-2">
+      {porAbrir && (
+        <div className="flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs"
+          style={{ background: 'rgba(27,48,104,0.05)', border: '1px dashed #CBD5E1', color: '#475569' }}>
+          <Lock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <span>
+            {porAbrir.modulos_bloqueados === 1 ? 'Queda 1 módulo por abrir' : `Quedan ${porAbrir.modulos_bloqueados} módulos por abrir`}
+            {porAbrir.proximo_mes
+              ? `: el siguiente se abre con el mes ${porAbrir.proximo_mes}, cuando tu escuela registre ese pago.`
+              : `. Pregúntale a tu escuela por ${porAbrir.modulos_bloqueados === 1 ? 'él' : 'ellos'}.`}
+          </span>
+        </div>
+      )}
       {detalle.modulos.map((modulo, mi) => {
         const abierto = expandidos.has(modulo.id)
         const compl = modulo.lecciones.filter(l => l.completada).length
@@ -315,13 +337,22 @@ export default function VisorCursoPage() {
               Ver mi constancia
             </button>
 
-            {!activa ? (
-              <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
-                <p className="text-sm" style={{ color: '#64748B' }}>
-                  Este curso todavía no tiene lecciones.
-                </p>
-              </div>
-            ) : (
+            {!activa ? (() => {
+              const vacio = textoSinLecciones(detalle.totalLecciones, detalle.ventana, curso.tipo)
+              return (
+                <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
+                  {vacio.esperaPago && <Lock className="w-6 h-6 mx-auto mb-2" style={{ color: '#94A3B8' }} />}
+                  <p className="text-sm" style={{ color: '#64748B' }}>{vacio.texto}</p>
+                  {vacio.esperaPago && canal && (
+                    <a href={canal.href} target="_blank" rel="noopener noreferrer"
+                      className="inline-block mt-3 text-sm font-semibold underline"
+                      style={{ color: 'var(--color-primario)' }}>
+                      Escríbele a tu escuela por {canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}
+                    </a>
+                  )}
+                </div>
+              )
+            })() : (
               <>
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--color-primario)' }}>

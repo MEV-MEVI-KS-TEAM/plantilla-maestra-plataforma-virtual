@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SIGNED_URL_TTL } from './storage'
 import { BUCKET_CURSOS } from './archivos'
-import { limiteVentana } from './acceso'
+import { limiteVentana, motivoBloqueo, modulosPorAbrir, topeMeses } from './acceso'
 import type { CursoVentana, InscripcionVentana } from './acceso'
 import type { LeccionAlumno, ModuloAlumno, VentanaCurso } from '@/types/cursos-alumno'
 
@@ -165,22 +165,31 @@ export async function resumenVentana(
 
   const { data: curso } = await admin
     .from('cursos')
-    .select('modulos_por_mes, estado')
+    .select('modulos_por_mes, estado, duracion_meses')
     .eq('id', cursoId)
     .maybeSingle()
 
-  const { count } = await admin
+  // Los `orden` y no solo el conteo: los bloqueados se cuentan con el mismo eje
+  // que la RLS (orden < límite), no con `totales − límite` (#204, base 1).
+  const { data: mods } = await admin
     .from('curso_modulos')
-    .select('id', { count: 'exact', head: true })
+    .select('orden')
     .eq('curso_id', cursoId)
 
   const inscripcion = insc as InscripcionVentana & { estado?: string | null }
-  const cursoV = (curso ?? null) as CursoVentana | null
+  const cursoV = (curso ?? null) as (CursoVentana & { duracion_meses?: number | null }) | null
 
   const limite = limiteVentana(inscripcion, cursoV)
-  const totales = count ?? 0
-  const bloqueados = Math.max(0, totales - Math.min(limite, totales))
+  const ordenes = ((mods ?? []) as { orden: number | null }[]).map(m => m.orden)
+  const totales = ordenes.length
   const porMes = cursoV?.modulos_por_mes ?? 0
+  const { bloqueados, proximoMes } = modulosPorAbrir({
+    ordenes,
+    limite,
+    porMes,
+    tope: topeMeses(cursoV?.duracion_meses, totales, porMes),
+    estado: inscripcion.estado,
+  })
 
   return {
     meses_desbloqueados: inscripcion.meses_desbloqueados ?? 0,
@@ -188,8 +197,9 @@ export async function resumenVentana(
     limite,
     modulos_totales: totales,
     modulos_bloqueados: bloqueados,
-    // El siguiente módulo bloqueado está en `orden = limite`; su mes es 1-based.
-    proximo_mes: bloqueados > 0 && porMes > 0 ? Math.floor(limite / porMes) + 1 : null,
+    // Mes (1-based) del primer módulo bloqueado; null si no se puede abrir.
+    proximo_mes: proximoMes,
     estado_inscripcion: inscripcion.estado ?? null,
+    motivo: motivoBloqueo({ inscripcion, curso: cursoV, modulosTotales: totales, ordenes }),
   }
 }
