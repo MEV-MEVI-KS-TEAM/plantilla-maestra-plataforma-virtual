@@ -1,8 +1,6 @@
 'use client'
 
 import { AvisoMoneda, Equivalencia } from '@/components/moneda-equivalencia'
-import { CONFIG } from '@/lib/config'
-import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -15,7 +13,7 @@ import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } 
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
 import {
-  TEXTO_SIN_PRECIO, lineaPrecio, precioCatalogo, precioCursoNumerico, resolverPrecioOferta,
+  TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, montoPrincipal, precioDeCursoElegido, resolverPrecioOferta,
   type PrecioOferta, type PreciosCurso,
 } from '@/lib/cursos/precio-curso'
 // Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
@@ -69,36 +67,43 @@ const selectStyle: React.CSSProperties = {
 /**
  * Precio de una oferta de curso de ingreso en su tarjeta. Sale de
  * resolverPrecioOferta: la ficha del curso manda y config.ts es el respaldo.
- * «pago único» va en CADA tarjeta: el texto general lo decía de todas, y una
- * ficha con mensualidad lo volvía falso.
+ * «Pago único» va en CADA tarjeta: el texto general lo decía de todas, y una
+ * ficha con mensualidad lo volvía falso. Mismas palabras que la ficha y las
+ * portadas («al mes», «Inscripción de», «Pago único»). Hasta 45 % del ancho:
+ * a 360 px la columna del precio no aplasta el nombre.
  */
 function PrecioDeOferta({ p }: { p: PrecioOferta }) {
   const estilo = { color: 'var(--color-acento-texto)' }
+  const clase = 'text-sm font-bold text-right max-w-[45%]'
   if (p.tipo === 'informes') {
-    return <span className="flex-shrink-0 text-sm font-bold" style={estilo}>{TEXTO_SIN_PRECIO}</span>
+    return <span className={clase} style={estilo}>{TEXTO_SIN_PRECIO}</span>
   }
-  if (p.tipo === 'mensual') {
+  const f = formatearPrecio(p)
+  if (p.tipo === 'mensual' && f.tipo === 'mensual') {
     return (
-      <span className="flex-shrink-0 text-sm font-bold text-right" style={estilo}>
-        {formatearMoneda(p.mensualidad, CONFIG, { conCodigo: true })}
-        <span className="font-normal text-xs"> /mes</span>
+      <span className={clase} style={estilo}>
+        {f.mensualidad}
+        <span className="font-normal text-xs"> al mes</span>
         <Equivalencia monto={p.mensualidad} />
-        {p.inscripcion !== null && (
+        {f.inscripcion && (
           <span className="block font-normal text-xs" style={{ color: '#64748B' }}>
-            + inscripción {formatearMoneda(p.inscripcion, CONFIG, { conCodigo: true })}
+            Inscripción de {f.inscripcion}
           </span>
         )}
       </span>
     )
   }
   return (
-    <span className="flex-shrink-0 text-sm font-bold text-right" style={estilo}>
-      {formatearMoneda(p.monto, CONFIG, { conCodigo: true })}
-      <Equivalencia monto={p.monto} />
-      <span className="block font-normal text-xs" style={{ color: '#64748B' }}>pago único</span>
+    <span className={clase} style={estilo}>
+      {f.tipo === 'unico' ? f.monto : ''}
+      <Equivalencia monto={montoPrincipal(p)} />
+      <span className="block font-normal text-xs" style={{ color: '#64748B' }}>Pago único</span>
     </span>
   )
 }
+
+/** Lo que tarda en rendirse el catálogo antes de mostrar el respaldo de config.ts. */
+const ESPERA_CATALOGO_MS = 5000
 
 function Label({ text, required: req }: { text: string; required?: boolean }) {
   return (
@@ -287,11 +292,12 @@ export default function RegisterPage() {
     () => new Map<string, PreciosCurso>(diplomados.map(d => [d.id, d])),
     [diplomados],
   )
-  const cursoElegido  = diplomados.find(d => d.id === diplomadoId) ?? null
-  const precioElegido = cursoElegido ? precioCatalogo(cursoElegido) : null
-  const numElegido    = cursoElegido ? precioCursoNumerico(cursoElegido) : null
-  const montoElegido  = numElegido?.tipo === 'mensual' ? numElegido.mensualidad
-    : numElegido?.tipo === 'unico' ? numElegido.monto : 0
+  // El del curso elegido sale con la MISMA regla que la tarjeta de su oferta,
+  // si la tiene: si no, «¿Cuál?» y la tarjeta podían dar dos cifras.
+  const numElegido    = diplomadoId && diplomados.some(d => d.id === diplomadoId)
+    ? precioDeCursoElegido(diplomadoId, ofertasIngreso, preciosPublicados) : null
+  const precioElegido = numElegido ? formatearPrecio(numElegido) : null
+  const montoElegido  = numElegido ? montoPrincipal(numElegido) : 0
   // ⚠️ `nivel` guarda el VALOR DE LA OPCIÓN, no el nivel de BD. «Diplomados» es
   // presentación de `nivel='licenciatura'`; se traduce con nivelDeOpcion() justo
   // antes de mandar. Ver src/lib/niveles.ts (TICKET-2026-09-07-52).
@@ -301,12 +307,16 @@ export default function RegisterPage() {
 
   useEffect(() => {
     let vivo = true
-    fetch('/api/catalogo-publico')
+    // Si la base tarda, a los 5 s se rinde: las ofertas pintan el respaldo de
+    // config.ts en vez de quedarse sin precio.
+    const corte = new AbortController()
+    const reloj = setTimeout(() => corte.abort(), ESPERA_CATALOGO_MS)
+    fetch('/api/catalogo-publico', { signal: corte.signal })
       .then(r => r.ok ? r.json() : [])
       .then(d => { if (vivo && Array.isArray(d)) setDiplomados(d) })
       .catch(() => {})   // sin catálogo, el registro sigue funcionando igual
-      .finally(() => { if (vivo) setCatalogoListo(true) })
-    return () => { vivo = false }
+      .finally(() => { clearTimeout(reloj); if (vivo) setCatalogoListo(true) })
+    return () => { vivo = false; clearTimeout(reloj); corte.abort() }
   }, [])
 
   const esLicenciatura = nivel === 'licenciatura' || esDiplomadoLic
@@ -624,7 +634,8 @@ export default function RegisterPage() {
                     <>
                       <Label text="¿Cuál?" required />
                       <select value={diplomadoId} onChange={e => setDiplomadoId(e.target.value)}
-                        style={selectStyle} onFocus={onFocus} onBlur={onBlur}>
+                        style={selectStyle} onFocus={onFocus} onBlur={onBlur}
+                        aria-describedby={precioElegido ? 'precio-curso-elegido' : undefined}>
                         <option value="">Selecciona…</option>
                         {diplomados.map(d => (
                           <option key={d.id} value={d.id}>{d.nombre}</option>
@@ -634,9 +645,9 @@ export default function RegisterPage() {
                           la portada y /diplomados (Bloque C): antes el registro
                           solo daba el nombre. */}
                       {precioElegido && (
-                        <div className="mt-1.5">
+                        <div className="mt-1.5" id="precio-curso-elegido" aria-live="polite">
                           <p className="text-xs font-semibold" style={{ color: 'var(--color-acento-texto)' }}>
-                            {lineaPrecio(precioElegido)}
+                            {lineaPrecio(precioElegido, { conInscripcion: true })}
                             {montoElegido > 0 && <Equivalencia monto={montoElegido} />}
                           </p>
                           {precioElegido.tipo !== 'informes' && (
@@ -702,8 +713,8 @@ export default function RegisterPage() {
                 <div className="mt-4 pt-4" style={{ borderTop: '1px solid #E8F0F7' }}>
                   <Label text="Curso de preparación para examen de ingreso (opcional)" />
                   <p className="text-xs mb-2.5" style={{ color: '#64748B' }}>
-                    Independiente del plan. Un asesor te contacta para el pago y
-                    te lo activa.
+                    Se contrata aparte del plan. Un asesor te contacta para el
+                    pago y te lo activa.
                   </p>
 
                   <div className="space-y-2">
@@ -731,7 +742,9 @@ export default function RegisterPage() {
                               <span className="block text-xs mt-0.5" style={{ color: '#64748B' }}>{o.detalle}</span>
                             )}
                           </span>
-                          {catalogoListo && <PrecioDeOferta p={resolverPrecioOferta(o, preciosPublicados)} />}
+                          {catalogoListo
+                            ? <PrecioDeOferta p={resolverPrecioOferta(o, preciosPublicados)} />
+                            : <span aria-hidden="true" className="w-16 h-4 rounded animate-pulse" style={{ background: '#E2E8F0' }} />}
                         </button>
                       )
                     })}

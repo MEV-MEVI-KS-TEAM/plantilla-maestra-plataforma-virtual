@@ -55,7 +55,11 @@ type CursoConfig = {
  * que hace que el bloque del registro simplemente no se muestre.
  */
 export function getOfertasIngreso(): OfertaIngreso[] {
-  const ing = (CONFIG as { cursosIngreso?: Record<string, unknown> }).cursosIngreso
+  return normalizarOfertas((CONFIG as { cursosIngreso?: Record<string, unknown> }).cursosIngreso)
+}
+
+/** El normalizador, puro: recibe el bloque `cursosIngreso` tal como venga. */
+export function normalizarOfertas(ing: Record<string, unknown> | null | undefined): OfertaIngreso[] {
   if (!ing) return []
 
   // 'activa' (Angelópolis/CENTROEVM) y 'activos' (EVOCONTUCER) son la misma

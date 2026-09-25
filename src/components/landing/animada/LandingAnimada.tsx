@@ -52,7 +52,10 @@ import { formatearMoneda } from '@/lib/moneda'
 import { planesPorNivel, getDuracionLabel, getPlanLabelPublico, getPlanLabelConDuracion } from '@/lib/modalidades'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { resolverLanding } from '@/lib/landing-textos'
-import { lineaPrecio, precioCatalogo, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
+// Del módulo puro, no de catalogo.ts: este componente es 'use client' y
+// catalogo.ts trae el cliente admin.
+import { lineaPrecio, precioCatalogo } from '@/lib/cursos/precio-curso'
+import type { CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela, faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
 import { subtituloMarca } from '@/lib/marca'

@@ -42,7 +42,7 @@ function PrecioTarjeta({ curso }: { curso: CursoCatalogoPublico }) {
     return <>{p.mensualidad}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> /mes</span></>
   }
   if (p.tipo === 'unico') {
-    return <>{p.monto}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> · pago único</span></>
+    return <>{p.monto}<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}> · pago único</span></>
   }
   return <>{TEXTO_SIN_PRECIO}</>
 }

@@ -64,8 +64,8 @@ export type PrecioCatalogo =
   | { tipo: 'unico'; monto: string }
   | { tipo: 'informes' }
 
-export function precioCatalogo(c: PreciosCurso): PrecioCatalogo {
-  const p = precioCursoNumerico(c)
+/** Formatea un precio ya resuelto (de la ficha o de una oferta). */
+export function formatearPrecio(p: PrecioNumerico): PrecioCatalogo {
   if (p.tipo === 'mensual') {
     return { tipo: 'mensual', mensualidad: precioPublico(p.mensualidad), inscripcion: p.inscripcion !== null ? precioPublico(p.inscripcion) : null }
   }
@@ -73,15 +73,28 @@ export function precioCatalogo(c: PreciosCurso): PrecioCatalogo {
   return { tipo: 'informes' }
 }
 
+export function precioCatalogo(c: PreciosCurso): PrecioCatalogo {
+  return formatearPrecio(precioCursoNumerico(c))
+}
+
 /**
- * El precio en UNA línea: «$2,490 MXN · pago único», «$900 MXN al mes»,
- * «Pide informes». La usan la portada animada y el registro, para que digan lo
- * mismo con las mismas palabras.
+ * El precio en UNA línea: «$2,490 · pago único», «$900 al mes», «Pide
+ * informes». La usan la portada animada y el registro, para que digan lo mismo
+ * con las mismas palabras. Con `conInscripcion` agrega la inscripción de un
+ * curso mensual («+ inscripción de $1,500»): el registro la necesita, porque ahí
+ * el alumno se compromete con el pago.
  */
-export function lineaPrecio(p: PrecioCatalogo): string {
-  if (p.tipo === 'mensual') return `${p.mensualidad} al mes`
+export function lineaPrecio(p: PrecioCatalogo, opts: { conInscripcion?: boolean } = {}): string {
+  if (p.tipo === 'mensual') {
+    return opts.conInscripcion && p.inscripcion ? `${p.mensualidad} al mes + inscripción de ${p.inscripcion}` : `${p.mensualidad} al mes`
+  }
   if (p.tipo === 'unico') return `${p.monto} · pago único`
   return TEXTO_SIN_PRECIO
+}
+
+/** El monto con el que se calcula la equivalencia a pesos (0 = no hay). */
+export function montoPrincipal(p: PrecioNumerico): number {
+  return p.tipo === 'mensual' ? p.mensualidad : p.tipo === 'unico' ? p.monto : 0
 }
 
 /**
@@ -105,8 +118,10 @@ export type PrecioOferta =
   | (Exclude<PrecioNumerico, { tipo: 'informes' }> & { fuente: 'tabla' | 'config' })
   | { tipo: 'informes' }
 
+export interface OfertaConPrecio { cursoIds: readonly string[]; precio: number; esPaquete: boolean }
+
 export function resolverPrecioOferta(
-  oferta: { cursoIds: readonly string[]; precio: number; esPaquete: boolean },
+  oferta: OfertaConPrecio,
   publicados: ReadonlyMap<string, PreciosCurso> | null,
 ): PrecioOferta {
   const respaldo: PrecioOferta = oferta.precio > 0
@@ -121,4 +136,21 @@ export function resolverPrecioOferta(
     }
   }
   return respaldo
+}
+
+/**
+ * Precio del curso elegido en el registro («¿Cuál?»). Si ese curso es, él solo,
+ * una oferta de Cursos de Ingreso (no un paquete), sale con la MISMA regla que la
+ * tarjeta de esa oferta, para que la pantalla no dé dos cifras del mismo curso
+ * (ficha en 0/0 y config.ts con precio: las dos dicen el de config.ts). Si no,
+ * con la regla del catálogo.
+ */
+export function precioDeCursoElegido(
+  cursoId: string,
+  ofertas: readonly OfertaConPrecio[],
+  publicados: ReadonlyMap<string, PreciosCurso>,
+): PrecioNumerico {
+  const oferta = ofertas.find(o => !o.esPaquete && o.cursoIds.length === 1 && o.cursoIds[0] === cursoId)
+  if (oferta) return resolverPrecioOferta(oferta, publicados)
+  return precioCursoNumerico(publicados.get(cursoId) ?? {})
 }
