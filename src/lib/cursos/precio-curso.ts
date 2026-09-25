@@ -80,21 +80,13 @@ export function precioCatalogo(c: PreciosCurso): PrecioCatalogo {
 /**
  * El precio en UNA línea: «$2,490 · pago único», «$900 al mes», «Pide
  * informes». La usan la portada animada y el registro, para que digan lo mismo
- * con las mismas palabras. Con `conInscripcion` agrega la inscripción de un
- * curso mensual («+ inscripción de $1,500»): el registro la necesita, porque ahí
- * el alumno se compromete con el pago.
+ * con las mismas palabras. La inscripción de un mensual no va aquí: el
+ * registro la pinta en su propia línea (con la equivalencia junto a SU monto).
  */
-export function lineaPrecio(p: PrecioCatalogo, opts: { conInscripcion?: boolean } = {}): string {
-  if (p.tipo === 'mensual') {
-    return opts.conInscripcion && p.inscripcion ? `${p.mensualidad} al mes + inscripción de ${p.inscripcion}` : `${p.mensualidad} al mes`
-  }
+export function lineaPrecio(p: PrecioCatalogo): string {
+  if (p.tipo === 'mensual') return `${p.mensualidad} al mes`
   if (p.tipo === 'unico') return `${p.monto} · pago único`
   return TEXTO_SIN_PRECIO
-}
-
-/** El monto con el que se calcula la equivalencia a pesos (0 = no hay). */
-export function montoPrincipal(p: PrecioNumerico): number {
-  return p.tipo === 'mensual' ? p.mensualidad : p.tipo === 'unico' ? p.monto : 0
 }
 
 /**

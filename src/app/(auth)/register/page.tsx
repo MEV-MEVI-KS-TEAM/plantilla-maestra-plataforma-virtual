@@ -13,7 +13,7 @@ import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } 
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
 import {
-  TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, montoPrincipal, precioDeCursoElegido, resolverPrecioOferta,
+  TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, precioDeCursoElegido, resolverPrecioOferta,
   type PrecioOferta, type PreciosCurso,
 } from '@/lib/cursos/precio-curso'
 // Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
@@ -93,16 +93,23 @@ function PrecioDeOferta({ p }: { p: PrecioOferta }) {
       </span>
     )
   }
-  return (
-    <span className={clase} style={estilo}>
-      {f.tipo === 'unico' ? f.monto : ''}
-      <Equivalencia monto={montoPrincipal(p)} />
-      <span className="block font-normal text-xs" style={{ color: '#64748B' }}>Pago único</span>
-    </span>
-  )
+  if (p.tipo === 'unico' && f.tipo === 'unico') {
+    return (
+      <span className={clase} style={estilo}>
+        {f.monto}
+        <Equivalencia monto={p.monto} />
+        <span className="block font-normal text-xs" style={{ color: '#64748B' }}>Pago único</span>
+      </span>
+    )
+  }
+  return null
 }
 
-/** Lo que tarda en rendirse el catálogo antes de mostrar el respaldo de config.ts. */
+/**
+ * Lo que esperan las ofertas al catálogo antes de pintar el respaldo de
+ * config.ts. NO cancela la petición: el mismo catálogo llena «¿Cuál?» y la
+ * opción «Cursos», y si llega tarde tiene que llegar.
+ */
 const ESPERA_CATALOGO_MS = 5000
 
 function Label({ text, required: req }: { text: string; required?: boolean }) {
@@ -297,7 +304,6 @@ export default function RegisterPage() {
   const numElegido    = diplomadoId && diplomados.some(d => d.id === diplomadoId)
     ? precioDeCursoElegido(diplomadoId, ofertasIngreso, preciosPublicados) : null
   const precioElegido = numElegido ? formatearPrecio(numElegido) : null
-  const montoElegido  = numElegido ? montoPrincipal(numElegido) : 0
   // ⚠️ `nivel` guarda el VALOR DE LA OPCIÓN, no el nivel de BD. «Diplomados» es
   // presentación de `nivel='licenciatura'`; se traduce con nivelDeOpcion() justo
   // antes de mandar. Ver src/lib/niveles.ts (TICKET-2026-09-07-52).
@@ -307,10 +313,11 @@ export default function RegisterPage() {
 
   useEffect(() => {
     let vivo = true
-    // Si la base tarda, a los 5 s se rinde: las ofertas pintan el respaldo de
-    // config.ts en vez de quedarse sin precio.
+    // Si la base tarda, a los 5 s las ofertas pintan el respaldo de config.ts en
+    // vez de quedarse sin precio; la petición sigue viva (ver ESPERA_CATALOGO_MS)
+    // y, si llega, pone la cifra de la ficha. Solo se cancela al desmontar.
     const corte = new AbortController()
-    const reloj = setTimeout(() => corte.abort(), ESPERA_CATALOGO_MS)
+    const reloj = setTimeout(() => { if (vivo) setCatalogoListo(true) }, ESPERA_CATALOGO_MS)
     fetch('/api/catalogo-publico', { signal: corte.signal })
       .then(r => r.ok ? r.json() : [])
       .then(d => { if (vivo && Array.isArray(d)) setDiplomados(d) })
@@ -635,7 +642,7 @@ export default function RegisterPage() {
                       <Label text="¿Cuál?" required />
                       <select value={diplomadoId} onChange={e => setDiplomadoId(e.target.value)}
                         style={selectStyle} onFocus={onFocus} onBlur={onBlur}
-                        aria-describedby={precioElegido ? 'precio-curso-elegido' : undefined}>
+                        aria-describedby="precio-curso-elegido">
                         <option value="">Selecciona…</option>
                         {diplomados.map(d => (
                           <option key={d.id} value={d.id}>{d.nombre}</option>
@@ -644,17 +651,28 @@ export default function RegisterPage() {
                       {/* El precio de la ficha del curso, con la misma regla que
                           la portada y /diplomados (Bloque C): antes el registro
                           solo daba el nombre. */}
-                      {precioElegido && (
-                        <div className="mt-1.5" id="precio-curso-elegido" aria-live="polite">
-                          <p className="text-xs font-semibold" style={{ color: 'var(--color-acento-texto)' }}>
-                            {lineaPrecio(precioElegido, { conInscripcion: true })}
-                            {montoElegido > 0 && <Equivalencia monto={montoElegido} />}
-                          </p>
-                          {precioElegido.tipo !== 'informes' && (
-                            <AvisoMoneda className="text-xs mt-0.5" style={{ color: '#64748B' }} />
-                          )}
-                        </div>
-                      )}
+                      {/* La región vive montada siempre: un aria-live que nace ya
+                          lleno no se anuncia. La equivalencia va junto a SU monto
+                          y la inscripción de un mensual, en su propia línea. */}
+                      <div className="mt-1.5" id="precio-curso-elegido" aria-live="polite">
+                        {precioElegido && numElegido && (
+                          <>
+                            <p className="text-xs font-semibold" style={{ color: 'var(--color-acento-texto)' }}>
+                              {lineaPrecio(precioElegido)}
+                              {numElegido.tipo === 'mensual' && <Equivalencia monto={numElegido.mensualidad} />}
+                              {numElegido.tipo === 'unico' && <Equivalencia monto={numElegido.monto} />}
+                            </p>
+                            {precioElegido.tipo === 'mensual' && precioElegido.inscripcion && (
+                              <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>
+                                Inscripción de {precioElegido.inscripcion}
+                              </p>
+                            )}
+                            {precioElegido.tipo !== 'informes' && (
+                              <AvisoMoneda className="text-xs mt-0.5" style={{ color: '#64748B' }} />
+                            )}
+                          </>
+                        )}
+                      </div>
                     </>
                   ) : (
                   <>

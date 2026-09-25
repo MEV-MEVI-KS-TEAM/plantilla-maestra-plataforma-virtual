@@ -48,10 +48,9 @@ test('3. lineaPrecio: una sola forma de decirlo (portada animada y registro)', (
   expect(lineaPrecio(precioCatalogo({ precio_inscripcion: 2490, precio_mensualidad: 0 }))).toBe(`${precioPublico(2490)} · pago único`)
   expect(lineaPrecio(precioCatalogo({ precio_inscripcion: 0, precio_mensualidad: 900 }))).toBe(`${precioPublico(900)} al mes`)
   expect(lineaPrecio(precioCatalogo({ precio_inscripcion: 0, precio_mensualidad: 0 }))).toBe('Pide informes')
-  // El registro pide la inscripción de un curso mensual; la portada animada, no.
+  // La inscripción de un mensual no va en la línea (el registro la pinta aparte).
   const mensualConIns = precioCatalogo({ precio_inscripcion: 1500, precio_mensualidad: 900 })
   expect(lineaPrecio(mensualConIns)).toBe(`${precioPublico(900)} al mes`)
-  expect(lineaPrecio(mensualConIns, { conInscripcion: true })).toBe(`${precioPublico(900)} al mes + inscripción de ${precioPublico(1500)}`)
   expect(formatearPrecio(precioCursoNumerico({ precio_inscripcion: 2490, precio_mensualidad: 0 }))).toEqual(precioCatalogo({ precio_inscripcion: 2490, precio_mensualidad: 0 }))
 })
 
@@ -130,13 +129,18 @@ test('6. el registro anuncia el precio de la ficha: bajo «¿Cuál?» y en las o
   expect(src).not.toContain("from '@/lib/cursos/catalogo'")
   // Bajo el select del curso: la misma regla que la tarjeta de su oferta, con la inscripción.
   expect(src).toContain('precioDeCursoElegido(diplomadoId, ofertasIngreso, preciosPublicados)')
-  expect(src).toContain('lineaPrecio(precioElegido, { conInscripcion: true })')
-  expect(src).toContain("aria-describedby={precioElegido ? 'precio-curso-elegido' : undefined}")
+  expect(src).toContain('lineaPrecio(precioElegido)')
+  expect(src).toContain('Inscripción de {precioElegido.inscripcion}')
+  // La región aria-live está montada siempre (una que nace llena no se anuncia).
+  expect(src).toContain('aria-describedby="precio-curso-elegido"')
+  expect(src).toMatch(/<div className="mt-1\.5" id="precio-curso-elegido" aria-live="polite">\s*\{precioElegido && numElegido &&/)
   // Las ofertas: el precio espera al catálogo (con un corte de 5 s) y sale del resolver.
   expect(src).toContain('? <PrecioDeOferta p={resolverPrecioOferta(o, preciosPublicados)} />')
   expect(src).toMatch(/catalogoListo\s*\?\s*<PrecioDeOferta/)
   expect(src).toContain("fetch('/api/catalogo-publico', { signal: corte.signal })")
-  expect(src).toContain('setTimeout(() => corte.abort(), ESPERA_CATALOGO_MS)')
+  // El corte NO cancela la petición: el catálogo también llena «¿Cuál?».
+  expect(src).toContain('setTimeout(() => { if (vivo) setCatalogoListo(true) }, ESPERA_CATALOGO_MS)')
+  expect(src).not.toMatch(/setTimeout\(\(\) => corte\.abort\(\)/)
   expect(src).toMatch(/\.finally\(\(\) => \{ clearTimeout\(reloj\); if \(vivo\) setCatalogoListo\(true\) \}\)/)
   expect(src).not.toMatch(/formatearMoneda\(o\.precio/)
   // «Pago único» ya no se afirma de todas las ofertas en el texto general.

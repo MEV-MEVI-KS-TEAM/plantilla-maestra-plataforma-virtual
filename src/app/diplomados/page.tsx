@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
 function PrecioTarjeta({ curso }: { curso: CursoCatalogoPublico }) {
   const p = precioCatalogo(curso)
   if (p.tipo === 'mensual') {
-    return <>{p.mensualidad}<span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}> /mes</span></>
+    return <>{p.mensualidad}<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}> /mes</span></>
   }
   if (p.tipo === 'unico') {
     return <>{p.monto}<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}> · pago único</span></>
