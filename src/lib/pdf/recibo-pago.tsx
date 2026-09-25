@@ -4,12 +4,13 @@ import path from 'path'
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig, type SiteConfig } from '@/lib/site-config'
+import { lineaContactoRecibo } from '@/lib/contacto-ui'
 
 /**
  * Lo que el recibo toma de la config fusionada (defaults + overrides del
  * admin). `urlBase` NO está aquí: no es editable y sigue saliendo de CONFIG.
  */
-type ReciboBranding = Pick<SiteConfig, 'nombreCompleto' | 'whatsappDisplay' | 'logo' | 'logoOscuro'>
+type ReciboBranding = Pick<SiteConfig, 'nombreCompleto' | 'whatsapp' | 'contactoTelefono' | 'whatsappDisplay' | 'logo' | 'logoOscuro'>
 
 export interface ReciboData {
   folio: string
@@ -100,7 +101,8 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
         <View style={styles.header}>
           <View>
             <Text style={styles.escuela}>{cfg.nombreCompleto}</Text>
-            <Text style={styles.tagline}>{CONFIG.urlBase} · WhatsApp {cfg.whatsappDisplay}</Text>
+            {/* Sin WhatsApp, solo el sitio: nada de «· WhatsApp » con la palabra colgando. */}
+            <Text style={styles.tagline}>{lineaContactoRecibo(CONFIG.urlBase, cfg)}</Text>
           </View>
           {/* Image de @react-pdf/renderer, no <img> de HTML: no acepta `alt`. */}
           {/* eslint-disable-next-line jsx-a11y/alt-text */}

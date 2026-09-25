@@ -22,8 +22,10 @@ import type { ConfigEditable } from '@/lib/site-config-validacion'
 import {
   CLAVES_NUMERO_WHATSAPP,
   MAX_DIGITOS_TELEFONO,
+  PLACEHOLDER_SIN_WHATSAPP,
   escribirNumeroWhatsApp,
   estaSobrescrito,
+  placeholderWhatsAppDisplay,
   quitarRuta,
   escribirRuta,
   valorEfectivo,
@@ -118,7 +120,9 @@ export function PestanaIdentidad({
           // '+52 1 (999) 123-45-67' se convertiría en un número a medias. Aquí
           // sobra: lo que se pinta ya viene normalizado a 15 dígitos como mucho.
           max={MAX_DIGITOS_TELEFONO} maxEntrada={null}
-          valor={whatsapp} placeholder={defaults.whatsapp}
+          // Vacío = sin WhatsApp: en gris NO va el número de config.ts, que
+          // parecía seguir ahí justo después de quitarlo.
+          valor={whatsapp} placeholder={PLACEHOLDER_SIN_WHATSAPP}
           ayudaEsError={whatsappNormalizado === null}
           ayuda={ayudaWhatsApp}
           deshabilitado={!puedeEditar}
@@ -132,7 +136,7 @@ export function PestanaIdentidad({
         <CampoTexto
           clave="whatsappDisplay" etiqueta="WhatsApp (como se muestra)" max={LIMITES.kicker}
           ayuda="Se llena solo al capturar el número; puedes ajustarlo antes de publicar. Si sus dígitos no son los del número, la página enseña el número."
-          valor={txt('whatsappDisplay')} placeholder={defaults.whatsappDisplay}
+          valor={txt('whatsappDisplay')} placeholder={placeholderWhatsAppDisplay(whatsapp)}
           deshabilitado={!puedeEditar} resaltado={claveConError === 'whatsappDisplay'}
           sobrescrito={estaSobrescrito(overrides, 'whatsappDisplay')}
           onChange={(v) => actualizar((prev) => escribirRuta(prev, 'whatsappDisplay', v))}

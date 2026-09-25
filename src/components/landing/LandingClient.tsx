@@ -16,7 +16,7 @@ import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
 import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 import { precioPublico } from '@/lib/cursos/catalogo'
-import { faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
+import { faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela, whatsappVisible } from '@/lib/contacto-ui'
 import { escuelaCertifica, inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['500', '600', '700', '900'], display: 'swap' })
@@ -359,7 +359,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
     duracion: getDuracionLabel(mods),
     nombre: config.nombre,
     nombreCompleto: config.nombreCompleto,
-    whatsapp: config.whatsapp,
+    // Como se lee («33 1234 5678»), igual que la animada: no los dígitos crudos.
+    whatsapp: whatsappVisible(config),
     inscripcion: fmt(p.inscripcion),
     // Con las claves por nivel vacías valen lo mismo que {inscripcion}.
     ...varsInscripcionPorNivel(p, fmt),

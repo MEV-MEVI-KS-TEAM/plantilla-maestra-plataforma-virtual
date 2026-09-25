@@ -5,7 +5,7 @@ import { Loader2, Eye, EyeOff, User, Lock, GraduationCap, Mail, Phone, Camera } 
 import Image from 'next/image'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import { useSiteConfig } from '@/components/site-config-provider'
-import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
+import { mailtoEscuela, urlWhatsAppEscuela, whatsappVisible } from '@/lib/contacto-ui'
 
 interface Perfil {
   id: string
@@ -334,7 +334,8 @@ export default function PerfilPage() {
                   className="text-sm transition-colors"
                   style={{ color: 'var(--color-acento)' }}
                 >
-                  {cfg.contactoTelefono}
+                  {/* Como se lee en el resto de la plataforma («33 1234 5678»), no los dígitos crudos. */}
+                  {whatsappVisible(cfg)}
                 </a>
               </div>
             </div>
