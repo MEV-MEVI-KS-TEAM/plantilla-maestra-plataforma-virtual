@@ -4,8 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 /**
  * Guard server-side de la sección Cursos y Diplomados (defensa en profundidad:
  * el middleware y el layout de /admin ya protegen, pero esta sección re-verifica).
- * Sin sesión o rol != 'admin' (case-insensitive, consistente con LOWER(rol)
- * de es_admin() en producción) → dashboard del alumno.
+ * Sin sesión o sin rol de staff (case-insensitive, consistente con LOWER(rol) de
+ * es_admin()/es_staff() en producción) → dashboard del alumno.
+ *
+ * D7b (decisión 6): el SECRETARIO entra — asigna y abre desde la pestaña Alumnos,
+ * que es lo único que la página del curso le muestra. Todo lo que edita (crear,
+ * editar, publicar, contenido, examen, constancia, quitar) sigue con verifyAdmin
+ * en su API, y /admin/cursos/nuevo tiene su propio guard de admin.
  */
 export default async function AdminCursosLayout({
   children,
@@ -23,7 +28,8 @@ export default async function AdminCursosLayout({
     .eq('id', user.id)
     .single()
 
-  if ((usuario?.rol as string | undefined)?.toLowerCase() !== 'admin') redirect('/alumno')
+  const rol = (usuario?.rol as string | undefined)?.toLowerCase()
+  if (rol !== 'admin' && rol !== 'secretario') redirect('/alumno')
 
   return <>{children}</>
 }

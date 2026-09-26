@@ -42,7 +42,7 @@ interface Alumno {
   curso_activado: boolean
   /** Inscrito en la oferta pero sin acceso abierto todavía (#183). */
   curso_acceso_pendiente: boolean
-  /** Solo ADMIN asigna y abre meses; el SECRETARIO ve el estado sin acciones. */
+  /** Asignar y abrir: todo el staff desde D7b (decisión 6). */
   curso_puede_gestionar: boolean
 }
 

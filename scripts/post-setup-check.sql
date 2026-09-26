@@ -328,7 +328,7 @@ SELECT
     WHEN NOT instalada
       THEN '❌ FALTA → correr supabase/migrations/20260927120000_d7b_secretario_abre_cursos.sql (después de C3b)'
     WHEN sin_secretario IS NOT NULL
-      THEN '❌ D7b REVERTIDO (' || sin_secretario || '): se corrió después una copia vieja de B3/B4/C3b → vuelve a correr supabase/migrations/20260927120000_d7b_secretario_abre_cursos.sql'
+      THEN '❌ D7b REVERTIDO (' || sin_secretario || '): se corrió después una copia vieja de B3/B4/C3b → si el CHECK 15 también falla, corre primero supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql (al final re-aplica D7b); si no, vuelve a correr supabase/migrations/20260927120000_d7b_secretario_abre_cursos.sql'
     WHEN admin_abiertas IS NOT NULL
       THEN '❌ SOLO ADMIN ABIERTO (' || admin_abiertas || '): estas funciones ya no piden es_admin() → revisa quién las cambió'
     WHEN herramienta_expuesta

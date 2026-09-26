@@ -51,8 +51,8 @@ function sinPlanEscolar(nivel: string | null | undefined): boolean {
 async function anexarCursoIngreso<T extends { id: string }>(
   admin: ReturnType<typeof createAdminClient>,
   filas: T[],
-  // Asignar (POST inscripciones) y abrir meses son solo de ADMIN. El SECRETARIO
-  // ve la columna pero sin botón ni enlace: /admin/cursos lo manda a /alumno.
+  // Asignar (POST inscripciones) y abrir meses: todo el staff desde D7b
+  // (decisión 6). Queda el parámetro por si un rol futuro solo mira.
   puedeGestionar: boolean,
 ) {
   const sinCurso = {

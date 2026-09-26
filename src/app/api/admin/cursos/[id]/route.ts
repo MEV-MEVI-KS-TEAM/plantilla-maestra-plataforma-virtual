@@ -45,8 +45,11 @@ export async function GET(
       .single()
     if (error || !curso) return NextResponse.json({ error: 'Curso no encontrado' }, { status: 404 })
 
-    // Módulos ordenados
-    const { data: modulosRaw } = await admin
+    // Módulos ordenados. El SECRETARIO no los recibe (D7b): la pestaña Alumnos no
+    // los usa, y así no se le entregan videos, textos ni materiales firmados del
+    // curso (con el service role el candado de contenido no aplica).
+    const conContenido = viewerRol === 'ADMIN'
+    const { data: modulosRaw } = !conContenido ? { data: [] } : await admin
       .from('curso_modulos')
       .select('id, curso_id, nombre, orden')
       .eq('curso_id', params.id)

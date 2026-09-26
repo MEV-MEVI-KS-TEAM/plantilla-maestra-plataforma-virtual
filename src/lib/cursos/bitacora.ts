@@ -84,6 +84,27 @@ export async function conActores<T extends { actor: string | null }>(
 }
 
 /**
+ * Lee TODAS las filas de una consulta, de mil en mil (PostgREST corta cada
+ * respuesta en 1000 por defecto: en un curso con mucha bitácora, los alumnos
+ * con movimientos más viejos se quedaban sin su «Último:»). `null` si falla.
+ * Con tope de páginas para no colgar la pantalla con una bitácora enorme.
+ */
+async function leerTodo<T>(
+  pagina: (desde: number, hasta: number) => PromiseLike<{ data: unknown; error: unknown }>,
+  maxPaginas = 20,
+): Promise<T[] | null> {
+  const TAM = 1000
+  const out: T[] = []
+  for (let p = 0; p < maxPaginas; p++) {
+    const { data, error } = await pagina(p * TAM, p * TAM + TAM - 1)
+    if (error || !Array.isArray(data)) return null
+    out.push(...(data as T[]))
+    if (data.length < TAM) break
+  }
+  return out
+}
+
+/**
  * El último movimiento de cada inscripción, con su actor. Mapa vacío si la base
  * no tiene bitácora (sin B4) o si falla la lectura: la lista no depende de esto.
  */
@@ -93,14 +114,16 @@ export async function ultimosMovimientos(
 ): Promise<Map<string, MovimientoInscripcion>> {
   const out = new Map<string, MovimientoInscripcion>()
   if (inscripcionIds.length === 0) return out
-  const { data, error } = await admin
+  const data = await leerTodo<EventoFila>((desde, hasta) => admin
     .from('curso_inscripcion_eventos')
     .select('inscripcion_id, tipo, meses_antes, meses_despues, actor, created_at')
     .in('inscripcion_id', [...inscripcionIds])
     .order('created_at', { ascending: false })
-  if (error || !data) return out
+    .order('id', { ascending: false })
+    .range(desde, hasta))
+  if (!data) return out
   const ultimos = new Map<string, EventoFila>()
-  for (const e of data as EventoFila[]) if (!ultimos.has(e.inscripcion_id)) ultimos.set(e.inscripcion_id, e)
+  for (const e of data) if (!ultimos.has(e.inscripcion_id)) ultimos.set(e.inscripcion_id, e)
   for (const e of await conActores(admin, [...ultimos.values()])) {
     out.set(e.inscripcion_id, {
       tipo: e.tipo, meses_antes: e.meses_antes, meses_despues: e.meses_despues, created_at: e.created_at,

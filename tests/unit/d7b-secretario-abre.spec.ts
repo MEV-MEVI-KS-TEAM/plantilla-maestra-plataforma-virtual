@@ -35,7 +35,9 @@ const SOLO_ADMIN = ['curso_cambiar_estado', 'curso_borrar_modulo', 'curso_emitir
 /** Las filas (firma, guarda vieja, guarda nueva, mensaje viejo, mensaje nuevo) de d7b_staff_abre(). */
 function filasD7b(): string[][] {
   const bloque = D7B.slice(D7B.indexOf('SELECT * FROM (VALUES'), D7B.indexOf(') AS t(firma'))
-  return [...bloque.matchAll(/\(\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)'\)/g)].map(m => m.slice(1))
+  // (firma, exige, corre, guarda vieja, guarda nueva, mensaje viejo, mensaje nuevo) → sin exige/corre.
+  return [...bloque.matchAll(/\(\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)'\)/g)]
+    .map(m => [m[1], m[4], m[5], m[6], m[7], m[2]])
 }
 
 /** El cuerpo de la ÚLTIMA definición de una función en un archivo de migración. */
@@ -53,8 +55,13 @@ test('1. D7b abre al secretario EXACTAMENTE las siete de apertura, y ninguna de 
   for (const n of SOLO_ADMIN) expect(D7B.slice(D7B.indexOf('SELECT * FROM (VALUES'), D7B.indexOf(') AS t(firma'))).not.toContain(n)
   for (const [, vieja, nueva] of filas) {
     expect(vieja).toContain('NOT public.es_admin() THEN')
-    expect(nueva).toBe(vieja.replace('public.es_admin()', 'public.es_staff()') + '  -- D7b: también el secretario (decisión 6)')
+    // Marca SIN acentos: la busca strpos y no puede depender de la codificación.
+    expect(nueva).toBe(vieja.replace('public.es_admin()', 'public.es_staff()') + '  -- D7b: tambien el secretario (decision 6)')
+    expect(nueva).toMatch(/^[ -~]+$/)
   }
+  // Exige la versión vigente: las seis de C3b conocen el acceso total; el cobro, B3.
+  for (const f of filas) expect(f[5], f[0]).toBe(f[0].includes('curso_registrar_pago') ? 'p_abrir_mes' : 'acceso_total')
+  expect(D7B).toContain('IF strpos(v_def, r.exige) = 0 THEN')
 })
 
 test('2. cada guarda y cada mensaje que D7b reescribe está UNA vez en la versión vigente (si C3b/B3 cambian, esto avisa)', () => {
@@ -80,8 +87,11 @@ test('4. la migración: en transacción, idempotente, sin EXECUTE para nadie, NO
   expect(sql).toContain("REVOKE ALL ON FUNCTION public.d7b_staff_abre() FROM PUBLIC;")
   for (const rol of ['anon', 'authenticated', 'service_role']) expect(sql).toContain(`REVOKE ALL ON FUNCTION public.d7b_staff_abre() FROM ${rol}`)
   expect(sql).toContain("NOTIFY pgrst, 'reload schema';")
-  // Aborta si la versión instalada no es la esperada (0 o 2+ guardas/mensajes).
-  expect(sql.match(/IF v_veces <> 1 THEN/g)?.length).toBe(2)
+  // Aborta si la versión instalada no es la vigente o la guarda no está exactamente
+  // una vez; el mensaje se cambia si está (una base con otra codificación no lo
+  // encontraría) y aborta solo si aparece más de una vez.
+  expect(sql.match(/IF v_veces <> 1 THEN/g)?.length).toBe(1)
+  expect(sql.match(/IF v_veces > 1 THEN/g)?.length).toBe(1)
   // No define ninguna función de apertura a mano: la regla vive en un solo lugar.
   expect(sql.match(/CREATE OR REPLACE FUNCTION public\.(\w+)\(/g)).toEqual(['CREATE OR REPLACE FUNCTION public.d7b_staff_abre('])
 })
@@ -193,4 +203,25 @@ test('9. la bitácora dice quién, con su rol', () => {
   // Las rutas que la leen le ponen nombre y rol al actor.
   expect(leer('src/app/api/admin/cursos/[id]/route.ts')).toContain('ultimosMovimientos(admin, (inscripciones ?? []).map(i => i.id))')
   expect(leer('src/app/api/admin/inscripciones/[id]/route.ts')).toContain('const eventos = await conActores(admin,')
+})
+
+test('10. revisión: el secretario entra a /admin/cursos, sin contenido del curso ni «nuevo», y ve los avisos', () => {
+  // El layout de la sección deja pasar al staff; crear un curso sigue siendo del admin.
+  const layout = sinComentarios(leer('src/app/(dashboard)/admin/cursos/layout.tsx'))
+  expect(layout).toContain("if (rol !== 'admin' && rol !== 'secretario') redirect('/alumno')")
+  const nuevo = sinComentarios(leer('src/app/(dashboard)/admin/cursos/nuevo/layout.tsx'))
+  expect(nuevo).toContain("!== 'admin') redirect('/admin/cursos')")
+  // La ficha (precio, estado) se lee con el cliente admin: la RLS de `cursos` es de
+  // admin o inscritos y con la sesión del secretario salía null (sin aviso de «sin precio»).
+  const insc = sinComentarios(leer('src/app/api/admin/cursos/[id]/inscripciones/route.ts'))
+  expect(insc.match(/await createAdminClient\(\)\s*\.from\('cursos'\)/g)?.length).toBe(2)
+  expect(insc).not.toMatch(/await supabase\s*\.from\('cursos'\)/)
+  // El detalle no le entrega al secretario lecciones, videos ni materiales.
+  const detalle = sinComentarios(leer('src/app/api/admin/cursos/[id]/route.ts'))
+  expect(detalle).toContain("const conContenido = viewerRol === 'ADMIN'")
+  expect(detalle).toContain('const { data: modulosRaw } = !conContenido ? { data: [] } : await admin')
+  // La bitácora se lee completa, de mil en mil.
+  const bit = leer('src/lib/cursos/bitacora.ts')
+  expect(bit).toContain('.range(desde, hasta))')
+  expect(bit).toContain('if (data.length < TAM) break')
 })
