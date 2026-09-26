@@ -68,12 +68,14 @@ re-ejecutable (dos pasadas limpias, verificado).
 
 Aprobar el examen es la **condición** de la constancia, no su gatillo. El único
 camino de emisión es `POST /api/admin/inscripciones/[id]/constancia`, **con la
-sesión del admin** — así la bitácora registra quién emitió. Es decisión de
+sesión de quien emite** (admin o secretario desde D20b) — así la bitácora y el
+propio folio (`emitida_por`, `emitida_por_nombre`, `emitida_por_rol`) registran
+quién emitió, y una inscripción cancelada no recibe folio. Es decisión de
 producto (B8.2, supersede la auto-emisión de B4): el folio es permanente e
 irrepetible y un humano verificando antes de congelar el snapshot es feature
 (Bug 78). Los candados viven en la función SQL, no en el código: sin examen
 aprobado la emisión se rechaza (422), un alumno que la invoque directo recibe
-403 (`es_admin()`), y una llamada con `service_role` **falla a propósito** —
+403 (`es_staff()`), y una llamada con `service_role` **falla a propósito** —
 `auth.uid()` NULL dejaría el evento sin autor, que era el bug.
 
 ## 4. Los archivos que importan

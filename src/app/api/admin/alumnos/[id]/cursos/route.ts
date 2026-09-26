@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { EVENTOS_DE_ACCESO } from '@/lib/cursos/bitacora'
-import { precargaCobro, resumenCobro, type EstadoCobro, type PagoDeCurso } from '@/lib/cursos/cobro'
+import { precargaCobro, resumenCobro, type ConstanciaDeCurso, type EstadoCobro, type PagoDeCurso } from '@/lib/cursos/cobro'
 import type { PreciosCurso } from '@/lib/cursos/precio-regla'
 import { topeMeses } from '@/lib/cursos/acceso'
 
@@ -37,6 +37,37 @@ type Evento = { inscripcion_id: string; tipo: string; detalle: Record<string, un
 const cifra = (v: unknown): number | null => {
   const n = Number(v)
   return v !== null && v !== undefined && Number.isFinite(n) ? n : null
+}
+
+/**
+ * D20b (remate a): la constancia de cada inscripción con quién la emitió (foto
+ * de su nombre y rol). Sin D20b (42703) se lee sin el autor; sin la tabla
+ * (42P01/PGRST205), ninguna. Nunca tumba la tarjeta: la constancia es un dato
+ * más de la fila.
+ */
+async function constanciasDe(
+  admin: ReturnType<typeof createAdminClient>,
+  insIds: readonly string[],
+): Promise<Map<string, ConstanciaDeCurso>> {
+  const out = new Map<string, ConstanciaDeCurso>()
+  if (insIds.length === 0) return out
+  const leer = (cols: string) => admin.from('curso_constancias').select(cols).in('inscripcion_id', [...insIds])
+  let { data, error } = await leer('inscripcion_id, folio, emitido_en, emitida_por_nombre, emitida_por_rol')
+  if (error?.code === '42703') ({ data, error } = await leer('inscripcion_id, folio, emitido_en'))
+  if (error) {
+    if (error.code !== '42P01' && error.code !== 'PGRST205') console.error('[GET /api/admin/alumnos/[id]/cursos] constancias:', error.message)
+    return out
+  }
+  for (const c of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+    if (typeof c.inscripcion_id !== 'string' || typeof c.folio !== 'string') continue
+    out.set(c.inscripcion_id, {
+      folio: c.folio,
+      emitido_en: typeof c.emitido_en === 'string' ? c.emitido_en : null,
+      emitida_por_nombre: typeof c.emitida_por_nombre === 'string' ? c.emitida_por_nombre : null,
+      emitida_por_rol: typeof c.emitida_por_rol === 'string' ? c.emitida_por_rol : null,
+    })
+  }
+  return out
 }
 
 export async function GET(
@@ -89,6 +120,7 @@ export async function GET(
     const eventos = errEv ? null : ((eventosRaw ?? []) as Evento[])
     // Sin B1 no hay pagos de curso.
     const pagos = errPag ? [] : ((pagosRaw ?? []) as Array<PagoDeCurso & { curso_inscripcion_id: string }>)
+    const constancias = await constanciasDe(admin, insIds)
 
     const filas = inscripciones.map(i => {
       const c = cursos.get(i.curso_id)
@@ -135,6 +167,7 @@ export async function GET(
         precarga: precargaCobro(estado),
         // El estado completo: la pantalla re-evalúa la casilla con cubreElCobro al cambiar el monto.
         cobro: estado,
+        constancia: constancias.get(i.id) ?? null,
       }
     })
 

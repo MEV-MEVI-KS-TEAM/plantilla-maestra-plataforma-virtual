@@ -172,7 +172,9 @@ test('6. la ficha: un id por apertura del modal, guarda síncrona, lo que vio, �
 
 test('7. el guardián: CHECK 19 para toda escuela, sin casts constantes, y la fila 18 de SETUP', () => {
   const check = leer('scripts/post-setup-check.sql')
-  const c19 = check.slice(check.indexOf('CHECK 19'))
+  // Solo el tramo del CHECK 19 (los que vengan después son de otros bloques).
+  const fin = check.indexOf('─── CHECK 20')
+  const c19 = check.slice(check.indexOf('CHECK 19'), fin > 0 ? fin : undefined)
   expect(c19).toContain("to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')")
   expect(c19).not.toContain("'::regprocedure")
   expect(c19).toContain("indexname = 'alumno_mes_eventos_operacion_uidx'")

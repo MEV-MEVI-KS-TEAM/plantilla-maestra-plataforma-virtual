@@ -304,7 +304,7 @@ export default function UsuariosPage() {
                     onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={INPUT_STYLE}
                   >
-                    <option value="secretario">Secretario — registra pagos y ve alumnos (solo lectura)</option>
+                    <option value="secretario">Secretario — cobra, abre meses y cursos y emite constancias (sin precios ni Personalizar)</option>
                     <option value="admin">Administrador — acceso total</option>
                   </select>
                 </div>

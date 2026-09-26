@@ -3,14 +3,15 @@
  *
  * LA CADENA COMPLETA, y ninguna pieza sobra:
  *   curso pagado completo (B2/B3) → examen presentado → APROBADO →
- *   → el ADMIN emite la constancia (B8.2).
+ *   → el PERSONAL (admin o secretario, D20b) emite la constancia (B8.2).
  *
  * ⚠️ LA EMISIÓN ES MANUAL, Y ES A PROPÓSITO (decisión de producto de B8.2, que
  * supersede la auto-emisión de B4). Aprobar es la CONDICIÓN de la constancia,
  * no su gatillo: el folio es permanente e irrepetible, y un humano verificando
  * antes de congelar el snapshot es feature (lección Bug 78). El único camino de
- * emisión es POST /api/admin/inscripciones/[id]/constancia, con la sesión del
- * admin — así el evento de bitácora registra QUIÉN emitió. El guard de "sin
+ * emisión es POST /api/admin/inscripciones/[id]/constancia, con la sesión de
+ * quien emite (admin o secretario desde D20b) — así el evento de bitácora y el
+ * propio folio registran QUIÉN emitió. Una inscripción cancelada no recibe folio. El guard de "sin
  * aprobación no hay emisión" vive en la función SQL `curso_emitir_constancia`,
  * no en el código: nadie lo puede rodear, ni queriendo.
  *

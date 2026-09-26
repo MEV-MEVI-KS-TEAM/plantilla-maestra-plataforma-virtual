@@ -18,9 +18,11 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     // Inscripción propia (RLS de curso_inscripciones: alumno_id = auth.uid()).
+    // '*' (D20b): `estado` llega con B1; pedirla por nombre tumbaría la lectura en
+    // una base sin B1 y el alumno vería «no estás inscrito».
     const { data: insc } = await supabase
       .from('curso_inscripciones')
-      .select('id')
+      .select('*')
       .eq('curso_id', params.id)
       .eq('alumno_id', user.id)
       .maybeSingle()
@@ -39,6 +41,13 @@ export async function GET(
 
     if (constancia) {
       return NextResponse.json({ constancia, motivo: null })
+    }
+
+    // D20b: una inscripción cancelada no recibe folio (lo niega el servidor); sin
+    // esto, el alumno que aprobó vería «en emisión» para siempre. Va DESPUÉS de
+    // leer la constancia: una ya emitida se sigue mostrando.
+    if ((insc as { estado?: string | null }).estado === 'cancelada') {
+      return NextResponse.json({ constancia: null, motivo: 'inscripcion_cancelada' })
     }
 
     // Sin constancia: se dice POR QUÉ, en vez de un vacío mudo.

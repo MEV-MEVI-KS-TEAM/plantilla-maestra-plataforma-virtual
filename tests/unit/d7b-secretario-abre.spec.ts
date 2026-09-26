@@ -7,8 +7,9 @@ import { describirMovimiento, etiquetaRolActor, quienHizo } from '@/lib/cursos/b
  * Bloque D · D7b — decisión 6 de Kevin: EL SECRETARIO TAMBIÉN ABRE.
  * Asigna (una y a todos), abre un mes, abre todo, cobra abriendo el mes, cierra
  * un mes y quita el acceso total, igual que el admin. SOLO ADMIN: estado y
- * cancelación de inscripciones, borrar módulos, constancias, precios y fichas,
- * Personalizar, borrar pagos, borrar inscripciones, «Corregir plan», staff.
+ * cancelación de inscripciones, borrar módulos, precios y fichas, Personalizar,
+ * borrar pagos, borrar inscripciones, «Corregir plan», staff. (Las constancias
+ * pasaron al personal con D20b: tests/unit/d20b-constancias-staff.spec.ts.)
  *
  * El comportamiento real (sesión de un secretario con RLS, re-correr B2/B3/B4/B6/C3b,
  * foto del candado) se prueba en el cluster scratch (prueba-d7b.sh): aquí se fija
@@ -30,7 +31,7 @@ const APERTURA: Record<string, { firma: string; nombre: string; fuente: string }
   curso_cerrar_mes: { firma: 'public.curso_cerrar_mes(uuid,integer)', nombre: 'curso_cerrar_mes', fuente: '20260926120000_c3b_acceso_total_cursos.sql' },
   curso_registrar_pago: { firma: 'public.curso_registrar_pago(uuid,numeric,text,text,text,date,boolean,integer)', nombre: 'curso_registrar_pago', fuente: '20260730140000_b3_abrir_mes_y_pagos_curso.sql' },
 }
-const SOLO_ADMIN = ['curso_cambiar_estado', 'curso_borrar_modulo', 'curso_emitir_constancia']
+const SOLO_ADMIN = ['curso_cambiar_estado', 'curso_borrar_modulo']
 
 /** Las filas (firma, guarda vieja, guarda nueva, mensaje viejo, mensaje nuevo) de d7b_staff_abre(). */
 function filasD7b(): string[][] {
@@ -76,7 +77,6 @@ test('2. cada guarda y cada mensaje que D7b reescribe está UNA vez en la versi�
 test('3. las de SOLO ADMIN siguen pidiendo es_admin() en su versión vigente', () => {
   expect(cuerpo('20260730150000_b4_constancia_y_eventos.sql', 'curso_cambiar_estado')).toContain('IF NOT public.es_admin() THEN')
   expect(cuerpo('20260730140000_b3_abrir_mes_y_pagos_curso.sql', 'curso_borrar_modulo')).toContain('IF NOT public.es_admin() THEN')
-  expect(cuerpo('20260730180000_b82_emision_manual_con_actor.sql', 'curso_emitir_constancia')).toContain('IF NOT public.es_admin() THEN')
 })
 
 test('4. la migración: en transacción, idempotente, sin EXECUTE para nadie, NOTIFY pgrst', () => {
@@ -156,7 +156,9 @@ test('7. rutas: lo de abrir es del staff; lo de solo admin sigue con verifyAdmin
 test('8. interfaz: el secretario ve los botones de abrir; los de solo admin no', () => {
   const tab = sinComentarios(leer('src/components/admin/cursos/AlumnosTab.tsx'))
   expect(tab).toContain('esAdmin: boolean')
-  expect(tab).toMatch(/\{esAdmin && \(\s*<button\s+onClick=\{\(\) => emitirConstancia/)
+  // D20b: la constancia ya no es solo del admin.
+  expect(tab).not.toMatch(/\{esAdmin && \(\s*<button\s+onClick=\{\(\) => emitirConstancia/)
+  expect(tab).toContain('onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}')
   expect(tab).toMatch(/\{esAdmin && \(\s*<button\s+onClick=\{\(\) => quitar\(/)
   // Abrir mes, cerrar mes, abrir todo y quitar acceso total: sin condición de rol.
   for (const b of ["moverMes(i.inscripcion_id, 'abrir-mes'", "moverMes(i.inscripcion_id, 'cerrar-mes'", 'setConfirmAbrirTodo({ i, paso: 1 })', "cambiarAccesoTotal(i, 'quitar-acceso-total')"]) {

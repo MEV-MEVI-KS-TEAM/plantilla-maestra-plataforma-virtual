@@ -63,6 +63,31 @@ BEGIN
 END
 $c3b$;
 
+-- ── B8.2 / D20b · re-correr esta migración NO revierte la emisión manual ─────
+-- La curso_emitir_constancia de abajo es la de B4 (sin guardas; solo el
+-- servidor). Si la base ya tiene la de B8.2 (emisión manual, guarda de
+-- aprobación) o la de D20b (también el secretario; cancelada sin folio), ESA
+-- es la vigente: se guarda aquí, con su EXECUTE para authenticated, y se
+-- restaura al final de este archivo. La huella es la guarda de aprobación, la
+-- misma que busca el CHECK 20 (B4 nunca la trae).
+DROP TABLE IF EXISTS pg_temp.b82_vigente;
+CREATE TEMP TABLE b82_vigente AS
+SELECT pg_get_functiondef(p.oid) AS def,
+       CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+            THEN has_function_privilege('authenticated', p.oid, 'EXECUTE')
+            ELSE false END AS auth_ejecuta
+  FROM pg_proc p
+ WHERE p.oid = to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')
+   AND strpos(pg_get_functiondef(p.oid), 'IF v_mejor < v_minima THEN') > 0;
+DO $b82$
+BEGIN
+  IF to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM pg_temp.b82_vigente) THEN
+    RAISE WARNING 'curso_emitir_constancia no trae la guarda de aprobación de B8.2 (una copia vieja de B4 ya la pisó): esta migración no la puede conservar. Al terminar, corre supabase/migrations/20260730180000_b82_emision_manual_con_actor.sql y después supabase/migrations/20260928130000_d20b_constancia_staff.sql (CHECK 20).';
+  END IF;
+END
+$b82$;
+
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- T0 — La constancia deja de evaporarse: CASCADE → RESTRICT
@@ -497,6 +522,25 @@ BEGIN
 END
 $d7b$;
 
+-- ── B8.2 / D20b · restaurar la emisión vigente (ver el inicio) ───────────────
+DO $b82$
+DECLARE
+  r RECORD;
+BEGIN
+  SELECT * INTO r FROM pg_temp.b82_vigente;
+  IF FOUND THEN
+    -- CREATE OR REPLACE conserva el ACL, al que el bloque $g2$ de arriba le
+    -- acaba de quitar authenticated: se le devuelve si lo tenía.
+    EXECUTE r.def;
+    IF r.auth_ejecuta THEN
+      EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_emitir_constancia(UUID, TEXT, NUMERIC) TO authenticated';
+    END IF;
+    RAISE NOTICE 'Esta base ya tiene la emisión manual (B8.2/D20b): se conservó curso_emitir_constancia y su EXECUTE para authenticated.';
+  END IF;
+END
+$b82$;
+
+DROP TABLE IF EXISTS pg_temp.b82_vigente;
 DROP TABLE IF EXISTS pg_temp.c3b_vigentes;
 
 COMMIT;
