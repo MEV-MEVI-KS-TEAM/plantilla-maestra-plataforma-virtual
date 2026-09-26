@@ -168,7 +168,7 @@ BEGIN
     RAISE EXCEPTION
       'La inscripción ya tiene % meses abiertos (esperabas %). Recarga la pantalla: alguien más la movió o el botón se pulsó dos veces.',
       v_actual, p_meses_esperados
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   v_tope := public.curso_tope_meses(v_curso);
@@ -228,7 +228,7 @@ BEGIN
     RAISE EXCEPTION
       'La inscripción ya tiene % meses abiertos (esperabas %). Recarga la pantalla.',
       v_actual, p_meses_esperados
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   IF v_actual <= 0 THEN
@@ -484,4 +484,4 @@ COMMIT;
 -- ── Verificación manual ─────────────────────────────────────────────────────
 --   SELECT public.curso_tope_meses('<curso>');
 --   SELECT * FROM public.curso_abrir_mes('<inscripcion>', 0);   -- 0 -> 1
---   SELECT * FROM public.curso_abrir_mes('<inscripcion>', 0);   -- 40001: doble clic
+--   SELECT * FROM public.curso_abrir_mes('<inscripcion>', 0);   -- PT409 (409): doble clic

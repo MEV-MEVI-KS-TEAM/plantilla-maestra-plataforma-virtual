@@ -256,9 +256,9 @@ $$;
 --   p_simular = true  → no inscribe: devuelve cuántos serían (el número que la
 --                        confirmación muestra lo da el servidor, no la pantalla);
 --   p_esperados       → el número que el admin confirmó: si hoy son otros (otro
---                        admin asignó, se dio de alta a alguien…), 40001 y nada;
+--                        admin asignó, se dio de alta a alguien…), PT409 (409) y nada;
 --   p_regla_esperada  → la regla que la confirmación le dijo ('total' o 'mes1'):
---                        si alguien cambió el precio en medio, 40001 y nada.
+--                        si alguien cambió el precio en medio, PT409 (409) y nada.
 -- Sin simular, los DOS son obligatorios (22023): sin ellos no hay con qué
 -- comparar, y una llamada a mano abriría acceso total sin que nadie lo confirmara.
 DROP FUNCTION IF EXISTS public.curso_inscribir_todos(UUID);
@@ -322,13 +322,13 @@ BEGIN
       'La confirmación decía que se abriría %, y hoy el curso abre % (alguien cambió su precio). Vuelve a abrir la asignación masiva.',
       CASE p_regla_esperada WHEN 'total' THEN 'el curso completo (acceso total)' ELSE 'solo el mes 1' END,
       CASE v_regla WHEN 'total' THEN 'el curso completo (acceso total)' ELSE 'solo el mes 1' END
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   IF p_esperados <> v_n THEN
     RAISE EXCEPTION
       'La confirmación decía % alumno(s) nuevo(s) y hoy son %. Vuelve a abrir la asignación masiva para ver el número actual.',
-      p_esperados, v_n USING ERRCODE = '40001';
+      p_esperados, v_n USING ERRCODE = 'PT409';
   END IF;
 
   WITH nuevas AS (
@@ -494,7 +494,7 @@ BEGIN
   IF p_meses_esperados IS NOT NULL AND p_meses_esperados <> v_actual THEN
     RAISE EXCEPTION
       'La inscripción ya tiene % meses abiertos (esperabas %). Recarga la pantalla: alguien más la movió o el botón se pulsó dos veces.',
-      v_actual, p_meses_esperados USING ERRCODE = '40001';
+      v_actual, p_meses_esperados USING ERRCODE = 'PT409';
   END IF;
 
   v_tope := public.curso_tope_meses(v_curso);
@@ -557,7 +557,7 @@ BEGIN
   IF p_meses_esperados IS NOT NULL AND p_meses_esperados <> v_actual THEN
     RAISE EXCEPTION
       'La inscripción ya tiene % meses abiertos (esperabas %). Recarga la pantalla.',
-      v_actual, p_meses_esperados USING ERRCODE = '40001';
+      v_actual, p_meses_esperados USING ERRCODE = 'PT409';
   END IF;
 
   IF v_actual <= 0 THEN

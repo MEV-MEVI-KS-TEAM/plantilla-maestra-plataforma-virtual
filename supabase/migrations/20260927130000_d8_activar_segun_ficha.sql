@@ -21,7 +21,7 @@
 --     detalle.origen = 'activar_segun_ficha', la regla, los precios de la ficha
 --     y el actor. No toca el CHECK de tipos.
 --   · p_regla_esperada: lo que la pantalla le dijo a quien activa ('total' o
---     'mes1'). Si alguien cambió el precio en medio, 40001 y nada: la
+--     'mes1'). Si alguien cambió el precio en medio, PT409 (409) y nada: la
 --     confirmación de «abre TODO» no se puede saltar con una ficha que cambió.
 --
 -- SOLO LEE FUNCIONES DE C3b (curso_regla_apertura, curso_tope_meses); no
@@ -106,7 +106,7 @@ BEGIN
           AND e.tipo IN ('abrir_mes', 'cerrar_mes', 'abrir_todo', 'quitar_acceso_total')) THEN
     RAISE EXCEPTION
       'Esta inscripción ya tuvo acceso: ábrela con «+ Abrir mes» o «Abrir todo». Recarga la pantalla si no lo ves.'
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   SELECT c.precio_inscripcion, c.precio_mensualidad INTO v_ins, v_men
@@ -117,7 +117,7 @@ BEGIN
       'La ficha del curso cambió: hoy abre %, no %. Recarga la pantalla y vuelve a confirmar.',
       CASE v_regla WHEN 'total' THEN 'TODO el curso (pago único)' ELSE 'el mes 1' END,
       CASE p_regla_esperada WHEN 'total' THEN 'todo el curso' ELSE 'el mes 1' END
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   IF v_regla = 'total' THEN

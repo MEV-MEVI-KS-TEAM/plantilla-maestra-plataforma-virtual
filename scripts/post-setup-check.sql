@@ -544,3 +544,24 @@ SELECT
     ELSE '✅ OK (admin y secretario emiten con su sesión; sin aprobación no hay folio; cancelada sin folio; el folio guarda su autor)'
   END AS resultado
 FROM d20b;
+
+-- ─── CHECK 21: «alguien lo cambió en medio» responde 409 (D20e) ─────────────
+-- Aplica a toda base. Una función que lanza ERRCODE '40001' cuelga la petición:
+-- PostgREST lo toma por una falla pasajera (serialization_failure) y reintenta
+-- la transacción sin fin. Las funciones usan PT409 (HTTP 409). Una copia vieja
+-- de B3, B4, C3b, D8 o D16 lo vuelve a meter: por eso se revisan los cuerpos.
+WITH d20e AS (
+  SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text) AS con_40001
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND strpos(p.prosrc, 'ERRCODE = ''40001''') > 0
+)
+SELECT
+  'Conflictos sin reintentos infinitos (D20e)' AS check_name,
+  COALESCE(con_40001, 'ninguna función lanza 40001') AS valor,
+  CASE
+    WHEN con_40001 IS NULL THEN '✅ OK («alguien lo cambió en medio» responde 409 con PT409)'
+    ELSE '❌ ' || con_40001 || ' todavía lanza 40001: PostgREST reintenta sin fin y la petición se cuelga → corre supabase/migrations/20260928140000_d20e_conflicto_pt409.sql'
+  END AS resultado
+FROM d20e;

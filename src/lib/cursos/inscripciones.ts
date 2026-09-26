@@ -18,7 +18,11 @@ export function errorDeRpcCurso(error: PostgrestError): { status: number; mensaj
       return { status: 403, mensaje }
     case 'P0002': // no_data_found — inscripción o módulo inexistente
       return { status: 404, mensaje }
-    case '40001': // serialization_failure — el valor esperado no coincide (doble clic)
+    // El valor esperado no coincide (doble clic, otra pestaña). Las funciones usan
+    // PT409 desde D20e: con 40001 (serialization_failure) PostgREST reintenta la
+    // transacción sin fin y la petición se cuelga. 40001 queda por compatibilidad.
+    case 'PT409':
+    case '40001':
       return { status: 409, mensaje }
     case '23505': // unique_violation — curso_inscribir: el alumno ya estaba asignado
       return { status: 409, mensaje }
