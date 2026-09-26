@@ -38,3 +38,27 @@ export function pagosPorCurso(
   }
   return out
 }
+
+/** Una fila de `curso_inscripciones` del alumno. `estado` llega con B1. */
+export type InscripcionAlumno = { id: string; curso_id: string; estado?: string | null }
+
+/**
+ * D20d (remate f): a dónde va cada inscripción en «Mis Diplomados». La cancelada
+ * sale de la cuadrícula y pasa al bloque «Cursos cancelados» SOLO si pagó algo
+ * (sin pagos no hay nada que enseñarle). Sin `estado` (base sin B1) todo es
+ * vigente, como antes. suspendida y completada siguen en la cuadrícula: el visor
+ * ya explica por qué no ve el contenido. Devuelve ids de CURSO, en el orden de
+ * entrada (una inscripción por curso: UNIQUE (curso_id, alumno_id)).
+ */
+export function repartirInscripciones(
+  inscripciones: readonly InscripcionAlumno[],
+  pagos: ReadonlyMap<string, ResumenPagosCurso>,
+): { vigentes: string[]; canceladas: string[] } {
+  const vigentes: string[] = []
+  const canceladas: string[] = []
+  for (const i of inscripciones) {
+    if (i.estado !== 'cancelada') vigentes.push(i.curso_id)
+    else if ((pagos.get(i.curso_id)?.pagado ?? 0) > 0) canceladas.push(i.curso_id)
+  }
+  return { vigentes, canceladas }
+}
