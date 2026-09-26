@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getSiteConfig } from '@/lib/site-config'
+import { etiquetaNivel } from '@/lib/niveles-ui'
+import { etiquetaDuracionModalidad } from '@/lib/modalidades'
 
 /**
  * GET /api/admin/reportes/excel
@@ -27,14 +29,9 @@ import { getSiteConfig } from '@/lib/site-config'
  */
 export const dynamic = 'force-dynamic'
 
-const NIVEL_LABELS: Record<string, string> = {
-  secundaria: 'Secundaria', preparatoria: 'Preparatoria',
-  licenciatura: 'Licenciatura', diplomado: 'Diplomado',
-}
 const CONCEPTO_LABELS: Record<string, string> = {
   inscripcion: 'Inscripción', mensualidad: 'Mensualidad', otro: 'Otro',
 }
-const MODALIDAD_LABELS: Record<string, string> = { '3_meses': '3 meses', '6_meses': '6 meses' }
 
 const nombreDe = (u?: { nombre?: string | null; apellidos?: string | null }) =>
   [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || 'Alumno'
@@ -104,7 +101,7 @@ export async function GET() {
       'Fecha':          soloFecha(p.fecha_pago),
       'Alumno':         nombreDe(uMap.get(p.alumno_id)),
       'Matrícula':      aMap.get(p.alumno_id)?.matricula ?? '',
-      'Nivel':          NIVEL_LABELS[aMap.get(p.alumno_id)?.nivel ?? ''] ?? '',
+      'Nivel':          etiquetaNivel(aMap.get(p.alumno_id)?.nivel),
       'Concepto':       CONCEPTO_LABELS[p.concepto ?? ''] ?? p.concepto ?? '',
       'Mes que abrió':  p.mes_desbloqueado ?? '',
       [COL_MONTO]:      Number(p.monto ?? 0),
@@ -121,8 +118,9 @@ export async function GET() {
         'Alumno':               nombreDe(u),
         'Correo':               u?.email ?? '',
         'Teléfono':             u?.telefono ?? '',
-        'Nivel':                NIVEL_LABELS[a.nivel ?? ''] ?? '',
-        'Modalidad':            MODALIDAD_LABELS[a.modalidad ?? ''] ?? a.modalidad ?? '',
+        // Nombres de la escuela y la duración derivada del id: nunca el id crudo (#200, #218).
+        'Nivel':                etiquetaNivel(a.nivel),
+        'Modalidad':            etiquetaDuracionModalidad(a.modalidad),
         'Inscripción pagada':   a.inscripcion_pagada ? 'Sí' : 'No',
         'Meses desbloqueados':  a.meses_desbloqueados ?? 0,
         'Estado':               a.activo === false ? 'Inactivo' : 'Activo',

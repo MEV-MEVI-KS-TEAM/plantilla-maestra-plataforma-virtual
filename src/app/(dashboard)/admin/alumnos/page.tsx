@@ -24,6 +24,8 @@ interface Alumno {
   activo: boolean
   matricula: string
   plan_nombre: string
+  /** Nivel de BD ('diplomado' = alumno de curso; null = sin nivel). La API ya lo manda. */
+  nivel?: string | null
   duracion_meses: number
   meses_desbloqueados: number
   inscripcion_pagada: boolean
@@ -596,14 +598,20 @@ export default function AlumnosPage() {
                       <span className="font-mono">{a.matricula}</span>
                       <span>·</span>
                       <span>{a.plan_nombre || 'Sin plan'}</span>
-                      <span>·</span>
-                      {/* Sin plan escolar no hay denominador que valga: se muestran
-                          los meses abiertos y ya, en vez de un «/0». */}
-                      <span>
-                        {a.duracion_meses > 0
-                          ? `${a.meses_desbloqueados}/${a.duracion_meses} meses`
-                          : `${a.meses_desbloqueados} ${a.meses_desbloqueados === 1 ? 'mes abierto' : 'meses abiertos'}`}
-                      </span>
+                      {/* Sin plan escolar (alumno de curso o sin nivel) no hay meses del
+                          programa que anunciar: su acceso vive en curso_inscripciones. Antes
+                          decía «0 meses abiertos» aunque tuviera acceso total (#218). */}
+                      {!(!a.nivel || a.nivel === 'diplomado') && (
+                        <>
+                          <span>·</span>
+                          {/* Sin denominador que valga: los meses abiertos y ya, no un «/0». */}
+                          <span>
+                            {a.duracion_meses > 0
+                              ? `${a.meses_desbloqueados}/${a.duracion_meses} meses`
+                              : `${a.meses_desbloqueados} ${a.meses_desbloqueados === 1 ? 'mes abierto' : 'meses abiertos'}`}
+                          </span>
+                        </>
+                      )}
                     </div>
                     {a.curso_solicitado_nombre && (
                       <div className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2"
@@ -727,8 +735,16 @@ export default function AlumnosPage() {
                           </td>
                         )}
                         <td className="px-4 py-3">
-                          <span style={{ color: '#F1F5F9' }}>{a.meses_desbloqueados}</span>
-                          {a.duracion_meses > 0 && <span style={{ color: '#94A3B8' }}>/{a.duracion_meses}</span>}
+                          {/* Sin plan escolar (alumno de curso o sin nivel): «—», no «0» (#218).
+                              Su acceso vive en curso_inscripciones, no en meses_desbloqueados. */}
+                          {!a.nivel || a.nivel === 'diplomado' ? (
+                            <span style={{ color: '#94A3B8' }}>—</span>
+                          ) : (
+                            <>
+                              <span style={{ color: '#F1F5F9' }}>{a.meses_desbloqueados}</span>
+                              {a.duracion_meses > 0 && <span style={{ color: '#94A3B8' }}>/{a.duracion_meses}</span>}
+                            </>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span

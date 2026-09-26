@@ -335,8 +335,11 @@ test('las etiquetas de nivel cubren diplomado en TODOS los ternarios', () => {
     'src/app/(dashboard)/admin/page.tsx',
   ]
   for (const f of archivos) {
-    expect(sinComentarios(leer(f)), f).toContain("'diplomado'")
+    // Con su propia rama, o delegando en getPlanNombre, que la tiene desde D3 (#218).
+    const src = sinComentarios(leer(f))
+    expect(src.includes("'diplomado'") || src.includes('getPlanNombre('), f).toBe(true)
   }
+  expect(sinComentarios(leer('src/lib/licenciatura-utils.ts'))).toContain("if (nivel === 'diplomado')")
 })
 
 test('el filtro T4 también está en las dos copias de schema en disco', () => {

@@ -5,6 +5,7 @@ import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Loader2, CreditCard, Search, FileText, MessageCircle, TrendingUp, Receipt } from 'lucide-react'
+import { etiquetaNivel } from '@/lib/niveles-ui'
 
 interface Pago {
   id: string
@@ -30,12 +31,6 @@ const CONCEPTO_LABELS: Record<string, string> = {
   otro:        'Otro',
 }
 
-const NIVEL_LABELS: Record<string, string> = {
-  secundaria:   'Secundaria',
-  preparatoria: 'Preparatoria',
-  licenciatura: 'Licenciatura',
-  diplomado:    'Diplomado',
-}
 
 const mxn = (n: number) =>
   formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
@@ -228,7 +223,7 @@ export default function PagosPage() {
                       </Link>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--color-texto-secundario)' }}>
                         {p.matricula ?? 'sin matrícula'}
-                        {p.alumno_nivel ? ` · ${NIVEL_LABELS[p.alumno_nivel] ?? p.alumno_nivel}` : ''}
+                        {p.alumno_nivel ? ` · ${etiquetaNivel(p.alumno_nivel)}` : ''}
                       </p>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--color-texto)' }}>

@@ -8,6 +8,7 @@ import { BarChart3, BookOpen, ClipboardList, CreditCard, FolderOpen, GraduationC
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types'
 import { CONFIG } from '@/lib/config'
+import { etiquetaNivel } from '@/lib/niveles-ui'
 import { esSoloCursos } from '@/lib/modo'
 import { esSemanal, RUTA_PAGOS_ALUMNO_SEMANAL, RUTA_COBRANZA_ADMIN } from '@/lib/periodicidad'
 import { useSiteConfig } from '@/components/site-config-provider'
@@ -213,7 +214,8 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   // que no cambia lo que ve nadie en un cliente tradicional de hoy.
   const nivelLabel = nivel === 'preparatoria' ? 'Preparatoria'
     : nivel === 'secundaria'  ? 'Secundaria'
-    : nivel === 'diplomado'   ? 'Diplomado'
+    // D3 (#218): el mismo nombre que la ficha, el perfil y el panel.
+    : nivel === 'diplomado'   ? etiquetaNivel('diplomado')
     : null
 
   const isAlumno = role === 'ALUMNO'

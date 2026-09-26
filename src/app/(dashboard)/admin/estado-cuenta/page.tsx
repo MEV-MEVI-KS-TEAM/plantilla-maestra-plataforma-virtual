@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { Loader2, Wallet, Search, CheckCircle2 } from 'lucide-react'
+import { etiquetaNivel } from '@/lib/niveles-ui'
+import { etiquetaDuracionModalidad } from '@/lib/modalidades'
 
 interface EstadoAlumno {
   id: string
@@ -24,16 +26,8 @@ type Orden = 'nombre' | 'estado'
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
 const INPUT_STYLE = { background: '#0B0D11', border: '1px solid #2A2F3E', color: '#F1F5F9' }
 
-const NIVEL_LABELS: Record<string, string> = {
-  secundaria: 'Secundaria',
-  preparatoria: 'Preparatoria',
-  licenciatura: 'Licenciatura',
-}
-
-const MODALIDAD_LABELS: Record<string, string> = {
-  '3_meses': '3 meses',
-  '6_meses': '6 meses',
-}
+// Nombres de nivel y duración de plan: las fuentes únicas (#200). Antes un mapa
+// que solo conocía 3 y 6 meses pintaba «12_meses» o «6_meses_lic» crudos.
 
 export default function EstadoCuentaPage() {
   const [alumnos, setAlumnos] = useState<EstadoAlumno[]>([])
@@ -171,8 +165,8 @@ export default function EstadoCuentaPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>
-                      {a.nivel ? (NIVEL_LABELS[a.nivel] ?? a.nivel) : '—'}
-                      {a.modalidad ? ` · ${MODALIDAD_LABELS[a.modalidad] ?? a.modalidad}` : ''}
+                      {a.nivel ? etiquetaNivel(a.nivel) : '—'}
+                      {a.modalidad ? ` · ${etiquetaDuracionModalidad(a.modalidad)}` : ''}
                     </td>
                     <td className="px-4 py-3 font-semibold text-center" style={{ color: '#F1F5F9' }}>{a.meses_desbloqueados}</td>
                     <td className="px-4 py-3 font-semibold text-center" style={{ color: '#F1F5F9' }}>{a.meses_con_pago}</td>

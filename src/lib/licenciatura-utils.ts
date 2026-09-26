@@ -1,4 +1,6 @@
 import { CONFIG } from '@/lib/config'
+// niveles-ui solo importa CONFIG: sin ciclo (niveles.ts sí importa este archivo).
+import { etiquetaNivel } from '@/lib/niveles-ui'
 import { certificacionDe, inscripcionDe, type Precios } from '@/lib/precios-nivel'
 import {
   inscripcionLicenciaturaDe,
@@ -93,6 +95,10 @@ export function getPlanNombre(
   if (nivel === 'preparatoria') return 'Preparatoria'
   if (nivel === 'secundaria')   return 'Secundaria'
   if (nivel === 'demo')         return 'Demo'
+  // Un alumno de curso: el nombre del nivel de la escuela («Curso o diplomado» de
+  // fábrica, o el de CONFIG.etiquetasNivel). Antes salía el id crudo «diplomado»
+  // en /admin/alumnos y cada pantalla le ponía su propio «Diplomado» (#218).
+  if (nivel === 'diplomado')    return etiquetaNivel('diplomado')
   return nivel ?? '—'
 }
 

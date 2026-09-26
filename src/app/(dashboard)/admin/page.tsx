@@ -4,6 +4,7 @@ import { getSiteConfig } from '@/lib/site-config'
 import { getMesesByModalidad } from '@/lib/modalidades'
 import { esSoloCursos } from '@/lib/modo'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { etiquetaNivel } from '@/lib/niveles-ui'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function getServiceClient() {
@@ -48,10 +49,10 @@ function NivelBadge({ nivel }: { nivel?: string | null }) {
   const isPrepa = nivel === 'preparatoria'
   // B7 — 'diplomado' tenía que caer en 'Sin nivel'. Aditivo: antes de B7 ningún
   // camino podía crear ese nivel, así que ningún alumno existente cambia.
-  const label = isPrepa ? 'Preparatoria'
-    : nivel === 'secundaria'   ? 'Secundaria'
-    : nivel === 'diplomado'    ? 'Diplomado'
-    : nivel === 'licenciatura' ? 'Licenciatura'
+  // Los cuatro niveles con el nombre de la escuela (etiquetaNivel), el mismo que
+  // la lista y la ficha (#218). Cualquier otro valor sigue como «Sin nivel».
+  const label = ['secundaria', 'preparatoria', 'licenciatura', 'diplomado'].includes(nivel ?? '')
+    ? etiquetaNivel(nivel)
     : 'Sin nivel'
   return (
     <span
@@ -269,10 +270,16 @@ export default async function AdminDashboardPage() {
                     </td>
                     {!soloCursos && (
                       <td className="px-5 py-3.5">
-                        <span style={{ color: 'var(--color-primario)', fontVariantNumeric: 'tabular-nums' }}>
-                          {a.meses_desbloqueados ?? 0}
-                          <span style={{ color: 'var(--color-texto-secundario)' }}>/{duracion(a)}</span>
-                        </span>
+                        {/* Sin plan escolar (alumno de curso o sin nivel): «—». Con
+                            getMesesByModalidad(null) le anunciaba «0/3» de un plan que no tiene (#218). */}
+                        {!a.nivel || a.nivel === 'diplomado' ? (
+                          <span style={{ color: 'var(--color-texto-secundario)' }}>—</span>
+                        ) : (
+                          <span style={{ color: 'var(--color-primario)', fontVariantNumeric: 'tabular-nums' }}>
+                            {a.meses_desbloqueados ?? 0}
+                            <span style={{ color: 'var(--color-texto-secundario)' }}>/{duracion(a)}</span>
+                          </span>
+                        )}
                       </td>
                     )}
                     <td className="px-5 py-3.5" style={{ color: 'var(--color-texto-secundario)' }}>

@@ -104,8 +104,8 @@ export async function GET() {
         // ningún alumno de un cliente tradicional cambia de etiqueta.
         // Licenciaturas: getPlanNombre devuelve el nombre de la carrera; el
         // ternario dejaba a esos alumnos también como «Secundaria».
-        plan_nombre:         a.nivel === 'diplomado' ? 'Diplomado'
-                           : getPlanNombre(a.nivel, (a as { carrera?: string | null }).carrera),
+        // #218: el alumno de curso también sale por getPlanNombre.
+        plan_nombre:         getPlanNombre(a.nivel, (a as { carrera?: string | null }).carrera),
         // Estaba fijo en 6: un alumno de licenciatura en '9_meses' veía 6.
         // getMesesByModalidad resuelve también las modalidades de licenciatura.
         duracion_meses:      getMesesByModalidad(a.modalidad),

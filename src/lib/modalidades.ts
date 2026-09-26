@@ -396,6 +396,27 @@ export function isModalidadActiva(
 }
 
 /**
+ * La DURACIÓN de una modalidad, para el panel: «12 meses», «6 meses» (#200).
+ *
+ * Se deriva del id (`N_meses`, con `_lic` opcional), la misma regla que la
+ * columna generada `alumnos.duracion_meses` (migración 20260812) para todos los
+ * ids que admite el CHECK. No se busca en las tablas: filtran por `activa`, y un
+ * alumno en un plan que la escuela ya apagó saldría con el id crudo. Solo si el
+ * id no tiene esa forma (clones con ids propios) se respalda con los `meses` de
+ * la tabla (Sec/Prepa o licenciatura, sin exigir activa), luego con su label y,
+ * si nada, «—». Vacío sin id.
+ */
+export function etiquetaDuracionModalidad(id: string | null | undefined): string {
+  if (!id) return ''
+  const meses = (n: number) => `${n} ${n === 1 ? 'mes' : 'meses'}`
+  const m = /^(\d+)_meses(?:_lic)?$/.exec(id)
+  if (m) return meses(Number(m[1]))
+  const plan = [...CONFIG.modalidades, ...modalidadesLic()].find(x => x.id === id)
+  if (plan && typeof plan.meses === 'number' && plan.meses > 0) return meses(plan.meses)
+  return plan?.label || '—'
+}
+
+/**
  * Devuelve el label legible de una modalidad por ID.
  * Si no existe, devuelve el ID tal cual (para no romper UI).
  */
