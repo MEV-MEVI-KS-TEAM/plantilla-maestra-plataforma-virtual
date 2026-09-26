@@ -23,6 +23,7 @@ import { getSiteConfig } from '@/lib/site-config'
 import { esSemanal } from '@/lib/periodicidad'
 import { modalidadPorNivel, getTotalPlan } from '@/lib/modalidades'
 import { certificacionDelAlumno, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
+import { costoProgramaAlumno } from '@/lib/costo-programa'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,7 +61,8 @@ export async function GET() {
 
     const { data: alumno } = await admin
       .from('alumnos')
-      .select('nivel, modalidad, inscripcion_pagada, matricula')
+      // '*': `carrera` llega con la migración de licenciaturas y no toda base la tiene.
+      .select('*')
       .eq('id', user.id)
       .single()
 
@@ -118,6 +120,9 @@ export async function GET() {
       total_plan:    plan ? getTotalPlan(plan, inscripcion) : 0,
       // La canónica de precios-nivel.ts (#162), y la titulación en licenciatura.
       certificacion: certificacionDelAlumno(nivel, precios, lic),
+      // #202 (D13): lo que cuesta su programa de licenciatura (null en los demás
+      // niveles). La pantalla lo pinta donde el alumno no tiene calendario.
+      programa:      costoProgramaAlumno({ nivel, modalidad: alumno?.modalidad, carrera: alumno?.carrera }, cfg),
       resumen: {
         pagadas:     pagadas.length,
         condonadas:  condonadas.length,

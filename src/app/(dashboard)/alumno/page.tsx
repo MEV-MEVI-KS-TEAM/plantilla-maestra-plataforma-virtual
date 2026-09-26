@@ -13,6 +13,9 @@ import { CONFIG } from '@/lib/config'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
 import { canalEscuela } from '@/lib/contacto-ui'
+import { esSemanal } from '@/lib/periodicidad'
+import type { CostoPrograma } from '@/lib/costo-programa'
+import { CostoProgramaCard } from '@/components/alumno/CostoProgramaCard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Perfil {
@@ -26,6 +29,8 @@ interface Perfil {
   email:               string
   nivel?:              string
   carrera?:            string | null
+  /** #202 (D13): el costo de su programa de licenciatura; null en los demás niveles. */
+  programa?:           CostoPrograma | null
 }
 
 interface MateriaResumen {
@@ -427,6 +432,14 @@ export default function AlumnoDashboard() {
           }
         />
       </div>
+
+      {/* ── Tu programa (#202, D13) ───────────────────────────────────────
+          Escuela MENSUAL: «Mis pagos» redirige a los enlaces de cobro, así que
+          el costo del programa de licenciatura se ve aquí. En una semanal lo
+          pinta «Mis pagos». */}
+      {!demo && !esSemanal() && perfil.programa && (
+        <CostoProgramaCard programa={perfil.programa} semanal={false} />
+      )}
 
       {/* ── Materia DEMO (banner, no oculta los meses) ──────────────────── */}
       {demo && (
