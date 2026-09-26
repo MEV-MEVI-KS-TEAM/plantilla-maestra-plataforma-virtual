@@ -41,7 +41,11 @@ import { ArrowLeftRight, BadgeDollarSign, ExternalLink, GraduationCap, Landmark,
 import { CONFIG } from '@/lib/config'
 import { esSoloCursos } from '@/lib/modo'
 import { esSemanal } from '@/lib/periodicidad'
-import { equivalenteMXN, type Moneda } from '@/lib/moneda'
+import { codigoMoneda, equivalenteMXN, type Moneda } from '@/lib/moneda'
+
+// D15: el código ISO de la escuela (un config.ts con la moneda como objeto
+// pintaba «$1,500 [object Object]»).
+const MONEDA: Moneda = codigoMoneda(CONFIG.moneda)
 import { LIMITES, campoPorClave } from '@/lib/site-config-campos'
 import {
   AVISO_LIC_FORMA_PROPIA,
@@ -240,7 +244,7 @@ export function PestanaPrecios({
         valor={numero}
         min={campo?.min ?? LIMITES.precioMin}
         max={campo?.max ?? LIMITES.precioMax}
-        sufijo={<EnPesos valor={numero} moneda={CONFIG.moneda} />}
+        sufijo={<EnPesos valor={numero} moneda={MONEDA} />}
         deshabilitado={!puedeEditar}
         sobrescrito={estaSobrescrito(overrides, clave)}
         resaltado={claveConError === clave}
@@ -275,11 +279,11 @@ export function PestanaPrecios({
           : origen === 'hoy' ? `${campo?.ayuda ?? ''} ${AYUDA_NIVEL_CIFRA_PROPIA}`.trim()
           : campo?.ayuda}
         valor={valorEfectivo({}, overrides, clave)}
-        vacio={textoVacioNivel(siVacio, CONFIG.moneda, origen)}
-        vacioError={textoVacioError(siVacio, CONFIG.moneda, origen)}
+        vacio={textoVacioNivel(siVacio, MONEDA, origen)}
+        vacioError={textoVacioError(siVacio, MONEDA, origen)}
         min={campo?.min ?? LIMITES.precioNivelMin}
         max={campo?.max ?? LIMITES.precioMax}
-        sufijo={<EnPesos valor={cobra} moneda={CONFIG.moneda} />}
+        sufijo={<EnPesos valor={cobra} moneda={MONEDA} />}
         deshabilitado={!puedeEditar}
         sobrescrito={precioNivelSobrescrito(overrides, clave)}
         resaltado={claveConError === clave}
@@ -310,11 +314,11 @@ export function PestanaPrecios({
         etiqueta={etiqueta}
         ayuda={campo.tipo === 'mensualidad' && siVacio <= 0 && !sobrescrito ? `${ayuda} ${AYUDA_LIC_MENSUALIDAD_CERO}` : ayuda}
         valor={valorEfectivo({}, overrides, ruta)}
-        vacio={textoVacioLicenciatura(siVacio, campo.tipo, CONFIG.moneda)}
-        vacioError={textoVacioErrorLicenciatura(siVacio, campo.tipo, CONFIG.moneda)}
+        vacio={textoVacioLicenciatura(siVacio, campo.tipo, MONEDA)}
+        vacioError={textoVacioErrorLicenciatura(siVacio, campo.tipo, MONEDA)}
         min={catalogo?.min ?? LIMITES.precioMin}
         max={catalogo?.max ?? LIMITES.precioMax}
-        sufijo={<CobraLicenciatura valor={cobra} moneda={CONFIG.moneda} mensualidad={campo.tipo === 'mensualidad'} />}
+        sufijo={<CobraLicenciatura valor={cobra} moneda={MONEDA} mensualidad={campo.tipo === 'mensualidad'} />}
         deshabilitado={!puedeEditar}
         sobrescrito={sobrescrito}
         resaltado={claveConError === campo.clave}
@@ -333,7 +337,7 @@ export function PestanaPrecios({
     const tipoCambio = typeof valor === 'number' ? valor : 0
     // El ejemplo sale de `equivalenteMXN`, la MISMA función que pinta las
     // equivalencias que ve el alumno: con 0 devuelve null y no se muestra nada.
-    const ejemplo = equivalenteMXN(100, { moneda: CONFIG.moneda, tipoCambioMXN: tipoCambio })
+    const ejemplo = equivalenteMXN(100, { moneda: MONEDA, tipoCambioMXN: tipoCambio })
     return (
       <CampoDecimal
         clave={clave}
@@ -345,7 +349,7 @@ export function PestanaPrecios({
         sufijo={
           <p className="text-xs tabular-nums" style={{ color: TXT_SUAVE }}>
             {ejemplo
-              ? `Ejemplo: ${formatoDinero(100, CONFIG.moneda)} ${ejemplo}`
+              ? `Ejemplo: ${formatoDinero(100, MONEDA)} ${ejemplo}`
               : 'No se mostrará equivalencia en pesos.'}
           </p>
         }
@@ -442,7 +446,7 @@ export function PestanaPrecios({
                     // (`LIMITES.cuotaSemanalMin/Max`), los mismos que usa el validador.
                     min={semanal ? LIMITES.cuotaSemanalMin : LIMITES.precioMin}
                     max={semanal ? LIMITES.cuotaSemanalMax : LIMITES.precioMax}
-                    sufijo={<EnPesos valor={semanal ? cuotaDe(m) : m.mensualidad} moneda={CONFIG.moneda} />}
+                    sufijo={<EnPesos valor={semanal ? cuotaDe(m) : m.mensualidad} moneda={MONEDA} />}
                     deshabilitado={!puedeEditar}
                     resaltado={errorAqui}
                     // Sin botón propio (la caja ya tiene «Restaurar plan»), pero
@@ -569,7 +573,7 @@ export function PestanaPrecios({
           siempre (CLAVES_EDITABLES) y config.ts decía que el admin la cambia
           aquí, pero ninguna pestaña la pintaba: una escuela en USD no tenía
           forma de mantener al día sus equivalencias en pesos. */}
-      {CONFIG.moneda !== 'MXN' && (
+      {MONEDA !== 'MXN' && (
         <Tarjeta titulo="Tipo de cambio" icono={<ArrowLeftRight {...ICONO} aria-hidden="true" />}>
           {campoTipoCambio()}
         </Tarjeta>

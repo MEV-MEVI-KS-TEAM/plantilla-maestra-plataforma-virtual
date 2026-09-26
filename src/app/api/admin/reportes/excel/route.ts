@@ -9,6 +9,7 @@ import { etiquetaNivel } from '@/lib/niveles-ui'
 import { etiquetaDuracionModalidad } from '@/lib/modalidades'
 import { etiquetaConcepto, etiquetaVertical, totalesPorVertical } from '@/lib/pagos/conceptos'
 import { leerPagosConCurso } from '@/lib/pagos/con-curso'
+import { codigoMoneda } from '@/lib/moneda'
 
 /**
  * GET /api/admin/reportes/excel
@@ -93,7 +94,8 @@ export async function GET() {
     // Iban escritos "(MXN)" a mano en once sitios. En un cliente que cobra en
     // dólares, el contador abría el .xlsx y leía pesos: la columna decía una
     // moneda y los números eran de otra.
-    const M = cfg.moneda
+    // D15: el código (un config.ts con la moneda como objeto daba «Monto ([object Object])»).
+    const M = codigoMoneda(cfg.moneda)
     const COL_MONTO      = `Monto (${M})`
     const COL_PROGRAMA   = `Programa (${M})`
     const COL_DIPLOMADOS = `Diplomados (${M})`

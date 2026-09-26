@@ -17,6 +17,7 @@
  * con ella. Una escuela ya entregada la enciende agregando esa misma clave.
  */
 import { CONFIG } from '@/lib/config'
+import { codigoMoneda, type Moneda } from '@/lib/moneda'
 
 export type EstiloLandingResuelto = 'animada' | 'clasica'
 
@@ -41,7 +42,10 @@ export interface CobroEscuela {
  */
 export function animadaSabeCobrar(cobro: CobroEscuela): boolean {
   const semanal = cobro.periodicidad === 'semanal'
-  const otraMoneda = cobro.moneda !== undefined && cobro.moneda !== null && cobro.moneda !== 'MXN'
+  // D15: por el CÓDIGO: un objeto { codigo: 'MXN' } es pesos (antes, «otra moneda»).
+  // Lo que no se entiende ('US$', { simbolo }) sigue siendo OTRA moneda: la guarda
+  // falla cerrado (respaldo 'XXX', nunca 'MXN').
+  const otraMoneda = cobro.moneda !== undefined && cobro.moneda !== null && codigoMoneda(cobro.moneda, 'XXX' as Moneda) !== 'MXN'
   return !semanal && !otraMoneda
 }
 

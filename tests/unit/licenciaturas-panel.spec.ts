@@ -274,7 +274,7 @@ test('4b. el campo: vacío quita la clave; el marcador y la cifra salen del bloq
   expect(campo).toContain('resaltado={claveConError === campo.clave}')
   expect(campo).not.toMatch(/escribirRuta\(prev, ruta, (null|0)\)/)
   // Junto al campo nunca «$0»: «Sin costo» o «Sin precio».
-  expect(campo).toContain("sufijo={<CobraLicenciatura valor={cobra} moneda={CONFIG.moneda} mensualidad={campo.tipo === 'mensualidad'} />}")
+  expect(campo).toContain("sufijo={<CobraLicenciatura valor={cobra} moneda={MONEDA} mensualidad={campo.tipo === 'mensualidad'} />}")
   expect(codigo).toContain("{mensualidad ? 'Sin precio' : 'Sin costo'}")
   // Un plan sin `materiasPorMes` en su config no dice «undefined».
   expect(codigo).toContain("{typeof p.materiasPorMes === 'number' && ` · ${p.materiasPorMes} materias por mes`}")

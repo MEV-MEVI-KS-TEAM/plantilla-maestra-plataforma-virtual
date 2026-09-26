@@ -33,6 +33,7 @@
  * que no puede después de escribir media página.
  */
 import { CONFIG } from '@/lib/config'
+import { codigoMoneda } from '@/lib/moneda'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, Lock } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
@@ -551,7 +552,7 @@ export default function PersonalizarPage() {
         {...confirmacionDePrecios({
           semanal: esSemanal(),
           cambiaPrecios: hayCambiosDePreciosOPlanes(overridesBase, overrides),
-          cambiaTipoCambio: CONFIG.moneda !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
+          cambiaTipoCambio: codigoMoneda(CONFIG.moneda) !== 'MXN' && hayCambioDeTipoCambio(overridesBase, overrides),
           porNivel: preciosPorNivelVisibles(),
           // El MISMO estado que la nota de la pestaña Precios: en la clásica, o en
           // la animada sin ningún plan con mensualidad, el modal no promete la sección.

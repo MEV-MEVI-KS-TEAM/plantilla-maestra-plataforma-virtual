@@ -1,11 +1,11 @@
-import { formatearMoneda } from '@/lib/moneda'
+import { codigoMoneda, formatearMoneda } from '@/lib/moneda'
 import { existsSync } from 'fs'
 import path from 'path'
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig, type SiteConfig } from '@/lib/site-config'
 import { lineaContactoRecibo } from '@/lib/contacto-ui'
-import { etiquetaConcepto } from '@/lib/pagos/conceptos'
+import { conceptoDeRecibo } from '@/lib/pagos/conceptos'
 
 /**
  * Lo que el recibo toma de la config fusionada (defaults + overrides del
@@ -24,11 +24,21 @@ export interface ReciboData {
   referencia: string | null
   fechaPago: string // YYYY-MM-DD (fecha_pago) o ISO (fallback created_at)
   registradoPor: string
+  // D15 (#207-4): el curso del pago (sin él = programa) y la moneda REAL del
+  // pago (`pagos.moneda`); sin ella, la de la escuela.
+  cursoInscripcionId?: string | null
+  cursoNombre?: string | null
+  cursoTipo?: string | null
+  moneda?: unknown
 }
 
 
-const fmtMoneda = (n: number) =>
-  formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
+/**
+ * La moneda del recibo es la del PAGO (se congeló al registrarlo), no la de la
+ * escuela hoy: si la escuela cambia de moneda, un recibo viejo no se reescribe.
+ */
+const fmtMoneda = (n: number, moneda?: unknown) =>
+  formatearMoneda(n, { moneda: codigoMoneda(moneda, codigoMoneda(CONFIG.moneda)), tipoCambioMXN: 0 }, { decimales: 2, conCodigo: true })
 
 const fmtFecha = (fecha: string) => {
   // fecha_pago llega como YYYY-MM-DD (date puro): anclar a mediodía evita el
@@ -122,8 +132,13 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
         <View style={styles.row}>
           <Text style={styles.label}>Concepto</Text>
           <Text style={styles.value}>
-            {etiquetaConcepto(data.concepto)}
-            {data.mesDesbloqueado ? ` — Mes ${data.mesDesbloqueado}` : ''}
+            {conceptoDeRecibo({
+              concepto: data.concepto,
+              mes_desbloqueado: data.mesDesbloqueado,
+              curso_inscripcion_id: data.cursoInscripcionId ?? null,
+              curso_nombre: data.cursoNombre ?? null,
+              curso_tipo: data.cursoTipo ?? null,
+            })}
           </Text>
         </View>
         <View style={styles.row}>
@@ -143,7 +158,7 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
 
         <View style={styles.montoBox}>
           <Text style={styles.montoLbl}>MONTO PAGADO</Text>
-          <Text style={styles.monto}>{fmtMoneda(data.monto)}</Text>
+          <Text style={styles.monto}>{fmtMoneda(data.monto, data.moneda)}</Text>
         </View>
 
         <Text style={styles.footer}>

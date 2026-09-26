@@ -126,6 +126,38 @@ export function mesQueCubre(p: PagoConCurso): string {
   return p.curso_inscripcion_id ? `mes ${p.mes_desbloqueado} del curso` : String(p.mes_desbloqueado)
 }
 
+/**
+ * El concepto del RECIBO (D15, #207-4). Del programa, EXACTAMENTE el de antes
+ * («Mensualidad — Mes 2»). De un curso, con su nombre y lo que cubre:
+ * «Curso «EXANI-II» · pago único», «Curso «EXANI-II» · mensualidad, mes 2 del
+ * curso». Sin nombre legible, la vertical sola («Curso · inscripción»).
+ */
+export function conceptoDeRecibo(p: PagoConCurso & { concepto?: string | null }): string {
+  const concepto = p.concepto ?? 'mensualidad'
+  if (!p.curso_inscripcion_id) {
+    const e = etiquetaConcepto(concepto)
+    return p.mes_desbloqueado ? `${e} — Mes ${p.mes_desbloqueado}` : e
+  }
+  const detalle =
+    concepto === 'curso_mensualidad' ? (p.mes_desbloqueado ? `mensualidad, mes ${p.mes_desbloqueado} del curso` : 'mensualidad')
+    : concepto === 'curso_pago_unico' ? 'pago único'
+    : concepto === 'curso_inscripcion' ? 'inscripción'
+    : concepto === 'curso_otro' ? 'otro pago'
+    : etiquetaConcepto(concepto)
+  return `${aplicaA(p)} · ${detalle}`
+}
+
+/**
+ * Lo mismo, dentro de la frase del WhatsApp («tu recibo de …»). Del programa,
+ * la forma 'mensaje' de siempre; de un curso, con su nombre.
+ */
+export function conceptoMensajeRecibo(p: PagoConCurso & { concepto?: string | null }): string {
+  let base = etiquetaConcepto(p.concepto ?? 'mensualidad', 'mensaje')
+  // Un diplomado se dice «del diplomado», como en el PDF («Diplomado «X»»).
+  if (p.curso_inscripcion_id && p.curso_tipo === 'diplomado') base = base.replace(/\bcurso\b/, 'diplomado')
+  return p.curso_inscripcion_id && p.curso_nombre ? `${base} «${p.curso_nombre}»` : base
+}
+
 /** Los totales partidos por vertical (la ficha, /admin/pagos). */
 export function totalesPorVertical(pagos: ReadonlyArray<{ monto: number | string | null; curso_inscripcion_id?: string | null }>): {
   total: number; programa: number; cursos: number
