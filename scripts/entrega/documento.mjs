@@ -9,7 +9,7 @@
  * tiene contratado: el número de páginas cambia según haya licenciaturas, cursos
  * de ingreso o modo Solo-Cursos.
  */
-import { desglosesLicenciatura, porcentajeTitulacionTexto } from './licenciaturas.mjs'
+import { desglosesLicenciatura, porcentajeTitulacionTexto, planLicVendible } from './licenciaturas.mjs'
 
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
 
@@ -472,6 +472,9 @@ function licenciaturas(d) {
   // (inscripción + mensualidades + titulación). Vacío en cualquier otro caso,
   // y entonces la tabla de siempre sigue diciendo la verdad.
   const DESGLOSES = desglosesLicenciatura(L, L.carreras)
+  // «Planes configurados» con la misma regla de la página: sin los apagados ni
+  // los de mensualidad 0, que se anunciaban como un plan «Gratis/mes» (#194).
+  const PLANES = (L.modalidades || []).filter(planLicVendible)
 
   // Devuelve UNA o DOS páginas. `.page` recorta en silencio lo que no cabe en
   // once pulgadas, así que una sección que crece —rutas de titulación, marco
@@ -492,16 +495,18 @@ ${kv([
     // fila que diga "$0.00": se omite.
     L.inscripcion ? ['Inscripción', mxn(L.inscripcion)] : ['Inscripción', 'Sin inscripción adicional'],
     // La certificación suelta solo se anuncia si NO hay rutas: con varias,
-    // cada una tiene la suya y ponerla aquí arriba induce a error.
+    // cada una tiene la suya y ponerla aquí arriba induce a error. Sin decir
+    // CUÁNDO se paga: la plataforma no lo sabe, y hay escuelas que la cobran
+    // en parcialidades (#194).
     DESGLOSES.length
-      ? ['Titulación (se paga al concluir)', mxn(L.certificacion)]
+      ? ['Titulación', mxn(L.certificacion)]
       : (!RUTAS.length && L.certificacion) ? ['Certificación profesional', mxn(L.certificacion)] : null,
   ])}
 ${grupos.map(([rotulo, cs]) =>
     `<h3>${grupos.length > 1 ? rotulo : 'Catálogo'}</h3>${tabla(cs)}`).join('')}
 ${DESGLOSES.length ? planesConTitulacion(DESGLOSES) : ''}
-${!RUTAS.length && !DESGLOSES.length && L.modalidades.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
-      L.modalidades.map(m => [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
+${!RUTAS.length && !DESGLOSES.length && PLANES.length ? `<h3>Planes configurados</h3>${dt(['Plan', 'Duración', 'Mensualidad', 'Total del plan'],
+      PLANES.map(m => [m.label || m.id, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
         mxn((m.mensualidad || 0) * (m.meses || 0))]))}` : ''}
 ${L.carreras.some(c => c.desc) && !RUTAS.length ? descripciones(L) : ''}
 `,
@@ -549,7 +554,7 @@ function planesConTitulacion(planes) {
     ['Plan', 'Mensualidad', 'Inscripción', 'Colegiatura', 'Titulación', 'Costo total'],
     planes.map(p => [p.label, `${p.meses} × ${mxn(p.mensualidad)}`, mxn(p.inscripcion),
       mxn(p.colegiatura), mxn(p.titulacion), mxn(p.total)]))}
-<p class="small">La titulación se paga al concluir y es ${porcentajeTitulacionTexto(planes)}
+<p class="small">La titulación es ${porcentajeTitulacionTexto(planes)}
 del costo total. Por eso se publica con su precio y con este mismo desglose: que
 ningún prospecto la descubra al final.</p>`
 }

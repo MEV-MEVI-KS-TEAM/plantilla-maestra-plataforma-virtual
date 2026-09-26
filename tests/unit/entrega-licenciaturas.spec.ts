@@ -123,7 +123,9 @@ test('el documento publica el costo completo y la titulación con su nombre', ()
   expect(html).toContain('Planes y costo total')
   expect(html).toContain('$67,400')
   expect(html).toContain('$71,600')
-  expect(html).toContain('Titulación (se paga al concluir)')
+  // La fila se llama «Titulación», sin afirmar cuándo se paga (#194).
+  expect(html).toContain('<td>Titulación</td>')
+  expect(html).not.toContain('se paga al concluir')
   expect(html).toContain('entre el 56 y el 59 %')
   expect(html).toContain('https://uvep.online/#licenciaturas')
   // Lo que decía antes.

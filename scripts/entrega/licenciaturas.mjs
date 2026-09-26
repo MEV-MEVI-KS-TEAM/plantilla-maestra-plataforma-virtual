@@ -42,7 +42,32 @@ export function titulacionAparte(lic, carreras = lic?.carreras || []) {
 }
 
 /**
- * Cada plan activo con lo que paga el alumno de principio a fin:
+ * ¿Se vende este plan de licenciatura? La MISMA regla que la landing
+ * (`getDesglosesLicenciatura` en src/lib/licenciatura-utils.ts): activo, con
+ * meses y con mensualidad. Un plan con mensualidad 0 la página lo esconde, y el
+ * documento lo anunciaba como «6 × Gratis» (`mxn(0)` es «Gratis»): un plan gratis
+ * que nadie quiso vender (#194). Copiada, no importada —este archivo no importa
+ * nada—; `tests/unit/entrega-lic-vendible.spec.ts` prueba la paridad con la de
+ * la landing.
+ */
+export const planLicVendible = (m) =>
+  !!m && m.activa !== false && Number(m.meses) > 0 && Number(m.mensualidad) > 0
+
+/**
+ * Los planes activos y con meses que NO se venden por falta de mensualidad: el
+ * documento y la página los omiten, pero el registro los sigue ofreciendo
+ * (filtra solo `activa`). Para avisarlo en «REVISA ANTES DE ENVIAR».
+ *
+ * Sin los `*_dip`: son el plan de los diplomados del riel, y su precio vive en
+ * la carrera (`precio`), no en esta tabla. Avisar de ellos sería un falso
+ * positivo, y apagarlos le quitaría el plan al registro de los diplomados.
+ */
+export const planesLicSinMensualidad = (lic) =>
+  (lic?.modalidades || []).filter(m => m && m.activa !== false && !/_dip$/.test(String(m.id ?? ''))
+    && Number(m.meses) > 0 && !(Number(m.mensualidad) > 0))
+
+/**
+ * Cada plan que se vende con lo que paga el alumno de principio a fin:
  * inscripción + mensualidad × meses + titulación. `[]` si la titulación no se
  * cobra aparte: entonces la tabla de siempre sigue siendo correcta.
  */
@@ -51,7 +76,7 @@ export function desglosesLicenciatura(lic, carreras) {
   const inscripcion = Number(lic.inscripcion) || 0
   const titulacion = Number(lic.certificacion)
   return (lic.modalidades || [])
-    .filter(m => m && m.activa !== false && Number(m.meses) > 0)
+    .filter(planLicVendible)
     .map(m => {
       const meses = Number(m.meses)
       const mensualidad = Number(m.mensualidad) || 0

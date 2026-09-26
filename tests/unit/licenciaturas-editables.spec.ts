@@ -386,11 +386,14 @@ test('4d. la sección de licenciaturas recibe el desglose de la landing, no lo r
 
 test('5. la entrega aplica lo publicado con la MISMA regla y solo toca la tabla de licenciatura', () => {
   const gen = sinComentarios(leer('scripts/entrega/generar-entrega.mjs'))
-  expect(gen).toMatch(/const \{ licenciaturaEfectiva, bloqueLicEditable \} =\s*await import\(pathToFileURL\(path\.join\(RAIZ, 'src\/lib\/precios-licenciatura\.ts'\)\)\.href\)/)
+  // D6 (#194) suma `planLicEditable` para el aviso de REVISA; la regla sigue siendo la del módulo.
+  expect(gen).toMatch(/const \{ licenciaturaEfectiva, bloqueLicEditable(?:, planLicEditable)? \} =\s*await import\(pathToFileURL\(path\.join\(RAIZ, 'src\/lib\/precios-licenciatura\.ts'\)\)\.href\)/)
   expect(gen).toContain('const LIC = licenciaturaEfectiva(CONFIG.licenciaturas, PUBLICADO.licenciaturas)')
   // Toda lectura de la tabla pasa por LIC: `CONFIG.licenciaturas` solo para decidir si la escuela
-  // puede publicar, para definir LIC y para el aviso.
-  expect(gen.match(/CONFIG\.licenciaturas/g)).toHaveLength(3)
+  // puede publicar, para definir LIC, para el aviso y (D6, #194) para saber si el panel publica
+  // ESE plan sin mensualidad: la editabilidad se juzga sobre config.ts, igual que en el panel.
+  expect(gen.match(/CONFIG\.licenciaturas/g)).toHaveLength(4)
+  expect(gen).toContain('const deConfig = (CONFIG.licenciaturas?.modalidades || []).find((x) => x && x.id === m.id)')
   expect(gen).toContain('const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG.licenciaturas)')
   // Aborta solo si la escuela puede publicar licenciatura; si no, avisa y sigue.
   expect(gen).toContain('if (PUEDE_PUBLICAR_LIC) abortar(motivo, ayuda)')
