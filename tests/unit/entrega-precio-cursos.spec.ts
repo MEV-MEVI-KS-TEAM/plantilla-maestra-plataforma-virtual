@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { cursos, personalizar, paleta, mxn } from '../../scripts/entrega/documento.mjs'
 import {
   leerCursosPublicados, precioDeCurso, revisarCursos, filaResumenCursos, esColumnaFaltante, esTablaFaltante,
-  cursosParaDocumento,
+  cursosParaDocumento, registroPideIngreso,
 } from '../../scripts/entrega/cursos-entrega.mjs'
 import {
   precioCursoNumerico as reglaEntrega, TEXTO_SIN_PRECIO as sinPrecioEntrega, resolverPrecioOferta as anuncioEntrega,
@@ -91,7 +91,7 @@ test('1. la entrega y la página usan la MISMA regla, y Node la importa tal cual
   const salida = execFileSync(process.execPath, ['--input-type=module', '-e',
     `const m = await import(${JSON.stringify(url)}); console.log(Object.keys(m).sort().join(','))`],
   { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
-  expect(salida.trim()).toBe('cursosParaDocumento,esColumnaFaltante,esTablaFaltante,filaResumenCursos,leerCursosPublicados,precioDeCurso,revisarCursos')
+  expect(salida.trim()).toBe('cursosParaDocumento,esColumnaFaltante,esTablaFaltante,filaResumenCursos,leerCursosPublicados,precioDeCurso,registroPideIngreso,revisarCursos')
 })
 
 test('2. el precio que se pinta de cada curso: la regla de la página, en palabras', () => {
@@ -189,7 +189,7 @@ test('4. revisar los cursos: se aborta antes que negar lo vendido o contradecir 
   expect(resolverPrecioOferta({ cursoIds: ['Z'], precio: 2490, esPaquete: false }, new Map([['Z', { precio_inscripcion: 0, precio_mensualidad: 0 }]])))
     .toEqual({ tipo: 'unico', monto: 2490, fuente: 'config' })
   expect(cero.abortar?.msg).toMatch(/«Curso Z»: su ficha no tiene precio, pero el registro lo vende a \$2,490 de pago único/)
-  expect(cero.abortar?.msg).toMatch(/«Asignar» abriría solo el mes 1\. Pon \$2,490 de inscripción y 0 de mensualidad en Gestionar Cursos → el curso → Contenido → Precios y ritmo\./)
+  expect(cero.abortar?.msg).toMatch(/\/diplomados y este documento dirían «Pide informes», y «Asignar» abriría solo el mes 1\. Pon \$2,490 de inscripción y 0 de mensualidad en Gestionar Cursos → el curso → Contenido → Precios y ritmo\./)
   expect(cero.abortar?.msg).not.toMatch(/anuncian el de la ficha/)
 
   // Ficha con OTRO precio: el registro y el documento dicen el de la ficha → solo aviso, y es verdad.
@@ -206,14 +206,30 @@ test('4. revisar los cursos: se aborta antes que negar lo vendido o contradecir 
   expect(paq.abortar).toBeNull()
   expect(paq.avisos[0]).toMatch(/el registro lo vende en una sola oferta a \$4,990 de pago único/)
   expect(paq.avisos[0]).toMatch(/«Curso M» abre solo el mes 1/)
-  // …pero con una ficha en 0/0 aborta, como la oferta de un curso.
+  // Con una ficha en 0/0 dentro del paquete: el registro anuncia la OFERTA, no el
+  // curso suelto → aviso (no aborto) que dice qué sale «Pide informes».
   const paqCero = r({ lectura: lectura([U, Z]), ing: activos([{ slug: 'u', cursoIds: ['U'] }, { slug: 'z', cursoIds: ['Z'] }], { precioPaquete: 4990 }) })
-  expect(paqCero.abortar?.msg).toMatch(/el registro la vende a \$4,990 de pago único, pero «Curso Z» no tiene precio en su ficha/)
-  // Oferta de varios cursos SIN paquete: mismo trato (aviso; aborto si una ficha está en 0/0).
+  expect(paqCero.abortar).toBeNull()
+  expect(paqCero.avisos.join(' ')).toMatch(/una sola oferta a \$4,990 de pago único; este documento lista cada curso con el precio de su ficha, y «Curso Z» sale «Pide informes» en \/diplomados y aquí\. Al asignarlo, «Curso Z» abre solo el mes 1/)
+  // Oferta de varios cursos SIN paquete: mismo trato.
   const combo = r({ lectura: lectura([U, M]), ing: ing([{ id: 'c', nombre: 'Combo', precio: 3000, cursoIds: ['U', 'M'] }]) })
   expect(combo.abortar).toBeNull()
   expect(combo.avisos[0]).toMatch(/^«Combo»: el registro lo vende en una sola oferta a \$3,000 de pago único/)
-  expect(r({ lectura: lectura([U, Z]), ing: ing([{ id: 'c', nombre: 'Combo', precio: 3000, cursoIds: ['U', 'Z'] }]) }).abortar?.msg).toMatch(/«Combo»: el registro la vende a \$3,000/)
+  expect(r({ lectura: lectura([U, Z]), ing: ing([{ id: 'c', nombre: 'Combo', precio: 3000, cursoIds: ['U', 'Z'] }]) }).abortar).toBeNull()
+
+  // solo_cursos: los cursos SON el producto → sin poder leerlos, aborta; sin cursos, sale.
+  const solo = (lec: Parameters<typeof revisarCursos>[0]['lectura']) => r({ lectura: lec, ing: undefined, modo: 'solo_cursos', menu: 'Diplomados' })
+  expect(solo(null).abortar?.msg).toMatch(/^La escuela es solo_cursos y no hay inventario de cursos/)
+  expect(solo(lectura(null)).abortar?.msg).toMatch(/No se pudieron leer los cursos publicados: fetch failed/)
+  expect(solo(lectura([], { sinTabla: true })).abortar?.msg).toMatch(/^La escuela es solo_cursos y la base no tiene la tabla cursos/)
+  expect(solo(lectura([])).abortar).toBeNull()
+
+  // El camino «pide un curso de preparación y se le asigna»: el mismo criterio que /register.
+  expect(registroPideIngreso({ activa: true, cursos: [{ id: 'u', cursoIds: ['U'] }] }, 'tradicional')).toBe(true)
+  expect(registroPideIngreso({ activos: true, precioPaquete: 4990, cursos: [{ slug: 'u', cursoIds: ['U'] }] }, undefined)).toBe(true)
+  expect(registroPideIngreso({ activa: true, cursos: [{ id: 'u', cursoIds: ['U'] }] }, 'solo_cursos')).toBe(false)
+  expect(registroPideIngreso({ activos: true, precioPaquete: 4990, cursos: [{ slug: 'u' }] }, 'tradicional')).toBe(false)
+  expect(registroPideIngreso(undefined, 'tradicional')).toBe(false)
   // Un paquete sin cursoIds no se muestra en el registro: no se inventa un aviso de paquete.
   const sinIds = r({ lectura: lectura([U]), ing: ing([{ slug: 'u' }], { precioPaquete: 4990 }) })
   expect(sinIds.avisos.join(' ')).not.toMatch(/una sola oferta/)
@@ -243,7 +259,7 @@ test('6. los textos del módulo: cómo se abre un curso, el alumno que se regist
   expect(html).not.toContain('curso de preparación para examen')
   // Con el add-on, el otro camino del registro: lo pidió y se asigna en Alumnos.
   const conIngreso = texto(cursos({ ...BASE, vendeIngreso: true, cursosPublicados: 1, cursosLista: [{ nombre: 'EXANI-II', precio: '$2,490 de pago único' }] }))
-  expect(conIngreso).toContain('Si lo pidió como curso de preparación para examen, aparece en Alumnos con lo que solicitó: pulsa Asignar ahí')
+  expect(conIngreso).toContain('antes de asignar. Si lo pidió como curso de preparación para examen, aparece en Alumnos con lo que solicitó: pulsa Asignar ahí')
   expect(html).not.toContain('Apertura de contenido mes a mes, igual que en el programa')
   expect(texto(personalizar({ ...BASE, sinWhatsApp: false }))).toContain('el precio de cada curso se cambia en su ficha, en Gestionar Cursos')
   // solo_cursos: el menú del panel es «Diplomados».
@@ -263,7 +279,12 @@ test('7. el generador: usa el módulo de cursos, no se niega en silencio y repit
   // Una sola regla: el generador ya no la reescribe.
   expect(g).not.toMatch(/precioCursoNumerico|TEXTO_SIN_PRECIO|ing\.cursos/)
   expect(g).toContain('inv.cursosLectura = await leerCursosPublicados(sb)')
-  expect(g).toMatch(/const r = revisarCursos\(\{ lectura: INV\.cursosLectura \?\? null, ing: CONFIG\.cursosIngreso, mxn, menu: MENU_CURSOS \}\)\s*for \(const a of r\.avisos\) avisar\(a\)\s*if \(r\.abortar\) abortar\(r\.abortar\.msg, r\.abortar\.ayuda\)/)
+  // La revisión corre SIEMPRE (un bloque suelto, no dentro de un `if`).
+  expect(g).toMatch(/\n\{\n  const r = revisarCursos\(\{ lectura: INV\.cursosLectura \?\? null, ing: CONFIG\.cursosIngreso, mxn, menu: MENU_CURSOS, modo: CONFIG\.modo \}\)\s*for \(const a of r\.avisos\) avisar\(a\)\s*if \(r\.abortar\) abortar\(r\.abortar\.msg, r\.abortar\.ayuda\)\n\}/)
+  expect(g).toContain('const VENDE_INGRESO = registroPideIngreso(CONFIG.cursosIngreso, CONFIG.modo)')
+  // El número y la lista de cursos del documento salen de la MISMA lectura, con precio.
+  expect(g).toContain('cursosPublicados: CURSOS_PUBLICADOS.length,')
+  expect(g).toContain('cursosLista: CURSOS_PUBLICADOS.map(c => ({ ...c, precio: precioDeCurso(c) })),')
   expect(g).toContain("const MENU_CURSOS = CONFIG.modo === 'solo_cursos' ? 'Diplomados' : 'Gestionar Cursos'")
   expect(g).toContain('menuCursos: MENU_CURSOS,')
   expect(g).toContain('modalidadesFilas.push(filaResumenCursos(CURSOS_PUBLICADOS))')

@@ -7,11 +7,13 @@
  *   3. ¿El documento contradice lo que vende el registro? (revisarCursos, con
  *      normalizarOfertas y resolverPrecioOferta, los del registro)
  *
- * 🛑 UN DOCUMENTO OFICIAL QUE NIEGA LO VENDIDO ES PEOR QUE NO TENERLO. Si la
- * lectura falla (llave de otro proyecto, proyecto pausado, red caída), o si el
- * registro vende algo que el documento diría distinto, se aborta con el motivo:
- * antes, un error de lectura se trataba como «0 cursos» y el PDF salía con «Crea
- * tus propios cursos» a una escuela que acababa de comprar el add-on.
+ * 🛑 UN DOCUMENTO OFICIAL QUE NIEGA LO VENDIDO ES PEOR QUE NO TENERLO. Antes, un
+ * error de lectura (llave de otro proyecto, proyecto pausado, red caída) se
+ * trataba como «0 cursos» y el PDF salía con «Crea tus propios cursos» a una
+ * escuela que acababa de comprar el add-on. Ahora, en una escuela que VENDE
+ * cursos (add-on de cursos de ingreso, o modo solo_cursos), no poder leerlos
+ * aborta; en las demás se avisa fuerte. Y si el registro vende algo que el
+ * documento diría distinto, se aborta con el motivo.
  */
 import { precioCursoNumerico, resolverPrecioOferta, TEXTO_SIN_PRECIO } from '../../src/lib/cursos/precio-regla.ts'
 import { normalizarOfertas } from '../../src/lib/cursos/oferta-regla.ts'
@@ -57,6 +59,15 @@ export async function leerCursosPublicados(sb) {
 const preciosDe = (c) => ({ precio_inscripcion: c.inscripcion, precio_mensualidad: c.mensualidad })
 
 /**
+ * ¿El registro tiene el camino «pide un curso de preparación y el admin se lo
+ * asigna»? El mismo criterio que /register (fuera de solo_cursos, con ofertas
+ * normalizadas) y que la columna «Curso de ingreso» de /admin/alumnos.
+ */
+export function registroPideIngreso(ing, modo) {
+  return modo !== 'solo_cursos' && normalizarOfertas(ing).length > 0
+}
+
+/**
  * Los cursos que pinta el documento: los leídos, o ninguno si no hubo inventario
  * o no se pudieron leer (revisarCursos ya abortó o avisó en ese caso).
  */
@@ -97,25 +108,29 @@ function textoAnuncio(anuncio, mxn) {
  * @param ing     CONFIG.cursosIngreso tal cual
  * @param menu    el nombre del menú de cursos del panel ('Gestionar Cursos' o, en
  *   solo_cursos, 'Diplomados')
+ * @param modo    CONFIG.modo: en solo_cursos los cursos SON el producto
  */
-export function revisarCursos({ lectura, ing, mxn, menu = 'Gestionar Cursos' }) {
+export function revisarCursos({ lectura, ing, mxn, menu = 'Gestionar Cursos', modo = '' }) {
   const avisos = []
   const errores = []
   const addon = Boolean(ing && (ing.activa ?? ing.activos))
+  // Una escuela que vende cursos: no se entrega sin poder leerlos.
+  const vendeCursos = addon || modo === 'solo_cursos'
+  const queVende = addon ? 'CONFIG.cursosIngreso está encendido' : 'La escuela es solo_cursos'
   const fichaPrecio = `${menu} → el curso → Contenido → Precios y ritmo`
   const salir = (msg, ayuda) => ({ abortar: { msg, ayuda }, avisos })
 
   if (lectura === null) {
-    if (addon) {
-      return salir('CONFIG.cursosIngreso está encendido y no hay inventario de cursos (falta .env.local o sus llaves).',
-        'El documento diría «Crea tus propios cursos» a una escuela que compró el add-on.\nPon NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env.local y vuelve a correr.')
+    if (vendeCursos) {
+      return salir(`${queVende} y no hay inventario de cursos (falta .env.local o sus llaves).`,
+        'El documento diría «Crea tus propios cursos» a una escuela que vende cursos.\nPon NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env.local y vuelve a correr.')
     }
     return { abortar: null, avisos }
   }
   if (lectura.lista === null) {
-    // Con el add-on, el documento negaría lo vendido: se aborta. Sin él, el
-    // módulo se describe sin inventario, como sin .env.local, y se avisa fuerte.
-    if (addon) {
+    // En una escuela que vende cursos, el documento negaría lo vendido: se
+    // aborta. En las demás, el módulo se describe vacío y se avisa fuerte.
+    if (vendeCursos) {
       return salir(`No se pudieron leer los cursos publicados: ${lectura.error}.`,
         'El documento diría que no hay cursos, o los pintaría sin precio. Revisa que el proyecto de Supabase no esté pausado y que la\nSUPABASE_SERVICE_ROLE_KEY de .env.local sea de ESE proyecto; luego vuelve a correr.')
     }
@@ -123,8 +138,8 @@ export function revisarCursos({ lectura, ing, mxn, menu = 'Gestionar Cursos' }) 
     return { abortar: null, avisos }
   }
   if (lectura.sinTabla) {
-    if (addon) {
-      return salir('CONFIG.cursosIngreso está encendido y la base no tiene la tabla cursos.',
+    if (vendeCursos) {
+      return salir(`${queVende} y la base no tiene la tabla cursos.`,
         'Falta el módulo de Cursos y Diplomados (scripts/migracion-cursos-diplomados.sql) y sus cursos: el documento negaría lo vendido.')
     }
     return { abortar: null, avisos }
@@ -167,16 +182,13 @@ export function revisarCursos({ lectura, ing, mxn, menu = 'Gestionar Cursos' }) 
     // Paquete u oferta de varios cursos: el registro vende UNA cifra (config.ts);
     // la ficha de cada curso decide qué abre «Asignar».
     if (o.esPaquete || o.cursoIds.length > 1) {
-      // Con una ficha en 0/0, /diplomados y este documento dirían «Pide informes»
-      // de un curso que el registro ya vende dentro de la oferta: mismo criterio
-      // que la oferta de un curso.
+      // El registro anuncia la OFERTA (una cifra), no cada curso: una ficha en
+      // 0/0 no contradice ese anuncio, pero /diplomados la muestra «Pide informes»
+      // y «Asignar» le abre solo el mes 1. Se avisa, con qué hacer.
       const sinPrecio = cursos.filter(c => precioCursoNumerico(preciosDe(c)).tipo === 'informes').map(c => `«${c.nombre}»`)
-      if (anuncio.tipo !== 'informes' && sinPrecio.length) {
-        errores.push(`«${o.nombre}»: el registro la vende a ${textoAnuncio(anuncio, mxn)}, pero ${sinPrecio.join(', ')} no ${sinPrecio.length === 1 ? 'tiene' : 'tienen'} precio en su ficha: /diplomados y este documento dirían «${TEXTO_SIN_PRECIO}», y «Asignar» abriría solo el mes 1. Pon su precio en ${fichaPrecio}.`)
-        continue
-      }
       const mes1 = cursos.filter(c => precioCursoNumerico(preciosDe(c)).tipo !== 'unico').map(c => `«${c.nombre}»`)
-      avisos.push(`«${o.nombre}»: el registro lo vende en una sola oferta a ${textoAnuncio(anuncio, mxn)}; este documento lista cada curso con el precio de su ficha. ${
+      avisos.push(`«${o.nombre}»: el registro lo vende en una sola oferta a ${textoAnuncio(anuncio, mxn)}; este documento lista cada curso con el precio de su ficha${
+        sinPrecio.length ? `, y ${sinPrecio.join(', ')} ${sinPrecio.length === 1 ? 'sale' : 'salen'} «${TEXTO_SIN_PRECIO}» en /diplomados y aquí` : ''}. ${
         mes1.length
           ? `Al asignarlo, ${mes1.join(', ')} ${mes1.length === 1 ? 'abre' : 'abren'} solo el mes 1 (su ficha es mensual o no tiene precio): si cobraste la oferta completa, usa «Abrir todo» en su fila.`
           : 'Al asignarlo, cada curso se abre completo (su ficha es de pago único).'}`)

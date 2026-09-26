@@ -96,7 +96,7 @@ const { licenciaturaEfectiva, bloqueLicEditable } =
 // oferta-regla.ts, sin imports). Se importa aquí, después de revisar la versión
 // de Node, porque arrastra .ts. Antes el PDF decía «Lo defines tú» donde la
 // página ya decía «Pide informes».
-const { leerCursosPublicados, precioDeCurso: precioDeCursoCon, revisarCursos, filaResumenCursos, cursosParaDocumento } =
+const { leerCursosPublicados, precioDeCurso: precioDeCursoCon, revisarCursos, filaResumenCursos, cursosParaDocumento, registroPideIngreso } =
   await import('./cursos-entrega.mjs')
 
 
@@ -359,14 +359,16 @@ const INV = await inventario()
 const MENU_CURSOS = CONFIG.modo === 'solo_cursos' ? 'Diplomados' : 'Gestionar Cursos'
 
 /**
- * El add-on de Cursos de Ingreso (CONFIG.cursosIngreso) no se niega en silencio,
- * y el documento no contradice al registro: revisarCursos (cursos-entrega.mjs)
- * aborta si no se pudieron leer los cursos, si el add-on está encendido y no hay
- * cursos publicados, o si el registro vende una oferta que este documento
- * pintaría distinta (ficha en 0/0 con precio en config.ts, curso sin publicar).
+ * Los cursos vendidos no se niegan en silencio, y el documento no contradice al
+ * registro: revisarCursos (cursos-entrega.mjs) aborta si una escuela que vende
+ * cursos (add-on de cursos de ingreso, o solo_cursos) no los pudo leer, si el
+ * add-on está encendido y no hay cursos publicados, o si el registro vende una
+ * oferta de un curso que este documento pintaría distinta (ficha en 0/0 con
+ * precio en config.ts, curso sin publicar). En las demás escuelas, una lectura
+ * fallida se avisa en «REVISA ANTES DE ENVIAR».
  */
 {
-  const r = revisarCursos({ lectura: INV.cursosLectura ?? null, ing: CONFIG.cursosIngreso, mxn, menu: MENU_CURSOS })
+  const r = revisarCursos({ lectura: INV.cursosLectura ?? null, ing: CONFIG.cursosIngreso, mxn, menu: MENU_CURSOS, modo: CONFIG.modo })
   for (const a of r.avisos) avisar(a)
   if (r.abortar) abortar(r.abortar.msg, r.abortar.ayuda)
 }
@@ -378,8 +380,8 @@ const MENU_CURSOS = CONFIG.modo === 'solo_cursos' ? 'Diplomados' : 'Gestionar Cu
  * precio en vez de invitarle a crear su primer curso.
  */
 const CURSOS_PUBLICADOS = cursosParaDocumento(INV.cursosLectura)
-/** ¿La escuela vende cursos de ingreso? Su registro tiene otro camino (lo pide y se asigna). */
-const VENDE_INGRESO = Boolean(CONFIG.cursosIngreso && (CONFIG.cursosIngreso.activa ?? CONFIG.cursosIngreso.activos))
+/** ¿El registro tiene el camino «pide un curso de preparación y se le asigna»? */
+const VENDE_INGRESO = registroPideIngreso(CONFIG.cursosIngreso, CONFIG.modo)
 const precioDeCurso = (c) => precioDeCursoCon(c, mxn)
 
 /* ── 4. Modalidades y precios, adaptados a lo CONTRATADO ─────────────────── */
@@ -747,7 +749,7 @@ const datos = {
   anclaProgramas,
   etiquetaProgramas: ETIQUETA_PROGRAMAS,
   incluirCursos: true,
-  cursosPublicados: INV.cursos || 0,
+  cursosPublicados: CURSOS_PUBLICADOS.length,
   cursosLista: CURSOS_PUBLICADOS.map(c => ({ ...c, precio: precioDeCurso(c) })),
   menuCursos: MENU_CURSOS,
   vendeIngreso: VENDE_INGRESO,
