@@ -3,7 +3,7 @@
 import { CONFIG } from '@/lib/config'
 import { codigoMoneda, formatearMoneda } from '@/lib/moneda'
 import { aplicaA, etiquetaConcepto, mesQueCubre } from '@/lib/pagos/conceptos'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, FileDown, StickyNote, Save, LockOpen, Undo2, CheckCircle2, CreditCard, DollarSign, Plus, Trash2, ChevronDown, ChevronRight, Pencil } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
@@ -19,6 +19,7 @@ import { getOpcionesNivelAdmin } from '@/lib/niveles'
 import { CursosDelAlumno } from '@/components/admin/alumnos/CursosDelAlumno'
 import { CobrarCursoModal } from '@/components/admin/alumnos/CobrarCursoModal'
 import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
+import { nuevoIdOperacion, textoUltimoMes, type EventoMes } from '@/lib/meses-programa'
 
 interface AlumnoDetalle {
   id: string
@@ -49,6 +50,8 @@ interface AlumnoDetalle {
     fecha_intento: string
     evaluaciones: { id: string; titulo: string; materias: { nombre: string } | null } | null
   }[]
+  /** D20a: el último abrir/cerrar mes del programa (bitácora); null sin la migración. */
+  ultimo_mes_evento?: EventoMes | null
 }
 
 interface PagoAlumno {
@@ -203,6 +206,12 @@ export default function AlumnoDetallePage() {
   const [cerrandoMes, setCerrandoMes] = useState(false)
   const [cerrarMesError, setCerrarMesError] = useState<string | null>(null)
   const [desbloquearError, setDesbloquearError] = useState<string | null>(null)
+  // D20a: un id por apertura del modal de abrir/quitar mes. El doble clic (o un
+  // reintento) repite el MISMO id y el servidor no mueve otro mes.
+  const [opMes, setOpMes] = useState<string>(() => nuevoIdOperacion())
+  // Guarda síncrona: el `disabled` llega un render tarde y un doble clic rápido
+  // alcanzaba a mandar dos peticiones.
+  const moviendoMes = useRef(false)
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetSuccess, setResetSuccess] = useState<string | null>(null)
   const [resetPass, setResetPass] = useState({ password: '', confirm: '' })
@@ -369,51 +378,73 @@ export default function AlumnoDetallePage() {
   }
 
   async function handleDesbloquear() {
+    if (!alumno || moviendoMes.current) return
+    moviendoMes.current = true
     setDesbloquearError(null)
     setSubmitting(true)
     try {
       const res = await fetch(`/api/admin/alumnos/${id}/desbloquear-mes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        // D20a: lo que se vio y el id de ESTA operación.
+        body: JSON.stringify({ antes: alumno.meses_desbloqueados, operacion_id: opMes }),
       })
       const data = await res.json()
-      if (!res.ok) { setDesbloquearError(data.error ?? 'Error al desbloquear mes'); return }
+      if (!res.ok) {
+        setDesbloquearError(data.error ?? 'Error al desbloquear mes')
+        // Otro usuario (u otra pestaña) lo movió: se relee para que el modal diga el mes real.
+        if (res.status === 409) await cargar()
+        return
+      }
       setModalPago(false)
       await cargar()
-      if (alumno) {
-        const mesDesbloqueado = alumno.meses_desbloqueados + 1
-        showToast(`🔓 Mes ${mesDesbloqueado} desbloqueado para ${alumno.usuario.nombre_completo}`, 'success')
-      }
+      const mes = typeof data.meses_desbloqueados === 'number' ? data.meses_desbloqueados : alumno.meses_desbloqueados + 1
+      showToast(
+        data.repetido
+          ? `El mes ${mes} ya estaba abierto para ${alumno.usuario.nombre_completo}: no se abrió otro`
+          : `🔓 Mes ${mes} desbloqueado para ${alumno.usuario.nombre_completo}`,
+        'success',
+      )
     } catch {
       setDesbloquearError('Error inesperado. Intenta de nuevo.')
     } finally {
+      moviendoMes.current = false
       setSubmitting(false)
     }
   }
 
   async function handleCerrarMes() {
+    if (!alumno || moviendoMes.current) return
+    moviendoMes.current = true
     setCerrarMesError(null)
     setCerrandoMes(true)
     try {
       const res = await fetch(`/api/admin/alumnos/${id}/cerrar-mes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        // D20a: lo que se vio y el id de ESTA operación.
+        body: JSON.stringify({ antes: alumno.meses_desbloqueados, operacion_id: opMes }),
       })
       const data = await res.json()
-      if (!res.ok) { setCerrarMesError(data.error ?? 'Error al quitar el mes'); return }
+      if (!res.ok) {
+        setCerrarMesError(data.error ?? 'Error al quitar el mes')
+        if (res.status === 409) await cargar()
+        return
+      }
       setModalCerrarMes(false)
       const { mes_quitado, materias_del_mes } = data
       const nombres = (materias_del_mes as string[] | undefined)?.join(', ') ?? ''
       await cargar()
       showToast(
-        `Mes ${mes_quitado} quitado${nombres ? ` (${nombres})` : ''} — el avance del alumno se conserva`,
+        data.repetido
+          ? `El mes ${mes_quitado} ya se había quitado: no se quitó otro`
+          : `Mes ${mes_quitado} quitado${nombres ? ` (${nombres})` : ''} — el avance del alumno se conserva`,
         'success'
       )
     } catch {
       setCerrarMesError('Error inesperado. Intenta de nuevo.')
     } finally {
+      moviendoMes.current = false
       setCerrandoMes(false)
     }
   }
@@ -837,6 +868,12 @@ export default function AlumnoDetallePage() {
             <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>
               {alumno.meses_desbloqueados} de {alumno.plan.duracion_meses} meses desbloqueados
             </p>
+            {/* D20a: quién movió el último mes, y cuándo (bitácora). */}
+            {alumno.ultimo_mes_evento && (
+              <p className="text-xs mt-0.5" style={{ color: '#64748B' }} data-testid="ultimo-mes-evento">
+                {textoUltimoMes(alumno.ultimo_mes_evento)}
+              </p>
+            )}
           </div>
           {/* D7b (decisión 6): abrir el mes siguiente también lo hace el secretario. */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -850,7 +887,7 @@ export default function AlumnoDetallePage() {
               </div>
             ) : (
               <button
-                onClick={() => { setModalPago(true); setDesbloquearError(null) }}
+                onClick={() => { setOpMes(nuevoIdOperacion()); setModalPago(true); setDesbloquearError(null) }}
                 className="flex items-center gap-2 px-6 py-3 rounded-xl text-base font-bold transition-all shadow-lg"
                 style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)', boxShadow: '0 4px 20px rgba(21,101,192,0.4)' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-acento)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
@@ -888,7 +925,7 @@ export default function AlumnoDetallePage() {
         {alumno.meses_desbloqueados > 0 && (
           <div className="flex justify-end pt-3" style={{ borderTop: '1px solid #2A2F3E' }}>
             <button
-              onClick={() => { setModalCerrarMes(true); setCerrarMesError(null) }}
+              onClick={() => { setOpMes(nuevoIdOperacion()); setModalCerrarMes(true); setCerrarMesError(null) }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
               style={{ background: 'rgba(255,255,255,0.04)', color: '#94A3B8', border: '1px solid #2A2F3E' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
@@ -1368,6 +1405,7 @@ export default function AlumnoDetallePage() {
               </h3>
               <button
                 onClick={() => { setModalCerrarMes(false); setCerrarMesError(null) }}
+                disabled={cerrandoMes}
                 className="p-1.5 rounded-lg"
                 style={{ color: '#94A3B8' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
@@ -1404,6 +1442,7 @@ export default function AlumnoDetallePage() {
               <button
                 type="button"
                 onClick={() => { setModalCerrarMes(false); setCerrarMesError(null) }}
+                disabled={cerrandoMes}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium"
                 style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}
               >
@@ -2105,6 +2144,7 @@ export default function AlumnoDetallePage() {
               <h3 className="text-lg font-bold text-gray-100">Confirmar desbloqueo</h3>
               <button
                 onClick={() => { setModalPago(false); setDesbloquearError(null) }}
+                disabled={submitting}
                 className="p-1.5 rounded-lg"
                 style={{ color: '#94A3B8' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
@@ -2140,6 +2180,7 @@ export default function AlumnoDetallePage() {
               <button
                 type="button"
                 onClick={() => { setModalPago(false); setDesbloquearError(null) }}
+                disabled={submitting}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium"
                 style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}
               >

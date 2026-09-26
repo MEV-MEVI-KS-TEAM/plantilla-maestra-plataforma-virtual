@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { getMateriasPorMesByModalidad, getMateriasPorMesLicenciatura } from '@/lib/modalidades'
 import { rangoMateriasDelMes } from '@/lib/acceso-materias'
+import {
+  AVISO_CAMBIO_EN_MEDIO, errorRpcMes, leerCuerpoMes, sinRpcMes, type FilaMoverMes,
+} from '@/lib/meses-programa'
 
 /**
  * Quita el último mes desbloqueado del alumno.
@@ -24,9 +28,14 @@ import { rangoMateriasDelMes } from '@/lib/acceso-materias'
  * REGLA: ninguna acción de admin borra avance del alumno. Si algún día hace
  * falta un "reiniciar avance", va como acción aparte, con respaldo previo,
  * confirmación explícita y jamás sobre filas con `acreditado = true`.
+ *
+ * D20a: la única escritura va por public.alumno_mover_mes() (solo el servidor,
+ * con quien cierra como actor): candado de fila, idempotente por
+ * `operacion_id`, 409 (PT409) si el alumno cambió en medio y el evento en la
+ * bitácora (alumno_mes_eventos).
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -38,6 +47,9 @@ export async function POST(
     // ── Staff: admin o secretario, igual que desbloquear-mes (D7b, decisión 6) ─
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+
+    // D20a: lo que la ficha vio y el id de la operación (uno por apertura del modal).
+    const cuerpo = leerCuerpoMes(await request.json().catch(() => null))
 
     // ── Admin client con service role (bypassa RLS) ───────────────────────────
     const admin = createAdminClient()
@@ -64,14 +76,18 @@ export async function POST(
       meses_desbloqueados: number
     }
 
-    if (alumno.meses_desbloqueados <= 0) {
+    const actual = alumno.meses_desbloqueados ?? 0
+    const antes = cuerpo.antes ?? actual
+
+    if (actual <= 0 && cuerpo.operacionId === null) {
       return NextResponse.json(
         { error: 'No hay meses que quitar' },
         { status: 400 }
       )
     }
 
-    const mesAQuitar = alumno.meses_desbloqueados
+    // El mes que la ficha pidió quitar (el último que vio abierto).
+    const mesAQuitar = antes
 
     // ── Materias del mes: SOLO para nombrarlas en la respuesta ────────────────
     // Best-effort. Antes este bloque decidía QUÉ SE BORRABA y un rango vacío
@@ -104,26 +120,78 @@ export async function POST(
       materiasDelMes = []
     }
 
-    // ── Única escritura: bajar el contador de meses pagados ───────────────────
-    const nuevoMes = alumno.meses_desbloqueados - 1
+    // ── Única escritura: bajar el contador de meses pagados (D20a) ────────────
+    const { data, error: rpcError } = await admin.rpc('alumno_mover_mes', {
+      p_alumno_id:    alumnoId,
+      p_accion:       'cerrar',
+      p_antes:        antes,
+      p_tope:         null,
+      p_operacion_id: cuerpo.operacionId ?? randomUUID(),
+      p_actor:        user.id,
+    })
 
-    const { error: updateErr } = await admin
-      .from('alumnos')
-      .update({ meses_desbloqueados: nuevoMes })
-      .eq('id', alumnoId)
+    if (rpcError && sinRpcMes(rpcError)) {
+      // Base sin la migración D20a: se cierra como antes, pero SOLO si el
+      // alumno sigue con lo que la ficha vio (un doble clic no quita dos meses).
+      if (actual <= 0) {
+        return NextResponse.json({ error: 'No hay meses que quitar' }, { status: 400 })
+      }
+      if (antes !== actual) {
+        return NextResponse.json({ error: AVISO_CAMBIO_EN_MEDIO }, { status: 409 })
+      }
+      console.warn('[POST cerrar-mes] sin la migración D20a (alumno_mover_mes): se cierra sin bitácora')
+      const nuevoMes = antes - 1
+      const { data: filas, error: updateErr } = await admin
+        .from('alumnos')
+        .update({ meses_desbloqueados: nuevoMes })
+        .eq('id', alumnoId)
+        .eq('meses_desbloqueados', antes)
+        .select('id')
 
-    if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 })
+      if (updateErr) {
+        return NextResponse.json({ error: updateErr.message }, { status: 500 })
+      }
+      if (!filas || filas.length === 0) {
+        return NextResponse.json({ error: AVISO_CAMBIO_EN_MEDIO }, { status: 409 })
+      }
+
+      return NextResponse.json({
+        success:                    true,
+        mes_quitado:                mesAQuitar,
+        mes_cerrado:                mesAQuitar, // compat con clientes viejos
+        materias_del_mes:           materiasDelMes,
+        materias_cerradas:          materiasDelMes, // compat
+        avance_conservado:          true,
+        meses_desbloqueados_actual: nuevoMes,
+        repetido:                   false,
+        bitacora:                   false,
+      })
     }
+
+    if (rpcError) {
+      const { status, mensaje } = errorRpcMes(rpcError)
+      if (status === 500) console.error('[POST cerrar-mes] alumno_mover_mes:', rpcError.code, rpcError.message)
+      return NextResponse.json({ error: mensaje }, { status })
+    }
+
+    const fila = (Array.isArray(data) ? data[0] : data) as FilaMoverMes | null
+    if (!fila) return NextResponse.json({ error: 'No se pudo quitar el mes. Intenta de nuevo.' }, { status: 500 })
 
     return NextResponse.json({
       success:                    true,
-      mes_quitado:                mesAQuitar,
-      mes_cerrado:                mesAQuitar, // compat con clientes viejos
+      mes_quitado:                fila.mes_movido,
+      mes_cerrado:                fila.mes_movido, // compat con clientes viejos
       materias_del_mes:           materiasDelMes,
       materias_cerradas:          materiasDelMes, // compat
       avance_conservado:          true,
-      meses_desbloqueados_actual: nuevoMes,
+      meses_desbloqueados_actual: fila.meses_ahora,
+      // Doble clic (o reintento): ya se había quitado y no se quitó otro.
+      repetido:                   fila.repetido,
+      bitacora:                   true,
+      evento: {
+        accion: 'cerrar', mes: fila.mes_movido, antes: fila.meses_antes, despues: fila.meses_ahora,
+        actor_nombre: fila.quien, actor_rol: fila.quien_rol, created_at: fila.cuando,
+      },
     })
   } catch (err) {
     console.error('[POST /api/admin/alumnos/[id]/cerrar-mes]', err)

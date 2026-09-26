@@ -420,3 +420,64 @@ SELECT
     ELSE '✅ OK (una sola versión, admin y secretario, con candado, anon sin EXECUTE)'
   END AS resultado
 FROM d16;
+
+-- ─── CHECK 19: abrir y cerrar mes del programa con bitácora (D20a) ─────────────
+-- Aplica a TODA escuela (no solo a la línea de cursos). Sin la migración,
+-- «Abrir Mes N» y «Quitar último mes» siguen funcionando, pero sin bitácora ni
+-- «Último: …» en la ficha, y el doble clic solo lo frena el UPDATE condicionado.
+WITH d20a AS (
+  SELECT
+    to_regclass('public.alumno_mes_eventos') IS NOT NULL AS tabla,
+    to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL AS instalada,
+    CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), 'FOR UPDATE') > 0
+         ELSE false END AS candado,
+    -- 409 con PT409: un 40001 lo reintenta PostgREST sin fin (la petición se cuelga).
+    CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), 'ERRCODE = ''PT409''') > 0
+              AND strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), '''40001''') = 0
+         ELSE false END AS conflicto_409,
+    -- El actor se revalida adentro (admin o secretario de HOY).
+    CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), 'v_rol NOT IN (''admin'', ''secretario'')') > 0
+         ELSE false END AS guarda_actor,
+    -- Idempotencia: un evento por operacion_id.
+    EXISTS (SELECT 1 FROM pg_indexes
+             WHERE schemaname = 'public' AND tablename = 'alumno_mes_eventos'
+               AND indexname = 'alumno_mes_eventos_operacion_uidx'
+               AND indexdef ILIKE '%UNIQUE%') AS unico,
+    -- Solo el servidor la llama: ni anon ni authenticated (un tope inventado
+    -- por PostgREST abriría meses fuera del plan).
+    CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+         THEN has_function_privilege('anon', 'public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)', 'EXECUTE')
+         ELSE false END AS anon_ejecuta,
+    CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+         THEN has_function_privilege('authenticated', 'public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)', 'EXECUTE')
+         ELSE false END AS auth_ejecuta,
+    -- Nadie fabrica eventos por PostgREST.
+    CASE WHEN to_regclass('public.alumno_mes_eventos') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+         THEN has_table_privilege('authenticated', 'public.alumno_mes_eventos', 'INSERT')
+           OR has_table_privilege('authenticated', 'public.alumno_mes_eventos', 'UPDATE')
+           OR has_table_privilege('authenticated', 'public.alumno_mes_eventos', 'DELETE')
+         ELSE false END AS auth_escribe,
+    COALESCE((SELECT p.prosecdef FROM pg_proc p WHERE p.oid = to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), false) AS definer,
+    (SELECT count(*) FROM pg_proc WHERE proname = 'alumno_mover_mes') AS versiones
+)
+SELECT
+  'Meses del programa con bitácora (D20a)' AS check_name,
+  'tabla ' || tabla::text || ' / función ' || instalada::text || ' / candado ' || candado::text
+    || ' / guarda actor ' || guarda_actor::text || ' / 409 ' || conflicto_409::text || ' / único ' || unico::text
+    || ' / anon ejecuta ' || anon_ejecuta::text || ' / authenticated ejecuta ' || auth_ejecuta::text
+    || ' / authenticated escribe ' || auth_escribe::text || ' / definer ' || definer::text
+    || ' / versiones ' || versiones::text AS valor,
+  CASE
+    WHEN NOT tabla OR NOT instalada
+      THEN '❌ FALTA → correr supabase/migrations/20260928120000_d20a_bitacora_meses_programa.sql (sin ella abrir/cerrar mes no deja bitácora)'
+    WHEN NOT candado OR NOT guarda_actor OR NOT conflicto_409 OR NOT unico OR anon_ejecuta OR auth_ejecuta OR auth_escribe OR NOT definer OR versiones <> 1
+      THEN '❌ D20a ALTERADO (candado, guarda del actor, 409, índice único, permisos, definer o sobrecargas) → vuelve a correr supabase/migrations/20260928120000_d20a_bitacora_meses_programa.sql'
+    ELSE '✅ OK (un solo escritor, con candado e idempotente; solo el servidor lo llama)'
+  END AS resultado
+FROM d20a;

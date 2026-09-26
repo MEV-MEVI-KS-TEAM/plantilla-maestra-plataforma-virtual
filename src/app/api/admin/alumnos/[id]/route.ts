@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
+import { faltaBitacoraMes, type EventoMes } from '@/lib/meses-programa'
 import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
 import { getSiteConfig } from '@/lib/site-config'
 import { CONFIG } from '@/lib/config'
@@ -138,6 +139,21 @@ export async function GET(
       }
     }
 
+    // ── Paso 7 (D20a): el último movimiento de meses del programa ────────────
+    // La ficha lo pinta como «Último: abrió el mes 3 … · Nombre (Secretario)».
+    // Sin la migración D20a la tabla no existe: null y la ficha no lo pinta.
+    let ultimoMesEvento: EventoMes | null = null
+    if (!esDiplomado) {
+      const { data: ev, error: evError } = await admin
+        .from('alumno_mes_eventos')
+        .select('accion, mes, antes, despues, actor_nombre, actor_rol, created_at')
+        .eq('alumno_id', params.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (!evError) ultimoMesEvento = ((ev ?? [])[0] as EventoMes | undefined) ?? null
+      else if (!faltaBitacoraMes(evError)) console.error('[GET /api/admin/alumnos/[id]] bitácora de meses:', evError.message)
+    }
+
     // La inscripción que el modal «Confirmar pago» de la ficha le pregunta al
     // admin: la del PROGRAMA del alumno (#164), de la config PUBLICADA. Se
     // calcula aquí porque la ficha solo tiene el subconjunto público del
@@ -161,6 +177,7 @@ export async function GET(
       viewer_rol:          viewerRol,
       created_at:          a.created_at,
       plan_correccion:     planCorreccion,
+      ultimo_mes_evento:   ultimoMesEvento,
       // Objeto plan para compatibilidad con UI existente
       plan: {
         id:             a.id,
