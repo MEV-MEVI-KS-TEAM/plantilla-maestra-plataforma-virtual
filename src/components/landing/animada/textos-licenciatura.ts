@@ -234,3 +234,66 @@ export function resolverTextosLicenciaturas(
     ),
   }
 }
+
+// ─── Comodines DE SECCIÓN (#195) ─────────────────────────────────────────────
+
+/**
+ * Los comodines que SOLO valen en los textos de la sección de licenciaturas.
+ *
+ * En esta sección `{inscripcion}` es la inscripción GENERAL (la de Secundaria y
+ * Preparatoria): la escuela que escribía «Inscripción única de {inscripcion}» en
+ * un paso de licenciatura pintaba la cifra de Sec/Prepa (#195). Estos dos dan la
+ * de licenciatura y la titulación, con la tabla EFECTIVA (lo publicado en el
+ * panel encima de config.ts, vía el desglose).
+ *
+ * 🛑 No entran en `PLACEHOLDERS`: fuera de esta sección no significan nada y se
+ *    quedan literales, igual que cualquier `{x}` desconocido.
+ */
+export const COMODINES_LICENCIATURA = ['inscripcionLicenciatura', 'titulacion'] as const
+export type ComodinLicenciatura = (typeof COMODINES_LICENCIATURA)[number]
+
+/**
+ * Sus valores. `fmtInscripcion` es el formato que el sitio le da a su
+ * `{inscripcion}` (en la landing, «sin costo» cuando no se cobra); `fmtTitulacion`,
+ * el de las cifras de la propia sección (la tarjeta del costo dice «$0», y el
+ * comodín no puede anunciar una titulación gratis junto a ella). Sin planes no hay
+ * valores y el comodín se queda literal, igual que la sección, que no se pinta.
+ */
+export function varsLicenciatura(
+  planes: readonly Pick<DesgloseLicenciatura, 'inscripcion' | 'titulacion'>[],
+  fmtInscripcion: Dinero,
+  fmtTitulacion: Dinero = fmtInscripcion,
+): Partial<Record<ComodinLicenciatura, string>> {
+  const p = planes[0]
+  if (!p) return {}
+  return { inscripcionLicenciatura: fmtInscripcion(p.inscripcion), titulacion: fmtTitulacion(p.titulacion) }
+}
+
+/**
+ * ¿Algún texto propio de la sección usa `{inscripcion}`? Es casi siempre un
+ * error: ahí vale la de Secundaria/Preparatoria. El editor lo avisa.
+ */
+export function usaInscripcionGeneral(o: OverridesLicenciaturasLanding | null | undefined): boolean {
+  if (!o) return false
+  const textos: unknown[] = [
+    o.licenciaturas_kicker, o.licenciaturas_titulo, o.licenciaturas_subtitulo,
+    ...(Array.isArray(o.licenciaturas_pasos) ? o.licenciaturas_pasos.flatMap(p => [p?.titulo, p?.desc]) : []),
+    ...(Array.isArray(o.licenciaturas_carreras) ? o.licenciaturas_carreras.flatMap(c => [c?.nombre, c?.desc]) : []),
+  ]
+  return textos.some(t => typeof t === 'string' && t.includes('{inscripcion}'))
+}
+
+/**
+ * ¿Algún texto FUERA de la sección usa `{inscripcionLicenciatura}` o `{titulacion}`?
+ * Ahí no significan nada y saldrían literales en la página: el editor lo avisa.
+ * `landing` son los textos efectivos de la landing (clave → valor, sin el prefijo).
+ */
+export function usaComodinLicenciaturaFuera(landing: Record<string, unknown> | null | undefined): boolean {
+  if (!landing) return false
+  const re = new RegExp(`\\{(${COMODINES_LICENCIATURA.join('|')})\\}`)
+  const hay = (v: unknown): boolean =>
+    typeof v === 'string' ? re.test(v)
+      : Array.isArray(v) ? v.some(hay)
+        : v !== null && typeof v === 'object' ? Object.values(v).some(hay) : false
+  return Object.entries(landing).some(([k, v]) => !k.startsWith('licenciaturas_') && hay(v))
+}
