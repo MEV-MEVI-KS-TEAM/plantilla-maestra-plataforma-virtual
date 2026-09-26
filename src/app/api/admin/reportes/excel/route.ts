@@ -7,6 +7,7 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getSiteConfig } from '@/lib/site-config'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { etiquetaDuracionModalidad } from '@/lib/modalidades'
+import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 
 /**
  * GET /api/admin/reportes/excel
@@ -29,9 +30,6 @@ import { etiquetaDuracionModalidad } from '@/lib/modalidades'
  */
 export const dynamic = 'force-dynamic'
 
-const CONCEPTO_LABELS: Record<string, string> = {
-  inscripcion: 'Inscripción', mensualidad: 'Mensualidad', otro: 'Otro',
-}
 
 const nombreDe = (u?: { nombre?: string | null; apellidos?: string | null }) =>
   [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || 'Alumno'
@@ -102,7 +100,7 @@ export async function GET() {
       'Alumno':         nombreDe(uMap.get(p.alumno_id)),
       'Matrícula':      aMap.get(p.alumno_id)?.matricula ?? '',
       'Nivel':          etiquetaNivel(aMap.get(p.alumno_id)?.nivel),
-      'Concepto':       CONCEPTO_LABELS[p.concepto ?? ''] ?? p.concepto ?? '',
+      'Concepto':       etiquetaConcepto(p.concepto),
       'Mes que abrió':  p.mes_desbloqueado ?? '',
       [COL_MONTO]:      Number(p.monto ?? 0),
       'Método':         p.metodo_pago ?? '',

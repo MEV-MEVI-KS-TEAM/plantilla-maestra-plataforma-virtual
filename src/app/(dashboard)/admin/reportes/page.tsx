@@ -4,6 +4,7 @@ import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect } from 'react'
 import { Users, UserCheck, DollarSign, TrendingUp, BarChart3, Loader2, BookOpen, Award, GraduationCap, Download, AlertTriangle } from 'lucide-react'
+import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 
 interface Stats {
   total_alumnos: number
@@ -31,11 +32,6 @@ interface PagoReciente {
   fecha_pago: string
 }
 
-const CONCEPTO_LABELS: Record<string, string> = {
-  inscripcion: 'Inscripción',
-  mensualidad: 'Mensualidad',
-  otro:        'Otro',
-}
 
 interface IngresoSemana {
   semana_inicio: string // fecha del lunes (YYYY-MM-DD)
@@ -594,7 +590,7 @@ export default function ReportesPage() {
                       {new Date(`${p.fecha_pago}T12:00:00`).toLocaleDateString('es-MX')}
                     </td>
                     <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>{p.alumno}</td>
-                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.concepto ? (CONCEPTO_LABELS[p.concepto] ?? p.concepto) : '—'}</td>
+                    <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.concepto ? etiquetaConcepto(p.concepto) : '—'}</td>
                     <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmt(Number(p.monto))}</td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: '#64748B' }}>{p.referencia ?? '—'}</td>

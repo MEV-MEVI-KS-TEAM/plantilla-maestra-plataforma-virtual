@@ -1,7 +1,8 @@
 'use client'
 
 import { CONFIG } from '@/lib/config'
-import { formatearMoneda } from '@/lib/moneda'
+import { codigoMoneda, formatearMoneda } from '@/lib/moneda'
+import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, FileDown, StickyNote, Save, LockOpen, Undo2, CheckCircle2, CreditCard, DollarSign, Plus, Trash2, ChevronDown, ChevronRight, Pencil } from 'lucide-react'
@@ -58,11 +59,6 @@ interface PagoAlumno {
   created_at: string
 }
 
-const CONCEPTO_LABELS: Record<string, string> = {
-  inscripcion: 'Inscripción',
-  mensualidad: 'Mensualidad',
-  otro:        'Otro',
-}
 
 // Fecha local de hoy en formato YYYY-MM-DD (para el input date, sin corrimiento de TZ)
 function hoyISO(): string {
@@ -904,7 +900,7 @@ export default function AlumnoDetallePage() {
                       {fmtFechaPago(p.fecha_pago, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
                     <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>
-                      {CONCEPTO_LABELS[p.concepto] ?? p.concepto}
+                      {etiquetaConcepto(p.concepto)}
                     </td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
                       {p.mes_desbloqueado ?? '—'}
@@ -1656,8 +1652,17 @@ export default function AlumnoDetallePage() {
             >
               <p className="text-4xl mb-2">💳</p>
               <p className="text-sm font-medium text-gray-100">
-                ¿Confirmas que el alumno pagó su inscripción de{' '}
-                <span style={{ color: 'var(--color-acento)' }}>${alumno.monto_inscripcion}</span>?
+                {/* #203: con el formato de la moneda de la escuela («$1,800.00», «$79.00 USD»),
+                    no «$1800». Sin monto si es 0, o si es alumno de curso: la cifra de
+                    arriba es la inscripción de Secundaria/Preparatoria y su cobro es otro (#207). */}
+                {alumno.monto_inscripcion > 0 && alumno.nivel !== 'diplomado' ? (
+                  <>
+                    ¿Confirmas que el alumno pagó su inscripción de{' '}
+                    <span style={{ color: 'var(--color-acento)' }}>{fmtMoneda(alumno.monto_inscripcion)}</span>?
+                  </>
+                ) : (
+                  <>¿Confirmas que el alumno ya cubrió su inscripción?</>
+                )}
               </p>
               <p className="text-sm font-bold mt-0.5 text-gray-100">
                 {alumno.usuario.nombre_completo}
@@ -1773,7 +1778,7 @@ export default function AlumnoDetallePage() {
               <p className="text-sm leading-relaxed" style={{ color: '#FCA5A5' }}>
                 ¿Confirmas eliminar el pago de{' '}
                 <strong>{fmtMoneda(Number(pagoAEliminar.monto))}</strong>{' '}
-                ({CONCEPTO_LABELS[pagoAEliminar.concepto] ?? pagoAEliminar.concepto}) del{' '}
+                ({etiquetaConcepto(pagoAEliminar.concepto)}) del{' '}
                 <strong>{fmtFechaPago(pagoAEliminar.fecha_pago, { year: 'numeric', month: 'long', day: 'numeric' })}</strong>?
               </p>
               <p className="text-sm font-bold pt-1" style={{ color: '#EF4444' }}>
@@ -1842,7 +1847,7 @@ export default function AlumnoDetallePage() {
 
             <form onSubmit={handleRegistrarPago} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto ({CONFIG.moneda})</label>
+                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto ({codigoMoneda(CONFIG.moneda)})</label>
                 <input
                   type="number"
                   required
@@ -1881,9 +1886,9 @@ export default function AlumnoDetallePage() {
                     className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                     style={INPUT_STYLE}
                   >
-                    <option value="mensualidad">Mensualidad</option>
-                    <option value="inscripcion">Inscripción</option>
-                    <option value="otro">Otro</option>
+                    {(['mensualidad', 'inscripcion', 'otro'] as const).map(c => (
+                      <option key={c} value={c}>{etiquetaConcepto(c)}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">

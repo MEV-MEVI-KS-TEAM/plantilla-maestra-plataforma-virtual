@@ -33,9 +33,8 @@ export function errorDeRpcCurso(error: PostgrestError): { status: number; mensaj
   }
 }
 
-/** Conceptos de pago propios de la vertical de cursos. */
-export const CONCEPTOS_CURSO = ['curso_mensualidad', 'curso_inscripcion', 'curso_otro'] as const
-export type ConceptoCurso = (typeof CONCEPTOS_CURSO)[number]
+/** Conceptos de pago propios de la vertical de cursos: viven en src/lib/pagos/conceptos.ts (D4). */
+export { CONCEPTOS_CURSO, esConceptoCurso, type ConceptoCurso } from '@/lib/pagos/conceptos'
 
 /**
  * ⚠️ NO reutilizar 'mensualidad' para un pago de curso.
@@ -60,10 +59,6 @@ export type ConceptoCurso = (typeof CONCEPTOS_CURSO)[number]
  * regla — el conteo de meses de arriba se apoya en el concepto.
  */
 export const METODOS_PAGO = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'OTRO'] as const
-
-export function esConceptoCurso(v: unknown): v is ConceptoCurso {
-  return typeof v === 'string' && (CONCEPTOS_CURSO as readonly string[]).includes(v)
-}
 
 export function esMetodoPago(v: unknown): boolean {
   return typeof v === 'string' && (METODOS_PAGO as readonly string[]).includes(v.toUpperCase())
