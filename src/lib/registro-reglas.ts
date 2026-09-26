@@ -27,3 +27,18 @@ export function modalidadDeRegistro(
   const id = pedida.trim()
   return id || null
 }
+
+/**
+ * ¿El registro exige que el alumno diga a qué curso se inscribe (diplomado_id)?
+ *
+ * Solo cuando el nivel 'diplomado' lo ELIGIÓ él: la opción «Curso o diplomado»
+ * del modo tradicional, que convierte la modalidad en «¿Cuál?».
+ *
+ * En solo_cursos el nivel 'diplomado' lo pone el SERVIDOR a todos (B7) y el
+ * formulario no tiene selector de curso: el alumno se registra y el admin le
+ * asigna sus cursos. Exigirlo ahí dejaba a la escuela sin registro público —
+ * 400 después de crear la cuenta de Auth, que ya no podía reintentar (#213).
+ */
+export function exigeCursoEnRegistro(nivel: string | null, nivelForzado: string | null): boolean {
+  return !nivelForzado && nivel === 'diplomado'
+}
