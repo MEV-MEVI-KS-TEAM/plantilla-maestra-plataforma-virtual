@@ -45,13 +45,14 @@ export default function PagarPage() {
   }, [])
 
   const cfgPagos = CONFIG.pagos
-  // D19 (#207-8): quien se registró eligiendo un CURSO no tiene nivel (NULL): los
-  // enlaces son del PROGRAMA y le cobrarían la mensualidad de un nivel que no
-  // cursa. Su curso lo cobra la escuela (y lo ve en «Mis Diplomados»).
+  // D19 (#207-8): sin nivel (NULL: quien se registró eligiendo un CURSO, o una
+  // cuenta sin su fila de alumno) no hay programa: los enlaces son del PROGRAMA y
+  // le cobrarían la mensualidad de un nivel que no cursa.
   const sinPrograma = perfilLeido && nivel === null
-  // Mientras carga el perfil no se filtra por nivel: es preferible que el
-  // alumno vea de más un instante a que la pantalla parezca vacía.
-  const enlaces = sinPrograma ? [] : (cfgPagos?.enlaces ?? []).filter(e =>
+  // Mientras carga el perfil NO se muestran enlaces («Cargando…»): antes se
+  // mostraban todos un instante, también a quien no los debe ver. Si el perfil no
+  // se pudo leer, se muestran todos (como antes): la mayoría es de programa.
+  const enlaces = cargando || sinPrograma ? [] : (cfgPagos?.enlaces ?? []).filter(e =>
     e.niveles.length > 0 && (nivel === null ? true : e.niveles.includes(nivel)),
   )
 
@@ -79,8 +80,8 @@ export default function PagarPage() {
               ? 'Cargando tus opciones de pago…'
               : sinPrograma
                 ? (canal
-                  ? 'Los pagos de tu curso los registra tu escuela. Escríbenos y te decimos cómo pagar; lo que ya pagaste lo ves en tus cursos.'
-                  : 'Los pagos de tu curso los registra tu escuela. Pregunta en tu escuela cómo pagar; lo que ya pagaste lo ves en tus cursos.')
+                  ? 'Tu inscripción no tiene un programa escolar: estos enlaces no aplican. Escríbenos y te decimos cómo pagar; lo que ya pagaste a un curso lo ves en tus cursos.'
+                  : 'Tu inscripción no tiene un programa escolar: estos enlaces no aplican. Pregunta en tu escuela cómo pagar; lo que ya pagaste a un curso lo ves en tus cursos.')
               : canal
                 ? 'Todavía no hay enlaces de pago para tu programa. Escríbenos y te decimos cómo hacer tu pago.'
                 : 'Todavía no hay enlaces de pago para tu programa. Pregunta en tu escuela cómo hacer tu pago.'}

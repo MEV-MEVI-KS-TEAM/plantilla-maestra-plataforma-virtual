@@ -5,6 +5,7 @@ import { porcentajeProgreso } from '@/lib/cursos/progreso'
 import { leccionesDeCurso, completadasDe, portadaFirmada, totalLeccionesDelCurso } from '@/lib/cursos/alumno-data'
 import type { CursoCatalogoItem } from '@/types/cursos-alumno'
 import type { CursoTipo } from '@/types/cursos'
+import { pagosPorCurso as resumirPagos, type PagoCursoAlumno } from '@/lib/cursos/pagos-alumno'
 
 // ─── GET /api/alumno/cursos — catálogo del alumno (RLS: publicados + inscrito) ─
 export async function GET() {
@@ -40,20 +41,12 @@ export async function GET() {
       .select('curso_inscripcion_id, monto, fecha_pago, created_at')
       .eq('alumno_id', user.id)
       .not('curso_inscripcion_id', 'is', null)
-    const pagosPorCurso = new Map<string, { pagado: number; ultimo: { fecha: string; monto: number } | null }>()
-    if (!errPagos) {
-      for (const p of (pagosCurso ?? []) as Array<{ curso_inscripcion_id: string; monto: number | string; fecha_pago: string | null; created_at: string }>) {
-        const cursoId = cursoDeInscripcion.get(p.curso_inscripcion_id)
-        if (!cursoId) continue
-        const monto = Number(p.monto)
-        if (!Number.isFinite(monto)) continue
-        const fecha = (p.fecha_pago ?? p.created_at ?? '').slice(0, 10)
-        const acc = pagosPorCurso.get(cursoId) ?? { pagado: 0, ultimo: null }
-        acc.pagado += monto
-        if (!acc.ultimo || fecha > acc.ultimo.fecha) acc.ultimo = { fecha, monto }
-        pagosPorCurso.set(cursoId, acc)
-      }
-    }
+    // Sin la columna (42703, base sin B1) no hay pagos de curso; otro error se
+    // registra (el alumno se vería como si no hubiera pagado).
+    if (errPagos && errPagos.code !== '42703') console.error('[GET /api/alumno/cursos] pagos:', errPagos.message)
+    const pagosPorCurso = errPagos
+      ? new Map()
+      : resumirPagos(cursoDeInscripcion, (pagosCurso ?? []) as PagoCursoAlumno[])
 
     const items: CursoCatalogoItem[] = await Promise.all(
       (cursos ?? []).map(async curso => {
