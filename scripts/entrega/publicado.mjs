@@ -22,7 +22,13 @@
  *             data: Record<string, unknown>, detalle?: string }} Lectura
  */
 
-/** Lee `site_config.data` (fila id = 1). Nunca lanza: devuelve el estado. */
+/**
+ * Lee `site_config.data` (fila id = 1). Nunca lanza: devuelve el estado.
+ * @param {{ soloConfig: boolean,
+ *           vars: Record<string, string> | null | undefined,
+ *           crearCliente: (url: string, key: string) => Promise<any> }} opciones
+ * @returns {Promise<Lectura>}
+ */
 export async function leerSiteConfig({ soloConfig, vars, crearCliente }) {
   if (soloConfig) return { estado: 'solo-config', data: {} }
   if (!vars) return { estado: 'sin-env', data: {} }
@@ -34,8 +40,11 @@ export async function leerSiteConfig({ soloConfig, vars, crearCliente }) {
   try {
     sb = await crearCliente(url, key)
   } catch (e) {
+    const msg = String(e?.message ?? e)
+    // Sin la dependencia no es la URL: que el mensaje no mande a revisar .env.local.
+    if (/Cannot find (package|module)|ERR_MODULE_NOT_FOUND/.test(msg)) return { estado: 'error', data: {}, detalle: `falta @supabase/supabase-js (pnpm install): ${msg}` }
     // Una URL mal escrita hace que supabase-js lance aquí («Invalid supabaseUrl»).
-    return { estado: 'url-invalida', data: {}, detalle: String(e?.message ?? e) }
+    return { estado: 'url-invalida', data: {}, detalle: msg }
   }
   let r
   try {
@@ -43,7 +52,14 @@ export async function leerSiteConfig({ soloConfig, vars, crearCliente }) {
   } catch (e) {
     return { estado: 'error', data: {}, detalle: String(e?.message ?? e) }
   }
-  const { data, error } = r ?? {}
+  const { data, error, status } = r ?? {}
+  // postgrest-js convierte algunas respuestas malas en «sin error»: un 404 con el
+  // cuerpo vacío llega como 204, uno con `[]` como 200 con un ARREGLO, y un 500
+  // con `null` como status 500 sin error. Leídas como «nada publicado» darían un
+  // documento solo con config.ts sin decir nada (lo que D12 evita): son error.
+  if (!error && (typeof status !== 'number' || status !== 200 || Array.isArray(data))) {
+    return { estado: 'error', data: {}, detalle: `respuesta inesperada de la base (HTTP ${status ?? '?'})` }
+  }
   if (error) {
     // Base sin la tabla: nadie ha publicado nada. Mismos códigos que site-config.ts.
     if (error.code === 'PGRST205' || error.code === '42P01') return { estado: 'sin-tabla', data: {} }

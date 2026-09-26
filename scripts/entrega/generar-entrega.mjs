@@ -96,7 +96,11 @@ log('· Leyendo lo publicado en el panel…')
 const LECTURA_PUBLICADO = await leerSiteConfig({
   soloConfig: flag('solo-config'),
   vars: leerEnvLocal(),
-  crearCliente: async (url, key) => (await import('@supabase/supabase-js')).createClient(url, key, { auth: { persistSession: false } }),
+  // Con tope de tiempo: una base que no responde no debe colgar la entrega.
+  crearCliente: async (url, key) => (await import('@supabase/supabase-js')).createClient(url, key, {
+    auth: { persistSession: false },
+    global: { fetch: (u, o = {}) => fetch(u, { ...o, signal: o.signal ?? AbortSignal.timeout(20000) }) },
+  }),
 })
 {
   const pol = politicaPublicado(LECTURA_PUBLICADO)
@@ -653,7 +657,7 @@ async function imagenData(ref) {
   if (typeof ref !== 'string' || !ref) return null
   if (!/^https?:\/\//i.test(ref)) return b64(ref)
   try {
-    const res = await fetch(ref)
+    const res = await fetch(ref, { signal: AbortSignal.timeout(20000) })
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length < 200) return null
@@ -663,14 +667,23 @@ async function imagenData(ref) {
     return null
   }
 }
-/** El logo como la página: el publicado (claro u oscuro) o, si no se pudo bajar, el de config.ts. */
+/**
+ * El logo del banner (fondo oscuro), como la página: el que la fusión deja para
+ * fondo oscuro (`resolverLogos`: solo el claro publicado vale para los dos).
+ *  - Sin nada publicado: el de siempre, de public/ (el oscuro o, si falta, el claro).
+ *  - Publicado: se descarga; si no baja, el de config.ts y un aviso en REVISA
+ *    (nunca otro logo en silencio, ni el claro sobre el fondo oscuro).
+ * `logoListo: false` en config.ts apaga solo el logo del REPO: uno publicado se usa.
+ */
 async function logoDelDocumento() {
-  if (CONFIG.logoListo === false) return null
-  const publicado = (await imagenData(CONFIG.logoOscuro || CONFIG.logo)) || (await imagenData(CONFIG.logo))
-  if (publicado) return publicado
-  const deRepo = b64(CONFIG_TS.logoOscuro || CONFIG_TS.logo) || b64(CONFIG_TS.logo)
-  const cambio = CONFIG.logo !== CONFIG_TS.logo || CONFIG.logoOscuro !== CONFIG_TS.logoOscuro
-  if (cambio) avisar(`El logo publicado en el panel no se pudo descargar (${CONFIG.logoOscuro || CONFIG.logo}): el documento lleva ${deRepo ? 'el de config.ts' : 'ningún logo'}. Revisa que el archivo exista y vuelve a generar.`)
+  const ref = CONFIG.logoOscuro || CONFIG.logo
+  const refRepo = CONFIG_TS.logoOscuro || CONFIG_TS.logo
+  const publicado = typeof ref === 'string' && ref !== refRepo && /^https?:\/\//i.test(ref)
+  if (!publicado) return CONFIG_TS.logoListo === false ? null : (b64(refRepo) || b64(CONFIG_TS.logo))
+  const bajado = await imagenData(ref)
+  if (bajado) return bajado
+  const deRepo = CONFIG_TS.logoListo === false ? null : (b64(refRepo) || b64(CONFIG_TS.logo))
+  avisar(`El logo publicado en el panel no se pudo descargar (${ref}): el documento lleva ${deRepo ? 'el de config.ts' : 'ningún logo'}. Revisa que el archivo exista y vuelve a generar.`)
   return deRepo
 }
 const LOGO_DATA = await logoDelDocumento()

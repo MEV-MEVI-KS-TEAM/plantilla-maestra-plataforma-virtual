@@ -18,11 +18,11 @@ import { mergeSiteConfig } from '@/lib/site-config-core'
 const leer = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n')
 const GEN = leer('scripts/entrega/generar-entrega.mjs')
 
-type Resp = { data?: unknown; error?: { code?: string; message?: string } | null }
-/** Un cliente de Supabase falso: .from().select().eq().maybeSingle() → la respuesta dada. */
+type Resp = { data?: unknown; error?: { code?: string; message?: string } | null; status?: number }
+/** Un cliente de Supabase falso: .from().select().eq().maybeSingle() → la respuesta dada (200 si no dice). */
 const cliente = (r: Resp | (() => never)) => async () => ({
   from: () => ({ select: () => ({ eq: () => ({
-    maybeSingle: async () => (typeof r === 'function' ? r() : r),
+    maybeSingle: async () => (typeof r === 'function' ? r() : { status: 200, ...r }),
   }) }) }),
 })
 const VARS = { NEXT_PUBLIC_SUPABASE_URL: 'https://x.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon' }
@@ -42,6 +42,15 @@ test('1. leerSiteConfig: cada situación de la base da su estado, y nunca lanza'
   expect(ok).toEqual({ estado: 'ok', data: { whatsapp: '5215512345678' } })
   // Un `data` que no es objeto no se fusiona.
   expect((await leerSiteConfig({ soloConfig: false, vars: VARS, crearCliente: cliente({ data: { data: [1] }, error: null }) })).data).toEqual({})
+  // Respuestas malas que postgrest-js entrega «sin error» (404 vacío → 204, 404 con [] →
+  // arreglo, 500 con null): NO son «nada publicado», son error (abortan).
+  expect(await est({ soloConfig: false, vars: VARS, crearCliente: cliente({ data: null, error: null, status: 204 }) })).toBe('error')
+  expect(await est({ soloConfig: false, vars: VARS, crearCliente: cliente({ data: [], error: null, status: 200 }) })).toBe('error')
+  expect(await est({ soloConfig: false, vars: VARS, crearCliente: cliente({ data: null, error: null, status: 500 }) })).toBe('error')
+  // Sin la dependencia no se culpa a la URL.
+  const sinDep = await leerSiteConfig({ soloConfig: false, vars: VARS, crearCliente: async () => { throw new Error("Cannot find package '@supabase/supabase-js'") } })
+  expect(sinDep.estado).toBe('error')
+  expect(sinDep.detalle).toContain('pnpm install')
   // La service role también sirve (la anon basta: site_config se lee en abierto).
   expect(await est({ soloConfig: false, vars: { NEXT_PUBLIC_SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'sr' }, crearCliente: cliente({ data: null }) })).toBe('sin-fila')
 })
@@ -86,12 +95,21 @@ test('3. el generador: lee, aplica la política ANTES de fusionar, y fusiona con
   expect(GEN.match(/from\('site_config'\)/g)).toBeNull()
 })
 
-test('4. el logo: el publicado (URL del bucket) o, si no baja, el de config.ts con aviso', () => {
-  const f = GEN.slice(GEN.indexOf('async function logoDelDocumento()'))
-  expect(f).toContain('if (CONFIG.logoListo === false) return null')
-  expect(f).toContain('const publicado = (await imagenData(CONFIG.logoOscuro || CONFIG.logo)) || (await imagenData(CONFIG.logo))')
-  expect(f).toContain('const deRepo = b64(CONFIG_TS.logoOscuro || CONFIG_TS.logo) || b64(CONFIG_TS.logo)')
-  expect(f).toMatch(/if \(cambio\) avisar\(`El logo publicado en el panel no se pudo descargar/)
+test('4. el logo: sin publicar, el de siempre; publicado, se descarga y si no baja va el de config.ts CON aviso', () => {
+  const f = GEN.slice(GEN.indexOf('async function logoDelDocumento()'), GEN.indexOf('const LOGO_DATA = await logoDelDocumento()'))
+  // Qué logo es el del banner: el que la fusión deja para fondo oscuro, contra el del repo.
+  expect(f).toContain('const ref = CONFIG.logoOscuro || CONFIG.logo')
+  expect(f).toContain('const refRepo = CONFIG_TS.logoOscuro || CONFIG_TS.logo')
+  expect(f).toContain("const publicado = typeof ref === 'string' && ref !== refRepo && /^https?:\\/\\//i.test(ref)")
+  // Sin publicar: EXACTAMENTE lo de antes de D12 (el oscuro de public/ o el claro).
+  expect(f).toContain('if (!publicado) return CONFIG_TS.logoListo === false ? null : (b64(refRepo) || b64(CONFIG_TS.logo))')
+  // Publicado: solo ESE se descarga (nada de caer al claro en silencio); si falla, aviso.
+  expect(f.match(/await imagenData\(/g)?.length).toBe(1)
+  expect(f).toContain('const bajado = await imagenData(ref)')
+  expect(f).toMatch(/const deRepo[\s\S]*?\n  avisar\(`El logo publicado en el panel no se pudo descargar/)
+  // Con tope de tiempo, igual que la lectura de site_config.
+  expect(GEN).toContain('const res = await fetch(ref, { signal: AbortSignal.timeout(20000) })')
+  expect(GEN).toContain('global: { fetch: (u, o = {}) => fetch(u, { ...o, signal: o.signal ?? AbortSignal.timeout(20000) }) },')
   const img = GEN.slice(GEN.indexOf('async function imagenData(ref)'))
   expect(img).toContain('if (!/^https?:\\/\\//i.test(ref)) return b64(ref)')
   expect(img).toContain('return /^image\\//.test(tipo)')

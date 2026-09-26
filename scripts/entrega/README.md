@@ -20,7 +20,7 @@ primera corrida en un repo:
 | `pnpm install` | Trae `@supabase/supabase-js` (inventario) y `@playwright/test` (impresión a PDF). |
 | `npx playwright install chromium` | Descarga el Chromium con el que Playwright imprime el PDF. Una vez por máquina; si falta, el error es `Executable doesn't exist`. |
 | `entrega.local.json` en la raíz | Credenciales del admin, del alumno de prueba y de las cuentas del cliente (correo, Supabase y GoDaddy). Parte de `scripts/entrega/entrega.local.ejemplo.json`. Git lo ignora. |
-| `.env.local` en la raíz | Lo mismo que usa la app (`vercel env pull .env.local`). De aquí salen el inventario de contenido y la URL del proyecto de Supabase. Sin él, el documento sale sin inventario y sin proyecto de Supabase, salvo con `CONFIG.cursosIngreso` encendido o en modo `solo_cursos`: ahí el script aborta (ver «Cursos de ingreso» abajo). |
+| `.env.local` en la raíz | Lo mismo que usa la app (`vercel env pull .env.local`, del ambiente de PRODUCCIÓN de la escuela). De aquí salen lo publicado en «Personalizar mi página», el inventario de contenido y la URL del proyecto de Supabase. **Sin él el script aborta** (D12): el documento tiene que decir lo mismo que la página. Solo si sabes que la escuela no ha publicado nada, `--solo-config` genera con `config.ts` y lo deja escrito en «REVISA ANTES DE ENVIAR». |
 
 Verificación rápida: `node --version` da 23.6 o más, y
 `ls entrega.local.json .env.local` encuentra los dos archivos.
@@ -72,9 +72,11 @@ la política viven en `scripts/entrega/publicado.mjs`.
 | Registrador del dominio (Infraestructura) | `entrega.local.json` → `registrador`; si falta, **GoDaddy** |
 | Proyecto de Supabase: ref, URL y panel (Infraestructura) | `NEXT_PUBLIC_SUPABASE_URL` de `.env.local` (o `supabaseUrl` en `entrega.local.json` si no hay `.env.local`). El ref es el subdominio; el panel es `https://supabase.com/dashboard/project/<ref>`. |
 
-Si no hay `.env.local` o le faltan credenciales, el inventario se omite y el
-resto del documento se genera igual, salvo con `CONFIG.cursosIngreso` encendido
-o en modo `solo_cursos` (el documento negaría los cursos vendidos: aborta). La página de Infraestructura avisa en
+Sin `.env.local`, o sin su URL o su llave, el script **aborta** antes de todo
+esto (D12: no puede leer lo publicado). Con `--solo-config` sigue sin lo
+publicado; entonces el inventario se omite y el resto del documento se genera
+igual, salvo con `CONFIG.cursosIngreso` encendido o en modo `solo_cursos` (el
+documento negaría los cursos vendidos: aborta). La página de Infraestructura avisa en
 consola si no encontró la URL de Supabase o si faltan las `cuentas`. Se puede
 omitir con `"infraestructura": false` en `entrega.local.json`; si hay `cuentas`,
 la página sale igual, con ellas solas.
