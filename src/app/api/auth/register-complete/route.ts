@@ -11,7 +11,8 @@ import { getCarreras } from '@/lib/licenciatura-utils'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
-import { modalidadDeRegistro, exigeCursoEnRegistro } from '@/lib/registro-reglas'
+import { modalidadDeRegistro, exigeCursoEnRegistro, errorDePlanDeRegistro } from '@/lib/registro-reglas'
+import { catalogoDeRegistro } from '@/lib/niveles'
 
 export async function POST(request: Request) {
   try {
@@ -77,6 +78,19 @@ export async function POST(request: Request) {
         { error: 'Selecciona tu nivel educativo o un curso de preparación.' },
         { status: 400 },
       )
+    }
+
+    // #199 — nivel, plan y carrera tienen que ser algo que el formulario PUDO
+    // ofrecer: un nivel que la escuela vende, un plan de ESE nivel y, en
+    // licenciatura, una carrera del catálogo. Regla estructural (config.ts, sin
+    // mirar «activa»): este 400 llega después de signUp y nunca debe rechazar
+    // lo que el formulario pintó (#217). Ver errorDePlanDeRegistro().
+    const errorPlan = errorDePlanDeRegistro(
+      { nivel, modalidad, carrera: carreraPedida || null },
+      catalogoDeRegistro(),
+    )
+    if (errorPlan) {
+      return Response.json({ error: errorPlan }, { status: 400 })
     }
 
     // Solo si el nivel 'diplomado' lo eligió el alumno («Curso o diplomado»). En

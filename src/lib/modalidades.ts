@@ -301,6 +301,32 @@ export function planesPorNivel(
   return activas.filter(m => !m.nivel || m.nivel === nivel)
 }
 
+/**
+ * Los ids de plan que `config.ts` DECLARA para un nivel, SIN mirar `activa` (#199).
+ *
+ * Es la regla ESTRUCTURAL con la que el servidor valida el registro público: un
+ * superconjunto de lo que el formulario puede ofrecer. El formulario pinta
+ * `planesPorNivel(nivel, cfg.modalidades)` (Sec/Prepa, con el `activa` del panel)
+ * o `getModalidadesLicenciatura()` (licenciatura); el panel solo publica precio y
+ * `activa`, nunca ids ni `nivel`. Ver `errorDePlanDeRegistro()` en registro-reglas.ts.
+ *
+ * Licenciatura: los de su tabla, y solo con el add-on activo. 'diplomado' o
+ * cualquier otro nivel: ninguno (un curso no tiene modalidad).
+ */
+export function planesDeclaradosPorNivel(
+  nivel: string | null | undefined,
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): readonly string[] {
+  const ids = (lista: readonly { id?: unknown }[]) =>
+    lista.map(m => m?.id).filter((id): id is string => typeof id === 'string' && id !== '')
+  if (nivel === 'licenciatura') return ids(modalidadesLic())
+  if (nivel === 'secundaria' || nivel === 'preparatoria') {
+    // Un config.ts legado con modalidades en texto no declara planes con id.
+    return ids(mods.filter(m => m && typeof m === 'object' && (!m.nivel || m.nivel === nivel)))
+  }
+  return []
+}
+
 /** Niveles que no cobran con la tabla de modalidades del programa (Sec/Prepa). */
 const NIVELES_CON_TABLA_PROPIA: ReadonlySet<string> = new Set(['licenciatura', 'diplomado'])
 

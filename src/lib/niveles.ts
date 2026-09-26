@@ -1,5 +1,8 @@
 import { CONFIG } from '@/lib/config'
+import { planesDeclaradosPorNivel } from '@/lib/modalidades'
+import type { CatalogoRegistro } from '@/lib/registro-reglas'
 import {
+  getCarreras,
   licenciaturasActivas,
   getCarrerasLicenciatura,
   getCarrerasDiplomado,
@@ -159,4 +162,19 @@ export function getOpcionesNivelAdmin(hayCursosPublicados = false): OpcionNivel[
 /** Los `nivel` de BD que este cliente acepta hoy. Para validar en el servidor. */
 export function nivelesPermitidos(hayCursosPublicados = false): string[] {
   return [...new Set(getOpcionesNivel(hayCursosPublicados).map(o => o.nivel))]
+}
+
+/**
+ * Lo que el registro público PUEDE ofrecer, leído de config.ts: el catálogo de
+ * la regla estructural de /api/auth/register-complete (#199). Mismos niveles que
+ * el desplegable (sin 'diplomado', que lo decide el curso publicado), los planes
+ * que config.ts declara para cada uno y todas las carreras del riel.
+ */
+export function catalogoDeRegistro(): CatalogoRegistro {
+  const niveles = nivelesPermitidos(false)
+  return {
+    niveles,
+    planes: Object.fromEntries(niveles.map(n => [n, planesDeclaradosPorNivel(n)])),
+    carreras: getCarreras().map(c => c.slug),
+  }
 }
