@@ -14,11 +14,11 @@ import { formatearMoneda } from '@/lib/moneda'
 // oferta viven en precio-regla.ts, sin imports, para que el generador de la
 // entrega (Node, sin alias '@/') use los MISMOS.
 import {
-  precioCursoNumerico, resolverPrecioOferta, TEXTO_SIN_PRECIO, AVISO_PAGO_UNICO,
+  precioCursoNumerico, resolverPrecioOferta, ofertaAbreTodo, TEXTO_SIN_PRECIO, AVISO_PAGO_UNICO,
   type PreciosCurso, type PrecioNumerico, type PrecioOferta, type OfertaConPrecio,
 } from './precio-regla'
 export {
-  precioCursoNumerico, resolverPrecioOferta, TEXTO_SIN_PRECIO, AVISO_PAGO_UNICO,
+  precioCursoNumerico, resolverPrecioOferta, ofertaAbreTodo, TEXTO_SIN_PRECIO, AVISO_PAGO_UNICO,
   type PreciosCurso, type PrecioNumerico, type PrecioOferta, type OfertaConPrecio,
 }
 

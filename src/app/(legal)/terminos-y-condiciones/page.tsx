@@ -230,10 +230,11 @@ export default async function TerminosCondicionesPage() {
                   viñeta de arriba: el reembolso de las demás inscripciones no
                   cambia. Mismo aviso que ven antes de pagar (AVISO_PAGO_UNICO). */}
               <li>
-                <strong style={{ color: '#fff' }}>Excepción — cursos de pago único:</strong> los cursos que se
-                pagan en una sola exhibición dan acceso completo a todo su contenido en cuanto se asignan al
-                alumno y no son reembolsables una vez dado ese acceso, aunque la solicitud se presente dentro
-                del plazo anterior. Mientras el acceso no se haya activado, aplica la cancelación antes del inicio.
+                <strong style={{ color: '#fff' }}>Excepción — cursos y diplomados de pago único:</strong> los
+                cursos y diplomados que se pagan en una sola exhibición dan acceso completo a todo su contenido
+                en cuanto se asignan al alumno y no son reembolsables una vez dado ese acceso, aunque la
+                solicitud se presente dentro del plazo anterior. Mientras el acceso no se haya activado, aplica
+                la cancelación antes del inicio.
               </li>
               <li>
                 <strong style={{ color: '#fff' }}>Cancelación durante el programa:</strong> no se realizan

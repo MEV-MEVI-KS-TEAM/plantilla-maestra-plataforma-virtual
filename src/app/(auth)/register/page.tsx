@@ -13,7 +13,7 @@ import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } 
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
 import {
-  AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, precioDeCursoElegido, resolverPrecioOferta,
+  AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, ofertaAbreTodo, precioDeCursoElegido, resolverPrecioOferta,
   type PrecioOferta, type PreciosCurso,
 } from '@/lib/cursos/precio-curso'
 import { aperturaAlAsignar } from '@/lib/cursos/acceso'
@@ -750,12 +750,13 @@ export default function RegisterPage() {
                   <div className="space-y-2">
                     {ofertasIngreso.map(o => {
                       const sel = cursoIngreso === o.id
-                      // #208: el aviso solo con el pago único de la FICHA (fuente 'tabla'):
-                      // ahí «Asignar» abre todo. El respaldo de config.ts (ficha en 0/0) y el
-                      // paquete abren el mes 1, y el aviso sería falso. Misma función pura
-                      // y mismos datos que el precio de la tarjeta, así que no pueden discrepar.
+                      // #208: el aviso solo si «Asignar» abrirá TODO: se anuncia de pago
+                      // único y la ficha de cada curso que inscribe es de pago único
+                      // (ofertaAbreTodo). Con el respaldo de config.ts y la ficha en 0/0
+                      // se abre el mes 1, y el aviso sería falso. Misma función pura y
+                      // mismos datos que el precio de la tarjeta.
                       const precioOferta = catalogoListo ? resolverPrecioOferta(o, preciosPublicados) : null
-                      const avisoPagoUnico = precioOferta?.tipo === 'unico' && precioOferta.fuente === 'tabla'
+                      const avisoPagoUnico = precioOferta !== null && ofertaAbreTodo(o, precioOferta, preciosPublicados)
                       return (
                         <button
                           key={o.id}
