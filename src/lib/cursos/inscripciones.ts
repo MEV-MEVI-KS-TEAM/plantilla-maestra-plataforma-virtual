@@ -73,6 +73,18 @@ export function esEstadoInscripcion(v: unknown): v is EstadoInscripcion {
 }
 
 /**
+ * La base NO tiene pagos de curso (sin B1): no existe la columna
+ * `pagos.curso_inscripcion_id` (42703) o PostgREST no ve la relación
+ * pagos → curso_inscripciones (PGRST200). Solo eso prueba «no hay pagos»:
+ * cualquier OTRO error (red, timeout, caché recargando) no prueba nada, y quien
+ * pregunta antes de borrar tiene que fallar CERRADO (D11).
+ */
+export function baseSinPagosDeCurso(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false
+  return error.code === '42703' || error.code === 'PGRST200' || /curso_inscripcion_id/.test(error.message ?? '')
+}
+
+/**
  * Valida una fecha YYYY-MM-DD REAL. El regex solo no basta: new Date('2026-02-30')
  * hace roll-over silencioso y Postgres devolvería un 500 críptico. Mismo criterio
  * que api/admin/pagos/route.ts, que ya lo resolvió así.

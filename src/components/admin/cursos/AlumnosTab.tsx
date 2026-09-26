@@ -325,7 +325,66 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
     }
   }
 
-  async function quitar(alumnoId: string, nombre: string) {
+  /**
+   * «Cancelar inscripción» (D11, solo admin): la baja que CONSERVA el historial
+   * (pagos, bitácora, meses pagados). Pasa por curso_cambiar_estado, que deja el
+   * evento con actor. Es lo que se usa cuando la inscripción tiene pagos o
+   * diploma y «Quitar» la rechaza.
+   */
+  async function cancelar(i: CursoInscrito) {
+    if (!window.confirm(`Cancelar la inscripción de ${i.nombre}.
+
+Deja de ver el curso. Se conservan sus pagos, su bitácora y los meses que ya tenía («Reactivar» los recupera).
+
+¿Continuar?`)) return
+    setOcupadoId(i.inscripcion_id)
+    try {
+      const res = await fetch(`/api/admin/inscripciones/${i.inscripcion_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'cancelada', motivo: 'Cancelada desde la pestaña Alumnos' }),
+      })
+      const json = await res.json().catch(() => ({} as { error?: string }))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo cancelar')
+      onChanged(`${i.nombre}: inscripción cancelada (se conservan sus pagos y su historial)`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo cancelar')
+    } finally {
+      setOcupadoId(null)
+    }
+  }
+
+  /**
+   * «Reactivar» (D11, solo admin): deshace «Cancelar inscripción». Sin esto la
+   * cancelación era un callejón: «Abrir mes» y «Abrir todo» se apagan en filas no
+   * activas, «Asignar» no la ofrece (ya está inscrito) y «Quitar» la rechaza
+   * por los pagos. También pasa por curso_cambiar_estado (evento con actor).
+   */
+  async function reactivar(i: CursoInscrito) {
+    if (!window.confirm(`Reactivar la inscripción de ${i.nombre}.
+
+Vuelve a ver el curso con los meses que ya tenía.
+
+¿Continuar?`)) return
+    setOcupadoId(i.inscripcion_id)
+    try {
+      const res = await fetch(`/api/admin/inscripciones/${i.inscripcion_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'activa', motivo: 'Reactivada desde la pestaña Alumnos' }),
+      })
+      const json = await res.json().catch(() => ({} as { error?: string }))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo reactivar')
+      onChanged(`${i.nombre}: inscripción reactivada`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo reactivar')
+    } finally {
+      setOcupadoId(null)
+    }
+  }
+
+  async function quitar(i: CursoInscrito) {
+    const { alumno_id: alumnoId, nombre } = i
     // Borra la inscripción (y con ella su acceso y su bitácora): se confirma,
     // sobre todo ahora que «Quitar acceso total» vive en la misma fila.
     if (!window.confirm(`Quitar a ${nombre} de este curso.
@@ -333,12 +392,18 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
 Se borra su inscripción y deja de ver el curso.
 
 ¿Continuar?`)) return
-    setOcupadoId(alumnoId)
+    // La misma llave que los demás botones de la fila: mientras corre uno, la
+    // fila entera espera (no se cruzan «Cancelar» y «Quitar»).
+    setOcupadoId(i.inscripcion_id)
     try {
       const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones/${alumnoId}`, { method: 'DELETE' })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Error al quitar')
+        // Con pagos o diploma no se borra (409): el mensaje ya dice «Cancelar
+        // inscripción», y se deja leer con calma.
+        const duracion = res.status === 409 ? AVISO_MS : undefined
+        onError((json as { error?: string }).error ?? 'Error al quitar', duracion)
+        return
       }
       onChanged(`${nombre} quitado del curso`)
     } catch (e) {
@@ -605,11 +670,37 @@ Se borra su inscripción y deja de ver el curso.
                   )}
                 </div>
 
+                {/* Solo admin (D11): reactivar deshace la cancelación. */}
+                {esAdmin && i.estado === 'cancelada' && (
+                  <button
+                    onClick={() => reactivar(i)}
+                    disabled={ocupadoId === i.inscripcion_id}
+                    title="Deshacer la cancelación: vuelve a ver el curso con los meses que ya tenía"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
+                    style={{ border: '1px solid rgba(16,185,129,0.35)', color: '#047857', background: 'var(--color-superficie)' }}
+                  >
+                    Reactivar
+                  </button>
+                )}
+
+                {/* Solo admin (D11): cancelar conserva pagos e historial. */}
+                {esAdmin && i.estado !== 'cancelada' && (
+                  <button
+                    onClick={() => cancelar(i)}
+                    disabled={ocupadoId === i.inscripcion_id}
+                    title="Dar de baja conservando pagos, bitácora y meses pagados"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
+                    style={{ border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', background: 'var(--color-superficie)' }}
+                  >
+                    Cancelar inscripción
+                  </button>
+                )}
+
                 {/* Solo admin (D7b): quitar borra la inscripción. */}
                 {esAdmin && (
                   <button
-                    onClick={() => quitar(i.alumno_id, i.nombre)}
-                    disabled={ocupadoId === i.alumno_id}
+                    onClick={() => quitar(i)}
+                    disabled={ocupadoId === i.inscripcion_id}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
                     style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
                   >

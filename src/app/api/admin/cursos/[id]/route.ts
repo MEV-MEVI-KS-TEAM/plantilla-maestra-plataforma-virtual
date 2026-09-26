@@ -7,6 +7,7 @@ import { removeFolder, signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
+import { baseSinPagosDeCurso } from '@/lib/cursos/inscripciones'
 import type { Curso, CursoDetalle, CursoInscrito, CursoLeccion, CursoModulo } from '@/types/cursos'
 
 type LeccionRow = Omit<CursoLeccion, 'materialUrl'>
@@ -270,6 +271,31 @@ export async function DELETE(
           `Este curso tiene ${constancias} diploma(s) emitido(s) y no puede borrarse: ` +
           'el registro de folios es el comprobante de esos documentos. ' +
           'Pásalo a borrador para retirarlo de circulación sin perder el historial.',
+      }, { status: 409 })
+    }
+
+    // D11 (#207-2b): tampoco se borra un curso cuyas inscripciones tienen PAGOS.
+    // Borrar el curso borra sus inscripciones en cascada, y la FK de
+    // pagos.curso_inscripcion_id es ON DELETE SET NULL (B1): esos pagos quedaban
+    // sin curso y Reportes, el Excel y el estado de cuenta los contaban como del
+    // PROGRAMA. Una sola consulta, filtrando por la relación (sin ids en la URL).
+    // Sin B1 no hay pagos de curso; con cualquier otro error, no se borra.
+    const { count: pagosCurso, error: errPagosCurso } = await admin
+      .from('pagos')
+      .select('id, curso_inscripciones!inner(curso_id)', { count: 'exact' })
+      .eq('curso_inscripciones.curso_id', params.id)
+      .limit(1)
+    if (errPagosCurso && !baseSinPagosDeCurso(errPagosCurso)) {
+      console.error('[DELETE /api/admin/cursos/[id]] pagos:', errPagosCurso.message)
+      return NextResponse.json({ error: 'No se pudo comprobar si el curso tiene pagos; no se borró nada. Intenta de nuevo.' }, { status: 500 })
+    }
+    if (!errPagosCurso && (pagosCurso ?? 0) > 0) {
+      return NextResponse.json({
+        error:
+          `Este curso tiene ${pagosCurso} pago(s) registrado(s) en sus inscripciones y no puede borrarse: ` +
+          'los pagos perderían su curso y se contarían como del programa. ' +
+          'Pásalo a borrador para retirarlo de circulación sin perder el historial.',
+        tiene_pagos: true,
       }, { status: 409 })
     }
 
