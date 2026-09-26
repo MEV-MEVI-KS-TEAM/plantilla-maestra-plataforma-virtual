@@ -1,5 +1,5 @@
 import { CONFIG } from '@/lib/config'
-import { tipoCambioValido } from '@/lib/moneda'
+import { codigoMoneda, tipoCambioValido } from '@/lib/moneda'
 import { getSiteConfig } from '@/lib/site-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -245,8 +245,11 @@ export async function POST(request: NextRequest) {
         // Se guarda el tipo de cambio VIGENTE HOY, no se deriva al leer: es lo
         // que congela el recibo. Si el admin lo actualiza mañana, este pago
         // conserva la equivalencia que se le enseñó al alumno.
-        ...(CONFIG.moneda !== 'MXN'
-          ? { moneda: CONFIG.moneda, tipo_cambio_aplicado: tipoCambioValido(cfgSitio.tipoCambioMXN) }
+        // D15: el CÓDIGO ISO (codigoMoneda), no el valor crudo: un config.ts con
+        // la moneda como objeto ({ codigo: 'USD', … }) tronaba el CHECK
+        // pagos_moneda_iso con un 500.
+        ...(codigoMoneda(CONFIG.moneda) !== 'MXN'
+          ? { moneda: codigoMoneda(CONFIG.moneda), tipo_cambio_aplicado: tipoCambioValido(cfgSitio.tipoCambioMXN) }
           : {}),
       })
       .select()

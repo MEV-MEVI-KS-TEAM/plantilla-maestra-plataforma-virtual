@@ -1,6 +1,7 @@
 'use client'
 
 import { CONFIG } from '@/lib/config'
+import { codigoMoneda } from '@/lib/moneda'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { ImagePlus, Trash2, AlertTriangle } from 'lucide-react'
@@ -367,11 +368,11 @@ export function CursoDatosForm({ curso, inscritosActivos = 0, onChanged, onError
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <CampoNumero
-            id="curso-precio-inscripcion" label={`Inscripción (${CONFIG.moneda})`} valor={precioInscripcion} onChange={setPrecioInscripcion}
+            id="curso-precio-inscripcion" label={`Inscripción (${codigoMoneda(CONFIG.moneda)})`} valor={precioInscripcion} onChange={setPrecioInscripcion}
             min={0} step="0.01" ayuda="Cuota única al inscribirse. Un curso de PAGO ÚNICO lleva aquí su precio y la mensualidad en 0. Deja 0 si no cobras inscripción."
           />
           <CampoNumero
-            id="curso-precio-mensualidad" label={`Mensualidad (${CONFIG.moneda})`} valor={precioMensualidad} onChange={setPrecioMensualidad}
+            id="curso-precio-mensualidad" label={`Mensualidad (${codigoMoneda(CONFIG.moneda)})`} valor={precioMensualidad} onChange={setPrecioMensualidad}
             min={0} step="0.01" ayuda="Lo que paga cada mes; es lo que anuncia el catálogo. Con mensualidad 0 y una inscripción, anuncia el pago único; con los dos precios en 0, el catálogo dice «Pide informes», no «gratis»."
           />
           <CampoNumero

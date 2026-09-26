@@ -292,7 +292,7 @@ test('9. PestanaPrecios pinta un campo por clave nueva, y sigue con tipo de camb
   expect(campo).toContain("plan && siVacio !== plan.mensualidad ? 'hoy' : 'general'")
   expect(campo).toContain("ayuda={origen === 'fabrica' ? AYUDA_NIVEL_DE_FABRICA")
   expect(campo).toContain(": origen === 'hoy' ? `${campo?.ayuda ?? ''} ${AYUDA_NIVEL_CIFRA_PROPIA}`.trim()")
-  expect(campo).toContain('vacioError={textoVacioError(siVacio, CONFIG.moneda, origen)}')
+  expect(campo).toContain('vacioError={textoVacioError(siVacio, MONEDA, origen)}')
   expect(campo).toContain("const origen = Number(valorEfectivo(defaults, {}, clave)) > 0 ? 'fabrica'")
   expect(campo).toContain('resaltado={claveConError === clave}')
   expect(campo).not.toMatch(/escribirRuta\(prev, clave, (null|0)\)/)

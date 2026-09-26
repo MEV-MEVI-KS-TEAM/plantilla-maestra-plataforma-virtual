@@ -1,13 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CONFIG } from '@/lib/config'
-import { formatearMoneda } from '@/lib/moneda'
+import { codigoMoneda, formatearMoneda } from '@/lib/moneda'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { renderReciboPdf } from '@/lib/pdf/recibo-pago'
 import { mensajeRecibo, waUrl } from '@/lib/whatsapp'
-import { etiquetaConcepto } from '@/lib/pagos/conceptos'
+import { conceptoMensajeRecibo } from '@/lib/pagos/conceptos'
 
 // Misma ventana que las constancias (86400s = 24h): el alumno abre el link
 // desde WhatsApp, a veces horas después de recibirlo.
@@ -59,14 +59,42 @@ export async function GET(
     const admin = createAdminClient()
 
     // ── Pago + datos para el recibo ──────────────────────────────────────────
-    const { data: pago, error: pagoErr } = await admin
+    // select('*'): `moneda` (#198) y `curso_inscripcion_id` (B1) no existen en
+    // toda base, y pedirlos por nombre tumbaba la consulta (404 falso).
+    const { data: pagoRaw, error: pagoErr } = await admin
       .from('pagos')
-      .select('id, alumno_id, monto, concepto, mes_desbloqueado, numero_semana, metodo_pago, referencia, registrado_por, fecha_pago, created_at')
+      .select('*')
       .eq('id', params.id)
       .single()
-    if (pagoErr || !pago) {
+    if (pagoErr || !pagoRaw) {
       return NextResponse.json({ error: 'Pago no encontrado' }, { status: 404 })
     }
+    const pago = pagoRaw as {
+      id: string; alumno_id: string; monto: number | string; concepto: string | null; mes_desbloqueado: number | null
+      numero_semana?: number | null; metodo_pago: string; referencia: string | null; registrado_por: string | null
+      fecha_pago: string | null; created_at: string; moneda?: unknown; curso_inscripcion_id?: string | null
+    }
+
+    // D15 (#207-4): el curso del pago, para el recibo y el WhatsApp. Dos lecturas
+    // simples (sin embed); si no se puede leer, el recibo dice «Curso» sin nombre.
+    let curso: { nombre: string | null; tipo: string | null } | null = null
+    if (pago.curso_inscripcion_id) {
+      const { data: ins } = await admin.from('curso_inscripciones').select('curso_id').eq('id', pago.curso_inscripcion_id).maybeSingle()
+      const cursoId = (ins as { curso_id?: string } | null)?.curso_id
+      const { data: c } = cursoId
+        ? await admin.from('cursos').select('nombre, tipo').eq('id', cursoId).maybeSingle()
+        : { data: null }
+      curso = { nombre: (c as { nombre?: string } | null)?.nombre ?? null, tipo: (c as { tipo?: string } | null)?.tipo ?? null }
+    }
+    const conCurso = {
+      concepto: pago.concepto ?? 'mensualidad',
+      mes_desbloqueado: pago.mes_desbloqueado ?? null,
+      curso_inscripcion_id: pago.curso_inscripcion_id ?? null,
+      curso_nombre: curso?.nombre ?? null,
+      curso_tipo: curso?.tipo ?? null,
+    }
+    // La moneda REAL del pago (congelada al registrarlo); sin columna, la de la escuela.
+    const monedaPago = codigoMoneda(pago.moneda, codigoMoneda(CONFIG.moneda))
 
     const [{ data: alumnoUsuario }, { data: alumnoRow }, { data: registrador }] = await Promise.all([
       admin.from('usuarios').select('nombre, apellidos, telefono').eq('id', pago.alumno_id).single(),
@@ -96,6 +124,10 @@ export async function GET(
         referencia: pago.referencia ?? null,
         fechaPago: pago.fecha_pago ?? pago.created_at,
         registradoPor,
+        cursoInscripcionId: conCurso.curso_inscripcion_id,
+        cursoNombre: conCurso.curso_nombre,
+        cursoTipo: conCurso.curso_tipo,
+        moneda: monedaPago,
       })
 
       const { error: uploadErr } = await admin.storage
@@ -116,7 +148,7 @@ export async function GET(
     }
 
     // ── URL de WhatsApp con mensaje prellenado (convención Contactar) ───────
-    let conceptoLabel = etiquetaConcepto(pago.concepto ?? 'mensualidad', 'mensaje')
+    let conceptoLabel = conceptoMensajeRecibo(conCurso)
     // 🛑 En un cobro semanal el recibo tiene que decir QUÉ semana cubre. "Cuota
     // semanal" a secas no le sirve a un alumno con veinticuatro recibos
     // iguales, ni a la escuela cuando el alumno reclama que ya pagó esa.
@@ -126,7 +158,7 @@ export async function GET(
         ? `Semana ${pago.numero_semana} de ${total}`
         : `Semana ${pago.numero_semana}`
     }
-    const montoFmt = formatearMoneda(Number(pago.monto), CONFIG, { decimales: 2, conCodigo: true })
+    const montoFmt = formatearMoneda(Number(pago.monto), { moneda: monedaPago, tipoCambioMXN: 0 }, { decimales: 2, conCodigo: true })
     const mensaje = mensajeRecibo({
       alumnoNombre,
       conceptoLabel,

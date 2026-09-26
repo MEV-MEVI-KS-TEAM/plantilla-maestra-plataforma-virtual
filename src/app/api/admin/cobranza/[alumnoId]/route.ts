@@ -26,7 +26,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig } from '@/lib/site-config'
-import { tipoCambioValido } from '@/lib/moneda'
+import { codigoMoneda, tipoCambioValido } from '@/lib/moneda'
 import { sincronizarPlanSemanal } from '@/lib/plan-semanal'
 
 export const dynamic = 'force-dynamic'
@@ -71,8 +71,10 @@ export async function POST(req: Request, { params }: { params: { alumnoId: strin
     // pesos, igual que /api/admin/pagos: así una escuela en MXN genera filas
     // idénticas a las de siempre.
     const cfgSitio = await getSiteConfig()
-    const extraMoneda = CONFIG.moneda !== 'MXN'
-      ? { p_moneda: CONFIG.moneda, p_tipo_cambio: tipoCambioValido(cfgSitio.tipoCambioMXN) }
+    // D15: el código ISO, no el valor crudo (moneda como objeto → CHECK roto).
+    const moneda = codigoMoneda(CONFIG.moneda)
+    const extraMoneda = moneda !== 'MXN'
+      ? { p_moneda: moneda, p_tipo_cambio: tipoCambioValido(cfgSitio.tipoCambioMXN) }
       : {}
 
     const { data, error } = await admin.rpc('registrar_cuota_semanal', {
