@@ -274,7 +274,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // (TICKET-2026-09-22-08). Las cifras del panel del costo no se editan.
   // En la sección valen además sus comodines propios (#195): {inscripcionLicenciatura}
   // y {titulacion}, con la tabla efectiva y el formato del {inscripcion} de la página.
-  const varsLic = { ...vars, ...varsLicenciatura(planesLic, (monto) => textoInscripcion(monto, { minusculas: true })) }
+  const varsLic = { ...vars, ...varsLicenciatura(planesLic, (monto) => textoInscripcion(monto, { minusculas: true }), dinero) }
   const textosLic = hayLicenciaturas
     ? resolverTextosLicenciaturas(
         textosAutoLicenciaturas(carrerasLic, planesLic, getEtiquetaLicenciatura(), dinero),

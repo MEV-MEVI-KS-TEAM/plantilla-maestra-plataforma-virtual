@@ -75,8 +75,9 @@ export function ComodinesLicenciatura({
   defaults, overrides = {},
 }: Pick<PropsPestana, 'defaults'> & { overrides?: SiteConfigOverrides }) {
   const planes = getDesglosesLicenciatura(licenciaturaDeBorrador(overrides) as Parameters<typeof getDesglosesLicenciatura>[0])
-  // El mismo formato que la página le da a {inscripcion} («sin costo» si no se cobra).
-  const hoy = varsLicenciatura(planes, (n) => textoInscripcion(n, { minusculas: true }))
+  // Los mismos formatos que la página: {inscripcion} («sin costo» si no se cobra)
+  // y las cifras de la sección para la titulación.
+  const hoy = varsLicenciatura(planes, (n) => textoInscripcion(n, { minusculas: true }), (n) => formatearMoneda(n, CONFIG))
   // Los textos EFECTIVOS de la sección (config.ts con el borrador encima): el
   // {inscripcion} puede venir del config.ts del clon, no solo de lo escrito aquí.
   const efectivo = (k: string) => valorEfectivo(defaults, overrides, `landing.${k}`)

@@ -29,6 +29,7 @@ import { ListaObjetos, ListaTexto } from './ListaEditable'
 import { Aviso, TXT_SUAVE, TXT_TENUE, Tarjeta, type PropsPestana } from './Comunes'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { ComodinesLicenciatura, ListasLicenciaturas, autoLicenciaturas } from './TextosLicenciaturas'
+import { COMODINES_LICENCIATURA, usaComodinLicenciaturaFuera } from '@/components/landing/animada/textos-licenciatura'
 
 type Elemento = Record<string, string | number>
 
@@ -96,6 +97,14 @@ export function PestanaTextos({
     'landing.licenciaturas_titulo': autoLic?.titulo,
     'landing.licenciaturas_subtitulo': autoLic?.bajada,
   }
+  // #195: los comodines de licenciatura solo valen en su sección; fuera salen literales.
+  const clavesLanding = new Set([
+    ...Object.keys((defaults as { landing?: object } | undefined)?.landing ?? {}),
+    ...Object.keys((overrides as { landing?: object }).landing ?? {}),
+  ])
+  const comodinLicFuera = usaComodinLicenciaturaFuera(
+    Object.fromEntries([...clavesLanding].map((k) => [k, valorEfectivo(defaults, overrides, `landing.${k}`)])),
+  )
   const campoCarreras = CAMPOS_POR_SECCION.landing.find((c) => c.clave === 'landing.licenciaturas_carreras')
   const campoPasos = CAMPOS_POR_SECCION.landing.find((c) => c.clave === 'landing.licenciaturas_pasos')
 
@@ -222,6 +231,16 @@ export function PestanaTextos({
           ese nivel (si no tiene precio propio, el general).
         </span>
       </Aviso>
+
+      {comodinLicFuera && (
+        <Aviso tono="alerta">
+          Un texto fuera de la sección de licenciaturas usa{' '}
+          {COMODINES_LICENCIATURA.map((c, i) => (
+            <span key={c}>{i > 0 && ' o '}<code>{`{${c}}`}</code></span>
+          ))}
+          : esos solo funcionan en la tarjeta «Licenciaturas» y en el resto de la página saldrían tal cual.
+        </Aviso>
+      )}
 
       {grupos.map((grupo) => (
         <Tarjeta key={grupo.id} titulo={grupo.titulo}>

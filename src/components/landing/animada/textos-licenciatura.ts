@@ -253,17 +253,20 @@ export const COMODINES_LICENCIATURA = ['inscripcionLicenciatura', 'titulacion'] 
 export type ComodinLicenciatura = (typeof COMODINES_LICENCIATURA)[number]
 
 /**
- * Sus valores. `fmt` es el formato que el sitio le da a su `{inscripcion}` (en
- * la landing, «sin costo» cuando no se cobra). Sin planes no hay valores y el
- * comodín se queda literal, igual que la sección, que no se pinta.
+ * Sus valores. `fmtInscripcion` es el formato que el sitio le da a su
+ * `{inscripcion}` (en la landing, «sin costo» cuando no se cobra); `fmtTitulacion`,
+ * el de las cifras de la propia sección (la tarjeta del costo dice «$0», y el
+ * comodín no puede anunciar una titulación gratis junto a ella). Sin planes no hay
+ * valores y el comodín se queda literal, igual que la sección, que no se pinta.
  */
 export function varsLicenciatura(
   planes: readonly Pick<DesgloseLicenciatura, 'inscripcion' | 'titulacion'>[],
-  fmt: Dinero,
+  fmtInscripcion: Dinero,
+  fmtTitulacion: Dinero = fmtInscripcion,
 ): Partial<Record<ComodinLicenciatura, string>> {
   const p = planes[0]
   if (!p) return {}
-  return { inscripcionLicenciatura: fmt(p.inscripcion), titulacion: fmt(p.titulacion) }
+  return { inscripcionLicenciatura: fmtInscripcion(p.inscripcion), titulacion: fmtTitulacion(p.titulacion) }
 }
 
 /**
@@ -278,4 +281,19 @@ export function usaInscripcionGeneral(o: OverridesLicenciaturasLanding | null | 
     ...(Array.isArray(o.licenciaturas_carreras) ? o.licenciaturas_carreras.flatMap(c => [c?.nombre, c?.desc]) : []),
   ]
   return textos.some(t => typeof t === 'string' && t.includes('{inscripcion}'))
+}
+
+/**
+ * ¿Algún texto FUERA de la sección usa `{inscripcionLicenciatura}` o `{titulacion}`?
+ * Ahí no significan nada y saldrían literales en la página: el editor lo avisa.
+ * `landing` son los textos efectivos de la landing (clave → valor, sin el prefijo).
+ */
+export function usaComodinLicenciaturaFuera(landing: Record<string, unknown> | null | undefined): boolean {
+  if (!landing) return false
+  const re = new RegExp(`\\{(${COMODINES_LICENCIATURA.join('|')})\\}`)
+  const hay = (v: unknown): boolean =>
+    typeof v === 'string' ? re.test(v)
+      : Array.isArray(v) ? v.some(hay)
+        : v !== null && typeof v === 'object' ? Object.values(v).some(hay) : false
+  return Object.entries(landing).some(([k, v]) => !k.startsWith('licenciaturas_') && hay(v))
 }
