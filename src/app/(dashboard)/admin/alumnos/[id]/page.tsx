@@ -322,6 +322,9 @@ export default function AlumnoDetallePage() {
       setPagoAEliminar(null)
       await cargarPagos()
       showToast(`🗑️ Pago de ${fmtMoneda(montoEliminado)} eliminado`, 'info')
+      // D10: si ese pago abrió acceso, borrarlo NO lo revoca. La API lo dice
+      // (desde la bitácora) y aquí se muestra, en rojo y con tiempo para leerlo.
+      if (typeof data.aviso === 'string' && data.aviso) showToast(data.aviso, 'error', 12000)
     } catch {
       setEliminarPagoError('Error inesperado. Intenta de nuevo.')
     } finally {
