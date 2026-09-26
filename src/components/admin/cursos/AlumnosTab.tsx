@@ -54,6 +54,9 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
   // «Abrir todo» abre el curso completo y, con #208, deja de ser reembolsable:
   // doble confirmación con el aviso del pago único (D7b), para admin y secretario.
   const [confirmAbrirTodo, setConfirmAbrirTodo] = useState<{ i: CursoInscrito; paso: 1 | 2 } | null>(null)
+  // «Activar según la ficha» (D8) cuando la ficha es de pago único (abre TODO):
+  // la misma doble confirmación con el aviso. Con mes 1 no se confirma (decisión 12).
+  const [confirmActivar, setConfirmActivar] = useState<{ i: CursoInscrito; paso: 1 | 2 } | null>(null)
   const [asignandoTodos, setAsignandoTodos] = useState(false)
   // Lo que la masiva haría, contado por el SERVIDOR (D3): cuántos nuevos y con
   // qué regla. La confirmación muestra esto, y la ejecución lo manda de vuelta.
@@ -178,6 +181,38 @@ Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró 
     }
   }
 
+  /**
+   * «Activar según la ficha» (D8): a quien está POR ACTIVAR (registro público, 0
+   * meses, sin eventos) le abre lo que dice la ficha HOY, con la misma regla que
+   * «Asignar»: pago único → todo; mensual o sin precio → mes 1. La pantalla manda
+   * lo que le dijo al usuario (`regla_esperada`): si la ficha cambió, 409 y nada.
+   */
+  const pedirActivar = (i: CursoInscrito) => {
+    if (apertura === 'total') setConfirmActivar({ i, paso: 1 })
+    else void activar(i)
+  }
+  const activar = async (inscripcion: CursoInscrito) => {
+    const { inscripcion_id: inscripcionId, nombre } = inscripcion
+    setConfirmActivar(null)
+    setOcupadoId(inscripcionId)
+    try {
+      const res = await fetch(`/api/admin/inscripciones/${inscripcionId}/activar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regla_esperada: apertura }),
+      })
+      const json = await res.json().catch(() => ({} as { error?: string; acceso_total?: boolean }))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo activar')
+      onChanged(json.acceso_total
+        ? `${nombre}: acceso total al curso, según su ficha (pago único)${sinEfectoHoy(inscripcion)}`
+        : `${nombre}: mes 1 abierto, según su ficha${sinEfectoHoy(inscripcion)}`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo activar')
+    } finally {
+      setOcupadoId(null)
+    }
+  }
+
   const emitirConstancia = async (inscripcionId: string, nombre: string) => {
     const ok = window.confirm(
       `Emitir la constancia de ${nombre}.
@@ -262,7 +297,9 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       })
       const json = await res.json().catch(() => ({} as { error?: string; acceso_total?: boolean; sin_precio?: boolean }))
       if (res.status === 409) {
-        onError(json.error ?? 'Este alumno ya está asignado al curso')
+        // «Asignar» sobre una inscripción que ya existe NO activa nada (decisión 12):
+        // si está por activar, su fila ofrece «Activar según la ficha».
+        onError(`${json.error ?? 'Este alumno ya está asignado al curso'} Si está «por activar», usa «Activar según la ficha» en su fila.`)
         return
       }
       if (!res.ok) throw new Error(json.error ?? 'Error al asignar')
@@ -503,6 +540,21 @@ Se borra su inscripción y deja de ver el curso.
                     </button>
                   ) : (
                     <>
+                      {/* D8: a quien está POR ACTIVAR, el botón principal abre lo que dice la
+                          ficha; «+ Abrir mes» queda como opción secundaria. */}
+                      {i.por_activar && (
+                        <button
+                          onClick={() => pedirActivar(i)}
+                          disabled={ocupadoId === i.inscripcion_id}
+                          title={apertura === 'total'
+                            ? 'Según su ficha (pago único): abre TODO el curso'
+                            : 'Según su ficha: abre el mes 1'}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+                          style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+                        >
+                          Activar según la ficha
+                        </button>
+                      )}
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'cerrar-mes', i.meses_desbloqueados, i.nombre)}
                         disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0}
@@ -517,7 +569,9 @@ Se borra su inscripción y deja de ver el curso.
                         disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
                         title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala para abrir meses` : 'Abrir el siguiente mes'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
-                        style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+                        style={i.por_activar
+                          ? { border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }
+                          : { background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
                       >
                         + Abrir mes
                       </button>
@@ -602,6 +656,39 @@ Se borra su inscripción y deja de ver el curso.
         busy={asignandoTodos}
         onConfirm={asignarTodosActivos}
         onCancel={() => setConfirmTodos(0)}
+      />
+
+      {/* «Activar según la ficha» de un pago único (D8): abre TODO, doble confirmación. */}
+      <ConfirmDialog
+        open={confirmActivar?.paso === 1}
+        title="Activar según la ficha"
+        message={
+          <>
+            La ficha de este curso es de <strong>pago único</strong>: a{' '}
+            <strong>{confirmActivar?.i.nombre}</strong> se le abrirá <strong>TODO el curso</strong> (acceso
+            total).{' '}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá cuando lo publiques. </>}
+            ¿Continuar?
+          </>
+        }
+        confirmLabel="Sí, continuar"
+        onConfirm={() => setConfirmActivar(c => (c ? { ...c, paso: 2 } : null))}
+        onCancel={() => setConfirmActivar(null)}
+      />
+      <ConfirmDialog
+        open={confirmActivar?.paso === 2}
+        danger
+        title="¿Seguro? Segunda confirmación"
+        message={
+          <>
+            <strong>{AVISO_PAGO_UNICO}.</strong> Una vez activado, el pago único de{' '}
+            <strong>{confirmActivar?.i.nombre}</strong> ya no se reembolsa. Confirma una vez más para activarlo.
+          </>
+        }
+        confirmLabel="Activar todo el curso"
+        busy={confirmActivar ? ocupadoId === confirmActivar.i.inscripcion_id : false}
+        onConfirm={() => { if (confirmActivar) void activar(confirmActivar.i) }}
+        onCancel={() => setConfirmActivar(null)}
       />
 
       {/* «Abrir todo»: doble confirmación con el aviso del pago único (D7b). */}

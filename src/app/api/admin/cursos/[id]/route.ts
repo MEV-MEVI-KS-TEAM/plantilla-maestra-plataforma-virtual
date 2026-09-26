@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserRol, verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
-import { ultimosMovimientos } from '@/lib/cursos/bitacora'
+import { conEventosDeAcceso, estaPorActivar, ultimosMovimientos } from '@/lib/cursos/bitacora'
 import { removeFolder, signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
@@ -100,11 +100,14 @@ export async function GET(
     const alumnoIds = (inscripciones ?? []).map(i => i.alumno_id)
     let inscritos: CursoInscrito[] = []
     if (alumnoIds.length > 0) {
-      const [{ data: usuarios }, { data: alumnos }, movimientos] = await Promise.all([
+      const inscIds = (inscripciones ?? []).map(i => i.id)
+      const [{ data: usuarios }, { data: alumnos }, movimientos, conAcceso] = await Promise.all([
         admin.from('usuarios').select('id, nombre, apellidos, email').in('id', alumnoIds),
         admin.from('alumnos').select('id, matricula, activo').in('id', alumnoIds),
         // Bitácora: el último movimiento de cada uno, con quién lo hizo (D7b).
-        ultimosMovimientos(admin, (inscripciones ?? []).map(i => i.id)),
+        ultimosMovimientos(admin, inscIds),
+        // «Por activar» (D8): quién ya tuvo algún evento de acceso.
+        conEventosDeAcceso(admin, inscIds),
       ])
       const uMap = new Map((usuarios ?? []).map(u => [u.id, u]))
       const aMap = new Map((alumnos ?? []).map(a => [a.id, a]))
@@ -131,6 +134,8 @@ export async function GET(
           fecha_vencimiento: row.fecha_vencimiento,
           acceso_total: row.acceso_total === true,
           ultimo_movimiento: movimientos.get(row.id) ?? null,
+          // Sin bitácora legible (conAcceso null) nadie se ofrece «por activar».
+          por_activar: conAcceso !== null && estaPorActivar(row, conAcceso.has(row.id)),
         }
       })
     }

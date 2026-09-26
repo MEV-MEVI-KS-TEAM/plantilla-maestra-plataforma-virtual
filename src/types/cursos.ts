@@ -74,6 +74,11 @@ export interface CursoInscrito {
   acceso_total: boolean
   /** El último movimiento de la bitácora, con quién lo hizo (D7b). null sin bitácora. */
   ultimo_movimiento?: MovimientoInscripcion | null
+  /**
+   * «Por activar» (D8): activa, sin acceso total, 0 meses y sin eventos de acceso
+   * (típicamente, el registro público). Se ofrece «Activar según la ficha».
+   */
+  por_activar?: boolean
 }
 
 export interface CursoDetalle {

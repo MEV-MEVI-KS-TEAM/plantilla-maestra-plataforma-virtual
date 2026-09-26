@@ -132,3 +132,41 @@ export async function ultimosMovimientos(
   }
   return out
 }
+
+// ─── «Por activar» (D8) ──────────────────────────────────────────────────────
+
+/** Los tipos de evento que dan o quitan acceso. */
+export const EVENTOS_DE_ACCESO = ['abrir_mes', 'cerrar_mes', 'abrir_todo', 'quitar_acceso_total'] as const
+
+/**
+ * «Por activar» (D8, decisión 12): activa, sin acceso total, con 0 meses y SIN
+ * eventos de acceso — nunca se le abrió ni se le cerró nada. Es la MISMA regla
+ * que curso_activar_segun_ficha() comprueba en SQL (con FOR UPDATE): esto solo
+ * decide qué botón se ofrece.
+ */
+export function estaPorActivar(
+  i: { estado: string | null; acceso_total?: boolean | null; meses_desbloqueados: number | null },
+  conEventosDeAcceso: boolean,
+): boolean {
+  return (i.estado ?? 'activa') === 'activa' && i.acceso_total !== true
+    && (i.meses_desbloqueados ?? 0) === 0 && !conEventosDeAcceso
+}
+
+/**
+ * De las inscripciones dadas, las que YA tienen algún evento de acceso. `null`
+ * si la bitácora no se pudo leer (sin B4): entonces nadie se ofrece «por
+ * activar», porque la función tampoco podría comprobarlo.
+ */
+export async function conEventosDeAcceso(
+  admin: SupabaseClient,
+  inscripcionIds: readonly string[],
+): Promise<Set<string> | null> {
+  if (inscripcionIds.length === 0) return new Set()
+  const { data, error } = await admin
+    .from('curso_inscripcion_eventos')
+    .select('inscripcion_id')
+    .in('inscripcion_id', [...inscripcionIds])
+    .in('tipo', [...EVENTOS_DE_ACCESO])
+  if (error || !data) return null
+  return new Set((data as { inscripcion_id: string }[]).map(e => e.inscripcion_id))
+}
