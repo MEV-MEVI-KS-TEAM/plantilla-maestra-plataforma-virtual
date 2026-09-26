@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { baseSinPagosDeCurso } from '@/lib/cursos/inscripciones'
 
 // ─── DELETE /api/admin/cursos/[id]/inscripciones/[alumnoId] — quitar alumno ──
 export async function DELETE(
@@ -26,9 +27,10 @@ export async function DELETE(
     //
     // Se comprueba ANTES para dar un mensaje que diga qué hacer, en vez de dejar
     // salir el 23503 crudo de Postgres.
+    // select('*'): `estado` llega con B1 y aquí no se exige (sin B1 se sigue borrando).
     const { data: insc } = await admin
       .from('curso_inscripciones')
-      .select('id')
+      .select('*')
       .eq('curso_id', params.id)
       .eq('alumno_id', params.alumnoId)
       .maybeSingle()
@@ -53,16 +55,27 @@ export async function DELETE(
     // pagos.curso_inscripcion_id es ON DELETE SET NULL (B1): borrarla dejaba esos
     // pagos sin curso, y Reportes, el Excel y el estado de cuenta los contaban
     // como ingresos del PROGRAMA. Se cancela: conserva el historial y el vínculo.
-    // Sin la columna (base sin B1) no puede haber pagos de curso: se sigue.
+    // Sin la columna (base sin B1) no puede haber pagos de curso: se sigue. Con
+    // CUALQUIER otro error no se sabe, y no se borra (falla cerrado). Sin
+    // `head`: con head, PostgREST manda los errores sin cuerpo y todos se ven
+    // iguales.
     const { count: nPagos, error: errPagos } = await admin
       .from('pagos')
-      .select('id', { count: 'exact', head: true })
+      .select('id', { count: 'exact' })
       .eq('curso_inscripcion_id', (insc as { id: string }).id)
+      .limit(1)
+    if (errPagos && !baseSinPagosDeCurso(errPagos)) {
+      console.error('[DELETE inscripción] pagos:', errPagos.message)
+      return NextResponse.json({ error: 'No se pudo comprobar si la inscripción tiene pagos; no se borró nada. Intenta de nuevo.' }, { status: 500 })
+    }
     if (!errPagos && (nPagos ?? 0) > 0) {
+      const yaCancelada = (insc as { estado?: string }).estado === 'cancelada'
       return NextResponse.json({
         error:
           `Esta inscripción tiene ${nPagos} pago(s) registrado(s) y no se borra: los pagos perderían su curso y se contarían como del programa. ` +
-          'Usa «Cancelar inscripción» para darla de baja conservando el historial.',
+          (yaCancelada
+            ? 'Ya está cancelada: así se queda, con su historial.'
+            : 'Usa «Cancelar inscripción» para darla de baja conservando el historial.'),
         tiene_pagos: true,
       }, { status: 409 })
     }

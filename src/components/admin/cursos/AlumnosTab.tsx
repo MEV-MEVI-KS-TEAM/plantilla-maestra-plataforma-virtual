@@ -334,7 +334,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
   async function cancelar(i: CursoInscrito) {
     if (!window.confirm(`Cancelar la inscripción de ${i.nombre}.
 
-Deja de ver el curso. Se conservan sus pagos, su bitácora y los meses que ya tenía (reactivarla los recupera).
+Deja de ver el curso. Se conservan sus pagos, su bitácora y los meses que ya tenía («Reactivar» los recupera).
 
 ¿Continuar?`)) return
     setOcupadoId(i.inscripcion_id)
@@ -354,7 +354,37 @@ Deja de ver el curso. Se conservan sus pagos, su bitácora y los meses que ya te
     }
   }
 
-  async function quitar(alumnoId: string, nombre: string) {
+  /**
+   * «Reactivar» (D11, solo admin): deshace «Cancelar inscripción». Sin esto la
+   * cancelación era un callejón: «Abrir mes» y «Abrir todo» se apagan en filas no
+   * activas, «Asignar» no la ofrece (ya está inscrito) y «Quitar» la rechaza
+   * por los pagos. También pasa por curso_cambiar_estado (evento con actor).
+   */
+  async function reactivar(i: CursoInscrito) {
+    if (!window.confirm(`Reactivar la inscripción de ${i.nombre}.
+
+Vuelve a ver el curso con los meses que ya tenía.
+
+¿Continuar?`)) return
+    setOcupadoId(i.inscripcion_id)
+    try {
+      const res = await fetch(`/api/admin/inscripciones/${i.inscripcion_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'activa', motivo: 'Reactivada desde la pestaña Alumnos' }),
+      })
+      const json = await res.json().catch(() => ({} as { error?: string }))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo reactivar')
+      onChanged(`${i.nombre}: inscripción reactivada`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo reactivar')
+    } finally {
+      setOcupadoId(null)
+    }
+  }
+
+  async function quitar(i: CursoInscrito) {
+    const { alumno_id: alumnoId, nombre } = i
     // Borra la inscripción (y con ella su acceso y su bitácora): se confirma,
     // sobre todo ahora que «Quitar acceso total» vive en la misma fila.
     if (!window.confirm(`Quitar a ${nombre} de este curso.
@@ -362,7 +392,9 @@ Deja de ver el curso. Se conservan sus pagos, su bitácora y los meses que ya te
 Se borra su inscripción y deja de ver el curso.
 
 ¿Continuar?`)) return
-    setOcupadoId(alumnoId)
+    // La misma llave que los demás botones de la fila: mientras corre uno, la
+    // fila entera espera (no se cruzan «Cancelar» y «Quitar»).
+    setOcupadoId(i.inscripcion_id)
     try {
       const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones/${alumnoId}`, { method: 'DELETE' })
       if (!res.ok) {
@@ -638,6 +670,19 @@ Se borra su inscripción y deja de ver el curso.
                   )}
                 </div>
 
+                {/* Solo admin (D11): reactivar deshace la cancelación. */}
+                {esAdmin && i.estado === 'cancelada' && (
+                  <button
+                    onClick={() => reactivar(i)}
+                    disabled={ocupadoId === i.inscripcion_id}
+                    title="Deshacer la cancelación: vuelve a ver el curso con los meses que ya tenía"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
+                    style={{ border: '1px solid rgba(16,185,129,0.35)', color: '#047857', background: 'var(--color-superficie)' }}
+                  >
+                    Reactivar
+                  </button>
+                )}
+
                 {/* Solo admin (D11): cancelar conserva pagos e historial. */}
                 {esAdmin && i.estado !== 'cancelada' && (
                   <button
@@ -654,8 +699,8 @@ Se borra su inscripción y deja de ver el curso.
                 {/* Solo admin (D7b): quitar borra la inscripción. */}
                 {esAdmin && (
                   <button
-                    onClick={() => quitar(i.alumno_id, i.nombre)}
-                    disabled={ocupadoId === i.alumno_id}
+                    onClick={() => quitar(i)}
+                    disabled={ocupadoId === i.inscripcion_id}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
                     style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
                   >
