@@ -15,8 +15,8 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
  *
  * LOS DATOS VIVEN EN DOS SITIOS, Y EL CORREO EN TRES:
  *   usuarios   -> nombre, apellidos, email, telefono
- *   alumnos    -> nivel, modalidad, carrera
  *   auth.users -> email  ← ES CON EL QUE SE INICIA SESIÓN
+ *   (alumnos -> nivel, modalidad, carrera: NO se editan aquí, ver abajo)
  *
  * 🛑 EL CORREO ES LA LLAVE DE ACCESO. Cambiarlo solo en `usuarios` deja al
  * alumno entrando con el viejo y viendo el nuevo en pantalla: parece que
@@ -25,6 +25,9 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
  * `usuarios` con el viejo, el alumno pierde el acceso sin que nadie lo note.
  *
  * NO se editan aquí, a propósito:
+ *   - `nivel`, `modalidad` y `carrera` (D9, #199-admin): el plan de estudio se
+ *     cambia SOLO con «Corregir plan», que lo valida y tiene candados (pagos,
+ *     meses abiertos, avance). Aquí se escribían sin validar nada.
  *   - `matricula`: es la identidad del alumno en constancias y pagos ya
  *     emitidos, y la genera un trigger. Cambiarla rompe el historial.
  *   - `meses_desbloqueados`: tiene su propio endpoint con las reglas de avance.
@@ -33,11 +36,11 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
 
 /** Campos de `usuarios`. El email se trata aparte por lo de Auth. */
 const CAMPOS_USUARIO = ['nombre', 'apellidos', 'telefono'] as const
-/** Campos de `alumnos`. */
-const CAMPOS_ALUMNO = ['nivel', 'modalidad', 'carrera'] as const
+/** El plan de estudio: se rechaza (D9). Se cambia con «Corregir plan». */
+const CAMPOS_PLAN = ['nivel', 'modalidad', 'carrera'] as const
 
 type Cuerpo = Partial<Record<
-  (typeof CAMPOS_USUARIO)[number] | (typeof CAMPOS_ALUMNO)[number] | 'email',
+  (typeof CAMPOS_USUARIO)[number] | (typeof CAMPOS_PLAN)[number] | 'email',
   string | null
 >>
 
@@ -54,6 +57,13 @@ export async function PATCH(
     if (denied) return denied
 
     const body = (await request.json()) as Cuerpo
+    // Antes de tocar nada (ni Auth): el plan no se edita por aquí.
+    if (CAMPOS_PLAN.some(campo => campo in body)) {
+      return NextResponse.json(
+        { error: 'El plan de estudio (nivel, modalidad o carrera) se cambia con «Corregir plan», no aquí.' },
+        { status: 400 },
+      )
+    }
     const admin = createAdminClient()
 
     // ── Estado previo: hace falta para revertir y para el registro ───────────
@@ -125,20 +135,6 @@ export async function PATCH(
       }
     }
 
-    // ── alumnos ─────────────────────────────────────────────────────────────
-    const parcheAlumno: Record<string, string | null> = {}
-    for (const campo of CAMPOS_ALUMNO) {
-      if (campo in body) parcheAlumno[campo] = body[campo] ?? null
-    }
-
-    if (Object.keys(parcheAlumno).length > 0) {
-      const { error } = await admin.from('alumnos').update(parcheAlumno).eq('id', params.id)
-      if (error) {
-        console.error('[admin/alumnos/datos] update alumnos:', error.message)
-        return NextResponse.json({ error: error.message }, { status: 500 })
-      }
-    }
-
     // ── Registro de quién editó y cuándo ────────────────────────────────────
     // El esquema base no trae tabla de auditoría ni columnas `updated_by`, así
     // que por ahora queda en el log del servidor (consultable en Vercel). Crear
@@ -147,7 +143,7 @@ export async function PATCH(
       alumno: params.id,
       editado_por: user.id,
       cuando: new Date().toISOString(),
-      campos: [...Object.keys(parcheUsuario), ...Object.keys(parcheAlumno)],
+      campos: Object.keys(parcheUsuario),
     }))
 
     return NextResponse.json({ success: true, email_de_acceso_actualizado: cambiaEmail })

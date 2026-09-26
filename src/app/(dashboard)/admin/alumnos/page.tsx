@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, Search, Plus, X, Loader2, Eye, MessageSquare, CheckCheck, Clock, AlertCircle } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
-import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { planesPorNivel, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { useSiteConfig } from '@/components/site-config-provider'
 // El nombre del programa lo arma la API (plan_nombre); aquí solo hacen falta
 // el catálogo de carreras y el switch del add-on.
@@ -973,7 +973,8 @@ export default function AlumnosPage() {
                   style={{ ...INPUT_STYLE, opacity: form.nivel ? 1 : 0.5 }}
                 >
                   <option value="">{form.nivel ? 'Selecciona modalidad...' : 'Primero elige nivel'}</option>
-                  {(form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
+                  {/* D9: los planes de ESE nivel (lo mismo que el registro y que valida el servidor). */}
+                  {(form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(form.nivel, cfg.modalidades)).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
