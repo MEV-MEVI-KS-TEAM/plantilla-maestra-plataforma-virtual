@@ -3,10 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
+import { faltaBitacoraMes, type EventoMes } from '@/lib/meses-programa'
 import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
 import { getSiteConfig } from '@/lib/site-config'
 import { CONFIG } from '@/lib/config'
-import { faltaBitacoraMes, type EventoMes } from '@/lib/meses-programa'
 
 export async function GET(
   _request: NextRequest,

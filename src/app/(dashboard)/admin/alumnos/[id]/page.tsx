@@ -39,8 +39,6 @@ interface AlumnoDetalle {
   // Candados de corrección de plan, evaluados por el servidor (solo admin).
   // null = el servidor no lo calculó (secretario, diplomado o migración ausente).
   plan_correccion?: { permitida: boolean; candado: string | null } | null
-  /** D20a: el último abrir/cerrar mes del programa (bitácora); null sin la migración. */
-  ultimo_mes_evento?: EventoMes | null
   usuario: { id: string; nombre_completo: string; email: string; activo: boolean; telefono: string | null }
   plan: { id: string; nombre: string; duracion_meses: number; precio_mensual: number }
   calificaciones: { id: string; calificacion_final: number | null; aprobada: boolean; materias: { nombre: string; codigo: string } }[]
@@ -52,6 +50,8 @@ interface AlumnoDetalle {
     fecha_intento: string
     evaluaciones: { id: string; titulo: string; materias: { nombre: string } | null } | null
   }[]
+  /** D20a: el último abrir/cerrar mes del programa (bitácora); null sin la migración. */
+  ultimo_mes_evento?: EventoMes | null
 }
 
 interface PagoAlumno {
