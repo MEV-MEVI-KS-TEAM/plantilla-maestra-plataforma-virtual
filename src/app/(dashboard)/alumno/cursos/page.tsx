@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { GraduationCap, Loader2, BookOpen } from 'lucide-react'
 import { ProgressBar } from '@/components/cursos/ProgressBar'
-import type { CursoCatalogoItem } from '@/types/cursos-alumno'
+import type { CursoCanceladoAlumno, CursoCatalogoItem } from '@/types/cursos-alumno'
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 import { resumenPagosCurso } from '@/lib/cursos/pagos-alumno'
@@ -26,6 +26,7 @@ function TipoBadge({ tipo }: { tipo: string }) {
 export default function MisCursosPage() {
   const router = useRouter()
   const [cursos, setCursos] = useState<CursoCatalogoItem[] | null>(null)
+  const [cancelados, setCancelados] = useState<CursoCanceladoAlumno[]>([])
   const [error, setError] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
 
@@ -33,7 +34,13 @@ export default function MisCursosPage() {
     let cancelled = false
     fetch('/api/alumno/cursos')
       .then(r => { if (!r.ok) throw new Error(); return r.json() })
-      .then(json => { if (!cancelled) setCursos(Array.isArray(json) ? json : []) })
+      .then(json => {
+        if (cancelled) return
+        // D20d (remate f): la API responde { cursos, cancelados }. Se tolera el
+        // arreglo de antes por si la página y la API no son de la misma versión.
+        setCursos(Array.isArray(json) ? json : Array.isArray(json?.cursos) ? json.cursos : [])
+        setCancelados(Array.isArray(json?.cancelados) ? json.cancelados : [])
+      })
       .catch(() => { if (!cancelled) { setCursos([]); setError(true) } })
     return () => { cancelled = true }
   }, [])
@@ -87,7 +94,10 @@ export default function MisCursosPage() {
           style={{ background: 'var(--color-superficie)', border: '1px solid #E2E8F0' }}
         >
           <GraduationCap className="w-10 h-10" style={{ color: '#CBD5E1' }} />
-          <p className="text-sm font-semibold" style={{ color: '#64748B' }}>Aún no tienes cursos asignados</p>
+          {/* D20d: si solo tiene cancelados, no es que «aún no» tenga cursos. */}
+          <p className="text-sm font-semibold" style={{ color: '#64748B' }}>
+            {cancelados.length > 0 ? 'No tienes cursos activos' : 'Aún no tienes cursos asignados'}
+          </p>
           <p className="text-xs" style={{ color: '#94A3B8' }}>
             Cuando tu institución te asigne un curso o diplomado, aparecerá aquí.
           </p>
@@ -158,6 +168,36 @@ export default function MisCursosPage() {
             </button>
           ))}
         </div>
+      )}
+
+      {/* D20d (remate f): inscripciones canceladas a las que pagó algo. No se
+          abren (el visor solo diría «no está activa»): solo nombre y lo pagado. */}
+      {cancelados.length > 0 && (
+        <section aria-labelledby="cursos-cancelados" className="space-y-2">
+          <h3 id="cursos-cancelados" className="text-sm font-bold" style={{ color: '#64748B' }}>
+            Cursos cancelados
+          </h3>
+          <p className="text-xs" style={{ color: '#94A3B8' }}>
+            Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado; si tienes dudas, habla con tu escuela.
+          </p>
+          <ul className="space-y-2">
+            {cancelados.map(c => (
+              <li
+                key={c.id}
+                className="rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2"
+                style={{ background: 'var(--color-superficie)', border: '1px solid #E2E8F0' }}
+              >
+                <div className="min-w-0 space-y-1">
+                  <TipoBadge tipo={c.tipo} />
+                  <p className="text-sm font-semibold truncate" style={{ color: '#475569' }}>{c.nombre}</p>
+                </div>
+                <p className="text-[11px] font-medium" style={{ color: '#047857' }}>
+                  {resumenPagosCurso(c.pagos, fmtCurso)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   )

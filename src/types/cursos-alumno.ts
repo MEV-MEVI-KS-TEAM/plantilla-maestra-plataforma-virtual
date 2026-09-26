@@ -18,6 +18,24 @@ export interface CursoCatalogoItem {
   pagos?: { pagado: number; ultimo: { fecha: string; monto: number } | null } | null
 }
 
+/**
+ * D20d (remate f): un curso cuya inscripción se canceló y al que el alumno SÍ
+ * pagó. Solo nombre, tipo y lo pagado: no se abre (el visor solo diría «no está
+ * activa»), así que no lleva progreso ni portada.
+ */
+export interface CursoCanceladoAlumno {
+  id: string
+  nombre: string
+  tipo: CursoTipo
+  pagos: NonNullable<CursoCatalogoItem['pagos']>
+}
+
+/** Respuesta de GET /api/alumno/cursos (desde D20d; antes era el arreglo solo). */
+export interface CatalogoAlumno {
+  cursos: CursoCatalogoItem[]
+  cancelados: CursoCanceladoAlumno[]
+}
+
 export interface LeccionAlumno {
   id: string
   titulo: string

@@ -24,7 +24,8 @@ test('1. el resumen: «Pagado $X · último pago <fecha>»; nada si no ha pagado
 
 test('2. la API: sus pagos de curso por la FK, con el cliente admin y SIEMPRE por el alumno de la sesión', () => {
   const r = sinComentarios(leer('src/app/api/alumno/cursos/route.ts'))
-  expect(r).toMatch(/\.from\('curso_inscripciones'\)\s*\.select\('id, curso_id'\)\s*\.eq\('alumno_id', user\.id\)/)
+  // D20d: `*` para leer `estado` sin tumbar una base sin B1.
+  expect(r).toMatch(/\.from\('curso_inscripciones'\)\s*\.select\('\*'\)\s*\.eq\('alumno_id', user\.id\)/)
   expect(r).toMatch(/\.from\('pagos'\)\s*\.select\('curso_inscripcion_id, monto, fecha_pago, created_at'\)\s*\.eq\('alumno_id', user\.id\)\s*\.not\('curso_inscripcion_id', 'is', null\)/)
   // Sin B1 (o un error) no hay resumen: el catálogo sale como siempre.
   expect(r).toContain("if (errPagos && errPagos.code !== '42703') console.error(")
