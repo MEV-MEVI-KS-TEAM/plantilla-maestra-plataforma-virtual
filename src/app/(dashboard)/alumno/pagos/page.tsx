@@ -17,6 +17,8 @@ import { formatoMXN } from '@/lib/formato'
 import { textoInscripcion } from '@/lib/precios-ui'
 import { useSiteConfig } from '@/components/site-config-provider'
 import { canalEscuela } from '@/lib/contacto-ui'
+import type { CostoPrograma } from '@/lib/costo-programa'
+import { CostoProgramaCard } from '@/components/alumno/CostoProgramaCard'
 
 type Estado = 'pendiente' | 'pagado' | 'vencido' | 'condonado'
 
@@ -42,6 +44,8 @@ type Datos = {
    */
   inscripcion: number
   certificacion: number
+  /** #202 (D13): el costo de su programa de licenciatura; null en los demás niveles. */
+  programa?: CostoPrograma | null
   inscripcion_pagada: boolean
   resumen: {
     pagadas: number
@@ -101,6 +105,12 @@ export default function MisPagosPage() {
             ? `Tu inscripción no lleva calendario de cuotas semanales. Si tienes dudas sobre tus pagos, escríbenos por ${canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}.`
             : 'Tu inscripción no lleva calendario de cuotas semanales. Si tienes dudas sobre tus pagos, pregunta en tu escuela.'}
         </p>
+        {/* #202 (D13): el alumno de licenciatura ve cuánto cuesta su programa. */}
+        {datos?.programa && (
+          <div style={{ marginTop: 16, maxWidth: 520 }}>
+            <CostoProgramaCard programa={datos.programa} semanal />
+          </div>
+        )}
       </div>
     )
   }

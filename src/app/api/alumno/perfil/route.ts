@@ -3,6 +3,23 @@ import { createClient } from '@/lib/supabase/server'
 import { CONFIG } from '@/lib/config'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { getMesesByModalidad } from '@/lib/modalidades'
+import { getSiteConfig } from '@/lib/site-config'
+import { costoProgramaAlumno, type CostoPrograma } from '@/lib/costo-programa'
+
+/**
+ * #202 (D13): lo que cuesta el programa de LICENCIATURA del alumno, con lo
+ * publicado. Solo en esa rama se lee getSiteConfig: el resto de los alumnos
+ * no paga esa lectura. Si algo falla, null (el inicio no pinta la tarjeta).
+ */
+async function programaDe(nivel?: string | null, modalidad?: string | null): Promise<CostoPrograma | null> {
+  if (nivel !== 'licenciatura') return null
+  try {
+    return costoProgramaAlumno(nivel, modalidad ?? null, await getSiteConfig())
+  } catch (e) {
+    console.error('[api/alumno/perfil] programa:', e)
+    return null
+  }
+}
 
 function buildNombre(nombre?: string | null, apellidos?: string | null, fallback?: string | null) {
   return [nombre, apellidos].filter(Boolean).join(' ') || fallback || 'Alumno'
@@ -52,6 +69,7 @@ export async function GET() {
         nombre_completo:     nombreCompleto,
         email:               a.usuarios?.email ?? user.email ?? '',
         avatar_url:          a.usuarios?.avatar_url ?? null,
+        programa:            await programaDe(a.nivel, (a as { modalidad?: string | null }).modalidad),
       })
     }
 
@@ -112,6 +130,7 @@ export async function GET() {
         nombre_completo:     nombreCompleto,
         email:               u?.email ?? user.email ?? '',
         avatar_url:          u?.foto_url ?? null,
+        programa:            await programaDe(a.nivel, a.modalidad),
       })
     }
 
