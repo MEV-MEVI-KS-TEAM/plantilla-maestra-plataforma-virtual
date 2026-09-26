@@ -38,7 +38,7 @@ import {
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
 import {
   unirConY, soloLicenciaturas, desglosesLicenciatura, porcentajeTitulacionTexto, nombrarProgramas,
-  ritmoDeApertura,
+  ritmoDeApertura, planLicVendible, planesLicSinMensualidad,
 } from './licenciaturas.mjs'
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -505,6 +505,12 @@ const ETIQUETA_PROGRAMAS = TIPOS.length === 0 ? 'Programas'
 
 // Titulación con precio propio: cada plan con su costo completo. `[]` si no aplica.
 const DESGLOSES_LIC = LIC?.activas ? desglosesLicenciatura(LIC, CARRERAS) : []
+// #194: un plan sin mensualidad no sale en el documento ni en la página, pero el
+// registro lo sigue ofreciendo. El cliente tiene que saberlo antes de entregar.
+if (LIC?.activas) {
+  for (const m of planesLicSinMensualidad(LIC))
+    avisar(`Licenciaturas: el plan «${m.label || m.id}» no tiene mensualidad. El documento y la página no lo muestran, pero el registro aún lo ofrece. Si se vende, ponle precio en «Personalizar mi página»; si no, apágalo en config.ts (activa: false).`)
+}
 
 const nivelesPrograma = CONFIG.niveles.filter(n => n !== 'licenciatura')
 const modalidadesActivas = (CONFIG.modalidades || []).filter(m => m && typeof m === 'object' && m.activa)
@@ -599,8 +605,7 @@ if (CARRERAS.length) {
   for (const r of rutasLic)
     for (const m of (r.modalidades || [])) deRuta.set(m.id, r)
 
-  for (const m of (LIC.modalidades || []).filter(x => x.activa !== false)) {
-    if (!m.mensualidad) continue
+  for (const m of (LIC.modalidades || []).filter(planLicVendible)) {
     const r = deRuta.get(m.id)
     const nombre = r && rutasLic.length > 1
       ? `${r.nombre} — ${m.label || m.id}`
@@ -924,7 +929,8 @@ if (!flag('solo-pdf')) {
       .filter(([, cs]) => cs.length)
 
     for (const [titulo, carreras] of grupos) {
-    const modsLic = (LIC.modalidades || []).filter(m => m.activa !== false)
+    // «Precio:» con la regla de la página: sin «$0/mes» (#194).
+    const modsLic = (LIC.modalidades || []).filter(planLicVendible)
     L.push(`🎓 ${grupos.length > 1 ? titulo : ETIQUETA_PROGRAMAS.toUpperCase()}`)
     for (const c of carreras) {
       const partes = []
@@ -987,7 +993,7 @@ if (!flag('solo-pdf')) {
       // paga el alumno (INSPIRA #203, UVEP #209).
       for (const p of desgloses)
         L.push(`${p.label}: ${mxn(p.inscripcion)} de inscripción + ${p.meses} × ${mxn(p.mensualidad)} + ${mxn(p.titulacion)} de titulación = ${mxn(p.total)}`)
-      L.push(`La titulación se paga al concluir y es ${porcentajeTitulacionTexto(desgloses)} del costo total.`)
+      L.push(`La titulación es ${porcentajeTitulacionTexto(desgloses)} del costo total.`)
     } else if (modsLic.length) {
       const precios = modsLic.map(m => `${m.label || m.id}: ${mxn(m.mensualidad)}/mes`).join(' · ')
       L.push(`Precio: ${precios}`)
