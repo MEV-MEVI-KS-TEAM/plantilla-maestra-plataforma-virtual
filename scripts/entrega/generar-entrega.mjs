@@ -410,6 +410,8 @@ const CARRERAS = conNombresPublicados(
 )
 for (const c of CARRERAS.filter(x => x.nombreConfig))
   avisar(`Carreras: el documento usa el nombre publicado en el panel, «${c.nombre}» (config.ts: «${c.nombreConfig}»). El registro, el panel y las constancias siguen diciendo «${c.nombreConfig}».`)
+for (const c of CARRERAS.filter(x => x.comodinSinResolver))
+  avisar(`Carreras: el nombre publicado «${c.comodinSinResolver}» usa un comodín que el documento no resuelve; se usó el de config.ts «${c.nombre}».`)
 const TIPOS = [...new Set(CARRERAS.map(c => c.tipo))]
 
 /**
@@ -1078,7 +1080,9 @@ if (!flag('solo-pdf')) {
       `• Abrir el curso a quien ya se registró desde tu página eligiendo el curso, con «Activar según la ficha» en su fila${
         VENDE_INGRESO ? '; a quien pidió un curso de preparación para examen, con «Asignar» en Alumnos' : ''}`,
       '• Registrar cada pago del curso con «Cobrar» (en su fila o en la tarjeta «Cursos» de la ficha del alumno): con la casilla marcada, ese mismo cobro le abre lo que pagó',
-      '• Todo esto también lo puede hacer quien tenga el rol de secretario, incluso emitir constancias; cambiar precios, cancelar o reactivar una inscripción y borrar pagos quedan solo en tu cuenta',
+      // En positivo y con la misma lista que el PDF: «todo esto» incluía crear cursos,
+      // que el secretario no puede.
+      `• Quien tenga el rol de secretario también asigna, activa y cobra los cursos, abre meses y emite constancias${CONFIG.modo === 'solo_cursos' ? '' : ' (en su menú, «Cursos»)'}; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción y borrar pagos quedan solo en tu cuenta`,
     ] : ['• Crear tus propios Cursos y Diplomados cuando quieras']),
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]

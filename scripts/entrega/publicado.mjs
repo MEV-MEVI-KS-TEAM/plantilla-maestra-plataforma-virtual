@@ -128,8 +128,15 @@ export function proyectoLeido(vars) {
   return refDeProyecto(url) ?? (() => { try { return new URL(url).host } catch { return String(url) } })()
 }
 
-/** Para comparar nombres: sin acentos, sin mayúsculas y con los espacios colapsados. */
-const normNombre = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+/**
+ * Lo invisible que un nombre puede traer pegado (espacios de ancho cero, marcas
+ * de dirección, BOM): la MISMA clase que INVISIBLES en src/lib/site-config-validacion.ts.
+ * Se QUITA, no se cambia por un espacio: «Instituto» con un espacio de ancho cero
+ * delante sigue siendo «Instituto».
+ */
+const INVISIBLES = /[\u200B-\u200F\u2060\uFEFF]/g
+/** Para comparar nombres: sin invisibles, sin acentos, sin mayúsculas y con los espacios colapsados. */
+const normNombre = (s) => String(s ?? '').replace(INVISIBLES, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .replace(/\s+/g, ' ').trim().toLowerCase()
 
 /**

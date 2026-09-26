@@ -75,6 +75,15 @@ test('d2. revisarProyecto: sin nombre publicado, con --solo-config o con el mism
   const soloCompleto = revisarProyecto({ lectura: ok({ nombreCompleto: 'Instituto Álamo de Estudios en Línea' }), configTs: TS, proyecto: 'abcd1234' })
   expect(soloCompleto.abortar).toBeUndefined()
   expect(soloCompleto.revisa).toContain('«Instituto Álamo de Estudios en Línea»')
+  // Un invisible pegado al nombre (espacio de ancho cero, marca de izquierda a derecha)
+  // no lo convierte en otra escuela; se QUITA, no se cambia por un espacio.
+  const invisible = (cp: number) => String.fromCharCode(cp)
+  for (const cp of [0x200b, 0x200e]) {
+    const r = revisarProyecto({ lectura: ok({ nombre: `${invisible(cp)}Instituto Álamo`, nombreCompleto: `Instituto Álamo de Estudios en Línea${invisible(0xfeff)}` }), configTs: TS, proyecto: 'abcd1234' })
+    expect(r.abortar, cp.toString(16)).toBeUndefined()
+    expect(r.aviso, cp.toString(16)).toBeUndefined()
+  }
+  expect(revisarProyecto({ lectura: ok({ nombre: `Insti${invisible(0x200b)}tuto Álamo` }), configTs: TS, proyecto: 'abcd1234' }).abortar).toBeUndefined()
   // Un nombre que no es texto se ignora (la fusión también lo ignora).
   expect(revisarProyecto({ lectura: ok({ nombre: 42, nombreCompleto: null }), configTs: TS, proyecto: 'abcd1234' }).abortar).toBeUndefined()
 })
@@ -117,7 +126,8 @@ test('d2. revisarProyectoInfra: la página de Infraestructura no puede nombrar o
 
 // ─── d · 3. nombres de carrera publicados ────────────────────────────────────
 
-type Carrera = { slug: string; nombre: string; desc: string; tipo?: string; esDiplomado?: boolean; nombreConfig?: string }
+type Carrera = { slug: string; nombre: string; desc: string; tipo?: string; esDiplomado?: boolean; nombreConfig?: string; comodinSinResolver?: string }
+const COMODIN = /\{[A-Za-z_][A-Za-z0-9_]*\}/
 const CARRERAS: Carrera[] = [
   { slug: 'derecho', nombre: 'Licenciatura en Derecho', desc: 'D.', tipo: 'licenciatura' },
   { slug: 'administracion', nombre: 'Licenciatura en Administración', desc: 'A.', tipo: 'licenciatura' },
@@ -139,6 +149,13 @@ test('d3. conNombresPublicados: por slug y recortado; vacío, slug ajeno o diplo
   // El tipo no se recalcula con el nombre nuevo.
   const curso = conNombresPublicados([{ slug: 'x', nombre: 'Licenciatura en X', desc: '', tipo: 'licenciatura' }], [{ slug: 'x', nombre: 'Curso intensivo de X', desc: '' }]) as Carrera[]
   expect(curso[0].tipo).toBe('licenciatura')
+  // Un comodín que el documento no resuelve: queda el de config.ts, marcado para avisarlo.
+  const comodin = conNombresPublicados(CARRERAS, [{ slug: 'derecho', nombre: ' Derecho ({duracion}) ', desc: '' }],
+    (s: string) => interpolar(s, { nombre: 'Álamo' })) as Carrera[]
+  expect(comodin[0].nombre).toBe('Licenciatura en Derecho')
+  expect(comodin[0].nombreConfig).toBeUndefined()
+  expect(comodin[0].comodinSinResolver).toBe('Derecho ({duracion})')
+  expect(comodin[1]).toBe(CARRERAS[1])
   // El mismo nombre publicado otra vez no es un cambio.
   expect((conNombresPublicados(CARRERAS, [{ slug: 'derecho', nombre: 'Licenciatura en Derecho', desc: '' }]) as Carrera[])[0].nombreConfig).toBeUndefined()
   // Lo que no es lista, o elementos sin forma, se ignora.
@@ -161,7 +178,17 @@ test('d3. paridad: el nombre del documento es EXACTAMENTE el de la tarjeta de la
     const publicadas = [{ slug: 'derecho', nombre: a, desc: '' }, { slug: 'administracion', nombre: b, desc: '' }, { slug: 'otra', nombre: 'X', desc: '' }]
     const landing = resolverTextosLicenciaturas(textosAutoLicenciaturas(lic, [PLAN], 'Licenciatura', String), { licenciaturas_carreras: publicadas } as never, interp)
     const doc = conNombresPublicados(lic, publicadas, interp) as Carrera[]
-    for (const c of doc) expect(c.nombre, JSON.stringify([a, b, c.slug])).toBe(landing.carreras[c.slug].nombre)
+    for (const c of doc) {
+      const tarjeta = landing.carreras[c.slug].nombre
+      // La landing llena comodines que el documento no conoce: con uno sin resolver, el
+      // documento se queda con el de config.ts (y lo avisa). Si no, el MISMO nombre.
+      if (COMODIN.test(tarjeta)) {
+        expect(c.nombre, JSON.stringify([a, b, c.slug])).toBe(lic.find(x => x.slug === c.slug)!.nombre)
+        expect(c.comodinSinResolver, JSON.stringify([a, b, c.slug])).toBeTruthy()
+      } else {
+        expect(c.nombre, JSON.stringify([a, b, c.slug])).toBe(tarjeta)
+      }
+    }
     n++
   }
   expect(n).toBe(valores.length ** 2)
@@ -257,6 +284,8 @@ test('d5. el generador: WhatsApp real con whatsappEscuelaDisponible y nombres de
   expect(GEN.indexOf('tipo: tipoDePrograma(c)')).toBeLessThan(GEN.indexOf('CONFIG.landing?.licenciaturas_carreras'))
   expect(GEN.indexOf('const CARRERAS = conNombresPublicados(')).toBeLessThan(GEN.indexOf('const TIPOS = '))
   expect(GEN).toContain('avisar(`Carreras: el documento usa el nombre publicado en el panel,')
+  expect(GEN).toContain('for (const c of CARRERAS.filter(x => x.comodinSinResolver))')
+  expect(GEN).toContain('avisar(`Carreras: el nombre publicado «${c.comodinSinResolver}» usa un comodín que el documento no resuelve; se usó el de config.ts «${c.nombre}».`)')
   expect(GEN).toContain('El registro, el panel y las constancias siguen diciendo')
   // La regla vive en licenciaturas.mjs, que sigue sin importar nada (documento.mjs lo importa).
   expect(leer('scripts/entrega/licenciaturas.mjs')).not.toMatch(/^\s*import\s/m)
@@ -286,9 +315,11 @@ test('e1. «Cómo empezar» con cursos: Activar según la ficha, Cobrar con su c
   expect(t).toContain('pulsa Activar según la ficha en su fila')
   expect(t).toContain('Registra cada pago con Cobrar , en su fila o en la tarjeta Cursos de la ficha del alumno')
   expect(t).toContain('si aparece la casilla para abrir y la dejas marcada, ese mismo cobro le abre lo que pagó; sin marcar, solo queda registrado')
-  expect(t).toContain('Abrir todo el curso pide doble confirmación')
+  // La doble confirmación es de Abrir todo, Activar (pago único) y Cobrar que abre todo; «Asignar» no la pide.
+  expect(t).toContain('Abrir todo , Activar según la ficha (pago único) y Cobrar con la casilla que abre todo piden doble confirmación, porque desde ese momento el pago único ya no se reembolsa; Asignar en un curso de pago único lo abre completo sin pedir confirmación: asigna solo a quien ya te pagó.')
+  expect(t).not.toContain('Abrir todo el curso pide doble confirmación')
   expect(t).toContain('Quien tenga el rol de secretario también asigna, activa, cobra, abre y emite constancias (en su menú, Cursos )')
-  expect(t).toContain('cambiar precios, cancelar o reactivar una inscripción y borrar pagos quedan solo en tu cuenta')
+  expect(t).toContain('; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción y borrar pagos quedan solo en tu cuenta.')
   // El orden de siempre: el precio en la ficha, antes de asignar, y después el de preparación para examen.
   const ingreso = texto(cursos({ ...BASE_CURSOS, ...UNO, vendeIngreso: true }))
   expect(ingreso).toContain('antes de asignar. Si lo pidió como curso de preparación para examen, aparece en Alumnos con lo que solicitó: pulsa Asignar ahí')
@@ -326,7 +357,9 @@ test('e2/e3. funcionalidad y WhatsApp: Activar según la ficha, Cobrar con su ca
   expect(GEN).toContain('→ el curso → Alumnos (en uno de pago único se les abre completo; en uno mensual o sin precio, el mes 1), seguir su avance y crear todos los que quieras')
   expect(GEN).toContain('• Abrir el curso a quien ya se registró desde tu página eligiendo el curso, con «Activar según la ficha» en su fila')
   expect(GEN).toContain("'• Registrar cada pago del curso con «Cobrar» (en su fila o en la tarjeta «Cursos» de la ficha del alumno): con la casilla marcada, ese mismo cobro le abre lo que pagó'")
-  expect(GEN).toContain("'• Todo esto también lo puede hacer quien tenga el rol de secretario, incluso emitir constancias; cambiar precios, cancelar o reactivar una inscripción y borrar pagos quedan solo en tu cuenta'")
+  // El secretario, en positivo y con la misma lista que el PDF (crear cursos es solo del admin).
+  expect(GEN).toContain("`• Quien tenga el rol de secretario también asigna, activa y cobra los cursos, abre meses y emite constancias${CONFIG.modo === 'solo_cursos' ? '' : ' (en su menú, «Cursos»)'}; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción y borrar pagos quedan solo en tu cuenta`,")
+  expect(GEN).not.toContain('Todo esto también lo puede hacer')
   expect(GEN).toContain("] : ['• Crear tus propios Cursos y Diplomados cuando quieras']),")
   // Los botones viejos ya no se mandan como el camino de quien se registró solo.
   expect(GEN).not.toContain('con «Abrir todo» o «+ Abrir mes»')

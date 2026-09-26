@@ -120,7 +120,10 @@ export function nombrarProgramas(carreras = []) {
  * la tarjeta de la landing (`resolverTextosLicenciaturas`): el nombre publicado
  * se recorta; vacío o ausente, queda el de config.ts; un slug que ya no existe
  * se ignora; un diplomado del riel (`esDiplomado`) no tiene tarjeta y no cambia.
- * `interp` sustituye los comodines ({nombre}…) como la landing.
+ * `interp` sustituye los comodines ({nombre}…) como la landing. Si después queda
+ * alguno sin resolver ({duracion}, {whatsapp}…, que la landing llena con sus
+ * propios datos), el nombre publicado NO se usa: queda el de config.ts y se marca
+ * con `comodinSinResolver` (el nombre publicado tal cual) para avisarlo.
  *
  * Antes el documento y el WhatsApp decían el nombre de config.ts aunque el admin
  * lo hubiera cambiado en su página. Lo que cambia se marca con `nombreConfig`
@@ -141,6 +144,8 @@ export function conNombresPublicados(carreras = [], publicadas, interp = (s) => 
     const propio = typeof p?.nombre === 'string' ? p.nombre.trim() : ''
     if (!propio) return c
     const nombre = interp(propio)
+    // «Derecho ({duracion})» impreso tal cual es peor que el nombre de config.ts.
+    if (/\{[A-Za-z_][A-Za-z0-9_]*\}/.test(nombre)) return { ...c, comodinSinResolver: propio }
     // El mismo nombre publicado otra vez no es un cambio: sin aviso.
     return nombre === c.nombre ? c : { ...c, nombre, nombreConfig: c.nombre }
   })
