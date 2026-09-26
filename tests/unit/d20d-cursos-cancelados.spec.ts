@@ -78,3 +78,16 @@ test('3. la página: «Cursos cancelados» sin enlace y con lo pagado; tolera la
   // Solo cancelados: el vacío no dice «aún no tienes cursos».
   expect(p).toContain("{cancelados.length > 0 ? 'No tienes cursos activos' : 'Aún no tienes cursos asignados'}")
 })
+
+test('4. revisión: el menú (/tiene) sigue la MISMA regla que «Mis Diplomados»', () => {
+  const t = leer('src/app/api/alumno/cursos/tiene/route.ts')
+  expect(t).toContain(".from('curso_inscripciones')\n      .select('*')\n      .eq('alumno_id', user.id)")
+  expect(t).toContain('const { vigentes, canceladas } = repartirInscripciones(filas, pagos)')
+  // Una cancelada con pagos lleva al bloque aunque su curso esté en borrador.
+  expect(t.indexOf("if (canceladas.length > 0) return NextResponse.json({ tiene: true })"))
+    .toBeLessThan(t.indexOf(".in('id', vigentes)"))
+  // Los pagos, del alumno de la sesión y por la FK (como /api/alumno/cursos).
+  expect(t).toContain(".eq('alumno_id', user.id)\n        .not('curso_inscripcion_id', 'is', null)")
+  // Ya no cuenta cualquier curso visible por RLS (incluía las canceladas sin pagos).
+  expect(t.match(/from\('cursos'\)\.select\('id'\)\.limit\(1\)/g) ?? []).toHaveLength(1)
+})
