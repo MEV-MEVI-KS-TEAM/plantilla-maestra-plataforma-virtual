@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { etiquetaDuracionModalidad } from '@/lib/modalidades'
+import { ES_PLANTILLA } from './es-plantilla'
 
 /**
  * Bloque D · D3 — nada crudo en el panel (#218 y #200).
@@ -18,7 +19,8 @@ const sinComentarios = (s: string) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').rep
 test('#218 · getPlanNombre da el nombre del nivel de la escuela al alumno de curso', () => {
   expect(getPlanNombre('diplomado')).toBe(etiquetaNivel('diplomado'))
   expect(getPlanNombre('diplomado')).not.toBe('diplomado')
-  expect(getPlanNombre('diplomado')).toBe('Curso o diplomado')
+  // El nombre de FÁBRICA solo se comprueba en la plantilla: un clon puede renombrar el nivel.
+  if (ES_PLANTILLA) expect(getPlanNombre('diplomado')).toBe('Curso o diplomado')
   // Los demás, igual que siempre.
   expect(getPlanNombre('secundaria')).toBe('Secundaria')
   expect(getPlanNombre('preparatoria')).toBe('Preparatoria')
@@ -41,9 +43,23 @@ test('#218 · «Meses» dice «—» a quien no tiene plan escolar (lista y tabl
   expect(lista).toMatch(/\{!a\.nivel \|\| a\.nivel === 'diplomado' \? \(\s*<span[^>]*>—<\/span>/)
   const tablero = sinComentarios(leer('src/app/(dashboard)/admin/page.tsx'))
   expect(tablero).toMatch(/\{!a\.nivel \|\| a\.nivel === 'diplomado' \? \(\s*<span[^>]*>—<\/span>/)
-  // La insignia del tablero con el nombre de la escuela, no su propio «Diplomado».
+  // La insignia del tablero con el nombre de la escuela, no su propio «Diplomado»,
+  // y con 'diplomado' DENTRO de la lista (la guarda de B7 ya no puede apoyarse en
+  // que la palabra aparezca en cualquier parte del archivo).
+  expect(tablero).toContain("['secundaria', 'preparatoria', 'licenciatura', 'diplomado'].includes(nivel ?? '')")
   expect(tablero).toContain('etiquetaNivel(nivel)')
   expect(tablero).not.toContain("'Diplomado'")
+})
+
+test('#218 · la tarjeta móvil de /admin/alumnos no anuncia «meses abiertos» sin plan escolar', () => {
+  const lista = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
+  expect(lista).toMatch(/\{!\(!a\.nivel \|\| a\.nivel === 'diplomado'\) && \(\s*<>\s*<span>·<\/span>\s*<span>\s*\{a\.duracion_meses > 0/)
+})
+
+test('#218 · el sidebar le da al alumno de curso el mismo nombre que la ficha y el perfil', () => {
+  const sb = sinComentarios(leer('src/components/layout/sidebar.tsx'))
+  expect(sb).toContain("nivel === 'diplomado'   ? etiquetaNivel('diplomado')")
+  expect(sb).not.toContain("'Diplomado'")
 })
 
 test('#200 · la duración sale del id, nunca el id crudo', () => {
@@ -58,7 +74,7 @@ test('#200 · la duración sale del id, nunca el id crudo', () => {
   expect(etiquetaDuracionModalidad(null)).toBe('')
   expect(etiquetaDuracionModalidad('')).toBe('')
   // Id sin forma N_meses y que no está en ninguna tabla: «—», no el id.
-  expect(etiquetaDuracionModalidad('acceso_completo')).toBe('—')
+  expect(etiquetaDuracionModalidad('id_que_no_existe_en_ninguna_tabla')).toBe('—')
 })
 
 test('#200 · paridad con la columna generada alumnos.duracion_meses para todos los ids del CHECK', () => {

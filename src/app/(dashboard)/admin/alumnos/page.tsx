@@ -598,14 +598,20 @@ export default function AlumnosPage() {
                       <span className="font-mono">{a.matricula}</span>
                       <span>·</span>
                       <span>{a.plan_nombre || 'Sin plan'}</span>
-                      <span>·</span>
-                      {/* Sin plan escolar no hay denominador que valga: se muestran
-                          los meses abiertos y ya, en vez de un «/0». */}
-                      <span>
-                        {a.duracion_meses > 0
-                          ? `${a.meses_desbloqueados}/${a.duracion_meses} meses`
-                          : `${a.meses_desbloqueados} ${a.meses_desbloqueados === 1 ? 'mes abierto' : 'meses abiertos'}`}
-                      </span>
+                      {/* Sin plan escolar (alumno de curso o sin nivel) no hay meses del
+                          programa que anunciar: su acceso vive en curso_inscripciones. Antes
+                          decía «0 meses abiertos» aunque tuviera acceso total (#218). */}
+                      {!(!a.nivel || a.nivel === 'diplomado') && (
+                        <>
+                          <span>·</span>
+                          {/* Sin denominador que valga: los meses abiertos y ya, no un «/0». */}
+                          <span>
+                            {a.duracion_meses > 0
+                              ? `${a.meses_desbloqueados}/${a.duracion_meses} meses`
+                              : `${a.meses_desbloqueados} ${a.meses_desbloqueados === 1 ? 'mes abierto' : 'meses abiertos'}`}
+                          </span>
+                        </>
+                      )}
                     </div>
                     {a.curso_solicitado_nombre && (
                       <div className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2"
