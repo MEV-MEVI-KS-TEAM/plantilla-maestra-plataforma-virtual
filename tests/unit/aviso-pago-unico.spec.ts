@@ -115,7 +115,7 @@ test('Términos: excepción para el pago único sin tocar el reembolso de las de
   // La viñeta de siempre, palabra por palabra.
   const cienPorCiento = 'Cancelación antes del inicio:</strong> reembolso del 100% de la inscripción si se solicita dentro de los 3 días hábiles siguientes al pago.'
   expect(t).toContain(cienPorCiento)
-  const excepcion = 'Excepción — cursos y diplomados de pago único:</strong> los cursos y diplomados que se pagan en una sola exhibición dan acceso completo a todo su contenido en cuanto se asignan al alumno y no son reembolsables una vez dado ese acceso'
+  const excepcion = 'Excepción — cursos y diplomados de pago único:</strong> los cursos y diplomados que se pagan en una sola exhibición dan acceso completo a todo su contenido en cuanto se activa su acceso y no son reembolsables una vez dado ese acceso'
   expect(t).toContain(excepcion)
   // En la sección 5, justo después de la del 100 % y antes de la de «durante el programa».
   const i100 = t.indexOf(cienPorCiento)
