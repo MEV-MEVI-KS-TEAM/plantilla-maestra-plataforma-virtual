@@ -13,9 +13,10 @@ import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } 
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
 import {
-  TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, precioDeCursoElegido, resolverPrecioOferta,
+  AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, ofertaAbreTodo, precioDeCursoElegido, resolverPrecioOferta,
   type PrecioOferta, type PreciosCurso,
 } from '@/lib/cursos/precio-curso'
+import { aperturaAlAsignar } from '@/lib/cursos/acceso'
 // Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
 // provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
 import { useSiteConfig } from '@/components/site-config-provider'
@@ -304,6 +305,8 @@ export default function RegisterPage() {
   const numElegido    = diplomadoId && diplomados.some(d => d.id === diplomadoId)
     ? precioDeCursoElegido(diplomadoId, ofertasIngreso, preciosPublicados) : null
   const precioElegido = numElegido ? formatearPrecio(numElegido) : null
+  // La ficha del curso elegido: decide si «Asignar» abrirá todo (aviso de #208).
+  const fichaElegida  = diplomadoId ? preciosPublicados.get(diplomadoId) ?? null : null
   // ⚠️ `nivel` guarda el VALOR DE LA OPCIÓN, no el nivel de BD. «Diplomados» es
   // presentación de `nivel='licenciatura'`; se traduce con nivelDeOpcion() justo
   // antes de mandar. Ver src/lib/niveles.ts (TICKET-2026-09-07-52).
@@ -670,6 +673,12 @@ export default function RegisterPage() {
                                 Inscripción de {precioElegido.inscripcion}
                               </p>
                             )}
+                            {/* #208: lo decide la FICHA, no la cifra: con la ficha en
+                                0/0 la cifra puede ser la de config.ts y asignar abre
+                                solo el mes 1. */}
+                            {numElegido.tipo === 'unico' && fichaElegida && aperturaAlAsignar(fichaElegida) === 'total' && (
+                              <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>{AVISO_PAGO_UNICO}</p>
+                            )}
                             {precioElegido.tipo !== 'informes' && (
                               <AvisoMoneda className="text-xs mt-0.5" style={{ color: '#64748B' }} />
                             )}
@@ -741,12 +750,19 @@ export default function RegisterPage() {
                   <div className="space-y-2">
                     {ofertasIngreso.map(o => {
                       const sel = cursoIngreso === o.id
+                      // #208: el aviso solo si «Asignar» abrirá TODO: se anuncia de pago
+                      // único y la ficha de cada curso que inscribe es de pago único
+                      // (ofertaAbreTodo). Con el respaldo de config.ts y la ficha en 0/0
+                      // se abre el mes 1, y el aviso sería falso. Misma función pura y
+                      // mismos datos que el precio de la tarjeta.
+                      const precioOferta = catalogoListo ? resolverPrecioOferta(o, preciosPublicados) : null
+                      const avisoPagoUnico = precioOferta !== null && ofertaAbreTodo(o, precioOferta, preciosPublicados)
                       return (
                         <button
                           key={o.id}
                           type="button"
                           onClick={() => setCursoIngreso(sel ? '' : o.id)}
-                          className="w-full flex items-start gap-2.5 text-left px-3 py-2.5 rounded-xl text-sm"
+                          className={`w-full flex items-start gap-2.5 text-left px-3 py-2.5 rounded-xl text-sm${avisoPagoUnico ? ' flex-wrap' : ''}`}
                           style={sel
                             ? { background: 'rgba(27,48,104,0.06)', border: '1px solid var(--color-primario)' }
                             : { background: '#fff', border: '1px solid #E8F0F7' }}
@@ -766,6 +782,11 @@ export default function RegisterPage() {
                           {catalogoListo
                             ? <PrecioDeOferta p={resolverPrecioOferta(o, preciosPublicados)} />
                             : <span aria-hidden="true" className="w-16 h-4 rounded animate-pulse" style={{ background: '#E2E8F0' }} />}
+                          {/* A lo ancho, debajo del nombre y del precio (alineado con el nombre):
+                              en la columna del precio o del nombre, a 360 px se partía en cinco renglones. */}
+                          {avisoPagoUnico && (
+                            <span className="basis-full pl-[26px] -mt-1 text-xs" style={{ color: '#64748B' }}>{AVISO_PAGO_UNICO}</span>
+                          )}
                         </button>
                       )
                     })}

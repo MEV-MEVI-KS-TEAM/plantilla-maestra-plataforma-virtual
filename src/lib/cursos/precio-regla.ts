@@ -51,6 +51,19 @@ export function precioCursoNumerico(c: PreciosCurso): PrecioNumerico {
 export const TEXTO_SIN_PRECIO = 'Pide informes'
 
 /**
+ * Aviso que acompaña a un curso de PAGO ÚNICO antes de pagar (#208, decisión de
+ * Kevin): asignarlo da el curso completo (C3b) y los Términos lo excluyen del
+ * reembolso una vez dado el acceso (sección 5).
+ *
+ * 🛑 Solo va donde «Asignar» abrirá TODO, es decir, donde la ficha de cada curso
+ * que se inscribe es de pago único (`aperturaAlAsignar(ficha) === 'total'`,
+ * acceso.ts). Un «pago único» de config.ts con la ficha en 0/0 abre el mes 1, y
+ * ahí el aviso sería falso. Para las ofertas de cursos de ingreso, ver
+ * `ofertaAbreTodo`.
+ */
+export const AVISO_PAGO_UNICO = 'Acceso completo inmediato · no reembolsable una vez activado'
+
+/**
  * Precio que anuncia el registro para una oferta de Cursos de Ingreso
  * (CONFIG.cursosIngreso). Hasta el Bloque C salía SOLO de config.ts: la escuela
  * cambiaba el precio en /admin/cursos/[id] y la portada lo mostraba, pero el
@@ -89,4 +102,28 @@ export function resolverPrecioOferta(
     }
   }
   return respaldo
+}
+
+/**
+ * ¿La tarjeta de una oferta de cursos de ingreso lleva el aviso de #208?
+ *
+ * Solo si se ANUNCIA de pago único y «Asignar» (o «Activar» en /admin/alumnos)
+ * abrirá todo: cada curso que la oferta inscribe tiene su ficha de pago único,
+ * la misma regla que `aperturaAlAsignar` y `curso_regla_apertura` (C3b), porque
+ * cada curso se abre con la regla de SU ficha. Así:
+ *   · oferta de un curso con ficha de pago único → sí;
+ *   · respaldo de config.ts con la ficha en 0/0 → no (abre el mes 1);
+ *   · paquete (o varios cursos) → sí solo si TODAS sus fichas son de pago
+ *     único; con una mensual, sin precio o sin publicar, no.
+ */
+export function ofertaAbreTodo(
+  oferta: OfertaConPrecio,
+  anuncio: PrecioOferta,
+  publicados: ReadonlyMap<string, PreciosCurso> | null,
+): boolean {
+  if (anuncio.tipo !== 'unico' || !publicados || oferta.cursoIds.length === 0) return false
+  return oferta.cursoIds.every(id => {
+    const ficha = publicados.get(id)
+    return ficha !== undefined && precioCursoNumerico(ficha).tipo === 'unico'
+  })
 }

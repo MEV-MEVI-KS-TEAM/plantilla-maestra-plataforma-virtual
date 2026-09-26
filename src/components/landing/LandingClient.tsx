@@ -17,7 +17,7 @@ import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 // Del módulo puro, no de catalogo.ts: este componente es 'use client' y
 // catalogo.ts trae el cliente admin.
-import { TEXTO_SIN_PRECIO, precioCatalogo } from '@/lib/cursos/precio-curso'
+import { AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, precioCatalogo } from '@/lib/cursos/precio-curso'
 import { faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela, whatsappVisible } from '@/lib/contacto-ui'
 import { escuelaCertifica, inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
@@ -269,6 +269,9 @@ function PrecioTarjetaClasica({ curso, color }: {
       <>
         <p className="text-sm font-bold" style={{ color }}>{precio.monto}</p>
         <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>Pago único</p>
+        {/* #208: el precio es el de la ficha, así que pago único ⇔ acceso total
+            al asignar. Tinta más oscura que «Pago único»: es texto de contrato. */}
+        <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>{AVISO_PAGO_UNICO}</p>
       </>
     )
   }

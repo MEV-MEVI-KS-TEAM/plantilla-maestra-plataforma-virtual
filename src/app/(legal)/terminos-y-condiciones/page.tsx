@@ -224,6 +224,18 @@ export default async function TerminosCondicionesPage() {
                 <strong style={{ color: '#fff' }}>Cancelación antes del inicio:</strong> reembolso del 100%
                 de la inscripción si se solicita dentro de los 3 días hábiles siguientes al pago.
               </li>
+              {/* #208 (decisión de Kevin): el curso de PAGO ÚNICO abre el curso
+                  completo al asignarse (C3b), así que no hay «antes del inicio»
+                  que reembolsar una vez dado el acceso. Es una EXCEPCIÓN a la
+                  viñeta de arriba: el reembolso de las demás inscripciones no
+                  cambia. Mismo aviso que ven antes de pagar (AVISO_PAGO_UNICO). */}
+              <li>
+                <strong style={{ color: '#fff' }}>Excepción — cursos y diplomados de pago único:</strong> los
+                cursos y diplomados que se pagan en una sola exhibición dan acceso completo a todo su contenido
+                en cuanto se asignan al alumno y no son reembolsables una vez dado ese acceso, aunque la
+                solicitud se presente dentro del plazo anterior. Mientras el acceso no se haya activado, aplica
+                la cancelación antes del inicio.
+              </li>
               <li>
                 <strong style={{ color: '#fff' }}>Cancelación durante el programa:</strong> no se realizan
                 reembolsos de mensualidades ya pagadas. Los créditos obtenidos se conservan en el expediente
