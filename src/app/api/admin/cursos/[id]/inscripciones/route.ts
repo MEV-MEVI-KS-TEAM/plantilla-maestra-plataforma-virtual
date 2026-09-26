@@ -29,14 +29,15 @@ export async function GET(
     const fila = (Array.isArray(data) ? data[0] : data) as
       { agregados?: number; total_activos?: number; regla?: string } | null
     // Ficha sin precio (0/0): la masiva abre el mes 1 aunque el registro anuncie
-    // un pago único con el precio de config.ts. La confirmación lo dice.
-    const { data: curso } = await supabase
+    // un pago único con el precio de config.ts. La confirmación lo dice. Si la
+    // ficha no se pudo leer, no se afirma nada.
+    const { data: curso, error: errCurso } = await supabase
       .from('cursos').select('precio_inscripcion, precio_mensualidad').eq('id', params.id).maybeSingle()
     return NextResponse.json({
       nuevos: fila?.agregados ?? 0,
       totalActivos: fila?.total_activos ?? 0,
       regla: fila?.regla ?? null,
-      sinPrecio: precioCursoNumerico(curso ?? {}).tipo === 'informes',
+      sinPrecio: !errCurso && curso != null && fila?.regla !== 'total' && precioCursoNumerico(curso).tipo === 'informes',
     })
   } catch (err) {
     console.error('[GET /api/admin/cursos/[id]/inscripciones]', err)
@@ -118,16 +119,19 @@ export async function POST(
       { inscripcion_id?: string; acceso_total?: boolean; meses_desbloqueados?: number; regla?: string } | null
     // ¿La ficha del curso está sin precio (0/0)? Entonces se abrió el mes 1 aunque
     // el registro anuncie un pago único con el precio de config.ts: la pantalla
-    // lo avisa y ofrece «Abrir todo».
-    const { data: curso } = await supabase
-      .from('cursos').select('precio_inscripcion, precio_mensualidad').eq('id', params.id).maybeSingle()
-    const sinPrecio = precioCursoNumerico(curso ?? {}).tipo === 'informes'
+    // lo avisa y ofrece «Abrir todo». Si la ficha no se pudo leer, o se abrió
+    // todo, no se afirma nada. `publicado`: en borrador nadie ve nada todavía.
+    const { data: curso, error: errCurso } = await supabase
+      .from('cursos').select('precio_inscripcion, precio_mensualidad, estado').eq('id', params.id).maybeSingle()
+    const sinPrecio = !errCurso && curso != null && fila?.acceso_total !== true
+      && precioCursoNumerico(curso).tipo === 'informes'
     return NextResponse.json({
       inscripcion_id: fila?.inscripcion_id ?? null,
       acceso_total: fila?.acceso_total === true,
       meses_desbloqueados: fila?.meses_desbloqueados ?? 0,
       regla: fila?.regla ?? null,
       sin_precio: sinPrecio,
+      publicado: curso?.estado !== undefined ? curso.estado === 'publicado' : null,
     }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/admin/cursos/[id]/inscripciones]', err)

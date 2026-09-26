@@ -42,6 +42,11 @@
 -- `estado_cuenta_alumnos` NO cambia de firma (solo cambia el cuerpo), así que
 -- para esa sí basta CREATE OR REPLACE.
 
+-- EN TRANSACCIÓN (desde C3b): la restauración del final usa una tabla temporal
+-- de la misma sesión, y una corrida cortada a la mitad se deshace completa en
+-- vez de dejar el reporte a medias.
+BEGIN;
+
 -- ── C3b · re-correr esta migración NO revierte el acceso total ─────────────
 -- Si la base ya tiene C3b (20260926120000_c3b_acceso_total_cursos.sql), sus
 -- versiones de reporte_curso_inscripciones son las vigentes y esta
@@ -55,7 +60,27 @@ SELECT pg_get_functiondef(p.oid) AS def
          'public.reporte_curso_inscripciones()']) AS f)
    AND EXISTS (SELECT 1 FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = 'curso_inscripciones'
-                  AND column_name = 'acceso_total');
+                  AND column_name = 'acceso_total')
+   -- Solo lo que de verdad es de C3b (el mismo criterio que el CHECK 15): una
+   -- versión que ya estaba revertida no se «conserva».
+   AND strpos(pg_get_functiondef(p.oid), 'acceso_total') > 0;
+DO $c3b$
+DECLARE
+  v_faltan TEXT;
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'curso_inscripciones'
+                AND column_name = 'acceso_total') THEN
+    SELECT string_agg(f, ', ' ORDER BY f) INTO v_faltan
+      FROM unnest(ARRAY['public.reporte_curso_inscripciones()']) AS f
+     WHERE to_regprocedure(f) IS NULL
+        OR strpos(pg_get_functiondef(to_regprocedure(f)), 'acceso_total') = 0;
+    IF v_faltan IS NOT NULL THEN
+      RAISE WARNING 'Esta base tiene C3b, pero % ya no trae su versión (una copia vieja o una corrida a medias): esta migración no la puede conservar. Al terminar, vuelve a correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql.', v_faltan;
+    END IF;
+  END IF;
+END
+$c3b$;
 
 -- ── PREFLIGHT ───────────────────────────────────────────────────────────────
 DO $$
@@ -434,3 +459,5 @@ BEGIN
 END
 $c3b$;
 DROP TABLE IF EXISTS pg_temp.c3b_vigentes;
+
+COMMIT;

@@ -7,6 +7,7 @@ import {
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
 import { conAccesoTotal, faltaAccesoTotal } from '@/lib/cursos/acceso-total'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
+import { avisoMes1 } from '@/lib/cursos/aviso-asignar'
 
 /**
  * Bloque C · C3b (#183): el pago único da ACCESO TOTAL, fotografiado al asignar.
@@ -158,9 +159,17 @@ test('4b. re-correr una migración vieja NO revierte C3b: guarda y restaura sus 
       expect(guarda, `${f}: ${n}`).toBeLessThan(sql.indexOf(`CREATE OR REPLACE FUNCTION public.${n}(`))
       expect(restaura, `${f}: ${n}`).toBeGreaterThan(sql.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${n}(`))
     }
-    // La guarda solo actúa con C3b; en una transacción, antes del COMMIT.
-    expect(sql.slice(guarda, sql.indexOf(';', guarda)), f).toContain("column_name = 'acceso_total'")
-    if (/^\s*COMMIT;/m.test(sql)) expect(restaura, f).toBeLessThan(sql.lastIndexOf('COMMIT;'))
+    // La guarda solo actúa con C3b, solo guarda lo que trae su huella (una
+    // versión ya revertida no se «conserva») y, si falta alguna, avisa.
+    const captura = sql.slice(guarda, sql.indexOf(';', guarda))
+    expect(captura, f).toContain("column_name = 'acceso_total'")
+    expect(captura, f).toContain("AND strpos(pg_get_functiondef(p.oid), 'acceso_total') > 0")
+    expect(sql, f).toContain("RAISE WARNING 'Esta base tiene C3b, pero % ya no trae su versión")
+    // En transacción (la tabla temporal es de la sesión; una corrida cortada se
+    // deshace), con la restauración antes del COMMIT.
+    expect(sql, f).toMatch(/^\s*BEGIN;/m)
+    expect(sql.indexOf('BEGIN;'), f).toBeLessThan(guarda)
+    expect(restaura, f).toBeLessThan(sql.lastIndexOf('COMMIT;'))
     expect(sql, f).not.toContain("RAISE WARNING 'Esta base ya tiene C3b")
   }
   expect(cubiertas).toBe(4)   // B2, B3, B4 y B6
@@ -186,7 +195,7 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   expect(post).not.toMatch(/from\('curso_inscripciones'\)[\s\S]{0,80}\.insert\(/)
   // …y dice qué abrió cada curso (con el aviso de ficha sin precio) y por qué falló.
   expect(post).toMatch(/cursos_resultado: cursosResultado/)
-  expect(post).toContain("sin_precio: precioCursoNumerico(curso).tipo === 'informes'")
+  expect(post).toMatch(/sin_precio: precioCursoNumerico\(curso\)\.tipo === 'informes',\n/)
   expect(post).toContain('cursosError ??= errorDeRpcCurso(insError).mensaje')
   const alumnosPag = sinComentariosTs(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
   expect(alumnosPag).toContain('data.cursos_resultado')
@@ -194,7 +203,17 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   // «Asignar curso» muestra la causa del servidor (p. ej. el 503 de la migración)
   // y avisa si el registro le anunció un pago único y se abrió el mes 1.
   expect(alumnosPag).toMatch(/causa \? `: \$\{causa\}`/)
-  expect(alumnosPag).toContain('resolverPrecioOferta(oferta,')
+  // El aviso de mes 1 sale de avisoMes1 en las dos puertas; en «Asignar curso»,
+  // con el anuncio de HOY y solo si el catálogo llegó, y aunque otro curso falle.
+  expect(alumnosPag).toContain('const aviso = avisoMes1(resultado, null)')
+  expect(alumnosPag).toContain('const anuncio = oferta && catalogoOk ? resolverPrecioOferta(oferta, preciosPublicados) : null')
+  const activar = alumnosPag.slice(alumnosPag.indexOf('async function activarCurso'), alumnosPag.indexOf('async function handleMarcarContactado'))
+  expect(activar.indexOf('const aviso = avisoMes1(nuevos, anuncio)')).toBeGreaterThan(activar.indexOf('if (fallos.length) {'))
+  expect(activar).not.toMatch(/\} else \{[\s\S]*avisoMes1/)
+  // Un 409 (ya estaba) no cuenta como «acceso total» de esta asignación.
+  expect(activar).toContain("if (res.status === 409) { yaEstaban++; continue }")
+  // La ruta no afirma «sin precio» si no leyó la ficha o si abrió todo.
+  expect(ruta).toMatch(/const sinPrecio = !errCurso && curso != null && fila\?\.acceso_total !== true/)
   // /admin/alumnos «Asignar» reusa la ruta de arriba.
   expect(leer('src/app/(dashboard)/admin/alumnos/page.tsx')).toContain('/api/admin/cursos/${cursoId}/inscripciones')
   // El registro público: prospecto que no ha pagado → 0 meses, sin acceso total, sin la función.
@@ -212,6 +231,8 @@ test('6. quien calcula la ventana lee acceso_total, y una base sin C3b no se rom
     expect(src, f).toMatch(/conAccesoTotal<[\s\S]*?>\(\s*'[^']*'\s*,\s*campos => admin\s*\.from\('curso_inscripciones'\)\s*\.select\(campos\)/)
     expect(src, f).not.toMatch(/from\('curso_inscripciones'\)\s*\.select\('[^']*acceso_total/)
   }
+  // El pago lee el booleano con el cliente admin (el secretario no ve la fila por RLS).
+  expect(sinComentariosTs(leer('src/app/api/admin/inscripciones/[id]/pago/route.ts'))).toContain('const admin = createAdminClient()')
   // El lector: pide acceso_total; si la columna no existe (42703), repite sin ella.
   const pedidas: string[] = []
   const falsa = (campos: string) => {
@@ -248,12 +269,14 @@ test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dic
   expect(tab).toContain('function accesoVigente(i: CursoInscrito, publicado: boolean): boolean')
   expect(tab).toContain('if (!publicado) return false')
   expect(tab).not.toMatch(/accesoVigente\(i\)/)
+  expect(tab).toMatch(/accesoVigente\(i, publicado\) \? \(\s*<span[\s\S]{0,300}?Acceso total\s*</)
+  expect(tab).toContain('if (json.sin_precio && !json.acceso_total) {')
   // Las acciones de la fila hacen wrap (4 botones no caben a 360 px).
   expect(tab).toContain('<div className="flex flex-wrap items-center gap-1">')
   // Antes del clic se dice qué abre «Asignar»; el aviso de ficha sin precio va
   // en rojo y dura lo bastante para leerse.
   expect(tab).toMatch(/apertura === 'total'\s*\?\s*<>Este curso es de <strong>pago único<\/strong>/)
-  expect(tab).toMatch(/if \(json\.sin_precio\) \{\s*onError\([\s\S]*?, AVISO_MS\)/)
+  expect(tab).toMatch(/if \(json\.sin_precio && !json\.acceso_total\) \{\s*onError\([\s\S]*?, AVISO_MS\)/)
   expect(tab).toContain("onError('No hay alumnos activos que asignar')")
   expect(tab).not.toMatch(/alumnos activos \(\{totalActivos\}\)/)
   // «+ Abrir mes» y «−» no se ofrecen con acceso total.
@@ -281,6 +304,25 @@ test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dic
   const pagina = sinComentariosTs(leer('src/app/(dashboard)/admin/cursos/[id]/page.tsx'))
   expect(pagina).toContain('apertura={aperturaAlAsignar(curso)}')
   expect(pagina).toContain('publicado={publicado}')
+})
+
+test('7b. el aviso de «se abrió solo el mes 1»: su tabla de verdad', () => {
+  const unico = { tipo: 'unico', monto: 2490, fuente: 'config' } as const
+  const mensual = { tipo: 'mensual', mensualidad: 900, inscripcion: null, fuente: 'tabla' } as const
+  const A = (nombre: string, acceso_total: boolean, sin_precio = false) => ({ nombre, acceso_total, sin_precio })
+  // Paquete (o ficha 0/0 con precio de config.ts): se anuncia pago único y un curso abrió el mes 1.
+  expect(avisoMes1([A('EXANI', false), A('UNAM', true)], unico)).toMatch(/^Ojo: hoy esta oferta se anuncia como pago único, pero en EXANI se abrió solo el mes 1/)
+  // Ficha 0/0 sin oferta que diga otra cosa (el alta, o catálogo sin cargar).
+  expect(avisoMes1([A('ING-05', false, true)], null)).toMatch(/^Ojo: ING-05 no tiene precio en su ficha/)
+  // Mensual anunciado como mensual: nada que avisar.
+  expect(avisoMes1([A('ING-05', false)], mensual)).toBeNull()
+  expect(avisoMes1([A('ING-05', false)], null)).toBeNull()
+  // Todo con acceso total: nada.
+  expect(avisoMes1([A('EXANI', true), A('UNAM', true, true)], unico)).toBeNull()
+  // Nada asignado ahora (todo 409 o todo falló): nada.
+  expect(avisoMes1([], unico)).toBeNull()
+  // Sin precio pero con acceso total (no puede abrir menos): nada.
+  expect(avisoMes1([A('X', true, true)], null)).toBeNull()
 })
 
 test('8. CHECK 15 detecta un C3b revertido, no solo uno ausente', () => {

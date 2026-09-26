@@ -245,7 +245,7 @@ FROM faltan;
 -- de hoy no puede asignar un curso («Asignar», la asignación masiva y el alta con
 -- cursos llaman a curso_inscribir) y el candado no conoce el pago único.
 -- No basta con que existan la columna y la función: una copia VIEJA de B2, B3,
--- B4 o B6 corrida después la pisa en silencio (el pago único deja de ver el
+-- B4 o B6 (o una corrida a medias) la pisa en silencio (el pago único deja de ver el
 -- curso, abrir mes vuelve a moverse, el reporte cuenta mal, y cualquiera lee el
 -- techo de otro alumno). Por eso se revisan también los cuerpos y el REVOKE.
 WITH c3b AS (
@@ -276,7 +276,7 @@ SELECT
     WHEN NOT columna OR NOT asignar
       THEN '❌ FALTA → correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql (después de los 20260730*)'
     WHEN revertidas IS NOT NULL OR techo_legible
-      THEN '❌ C3b REVERTIDO (' || COALESCE(revertidas, 'el techo volvió a ser legible') || '): se corrió después una copia vieja de B2/B3/B4/B6 → vuelve a correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql'
+      THEN '❌ C3b REVERTIDO (' || COALESCE(revertidas, 'el techo volvió a ser legible') || '): se corrió después una copia vieja o una corrida a medias de B2/B3/B4/B6 → vuelve a correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql'
     ELSE '✅ OK (acceso_total, curso_inscribir, candado, abrir/cerrar mes, reporte y techo privado)'
   END AS resultado
 FROM c3b;

@@ -263,7 +263,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       // Ficha sin precio: se abrió el mes 1 aunque el registro anuncie un pago
       // único con el precio de config.ts. Es un aviso, no un éxito: en rojo y
       // con tiempo para leerlo.
-      if (json.sin_precio) {
+      if (json.sin_precio && !json.acceso_total) {
         onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila y ponle precio al curso.`, AVISO_MS)
       }
     } catch (e) {
@@ -308,7 +308,7 @@ Se borra su inscripción y deja de ver el curso.
       if (!res.ok) throw new Error(json.error ?? 'Error en la asignación masiva')
       onChanged(json.agregados
         ? `${json.agregados} alumno(s) nuevos asignados (de ${json.totalActivos} activos): ${
-          json.regla === 'total' ? 'acceso total al curso' : 'mes 1 abierto'}`
+          json.regla === 'total' ? 'acceso total al curso' : 'mes 1 abierto'}${sinEfectoHoy()}`
         : `Nadie nuevo que asignar: los ${json.totalActivos} alumnos activos ya estaban en el curso`)
       setConfirmTodos(0)
       setSimulacion(null)
@@ -553,7 +553,7 @@ Se borra su inscripción y deja de ver el curso.
             {esPagoUnico
               ? <>Como el curso es de <strong>pago único</strong>, cada uno tendrá <strong>ACCESO TOTAL</strong> al curso completo.</>
               : <>A cada uno se le abre el <strong>mes 1</strong>.</>}
-            {simulacion?.sinPrecio && <> El curso <strong>no tiene precio</strong> en su ficha: si cobraste un pago único, ponle precio antes de asignar.</>}
+            {simulacion?.sinPrecio && !esPagoUnico && <> El curso <strong>no tiene precio</strong> en su ficha: si cobraste un pago único, ponle precio antes de asignar.</>}
             {!publicado && <> El curso está en <strong>borrador</strong>: lo verán cuando lo publiques.</>}
             {' '}¿Continuar?
           </>
@@ -570,8 +570,8 @@ Se borra su inscripción y deja de ver el curso.
           <>
             Esta es una asignación masiva a <strong>{nuevosActivos}</strong> alumno(s) activo(s).{' '}
             {esPagoUnico
-              ? <><strong>Los {nuevosActivos} verán TODO el curso (acceso total).</strong> </>
-              : <>Los {nuevosActivos} verán el mes 1. </>}
+              ? <><strong>Los {nuevosActivos} verán TODO el curso (acceso total){publicado ? '' : ' cuando lo publiques'}.</strong> </>
+              : <>Los {nuevosActivos} verán el mes 1{publicado ? '' : ' cuando publiques el curso'}. </>}
             Confirma una vez más para ejecutarla.
           </>
         }

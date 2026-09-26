@@ -107,18 +107,21 @@ test.describe('Parte A — Admin', () => {
     await page.screenshot({ path: SHOT('a6-alumno-asignado'), fullPage: true })
 
     // a7 — "Asignar a todos" → cancelar en la doble confirmación. El número lo
-    // cuenta el servidor (C3b): si no queda nadie activo sin asignar, no hay
-    // diálogo sino el aviso de que no hay a quién.
+    // cuenta el servidor (C3b): se le pregunta ANTES, y según lo que diga se
+    // exige el diálogo (hay alumnos nuevos) o el aviso exacto (no los hay). Así
+    // la prueba no pasa si el diálogo desaparece por error.
+    const sim = await (await page.request.get(`/api/admin/cursos/${cursoId}/inscripciones?simular=todos`)).json()
     await page.getByRole('button', { name: /Asignar a todos los alumnos activos/ }).click()
-    const dialogoMasiva = page.getByRole('dialog', { name: /Asignar a todos/ })
-    const nadieNuevo = page.getByText(/Nadie nuevo que asignar|No hay alumnos activos que asignar/)
-    await expect(dialogoMasiva.or(nadieNuevo)).toBeVisible()
-    if (await dialogoMasiva.isVisible()) {
+    if (sim.nuevos > 0) {
+      await expect(page.getByRole('dialog', { name: /Asignar a todos/ })).toBeVisible()
       await page.getByRole('button', { name: 'Sí, continuar' }).click()
       await expect(page.getByRole('dialog', { name: /Segunda confirmación/ })).toBeVisible()
       await page.screenshot({ path: SHOT('a7-doble-confirmacion'), fullPage: true })
       await page.getByRole('dialog', { name: /Segunda confirmación/ }).getByRole('button', { name: 'Cancelar' }).click()
     } else {
+      await expect(page.getByText(sim.totalActivos > 0
+        ? `Nadie nuevo que asignar: los ${sim.totalActivos} alumnos activos ya están en el curso`
+        : 'No hay alumnos activos que asignar')).toBeVisible()
       await page.screenshot({ path: SHOT('a7-nadie-nuevo'), fullPage: true })
     }
     // sigue siendo 1 asignado (no cambió)
