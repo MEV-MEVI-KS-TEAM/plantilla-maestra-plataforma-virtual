@@ -555,6 +555,9 @@ WITH d20e AS (
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public'
+     -- Lo mismo que reescribe D20e (y lo único que PostgREST llama por RPC).
+     AND p.prokind = 'f'
+     AND p.prolang = (SELECT l.oid FROM pg_language l WHERE l.lanname = 'plpgsql')
      AND strpos(p.prosrc, 'ERRCODE = ''40001''') > 0
 )
 SELECT

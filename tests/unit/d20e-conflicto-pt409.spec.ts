@@ -53,6 +53,9 @@ test('4. el guardián: CHECK 21 para toda base y la fila de SETUP', () => {
   const check = leer('scripts/post-setup-check.sql')
   const c21 = check.slice(check.indexOf('CHECK 21'))
   expect(c21).toContain("AND strpos(p.prosrc, 'ERRCODE = ''40001''') > 0")
+  // Los mismos filtros que la migración: lo que el CHECK marca es lo que D20e arregla.
+  expect(c21).toContain("AND p.prokind = 'f'")
+  expect(c21).toContain("AND p.prolang = (SELECT l.oid FROM pg_language l WHERE l.lanname = 'plpgsql')")
   expect(c21).not.toContain("'::regprocedure")
   expect(c21).not.toContain('hay_cursos')
   expect(leer('SETUP.md')).toContain(`| 20 | \`${MIG}\` | **D20e**`)
