@@ -31,14 +31,17 @@ test('1. la función: staff, candado ANTES de la idempotencia, validación, los 
   expect(SQL).toContain('IF NOT public.es_staff() THEN')
   expect(SQL).not.toContain('public.es_admin()')
   // Solo define curso_cobrar: B3 (curso_registrar_pago) y C3b/D8 no se redefinen.
-  expect(SQL.match(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)).toEqual(['CREATE OR REPLACE FUNCTION public.curso_cobrar'])
+  expect(SQL.match(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)).toEqual([
+    'CREATE OR REPLACE FUNCTION public.curso_cobrar',
+    'CREATE OR REPLACE FUNCTION public.curso_inscripcion_no_borrar_con_pagos',
+  ])
   expect(SQL).not.toContain('curso_registrar_pago')
   // El candado va ANTES de buscar el pago: el doble envío espera y sale «repetido».
   const candado = SQL.indexOf('FOR UPDATE;')
-  const idem = SQL.indexOf('SELECT p.curso_inscripcion_id INTO v_prev_ins FROM public.pagos p WHERE p.id = p_pago_id;')
+  const idem = SQL.indexOf('FROM public.pagos p WHERE p.id = p_pago_id;')
   expect(candado).toBeGreaterThan(0)
   expect(idem).toBeGreaterThan(candado)
-  expect(SQL).toContain("RETURN QUERY SELECT p_pago_id, true, NULL::text, v_meses, v_total;")
+  expect(SQL).toMatch(/RETURN QUERY SELECT p_pago_id, true,[\s\S]{0,400}?v_meses, v_total;/)
   // NaN es mayor que todo en Postgres: se rechaza aparte.
   expect(SQL).toContain("p_monto = 'NaN'::numeric OR p_monto <= 0")
   expect(SQL).toContain("p_moneda !~ '^[A-Z]{3}$'")
@@ -177,4 +180,51 @@ test('8. el guardián: CHECK 18 (una sola versión, candado, B3 intacta), SETUP 
   expect(c18).toContain("strpos(pg_get_functiondef(to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)')), 'FOR UPDATE') > 0")
   expect(leer('SETUP.md')).toContain(`| 17 | \`${MIG}\` | **D16**`)
   expect(leer('tests/unit/guardian-schema-onboarding.spec.ts')).toContain(`'${MIG}':           'módulo Cursos: aplicación aparte'`)
+})
+
+test('9. revisión: el tope y el mes 1 en la precarga, el reintento que compara, y el borrado con pagos', () => {
+  // Precarga: no ofrece abrir lo que la base rechazaría.
+  const alTope = mensual({ meses: 3, tope: 3, pagos: [
+    { monto: 500, concepto: 'curso_inscripcion', mes_desbloqueado: null },
+    { monto: 1500, concepto: 'curso_mensualidad', mes_desbloqueado: 1 },
+    { monto: 1500, concepto: 'curso_mensualidad', mes_desbloqueado: 2 },
+    { monto: 1500, concepto: 'curso_mensualidad', mes_desbloqueado: 3 },
+  ] })
+  expect(precargaCobro(alTope)).toMatchObject({ mes: 4, puedeAbrir: false })
+  const sinContenido = mensual({ meses: 0, por_activar: true, hayMes1: false })
+  expect(precargaCobro(sinContenido).puedeAbrir).toBe(false)
+  const z0 = base({ por_activar: true, hayMes1: false, ficha: { precio_inscripcion: 0, precio_mensualidad: 0 }, referencia: { precios: { precio_inscripcion: 0, precio_mensualidad: 0 }, origen: 'ficha' } })
+  expect(precargaCobro(z0).puedeAbrir).toBe(false)
+  // El pago único por activar no depende del mes 1 (abre todo).
+  expect(precargaCobro(base({ por_activar: true, hayMes1: false })).puedeAbrir).toBe(true)
+
+  // SQL: el reintento compara los datos y dice lo que abrió; el mes dentro del tope;
+  // pago único por activar solo con pago único (o inscripción); el trigger de borrado.
+  expect(SQL).toContain('OR v_prev.monto IS DISTINCT FROM p_monto')
+  expect(SQL).toContain("WHEN bool_or(e.tipo = 'abrir_todo') THEN 'todo' WHEN bool_or(e.tipo = 'abrir_mes') THEN 'mes' END")
+  expect(SQL).toContain("IF p_concepto = 'curso_mensualidad' AND v_tope > 0 AND p_mes > v_tope THEN")
+  expect(SQL).toContain("IF v_regla = 'total' AND p_concepto NOT IN ('curso_pago_unico', 'curso_inscripcion') THEN")
+  expect(SQL).toContain('BEFORE DELETE ON public.curso_inscripciones')
+  expect(SQL).toContain("AND EXISTS (SELECT 1 FROM public.alumnos a WHERE a.id = OLD.alumno_id) THEN")
+  expect(SQL).toContain("USING ERRCODE = '23001';")
+  // (en la cadena va un «--»: se busca en el archivo tal cual, no en el SQL sin comentarios)
+  expect(leer(`supabase/migrations/${MIG}`)).toContain("'NOT public.es_staff() THEN  -- D7b:') = 0 THEN")
+  // Las rutas de borrado traducen el 23001 a 409 «tiene pagos».
+  for (const f of ['src/app/api/admin/cursos/[id]/inscripciones/[alumnoId]/route.ts', 'src/app/api/admin/cursos/[id]/route.ts']) {
+    expect(sinComentarios(leer(f)), f).toMatch(/if \(error\.code === '23001'\) \{[\s\S]{0,400}?tiene_pagos: true,?\s*\}?,? \{ status: 409 \}\)/)
+  }
+  // La ruta /pago valida lo que la base aceptaría (NUMERIC(10,2) > 0, mes razonable).
+  const r = sinComentarios(leer('src/app/api/admin/inscripciones/[id]/pago/route.ts'))
+  expect(r).toContain('monto < 0.01 || monto >= 1e8 || Math.abs(Math.round(monto * 100) - monto * 100) > 1e-6')
+  expect(r).toContain('mes < 1 || mes > 600')
+  // El GET: tope y mes 1 por curso; sin la ficha, error (no «Pide informes» inventado).
+  const g = sinComentarios(leer('src/app/api/admin/alumnos/[id]/cursos/route.ts'))
+  expect(g).toContain('tope: c ? topeMeses(c.duracion_meses ?? null, modulosPorCurso.get(c.id) ?? 0, c.modulos_por_mes ?? 0) : null,')
+  expect(g).toContain("if (!UUID.test(params.id)) return NextResponse.json({ error: 'Identificador inválido.' }, { status: 400 })")
+  expect(g).toMatch(/if \(errCursos\) \{[\s\S]{0,200}?status: 500 \}\)/)
+  // CHECK 18: authenticated con EXECUTE, SECURITY DEFINER y el trigger.
+  const c18 = leer('scripts/post-setup-check.sql').slice(leer('scripts/post-setup-check.sql').indexOf('CHECK 18'))
+  expect(c18).toContain('AS auth_ejecuta,')
+  expect(c18).toContain('AS definer,')
+  expect(c18).toContain("tgname = 'trg_curso_inscripcion_no_borrar_con_pagos'")
 })

@@ -49,14 +49,16 @@ export async function POST(
       return NextResponse.json({ error: `Concepto inválido. Usa: ${CONCEPTOS_CURSO_LECTURA.join(', ')}` }, { status: 400 })
     }
     const monto = Number(body?.monto)
-    if (!Number.isFinite(monto) || monto <= 0) {
-      return NextResponse.json({ error: 'El monto debe ser un número mayor a 0' }, { status: 400 })
+    // pagos.monto es NUMERIC(10,2) > 0: con más decimales o más grande, la base
+    // responde con un error crudo (23514 / 22003).
+    if (!Number.isFinite(monto) || monto < 0.01 || monto >= 1e8 || Math.abs(Math.round(monto * 100) - monto * 100) > 1e-6) {
+      return NextResponse.json({ error: 'El monto debe ser mayor a 0, con máximo 2 decimales y menor a 100 millones' }, { status: 400 })
     }
     if (!esMetodoPago(body?.metodo_pago)) {
       return NextResponse.json({ error: 'Método de pago inválido. Usa: EFECTIVO, TRANSFERENCIA, TARJETA, OTRO' }, { status: 400 })
     }
     const mes = body?.mes === undefined || body?.mes === null || body?.mes === '' ? null : Number(body.mes)
-    if (mes !== null && (!Number.isInteger(mes) || mes < 1)) {
+    if (mes !== null && (!Number.isInteger(mes) || mes < 1 || mes > 600)) {
       return NextResponse.json({ error: 'El mes que cubre debe ser un número entero de 1 en adelante' }, { status: 400 })
     }
     if (body?.fecha_pago !== undefined && body.fecha_pago !== null && body.fecha_pago !== '' && !fechaValida(body.fecha_pago)) {

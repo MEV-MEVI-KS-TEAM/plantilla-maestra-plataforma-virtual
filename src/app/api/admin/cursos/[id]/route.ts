@@ -301,6 +301,13 @@ export async function DELETE(
 
     const { error } = await admin.from('cursos').delete().eq('id', params.id)
     if (error) {
+      // D16: la red de seguridad de la base (la cascada toca una inscripción con pagos).
+      if (error.code === '23001') {
+        return NextResponse.json({
+          error: 'Este curso tiene pagos registrados en sus inscripciones y no puede borrarse. Pásalo a borrador para retirarlo de circulación sin perder el historial.',
+          tiene_pagos: true,
+        }, { status: 409 })
+      }
       if (error.code === '23503') {
         return NextResponse.json({
           error: 'Este curso tiene diplomas emitidos y no puede borrarse. Pásalo a borrador para retirarlo de circulación.',

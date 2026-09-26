@@ -388,6 +388,15 @@ WITH d16 AS (
                AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
          THEN has_function_privilege('anon', 'public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)', 'EXECUTE')
          ELSE false END AS anon_ejecuta,
+    -- La ruta llama con la sesión: sin EXECUTE para authenticated, «Cobrar» da 403.
+    CASE WHEN to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+         THEN has_function_privilege('authenticated', 'public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)', 'EXECUTE')
+         ELSE true END AS auth_ejecuta,
+    -- SECURITY DEFINER: con INVOKER la RLS le escondería la inscripción al secretario.
+    COALESCE((SELECT p.prosecdef FROM pg_proc p WHERE p.oid = to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)')), false) AS definer,
+    -- La red de seguridad del borrado (una inscripción con pagos no se borra).
+    EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_curso_inscripcion_no_borrar_con_pagos' AND NOT tgisinternal) AS trigger_borrado,
     (SELECT count(*) FROM pg_proc WHERE proname = 'curso_cobrar') AS versiones,
     -- B3 intacta: una sola curso_registrar_pago (la de 8 argumentos).
     (SELECT count(*) FROM pg_proc WHERE proname = 'curso_registrar_pago') AS registrar
@@ -396,15 +405,16 @@ SELECT
   'Cobro de cursos (D16)' AS check_name,
   CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
        ELSE 'función ' || instalada::text || ' / guarda staff ' || guarda_staff::text || ' / candado ' || candado::text
-            || ' / anon ejecuta ' || anon_ejecuta::text || ' / versiones ' || versiones::text
+            || ' / anon ejecuta ' || anon_ejecuta::text || ' / authenticated ' || auth_ejecuta::text
+            || ' / definer ' || definer::text || ' / trigger ' || trigger_borrado::text || ' / versiones ' || versiones::text
             || ' / curso_registrar_pago ' || registrar::text
   END AS valor,
   CASE
     WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
     WHEN NOT instalada
       THEN '❌ FALTA → correr supabase/migrations/20260927140000_d16_curso_cobrar.sql (después de C3b, D7b y D8)'
-    WHEN NOT guarda_staff OR NOT candado OR anon_ejecuta OR versiones <> 1
-      THEN '❌ D16 ALTERADO (guarda, candado, permisos o sobrecargas) → vuelve a correr supabase/migrations/20260927140000_d16_curso_cobrar.sql'
+    WHEN NOT guarda_staff OR NOT candado OR anon_ejecuta OR NOT auth_ejecuta OR NOT definer OR NOT trigger_borrado OR versiones <> 1
+      THEN '❌ D16 ALTERADO (guarda, candado, permisos, definer, trigger o sobrecargas) → vuelve a correr supabase/migrations/20260927140000_d16_curso_cobrar.sql'
     WHEN registrar <> 1
       THEN '❌ curso_registrar_pago con ' || registrar::text || ' versiones: PostgREST no sabe cuál llamar → deja solo la de B3'
     ELSE '✅ OK (una sola versión, admin y secretario, con candado, anon sin EXECUTE)'

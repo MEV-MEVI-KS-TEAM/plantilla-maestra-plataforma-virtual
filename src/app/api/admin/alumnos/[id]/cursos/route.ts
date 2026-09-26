@@ -5,6 +5,9 @@ import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { EVENTOS_DE_ACCESO } from '@/lib/cursos/bitacora'
 import { precargaCobro, resumenCobro, type EstadoCobro, type PagoDeCurso } from '@/lib/cursos/cobro'
 import type { PreciosCurso } from '@/lib/cursos/precio-regla'
+import { topeMeses } from '@/lib/cursos/acceso'
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * GET /api/admin/alumnos/[id]/cursos — los cursos del alumno, para COBRAR
@@ -25,7 +28,10 @@ type Inscripcion = {
   id: string; curso_id: string; estado?: string | null; meses_desbloqueados?: number | null
   acceso_total?: boolean | null; fecha_inscripcion?: string | null; created_at?: string | null
 }
-type Curso = { id: string; nombre: string; tipo: string | null; precio_inscripcion: number | null; precio_mensualidad: number | null }
+type Curso = {
+  id: string; nombre: string; tipo: string | null; precio_inscripcion: number | null; precio_mensualidad: number | null
+  duracion_meses?: number | null; modulos_por_mes?: number | null
+}
 type Evento = { inscripcion_id: string; tipo: string; detalle: Record<string, unknown> | null; created_at: string }
 
 const cifra = (v: unknown): number | null => {
@@ -43,6 +49,7 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+    if (!UUID.test(params.id)) return NextResponse.json({ error: 'Identificador inválido.' }, { status: 400 })
 
     const admin = createAdminClient()
     // select('*'): acceso_total (C3b) y estado (B1) no existen en toda base.
@@ -62,13 +69,22 @@ export async function GET(
 
     const insIds = inscripciones.map(i => i.id)
     const cursoIds = [...new Set(inscripciones.map(i => i.curso_id))]
-    const [{ data: cursosRaw }, { data: eventosRaw, error: errEv }, { data: pagosRaw, error: errPag }] = await Promise.all([
-      admin.from('cursos').select('id, nombre, tipo, precio_inscripcion, precio_mensualidad').in('id', cursoIds),
+    const [{ data: cursosRaw, error: errCursos }, { data: modulosRaw }, { data: eventosRaw, error: errEv }, { data: pagosRaw, error: errPag }] = await Promise.all([
+      // '*': duracion_meses y modulos_por_mes (el tope) no existen en toda base.
+      admin.from('cursos').select('*').in('id', cursoIds),
+      admin.from('curso_modulos').select('curso_id').in('curso_id', cursoIds),
       admin.from('curso_inscripcion_eventos').select('inscripcion_id, tipo, detalle, created_at')
         .in('inscripcion_id', insIds).in('tipo', ['inscripcion', ...EVENTOS_DE_ACCESO]),
       admin.from('pagos').select('curso_inscripcion_id, monto, concepto, mes_desbloqueado').in('curso_inscripcion_id', insIds),
     ])
+    // Sin la ficha no hay precio ni regla: mejor un error que «Pide informes» inventado.
+    if (errCursos) {
+      console.error('[GET /api/admin/alumnos/[id]/cursos] cursos:', errCursos.message)
+      return NextResponse.json({ error: 'No se pudieron leer los cursos.' }, { status: 500 })
+    }
     const cursos = new Map(((cursosRaw ?? []) as Curso[]).map(c => [c.id, c]))
+    const modulosPorCurso = new Map<string, number>()
+    for (const m of (modulosRaw ?? []) as Array<{ curso_id: string }>) modulosPorCurso.set(m.curso_id, (modulosPorCurso.get(m.curso_id) ?? 0) + 1)
     // Sin bitácora (sin B4) no se puede saber quién está «por activar» ni la foto del precio.
     const eventos = errEv ? null : ((eventosRaw ?? []) as Evento[])
     // Sin B1 no hay pagos de curso.
@@ -97,6 +113,9 @@ export async function GET(
           ? { precios: { precio_inscripcion: foto.ins ?? 0, precio_mensualidad: foto.men ?? 0 }, origen: 'inscripcion' }
           : { precios: ficha, origen: 'ficha' },
         pagos: pagos.filter(p => p.curso_inscripcion_id === i.id),
+        // El tope (espejo de curso_tope_meses) y si el mes 1 tiene qué mostrar.
+        tope: c ? topeMeses(c.duracion_meses ?? null, modulosPorCurso.get(c.id) ?? 0, c.modulos_por_mes ?? 0) : null,
+        hayMes1: (modulosPorCurso.get(i.curso_id) ?? 0) > 0 && Number(c?.modulos_por_mes ?? 0) > 0,
       }
       return {
         inscripcion_id: i.id,

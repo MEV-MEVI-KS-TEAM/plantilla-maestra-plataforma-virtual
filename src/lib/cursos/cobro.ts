@@ -33,6 +33,10 @@ export type EstadoCobro = {
   /** El precio con que se le vendió, y de dónde salió. */
   referencia: { precios: PreciosCurso; origen: 'inscripcion' | 'ficha' }
   pagos: readonly PagoDeCurso[]
+  /** Hasta qué mes se puede abrir (curso_tope_meses); null = no se sabe (no se limita aquí). */
+  tope?: number | null
+  /** ¿El mes 1 tiene qué mostrar (módulos y módulos por mes)? Sin él, activar mes 1 lo rechaza la base. */
+  hayMes1?: boolean
 }
 
 export type ResumenCobro = {
@@ -124,15 +128,19 @@ export function precargaCobro(e: EstadoCobro): PrecargaCobro {
 
   if (ref.tipo === 'mensual') {
     const inscripcionPagada = e.pagos.some(p => p.concepto === 'curso_inscripcion')
+    // Lo mismo que rechaza la base: activar el mes 1 sin contenido, o abrir más allá del tope.
+    const sePuedeActivar = r.regla === 'total' || e.hayMes1 !== false
     if (ref.inscripcion !== null && !inscripcionPagada) {
-      const puedeAbrir = activa && e.por_activar
+      const puedeAbrir = activa && e.por_activar && sePuedeActivar
       return { ...base, concepto: 'curso_inscripcion', monto: ref.inscripcion, mes: null, puedeAbrir, abrirPorDefecto: puedeAbrir }
     }
     // K = la primera mensualidad SIN pago. Tras asignar (1 mes abierto, nada
     // pagado) K = 1: se cobra el mes 1 y NO se abre el 2.
     let k = 1
     while (r.mesesCubiertos.includes(k)) k++
-    const puedeAbrir = activa && !e.acceso_total && ((e.por_activar && k === 1) || (!e.por_activar && k === e.meses + 1))
+    const dentroDelTope = e.tope == null || e.tope <= 0 || k <= e.tope
+    const puedeAbrir = activa && !e.acceso_total && dentroDelTope
+      && ((e.por_activar && k === 1 && r.regla === 'mes1' && sePuedeActivar) || (!e.por_activar && k === e.meses + 1))
     return { ...base, concepto: 'curso_mensualidad', monto: ref.mensualidad, mes: k, puedeAbrir, abrirPorDefecto: puedeAbrir }
   }
 
@@ -142,7 +150,7 @@ export function precargaCobro(e: EstadoCobro): PrecargaCobro {
     concepto: 'curso_otro',
     monto: null,
     mes: null,
-    puedeAbrir: activa && e.por_activar,
+    puedeAbrir: activa && e.por_activar && e.hayMes1 !== false,
     abrirPorDefecto: false,
     aviso: AVISO_SIN_PRECIO,
   }

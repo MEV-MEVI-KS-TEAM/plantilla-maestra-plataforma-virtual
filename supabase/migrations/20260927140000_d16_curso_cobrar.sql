@@ -36,9 +36,16 @@
 -- pago: un segundo envío con el mismo p_pago_id espera al primero y, cuando
 -- éste confirma, ve el pago y devuelve «repetido» sin cobrar ni abrir otra vez.
 --
--- SOLO LLAMA a funciones de C3b/D8 (curso_regla_apertura, curso_abrir_mes,
--- curso_abrir_todo, curso_activar_segun_ficha); no redefine ninguna. No toca
--- curso_registrar_pago, políticas ni el candado.
+-- UNA INSCRIPCIÓN CON PAGOS NO SE BORRA (red de seguridad de D11). D11 cuenta
+-- los pagos y luego borra, en dos llamadas: un cobro que entra en medio (con la
+-- fila bloqueada por curso_cobrar) quedaba con la FK en NULL (ON DELETE SET
+-- NULL) y contaba como ingreso del PROGRAMA. Un trigger BEFORE DELETE lo impide
+-- en la base (23001), también en la cascada al borrar un CURSO. Al borrar al
+-- ALUMNO sus pagos se van con él (cascada): ahí no estorba.
+--
+-- SOLO LLAMA a funciones de C3b/D8 (curso_regla_apertura, curso_tope_meses,
+-- curso_abrir_mes, curso_abrir_todo, curso_activar_segun_ficha); no redefine
+-- ninguna. No toca curso_registrar_pago, políticas ni el candado.
 --
 -- IDEMPOTENTE Y RE-EJECUTABLE. En transacción. Requiere B1, B4, la moneda del
 -- pago (#198), C3b, D7b y D8.
@@ -72,6 +79,9 @@ BEGIN
   END IF;
   IF to_regprocedure('public.curso_activar_segun_ficha(uuid,text)') IS NULL THEN
     RAISE EXCEPTION 'Falta la migración D8 (20260927130000_d8_activar_segun_ficha.sql).';
+  END IF;
+  IF strpos(pg_get_functiondef(to_regprocedure('public.curso_abrir_mes(uuid,integer)')), 'NOT public.es_staff() THEN  -- D7b:') = 0 THEN
+    RAISE EXCEPTION 'Falta la migración D7b (20260927120000_d7b_secretario_abre_cursos.sql): el secretario no podría abrir al cobrar.';
   END IF;
   IF to_regprocedure('public.es_staff()') IS NULL
      OR pg_get_functiondef(to_regprocedure('public.es_staff()')) !~* 'lower\s*\(\s*rol\s*\)' THEN
@@ -112,6 +122,8 @@ DECLARE
   v_men      NUMERIC;
   v_regla    TEXT;
   v_abrio    TEXT := NULL;
+  v_tope     INTEGER;
+  v_prev     RECORD;
 BEGIN
   -- Admin y secretario (decisión 6): cobrar Y abrir. Con la sesión de quien cobra.
   IF NOT public.es_staff() THEN
@@ -157,15 +169,35 @@ BEGIN
     RAISE EXCEPTION 'La inscripción no existe.' USING ERRCODE = 'P0002';
   END IF;
 
-  -- Idempotencia: el mismo cobro ya se registró (doble clic, reintento de red).
-  SELECT p.curso_inscripcion_id INTO v_prev_ins FROM public.pagos p WHERE p.id = p_pago_id;
+  -- Idempotencia: el MISMO cobro ya se registró (doble clic, reintento de red).
+  -- Con otros datos no es un reintento: 23505 (no se pierde el cobro nuevo en
+  -- silencio). El reintento dice lo que el primero abrió.
+  SELECT p.curso_inscripcion_id, p.concepto, p.monto, p.mes_desbloqueado, p.created_at
+    INTO v_prev
+    FROM public.pagos p WHERE p.id = p_pago_id;
   IF FOUND THEN
-    IF v_prev_ins IS DISTINCT FROM p_inscripcion_id THEN
+    v_prev_ins := v_prev.curso_inscripcion_id;
+    IF v_prev_ins IS DISTINCT FROM p_inscripcion_id
+       OR v_prev.concepto IS DISTINCT FROM p_concepto
+       OR v_prev.monto IS DISTINCT FROM p_monto
+       OR v_prev.mes_desbloqueado IS DISTINCT FROM (CASE WHEN p_concepto = 'curso_mensualidad' THEN p_mes END) THEN
       RAISE EXCEPTION 'Ese identificador de cobro ya se usó en otro pago. Recarga la página y vuelve a intentarlo.'
         USING ERRCODE = '23505';
     END IF;
-    RETURN QUERY SELECT p_pago_id, true, NULL::text, v_meses, v_total;
+    RETURN QUERY SELECT p_pago_id, true,
+      (SELECT CASE WHEN bool_or(e.tipo = 'abrir_todo') THEN 'todo' WHEN bool_or(e.tipo = 'abrir_mes') THEN 'mes' END
+         FROM public.curso_inscripcion_eventos e
+        WHERE e.inscripcion_id = p_inscripcion_id AND e.created_at = v_prev.created_at
+          AND e.tipo IN ('abrir_mes', 'abrir_todo')),
+      v_meses, v_total;
     RETURN;
+  END IF;
+
+  -- El mes que cubre, dentro del curso (con tope conocido): un «mes 99» en un
+  -- curso de 3 dejaría «Pagado · falta abrir» encendido para siempre.
+  v_tope := public.curso_tope_meses(v_curso);
+  IF p_concepto = 'curso_mensualidad' AND v_tope > 0 AND p_mes > v_tope THEN
+    RAISE EXCEPTION 'Este curso llega hasta el mes %: una mensualidad no puede cubrir el mes %.', v_tope, p_mes USING ERRCODE = '22023';
   END IF;
 
   IF p_abrir THEN
@@ -190,6 +222,10 @@ BEGIN
       -- «Por activar» (D8): lo que dice la ficha HOY, con la regla que la pantalla vio.
       IF p_regla_esperada IS NULL THEN
         RAISE EXCEPTION 'Para activar hace falta la regla que la pantalla vio (p_regla_esperada).' USING ERRCODE = '22023';
+      END IF;
+      IF v_regla = 'total' AND p_concepto NOT IN ('curso_pago_unico', 'curso_inscripcion') THEN
+        RAISE EXCEPTION 'La ficha de este curso es de pago único: activarla abre TODO el curso. Cóbrala como pago único.'
+          USING ERRCODE = '22023';
       END IF;
       IF p_concepto = 'curso_pago_unico' AND v_regla <> 'total' THEN
         RAISE EXCEPTION 'La ficha de este curso no es de pago único: activarla abre el mes 1, no todo el curso. Cobra la inscripción o la mensualidad del mes 1.'
@@ -272,6 +308,39 @@ BEGIN
   END IF;
 END
 $grants$;
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- Una inscripción CON PAGOS no se borra (la red de seguridad de D11)
+-- ════════════════════════════════════════════════════════════════════════════
+CREATE OR REPLACE FUNCTION public.curso_inscripcion_no_borrar_con_pagos()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- La consulta ve lo CONFIRMADO al momento (lectura confirmada): si un cobro
+  -- tenía la fila bloqueada, este DELETE esperó y aquí ya ve su pago.
+  -- Al borrar al ALUMNO (cascada) su fila ya no está: sus pagos se van con él.
+  IF EXISTS (SELECT 1 FROM public.pagos p WHERE p.curso_inscripcion_id = OLD.id)
+     AND EXISTS (SELECT 1 FROM public.alumnos a WHERE a.id = OLD.alumno_id) THEN
+    RAISE EXCEPTION 'Esta inscripción tiene pagos registrados y no se borra: los pagos perderían su curso y se contarían como del programa. Cancélala para darla de baja conservando el historial.'
+      USING ERRCODE = '23001';
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+COMMENT ON FUNCTION public.curso_inscripcion_no_borrar_con_pagos() IS
+  'D16: BEFORE DELETE en curso_inscripciones. Con pagos ligados y el alumno vivo, 23001 (la FK de pagos es SET NULL: '
+  'el pago contaría como del programa). Cubre la carrera cobro/borrado de D11 y la cascada al borrar un curso.';
+
+REVOKE ALL ON FUNCTION public.curso_inscripcion_no_borrar_con_pagos() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS trg_curso_inscripcion_no_borrar_con_pagos ON public.curso_inscripciones;
+CREATE TRIGGER trg_curso_inscripcion_no_borrar_con_pagos
+  BEFORE DELETE ON public.curso_inscripciones
+  FOR EACH ROW EXECUTE FUNCTION public.curso_inscripcion_no_borrar_con_pagos();
 
 NOTIFY pgrst, 'reload schema';
 
