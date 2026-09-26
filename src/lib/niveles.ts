@@ -172,9 +172,13 @@ export function nivelesPermitidos(hayCursosPublicados = false): string[] {
  */
 export function catalogoDeRegistro(): CatalogoRegistro {
   const niveles = nivelesPermitidos(false)
+  // Recortados, igual que llega lo pedido (la ruta recorta modalidad y carrera):
+  // un id o slug con espacios en config.ts no debe volverse un 400 tras signUp.
+  const limpio = (xs: readonly unknown[]) =>
+    xs.filter((x): x is string => typeof x === 'string').map(x => x.trim()).filter(Boolean)
   return {
     niveles,
-    planes: Object.fromEntries(niveles.map(n => [n, planesDeclaradosPorNivel(n)])),
-    carreras: getCarreras().map(c => c.slug),
+    planes: Object.fromEntries(niveles.map(n => [n, limpio(planesDeclaradosPorNivel(n))])),
+    carreras: limpio(getCarreras().map(c => c.slug)),
   }
 }

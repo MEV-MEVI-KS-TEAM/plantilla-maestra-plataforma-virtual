@@ -59,13 +59,18 @@ export interface CatalogoRegistro {
   carreras: readonly string[]
 }
 
-/** Mensajes del 400. Los dos primeros son los mismos del formulario. */
+/**
+ * Mensajes del 400. Los dos primeros son los mismos del formulario. Los otros
+ * no dicen «recarga y vuelve a elegir»: a esta altura la cuenta de Auth YA
+ * existe, y reintentar con el mismo correo solo da «ya existe una cuenta» (#217).
+ */
+const COMPLETAR = 'Tu cuenta quedó creada: comunícate con la escuela para completar tu inscripción.'
 export const MENSAJES_PLAN_REGISTRO = {
   sinModalidad: 'Selecciona la modalidad.',
   sinCarrera:   'Selecciona tu carrera.',
-  nivel:        'Ese nivel educativo no está disponible en esta escuela. Recarga la página y vuelve a elegir.',
-  modalidad:    'Esa modalidad no corresponde al nivel que elegiste. Recarga la página y vuelve a elegir.',
-  carrera:      'Esa carrera no está disponible. Recarga la página y vuelve a elegir.',
+  nivel:        `Ese nivel educativo no está disponible en esta escuela. ${COMPLETAR}`,
+  modalidad:    `Esa modalidad no corresponde al nivel que elegiste. ${COMPLETAR}`,
+  carrera:      `Esa carrera no está disponible. ${COMPLETAR}`,
 } as const
 
 /**

@@ -105,6 +105,53 @@ test('#199 · todo lo que el formulario de ESTA plantilla puede ofrecer pasa, co
   expect(combos).toBeGreaterThan(0)
 })
 
+test('#199 · con licenciaturas y diplomados del riel activos, todo lo que el formulario ofrece también pasa', () => {
+  // La plantilla trae el add-on apagado: se enciende aquí (y se restaura) para
+  // recorrer la rama de licenciatura con las MISMAS funciones que usa el formulario.
+  const cfg = CONFIG as unknown as { licenciaturas?: unknown }
+  const antes = cfg.licenciaturas
+  cfg.licenciaturas = {
+    activas: true,
+    carreras: [
+      { slug: 'derecho', nombre: 'Derecho' },
+      { slug: 'diplomado-docencia', nombre: 'Docencia', esDiplomado: true },
+    ],
+    modalidades: [
+      { id: '12_meses', label: '12', meses: 12, mensualidad: 1, materiasPorMes: 3, activa: true },
+      { id: '6_meses_lic', label: '6', meses: 6, mensualidad: 1, materiasPorMes: 5, activa: false },
+    ],
+  }
+  try {
+    const cat = catalogoDeRegistro()
+    expect(cat.niveles).toContain('licenciatura')
+    // Estructural: el plan apagado también vale.
+    expect(cat.planes.licenciatura).toEqual(['12_meses', '6_meses_lic'])
+    let lic = 0
+    for (const o of getOpcionesNivel(true).filter(x => x.nivel === 'licenciatura')) {
+      const carreras = (esOpcionDiplomadoLic(o.value) ? getCarrerasDiplomado() : getCarrerasLicenciatura()).map(c => c.slug)
+      expect(carreras.length, o.value).toBeGreaterThan(0)
+      for (const p of getModalidadesLicenciatura()) for (const c of carreras) {
+        lic++
+        expect(errorDePlanDeRegistro({ nivel: 'licenciatura', modalidad: p.id, carrera: c }, cat), `${o.value}/${p.id}/${c}`).toBeNull()
+      }
+    }
+    // «Licenciatura» y «Diplomados» (diplomado_lic), cada uno con su carrera.
+    expect(lic).toBe(2)
+    // Y lo que no cabe se sigue rechazando.
+    expect(errorDePlanDeRegistro({ nivel: 'licenciatura', modalidad: '3_meses', carrera: 'derecho' }, cat)).toBe(M.modalidad)
+    expect(errorDePlanDeRegistro({ nivel: 'licenciatura', modalidad: '12_meses', carrera: 'medicina' }, cat)).toBe(M.carrera)
+  } finally {
+    cfg.licenciaturas = antes
+  }
+})
+
+test('#199 · los mensajes del 400 no mandan a recargar: la cuenta ya existe (#217)', () => {
+  for (const m of [M.nivel, M.modalidad, M.carrera]) {
+    expect(m).not.toMatch(/[Rr]ecarga/)
+    expect(m).toContain('comunícate con la escuela')
+  }
+})
+
 test('#199 · la ruta valida ANTES de escribir nada y responde 400', () => {
   const src = sinComentarios(leer('src/app/api/auth/register-complete/route.ts'))
   expect(src).toContain("import { catalogoDeRegistro } from '@/lib/niveles'")
