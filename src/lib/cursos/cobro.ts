@@ -174,3 +174,42 @@ export function cubreElCobro(e: EstadoCobro, concepto: ConceptoCobro, monto: num
   if (concepto === 'curso_inscripcion') return ref.tipo === 'mensual' && ref.inscripcion !== null && monto >= ref.inscripcion
   return false
 }
+
+/** Una fila de GET /api/admin/alumnos/[id]/cursos (D16), la que pintan la ficha y «Cobrar». */
+export type FilaCursoAlumno = {
+  inscripcion_id: string
+  curso_id: string
+  curso_nombre: string
+  curso_tipo: string
+  estado: string | null
+  meses_desbloqueados: number
+  acceso_total: boolean
+  por_activar: boolean
+  precio_referencia: { inscripcion: number; mensualidad: number; origen: 'inscripcion' | 'ficha' }
+  resumen: ResumenCobro
+  precarga: PrecargaCobro
+  cobro: EstadoCobro
+}
+
+/**
+ * Qué abre la casilla, dicho para quien cobra (D17). `null` si con ese
+ * concepto y ese mes no hay nada que abrir (la casilla no aparece).
+ * `todo` = abre el curso completo: pide la doble confirmación con
+ * AVISO_PAGO_UNICO (decisión 6).
+ */
+export function queAbre(
+  f: Pick<FilaCursoAlumno, 'por_activar' | 'precarga'>,
+  concepto: ConceptoCobro,
+  mes: number | null,
+): { texto: string; todo: boolean } | null {
+  const p = f.precarga
+  if (!p.puedeAbrir || concepto !== p.concepto || (concepto === 'curso_mensualidad' && mes !== p.mes)) return null
+  if (f.por_activar) {
+    return p.regla === 'total'
+      ? { texto: 'Activar según la ficha: abre TODO el curso', todo: true }
+      : { texto: 'Activar según la ficha: abre el mes 1', todo: false }
+  }
+  if (concepto === 'curso_pago_unico') return { texto: 'Abrir TODO el curso (pago único)', todo: true }
+  if (concepto === 'curso_mensualidad' && mes) return { texto: `Abrir el mes ${mes}`, todo: false }
+  return null
+}

@@ -16,6 +16,9 @@ import { useSiteConfig } from '@/components/site-config-provider'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
+import { CursosDelAlumno } from '@/components/admin/alumnos/CursosDelAlumno'
+import { CobrarCursoModal } from '@/components/admin/alumnos/CobrarCursoModal'
+import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
 
 interface AlumnoDetalle {
   id: string
@@ -226,6 +229,9 @@ export default function AlumnoDetallePage() {
   const [totalCursos, setTotalCursos] = useState(0)
   const [totalPrograma, setTotalPrograma] = useState(0)
   const [modalRegistrarPago, setModalRegistrarPago] = useState(false)
+  // D17 (#207-6): los cursos del alumno (tarjeta «Cursos») y el que se está cobrando.
+  const [cursosAlumno, setCursosAlumno] = useState<FilaCursoAlumno[]>([])
+  const [cobroCurso, setCobroCurso] = useState<FilaCursoAlumno | null>(null)
   const [registrandoPago, setRegistrandoPago] = useState(false)
   const [pagoError, setPagoError] = useState<string | null>(null)
   const [pagoForm, setPagoForm] = useState({
@@ -290,6 +296,21 @@ export default function AlumnoDetallePage() {
   }, [id])
 
   useEffect(() => { cargar() }, [cargar])
+
+  // D17: los cursos del alumno para cobrar (D16). Sin el módulo, la lista vacía y
+  // la tarjeta no se pinta; si falla, se conserva lo que había.
+  const cargarCursos = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/alumnos/${id}/cursos`)
+      if (!res.ok) return
+      const data = await res.json()
+      setCursosAlumno(Array.isArray(data.cursos) ? data.cursos : [])
+    } catch {
+      // silencioso: la tarjeta conserva los datos previos
+    }
+  }, [id])
+
+  useEffect(() => { void cargarCursos() }, [cargarCursos])
 
   // Refresca solo la tabla de pagos y el total, sin recargar toda la página
   const cargarPagos = useCallback(async () => {
@@ -873,6 +894,9 @@ export default function AlumnoDetallePage() {
           </div>
         )}
       </div>
+
+      {/* Cursos (D17): cobrar un curso va al curso, no al programa. */}
+      <CursosDelAlumno filas={cursosAlumno} fmt={fmtMoneda} onCobrar={f => setCobroCurso(f)} />
 
       {/* Pagos */}
       <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
@@ -1845,6 +1869,21 @@ export default function AlumnoDetallePage() {
       )}
 
       {/* Modal Registrar Pago */}
+      {cobroCurso && (
+        <CobrarCursoModal
+          fila={cobroCurso}
+          alumnoNombre={alumno.usuario.nombre_completo}
+          moneda={codigoMoneda(CONFIG.moneda)}
+          fmt={fmtMoneda}
+          onClose={() => setCobroCurso(null)}
+          onCobrado={async (mensaje) => {
+            setCobroCurso(null)
+            showToast(mensaje, 'success')
+            await Promise.all([cargarCursos(), cargarPagos()])
+          }}
+        />
+      )}
+
       {modalRegistrarPago && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
@@ -1867,6 +1906,30 @@ export default function AlumnoDetallePage() {
             </div>
 
             <form onSubmit={handleRegistrarPago} className="space-y-4">
+              {/* D17: «¿A qué se aplica?». Un cobro de curso capturado aquí contaba
+                  como ingreso del PROGRAMA (Bug 73 por la UI): elegir un curso lleva
+                  a «Cobrar» de ese curso. */}
+              {cursosAlumno.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>¿A qué se aplica?</label>
+                  <select
+                    value="programa"
+                    onChange={e => {
+                      const f = cursosAlumno.find(c => c.inscripcion_id === e.target.value)
+                      if (f) { setModalRegistrarPago(false); setPagoError(null); setCobroCurso(f) }
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                  >
+                    <option value="programa">Programa (colegiatura, inscripción, etc.)</option>
+                    {cursosAlumno.map(c => (
+                      <option key={c.inscripcion_id} value={c.inscripcion_id}>
+                        {c.curso_tipo === 'diplomado' ? 'Diplomado' : 'Curso'} «{c.curso_nombre}»
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto ({codigoMoneda(CONFIG.moneda)})</label>
                 <input
