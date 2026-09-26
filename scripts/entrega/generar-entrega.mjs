@@ -96,7 +96,7 @@ const { licenciaturaEfectiva, bloqueLicEditable } =
 // oferta-regla.ts, sin imports). Se importa aquí, después de revisar la versión
 // de Node, porque arrastra .ts. Antes el PDF decía «Lo defines tú» donde la
 // página ya decía «Pide informes».
-const { leerCursosPublicados, precioDeCurso: precioDeCursoCon, revisarCursos, filaResumenCursos } =
+const { leerCursosPublicados, precioDeCurso: precioDeCursoCon, revisarCursos, filaResumenCursos, cursosParaDocumento } =
   await import('./cursos-entrega.mjs')
 
 
@@ -377,7 +377,9 @@ const MENU_CURSOS = CONFIG.modo === 'solo_cursos' ? 'Diplomados' : 'Gestionar Cu
  * Cursos de Ingreso, y entonces el documento y el mensaje los nombran con su
  * precio en vez de invitarle a crear su primer curso.
  */
-const CURSOS_PUBLICADOS = INV.cursosLectura?.lista || []
+const CURSOS_PUBLICADOS = cursosParaDocumento(INV.cursosLectura)
+/** ¿La escuela vende cursos de ingreso? Su registro tiene otro camino (lo pide y se asigna). */
+const VENDE_INGRESO = Boolean(CONFIG.cursosIngreso && (CONFIG.cursosIngreso.activa ?? CONFIG.cursosIngreso.activos))
 const precioDeCurso = (c) => precioDeCursoCon(c, mxn)
 
 /* ── 4. Modalidades y precios, adaptados a lo CONTRATADO ─────────────────── */
@@ -748,6 +750,7 @@ const datos = {
   cursosPublicados: INV.cursos || 0,
   cursosLista: CURSOS_PUBLICADOS.map(c => ({ ...c, precio: precioDeCurso(c) })),
   menuCursos: MENU_CURSOS,
+  vendeIngreso: VENDE_INGRESO,
   validez: VALIDEZ,
   folioVerificable: FOLIO_VERIFICABLE,
   soporte: D.soporte || SOPORTE,
@@ -801,7 +804,7 @@ const datos = {
       `${ETIQUETA_PROGRAMAS} ya ${soloLicenciaturas(CARRERAS) ? 'cargadas y listas' : 'cargados y listos'} para inscribir: ${unirConY(CARRERAS.map(c => c.nombre))}`,
     ] : []),
     CURSOS_PUBLICADOS.length
-      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso publicado' : 'cursos publicados'}: al asignar a un alumno, un curso de pago único se le abre completo, y a quien se registró desde tu página eligiendo el curso se le abre con «Abrir todo»`
+      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso publicado' : 'cursos publicados'}: al asignar a un alumno, un curso de pago único se le abre completo; a quien se registró desde tu página eligiendo el curso, con «Abrir todo» (pago único) o «+ Abrir mes» (mensual)`
       : 'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
     'Rol de secretario con accesos delimitados',
 
@@ -1002,7 +1005,8 @@ if (!flag('solo-pdf')) {
     INFORMES_EXCEL ? '• Consultar tus Informes de ingresos por semana y por mes, y descargarlos en Excel' : '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
     CURSOS_PUBLICADOS.length
-      ? `• Asignar alumnos a ${CURSOS_PUBLICADOS.length === 1 ? 'tu curso' : `tus ${CURSOS_PUBLICADOS.length} cursos`} en ${MENU_CURSOS} → el curso → Alumnos (en uno de pago único se les abre completo; a quien ya se registró desde tu página eligiendo el curso, con «Abrir todo» o «+ Abrir mes»), seguir su avance y crear todos los que quieras`
+      ? `• Asignar alumnos a ${CURSOS_PUBLICADOS.length === 1 ? 'tu curso' : `tus ${CURSOS_PUBLICADOS.length} cursos`} en ${MENU_CURSOS} → el curso → Alumnos (en uno de pago único se les abre completo; a quien ya se registró desde tu página eligiendo el curso, con «Abrir todo» o «+ Abrir mes»${
+        VENDE_INGRESO ? '; a quien pidió un curso de preparación para examen, con «Asignar» en Alumnos' : ''}), seguir su avance y crear todos los que quieras`
       : '• Crear tus propios Cursos y Diplomados cuando quieras',
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
