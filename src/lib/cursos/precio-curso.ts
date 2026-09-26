@@ -10,10 +10,17 @@
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 
-// La regla numérica y el texto sin precio viven en precio-regla.ts, sin imports,
-// para que el generador de la entrega (Node, sin alias '@/') use la MISMA.
-import { precioCursoNumerico, TEXTO_SIN_PRECIO, type PreciosCurso, type PrecioNumerico } from './precio-regla'
-export { precioCursoNumerico, TEXTO_SIN_PRECIO, type PreciosCurso, type PrecioNumerico }
+// La regla numérica, el texto sin precio y lo que anuncia el registro de una
+// oferta viven en precio-regla.ts, sin imports, para que el generador de la
+// entrega (Node, sin alias '@/') use los MISMOS.
+import {
+  precioCursoNumerico, resolverPrecioOferta, TEXTO_SIN_PRECIO,
+  type PreciosCurso, type PrecioNumerico, type PrecioOferta, type OfertaConPrecio,
+} from './precio-regla'
+export {
+  precioCursoNumerico, resolverPrecioOferta, TEXTO_SIN_PRECIO,
+  type PreciosCurso, type PrecioNumerico, type PrecioOferta, type OfertaConPrecio,
+}
 
 /**
  * Precio de catálogo, sin decimales — los precios de la plantilla son enteros.
@@ -56,47 +63,6 @@ export function lineaPrecio(p: PrecioCatalogo): string {
   if (p.tipo === 'mensual') return `${p.mensualidad} al mes`
   if (p.tipo === 'unico') return `${p.monto} · pago único`
   return TEXTO_SIN_PRECIO
-}
-
-/**
- * Precio que anuncia el registro para una oferta de Cursos de Ingreso
- * (CONFIG.cursosIngreso). Hasta el Bloque C salía SOLO de config.ts: la escuela
- * cambiaba el precio en /admin/cursos/[id] y la portada lo mostraba, pero el
- * registro seguía con el número viejo. Ahora, en orden:
- *
- *   1. PAQUETE → `precioPaquete` de config.ts: la tabla no tiene precio de
- *      paquete. Sin él, «Pide informes».
- *   2. Oferta de UN curso publicado con precio en su ficha → manda la ficha,
- *      con la misma regla que el catálogo (la mensualidad gana).
- *   3. Si la ficha está en 0/0 (o el curso no está publicado, o no llegó el
- *      catálogo), el `precio` de config.ts es el respaldo: lo de siempre.
- *   4. Nada → «Pide informes». Nunca «$0».
- *
- * Una oferta de varios cursos que NO es paquete no tiene una ficha que mande:
- * salta el paso 2 (falla cerrado hacia config.ts).
- */
-export type PrecioOferta =
-  | (Exclude<PrecioNumerico, { tipo: 'informes' }> & { fuente: 'tabla' | 'config' })
-  | { tipo: 'informes' }
-
-export interface OfertaConPrecio { cursoIds: readonly string[]; precio: number; esPaquete: boolean }
-
-export function resolverPrecioOferta(
-  oferta: OfertaConPrecio,
-  publicados: ReadonlyMap<string, PreciosCurso> | null,
-): PrecioOferta {
-  const respaldo: PrecioOferta = oferta.precio > 0
-    ? { tipo: 'unico', monto: oferta.precio, fuente: 'config' }
-    : { tipo: 'informes' }
-  if (oferta.esPaquete) return respaldo
-  if (oferta.cursoIds.length === 1 && publicados) {
-    const fila = publicados.get(oferta.cursoIds[0])
-    if (fila) {
-      const p = precioCursoNumerico(fila)
-      if (p.tipo !== 'informes') return { ...p, fuente: 'tabla' }
-    }
-  }
-  return respaldo
 }
 
 /**

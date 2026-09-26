@@ -348,6 +348,8 @@ function cursos(d) {
   const hay = n > 0
   const plural = n === 1 ? 'curso' : 'cursos'
   const titulo = hay ? 'Tus cursos, ya publicados' : 'Crea tus propios cursos'
+  // El menú del panel: en solo_cursos se llama «Diplomados» (sidebar.tsx).
+  const menu = d.menuCursos || 'Gestionar Cursos'
 
   return `
 <h2><span class="num">Módulo incluido ·</span> ${titulo}</h2>
@@ -362,7 +364,7 @@ ${kv([
     ['Contenido inicial', hay ? `${n} ${plural} ${n === 1 ? 'publicado' : 'publicados'}` : 'Vacío — lo defines tú'],
   ])}
 ${hay && lista.length ? `<h3>Lo que ya está a la venta</h3>
-${dt(['Curso', 'Precio'], lista.map(c => [c.nombre, c.precio || 'Pide informes']))}` : ''}
+${dt(['Curso', 'Precio'], lista.map(c => [c.nombre, c.precio]))}` : ''}
 <h3>Qué te permite hacer</h3>
 ${ul([
     hay
@@ -373,11 +375,11 @@ ${ul([
     'Constancia con folio consecutivo al terminar el curso',
     'Inscribir alumnos y seguir su avance lección por lección',
     'Precio por curso: de pago único, o inscripción y mensualidad, independiente del programa académico',
-    'Al asignar a un alumno, un curso de pago único se le abre completo; uno mensual, mes a mes',
+    'Al asignar a un alumno, un curso de pago único se le abre completo; uno mensual o sin precio, mes a mes',
   ])}
 <div class="note"><b>Cómo empezar</b><p>${hay
-    ? `Tu catálogo público ya muestra ${n === 1 ? 'este curso' : `estos ${n} cursos`}: enséñalo tal cual a tus prospectos. Cuando un alumno te pague, asígnalo en <b>Gestionar Cursos → el curso → Alumnos</b>: en un curso de pago único se le abre completo; en uno mensual, el mes 1. Ahí sigues su avance, y el precio de cada curso lo cambias en su ficha.`
-    : 'Entra a <b>Gestionar Cursos</b> en el menú de tu panel y crea tu primer curso. Mientras no publiques ninguno, la sección de diplomados no se muestra en tu página pública.'}</p></div>
+    ? `Tu catálogo público ya muestra ${n === 1 ? 'este curso' : `estos ${n} cursos`}: enséñalo tal cual a tus prospectos. Cuando un alumno te pague, asígnalo en <b>${menu} → el curso → Alumnos</b>: en un curso de pago único se le abre completo; en uno mensual o sin precio, el mes 1. Si se registró desde tu página eligiendo el curso, ya está en esa lista sin acceso: pulsa <b>Abrir todo</b> (pago único) o <b>+ Abrir mes</b> (mensual) en su fila. Ahí sigues su avance, y el precio de cada curso lo cambias en su ficha (<b>Contenido → Precios y ritmo</b>), antes de asignar.`
+    : `Entra a <b>${menu}</b> en el menú de tu panel y crea tu primer curso. Mientras no publiques ninguno, la sección de diplomados no se muestra en tu página pública.`}</p></div>
 ${tablaModalidades(d)}`
 }
 
@@ -396,6 +398,7 @@ ${tablaModalidades(d)}`
  */
 function personalizar(d) {
   const P = d.P
+  const menu = d.menuCursos || 'Gestionar Cursos'
   return `
 <h2><span class="num">Tu marca ·</span> Personalizar mi página</h2>
 <div class="rule"></div>
@@ -413,7 +416,7 @@ ${ul([
     'Tu logo y el icono que se ve en la pestaña del navegador',
     'Los colores de tu marca, con 12 paletas listas o los tuyos propios',
     'Tu WhatsApp, tu correo y tu teléfono de contacto',
-    'Los precios y los planes que se anuncian en la página y en el registro (el precio de cada curso se cambia en su ficha, en Gestionar Cursos)',
+    `Los precios y los planes que se anuncian en la página y en el registro (el precio de cada curso se cambia en su ficha, en ${menu})`,
   ])}
 <div class="note"><b>Publicar y volver atrás</b><p>Cada cambio se guarda cuando
 pulsas <b>Publicar cambios</b>, y <b>Restaurar diseño original</b> devuelve la

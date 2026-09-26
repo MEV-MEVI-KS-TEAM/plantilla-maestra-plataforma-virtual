@@ -8,6 +8,9 @@
  * mismo del mismo curso: antes el PDF ponía «Lo defines tú» donde la página ya
  * decía «Pide informes».
  *
+ * También vive aquí lo que el registro anuncia de una oferta de Cursos de Ingreso
+ * (resolverPrecioOferta): la entrega lo compara con lo que pinta el documento.
+ *
  * precio-curso.ts re-exporta todo lo de aquí.
  */
 
@@ -46,3 +49,44 @@ export function precioCursoNumerico(c: PreciosCurso): PrecioNumerico {
 
 /** Lo que el catálogo dice de un curso SIN precio capturado. */
 export const TEXTO_SIN_PRECIO = 'Pide informes'
+
+/**
+ * Precio que anuncia el registro para una oferta de Cursos de Ingreso
+ * (CONFIG.cursosIngreso). Hasta el Bloque C salía SOLO de config.ts: la escuela
+ * cambiaba el precio en /admin/cursos/[id] y la portada lo mostraba, pero el
+ * registro seguía con el número viejo. Ahora, en orden:
+ *
+ *   1. PAQUETE → `precioPaquete` de config.ts: la tabla no tiene precio de
+ *      paquete. Sin él, «Pide informes».
+ *   2. Oferta de UN curso publicado con precio en su ficha → manda la ficha,
+ *      con la misma regla que el catálogo (la mensualidad gana).
+ *   3. Si la ficha está en 0/0 (o el curso no está publicado, o no llegó el
+ *      catálogo), el `precio` de config.ts es el respaldo: lo de siempre.
+ *   4. Nada → «Pide informes». Nunca «$0».
+ *
+ * Una oferta de varios cursos que NO es paquete no tiene una ficha que mande:
+ * salta el paso 2 (falla cerrado hacia config.ts).
+ */
+export type PrecioOferta =
+  | (Exclude<PrecioNumerico, { tipo: 'informes' }> & { fuente: 'tabla' | 'config' })
+  | { tipo: 'informes' }
+
+export interface OfertaConPrecio { cursoIds: readonly string[]; precio: number; esPaquete: boolean }
+
+export function resolverPrecioOferta(
+  oferta: OfertaConPrecio,
+  publicados: ReadonlyMap<string, PreciosCurso> | null,
+): PrecioOferta {
+  const respaldo: PrecioOferta = oferta.precio > 0
+    ? { tipo: 'unico', monto: oferta.precio, fuente: 'config' }
+    : { tipo: 'informes' }
+  if (oferta.esPaquete) return respaldo
+  if (oferta.cursoIds.length === 1 && publicados) {
+    const fila = publicados.get(oferta.cursoIds[0])
+    if (fila) {
+      const p = precioCursoNumerico(fila)
+      if (p.tipo !== 'informes') return { ...p, fuente: 'tabla' }
+    }
+  }
+  return respaldo
+}
