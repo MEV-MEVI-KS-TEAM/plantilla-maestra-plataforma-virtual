@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { leerPagosConCurso } from '@/lib/pagos/con-curso'
 
 function nombreCompleto(u: { nombre?: string | null; apellidos?: string | null } | null | undefined) {
   return [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || '—'
@@ -24,21 +25,28 @@ export async function GET() {
 
     const { data: alumnosData } = await admin
       .from('alumnos')
-      .select('id, meses_desbloqueados, activo')
+      .select('id, meses_desbloqueados, activo, nivel')
 
-    type AlumnoR = { id: string; meses_desbloqueados: number; activo: boolean }
+    type AlumnoR = { id: string; meses_desbloqueados: number; activo: boolean; nivel?: string | null }
     const alumnosList = (alumnosData ?? []) as AlumnoR[]
     const alumnosActivos = alumnosList.filter(a => a.activo !== false).length
     const promMeses = alumnosList.length > 0
       ? alumnosList.reduce((s, a) => s + (a.meses_desbloqueados ?? 0), 0) / alumnosList.length
       : 0
 
-    let pagosList: { monto: number; alumno_id: string; concepto?: string | null; metodo_pago: string; referencia?: string | null; fecha_pago: string }[] = []
-    const pagosRes = await admin
-      .from('pagos')
-      .select('monto, alumno_id, concepto, metodo_pago, referencia, fecha_pago')
-    if (!pagosRes.error && pagosRes.data) {
-      pagosList = pagosRes.data as typeof pagosList
+    type PagoR = {
+      monto: number; alumno_id: string; concepto?: string | null; metodo_pago: string; referencia?: string | null; fecha_pago: string
+      curso_inscripcion_id: string | null; curso_nombre: string | null; curso_tipo: string | null
+    }
+    let pagosList: PagoR[] = []
+    // D14: con su curso (la vertical va por la FK). Sin B1 se lee sin él y todos
+    // son del programa. Un error de verdad deja la lista vacía, como antes.
+    const pagosRes = await leerPagosConCurso(
+      (select) => admin.from('pagos').select(select),
+      'monto, alumno_id, concepto, metodo_pago, referencia, fecha_pago',
+    )
+    if (!pagosRes.error) {
+      pagosList = pagosRes.data as unknown as PagoR[]
     }
 
     const pagosAlumnoIds = [...new Set(pagosList.map(p => p.alumno_id))]
@@ -71,7 +79,22 @@ export async function GET() {
         metodo_pago: p.metodo_pago,
         referencia: p.referencia ?? null,
         fecha_pago: p.fecha_pago,
+        // D14: «Aplica a» (programa o el curso).
+        curso_inscripcion_id: p.curso_inscripcion_id,
+        curso_nombre: p.curso_nombre,
+        curso_tipo: p.curso_tipo,
       }))
+
+    // D14: un pago del PROGRAMA (sin curso enlazado) de un alumno que solo cursa
+    // cursos (nivel 'diplomado') casi siempre es un cobro de curso capturado en
+    // el modal del programa: cuenta como ingreso del programa y, si es una
+    // mensualidad, entra en «meses con pago». Se AVISA, no se corrige solo.
+    const deCurso = new Set(alumnosList.filter(a => a.nivel === 'diplomado').map(a => a.id))
+    const sospechosos = pagosList.filter(p => !p.curso_inscripcion_id && deCurso.has(p.alumno_id))
+    const programaDeAlumnosDeCurso = {
+      pagos: sospechosos.length,
+      monto: sospechosos.reduce((s, p) => s + Number(p.monto ?? 0), 0),
+    }
 
     // Desglose por semana (lunes, 8 últimas) y por mes (6 últimos) — agregado
     // server-side con GROUP BY date_trunc (RPC), no en JS. Degrada a [] si la
@@ -261,6 +284,8 @@ export async function GET() {
       // B6 — vertical de cursos y salud de la clasificación de pagos
       cursos,
       coherencia,
+      // D14 — pagos del programa de alumnos de curso («¿era de un curso?»)
+      programa_de_alumnos_de_curso: programaDeAlumnosDeCurso,
     })
   } catch {
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })

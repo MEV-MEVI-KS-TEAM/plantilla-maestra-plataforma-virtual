@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { armarCSV, nombreArchivoSeguro } from '@/lib/reportes/csv'
+import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 
 /**
  * GET /api/admin/reportes/export?dataset=...
@@ -31,10 +32,12 @@ const DATASETS = {
   },
   pagos: {
     rpc: 'reporte_curso_pagos',
-    encabezados: ['Fecha', 'Alumno', 'Matrícula', 'Diplomado', 'Concepto', 'Monto', 'Método',
-                  'Referencia', 'Registrado por', 'Mes que abrió'],
+    // D14 (#207-3): la clave cruda se CONSERVA (quien ya filtra por ella en su
+    // hoja no se rompe) y se AGREGA la etiqueta. «Mes que cubre» (decisión 5).
+    encabezados: ['Fecha', 'Alumno', 'Matrícula', 'Diplomado', 'Concepto', 'Concepto (etiqueta)', 'Monto', 'Método',
+                  'Referencia', 'Registrado por', 'Mes que cubre'],
     fila: (r: Record<string, unknown>) => [
-      r.fecha_pago, r.alumno, r.matricula, r.diplomado, r.concepto, r.monto, r.metodo_pago,
+      r.fecha_pago, r.alumno, r.matricula, r.diplomado, r.concepto, etiquetaConcepto(String(r.concepto ?? '')), r.monto, r.metodo_pago,
       r.referencia, r.registrado_por, r.mes_que_abrio,
     ],
   },
