@@ -165,6 +165,7 @@ test('7. el GET de cursos del alumno: staff, el MISMO «por activar» de D8, la 
   expect(g).toContain("{ precios: ficha, origen: 'ficha' }")
   expect(g).toContain('resumen: resumenCobro(estado),')
   expect(g).toContain('precarga: precargaCobro(estado),')
+  expect(g).toContain('cobro: estado,')
 })
 
 test('8. el guardián: CHECK 18 (una sola versión, candado, B3 intacta), SETUP 7bis y la excepción del onboarding', () => {

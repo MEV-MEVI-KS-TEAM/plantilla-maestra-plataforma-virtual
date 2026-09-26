@@ -114,6 +114,8 @@ export async function GET(
         },
         resumen: resumenCobro(estado),
         precarga: precargaCobro(estado),
+        // El estado completo: la pantalla re-evalúa la casilla con cubreElCobro al cambiar el monto.
+        cobro: estado,
       }
     })
 
