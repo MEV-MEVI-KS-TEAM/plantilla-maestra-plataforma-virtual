@@ -1,12 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, UserMinus, UserPlus, Users } from 'lucide-react'
 import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
 import type { AperturaAlAsignar } from '@/lib/cursos/acceso'
 import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
 import { describirMovimiento, quienHizo } from '@/lib/cursos/bitacora'
+import { CobrarCursoModal } from '@/components/admin/alumnos/CobrarCursoModal'
+import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
+import { CONFIG } from '@/lib/config'
+import { codigoMoneda, formatearMoneda } from '@/lib/moneda'
+
+const fmtCobro = (n: number) => formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
 
 interface AlumnosTabProps {
   cursoId: string
@@ -50,6 +56,10 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
   const [alumnos, setAlumnos] = useState<AlumnoAdminRow[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
+  // D18 (#207-7): el atajo «Cobrar» abre el mismo modal que la ficha (D17).
+  const [cobrando, setCobrando] = useState<{ fila: FilaCursoAlumno; nombre: string } | null>(null)
+  // La última «Cobrar» pedida: una respuesta vieja (otra fila, más lenta) no abre el modal.
+  const ultimoCobro = useRef(0)
   const [confirmTodos, setConfirmTodos] = useState<0 | 1 | 2>(0) // doble confirmación
   // «Abrir todo» abre el curso completo y, con #208, deja de ser reembolsable:
   // doble confirmación con el aviso del pago único (D7b), para admin y secretario.
@@ -383,6 +393,28 @@ Vuelve a ver el curso con los meses que ya tenía.
     }
   }
 
+  /**
+   * «Cobrar» (D18, admin y secretario): lee los cursos del alumno (el mismo GET
+   * de la ficha, con la precarga de lib/cursos/cobro.ts) y abre el modal para
+   * ESTA inscripción. Escribe por curso_cobrar (D16).
+   */
+  async function cobrarDe(i: CursoInscrito) {
+    const peticion = ++ultimoCobro.current
+    setOcupadoId(i.inscripcion_id)
+    try {
+      const res = await fetch(`/api/admin/alumnos/${i.alumno_id}/cursos`)
+      const json = await res.json().catch(() => ({} as { cursos?: FilaCursoAlumno[]; error?: string }))
+      if (peticion !== ultimoCobro.current) return
+      const fila = (json.cursos ?? []).find((c: FilaCursoAlumno) => c.inscripcion_id === i.inscripcion_id)
+      if (!res.ok || !fila) throw new Error(json.error ?? 'No se pudo preparar el cobro de este alumno')
+      setCobrando({ fila, nombre: i.nombre })
+    } catch (e) {
+      if (peticion === ultimoCobro.current) onError(e instanceof Error ? e.message : 'No se pudo preparar el cobro de este alumno')
+    } finally {
+      if (peticion === ultimoCobro.current) setOcupadoId(null)
+    }
+  }
+
   async function quitar(i: CursoInscrito) {
     const { alumno_id: alumnoId, nombre } = i
     // Borra la inscripción (y con ella su acceso y su bitácora): se confirma,
@@ -595,9 +627,28 @@ Se borra su inscripción y deja de ver el curso.
                   </span>
                 )}
 
+                {/* D18: pagó algo que abre y no se le ha abierto (la cola de «falta abrir»). */}
+                {i.pagado_falta_abrir && (
+                  <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(245,158,11,0.15)', color: '#B45309' }}
+                    title="Registró un pago que abre acceso y todavía no se le abre: ábrelo con «+ Abrir mes», «Abrir todo» o «Activar según la ficha»">
+                    Pagado · falta abrir
+                  </span>
+                )}
+
                 {/* flex-wrap también aquí: con «Abrir todo» son 4 botones y a
                     360 px no caben en una línea. */}
                 <div className="flex flex-wrap items-center gap-1">
+                  {/* D18: el atajo «Cobrar» (admin y secretario). */}
+                  <button
+                    onClick={() => cobrarDe(i)}
+                    disabled={ocupadoId === i.inscripcion_id}
+                    title="Registrar un cobro de este curso (y, si corresponde, abrir)"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
+                    style={{ border: '1px solid rgba(16,185,129,0.35)', color: '#047857', background: 'var(--color-superficie)' }}
+                  >
+                    Cobrar
+                  </button>
                   {i.acceso_total ? (
                     <button
                       onClick={() => cambiarAccesoTotal(i, 'quitar-acceso-total')}
@@ -753,6 +804,18 @@ Se borra su inscripción y deja de ver el curso.
         onConfirm={asignarTodosActivos}
         onCancel={() => setConfirmTodos(0)}
       />
+
+      {cobrando && (
+        <CobrarCursoModal
+          key={cobrando.fila.inscripcion_id}
+          fila={cobrando.fila}
+          alumnoNombre={cobrando.nombre}
+          moneda={codigoMoneda(CONFIG.moneda)}
+          fmt={fmtCobro}
+          onClose={() => setCobrando(null)}
+          onCobrado={(mensaje) => { setCobrando(null); onChanged(mensaje) }}
+        />
+      )}
 
       {/* «Activar según la ficha» de un pago único (D8): abre TODO, doble confirmación. */}
       <ConfirmDialog
