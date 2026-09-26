@@ -17,16 +17,18 @@ function falso(tablas: Filas, fallar: string[] = []) {
   const llamadas: string[] = []
   const admin = {
     from(t: string) {
-      let col = '', lote: string[] = [], tipo: string | null = null
+      let col = '', lote: string[] = [], tipo: string | null = null, desde = 0, hasta = Infinity
       const q = {
         select: () => q,
+        order: () => q,
+        range: (d: number, h: number) => { desde = d; hasta = h; return q },
         eq: (c: string, v: string) => { if (c === 'tipo') tipo = v; return q },
         in: (c: string, l: string[]) => { col = c; lote = l; return q },
         then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => {
           llamadas.push(`${t}:${lote.length}`)
           if (fallar.includes(t)) return Promise.resolve({ data: null, error: { code: '42703', message: 'x' } }).then(res, rej)
           const data = (tablas[t] ?? []).filter(f => lote.includes(String(f[col])) && (tipo === null || f.tipo === tipo))
-          return Promise.resolve({ data, error: null }).then(res, rej)
+          return Promise.resolve({ data: data.slice(desde, hasta + 1), error: null }).then(res, rej)
         },
       }
       return q
@@ -67,10 +69,30 @@ test('2. por lotes de 100 ids (la URL de .in() tiene tope); sin pagos legibles, 
   const m = await cobroPorInscripcion(admin as never, { precio_inscripcion: 0, precio_mensualidad: 900 }, muchos)
   expect(m.size).toBe(201)
   expect(llamadas.filter(l => l.startsWith('pagos:'))).toEqual(['pagos:100', 'pagos:100', 'pagos:1'])
+  // Dentro de cada lote, por páginas de 1000 (PostgREST corta ahí sin avisar).
+  const fuente = leer('src/lib/cursos/cobro-servidor.ts')
+  expect(fuente).toContain(".order('id', { ascending: true }).range(desde, hasta)),")
+  expect(fuente).toContain('if (filas.length < PAGINA) break')
   // Base sin B1 (o un error): mapa vacío → la pestaña queda como antes.
   const roto = falso({}, ['pagos'])
   expect((await cobroPorInscripcion(roto.admin as never, { precio_inscripcion: 0, precio_mensualidad: 900 }, [ins('a')])).size).toBe(0)
   expect((await cobroPorInscripcion(roto.admin as never, { precio_inscripcion: 0, precio_mensualidad: 900 }, [])).size).toBe(0)
+})
+
+test('2b. un lote con MÁS de 1000 pagos se lee completo (páginas de 1000)', async () => {
+  const pagos = Array.from({ length: 1200 }, (_, k) => ({ curso_inscripcion_id: `p${k % 100}`, monto: 1, concepto: 'curso_otro', mes_desbloqueado: null }))
+  const { admin, llamadas } = falso({ pagos, curso_inscripcion_eventos: [] })
+  const m = await cobroPorInscripcion(admin as never, { precio_inscripcion: 0, precio_mensualidad: 900 }, Array.from({ length: 100 }, (_, k) => ins(`p${k}`)))
+  expect(llamadas.filter(l => l.startsWith('pagos:'))).toEqual(['pagos:100', 'pagos:100'])
+  expect([...m.values()].reduce((s, v) => s + v.pagado, 0)).toBe(1200)
+})
+
+test('2c. el tope del curso: un mes pagado que el curso ya no tiene no enciende la insignia para siempre', async () => {
+  const { admin } = falso({ pagos: [{ curso_inscripcion_id: 'm9', monto: 900, concepto: 'curso_mensualidad', mes_desbloqueado: 9 }], curso_inscripcion_eventos: [] })
+  const conTope = await cobroPorInscripcion(admin as never, { precio_inscripcion: 0, precio_mensualidad: 900 }, [ins('m9', { meses_desbloqueados: 3 })], 3)
+  expect(conTope.get('m9')?.pagado_falta_abrir).toBe(false)
+  const sinTope = await cobroPorInscripcion(admin as never, { precio_inscripcion: 0, precio_mensualidad: 900 }, [ins('m9', { meses_desbloqueados: 3 })])
+  expect(sinTope.get('m9')?.pagado_falta_abrir).toBe(true)
 })
 
 test('3. el detalle del curso suma pagado y pagado_falta_abrir a cada inscrito', () => {
@@ -87,6 +109,9 @@ test('4. la pestaña: «Cobrar» para admin y secretario, el modal de la ficha y
   expect(tab).toContain('const res = await fetch(`/api/admin/alumnos/${i.alumno_id}/cursos`)')
   expect(tab).toContain('const fila = (json.cursos ?? []).find((c: FilaCursoAlumno) => c.inscripcion_id === i.inscripcion_id)')
   expect(tab).toContain('<CobrarCursoModal')
+  // Dos clics rápidos: la respuesta vieja no abre el modal, y el modal se rehace por fila.
+  expect(tab).toContain('if (peticion !== ultimoCobro.current) return')
+  expect(tab).toContain('key={cobrando.fila.inscripcion_id}')
   expect(tab).toContain('onCobrado={(mensaje) => { setCobrando(null); onChanged(mensaje) }}')
-  expect(tab).toMatch(/\{i\.pagado_falta_abrir && \(\s*<span[\s\S]{0,300}?Pagado · falta abrir/)
+  expect(tab).toMatch(/\{i\.pagado_falta_abrir && \(\s*<span[\s\S]{0,600}?Pagado · falta abrir/)
 })

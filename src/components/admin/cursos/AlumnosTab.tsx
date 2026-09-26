@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, UserMinus, UserPlus, Users } from 'lucide-react'
 import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
@@ -58,6 +58,8 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
   // D18 (#207-7): el atajo «Cobrar» abre el mismo modal que la ficha (D17).
   const [cobrando, setCobrando] = useState<{ fila: FilaCursoAlumno; nombre: string } | null>(null)
+  // La última «Cobrar» pedida: una respuesta vieja (otra fila, más lenta) no abre el modal.
+  const ultimoCobro = useRef(0)
   const [confirmTodos, setConfirmTodos] = useState<0 | 1 | 2>(0) // doble confirmación
   // «Abrir todo» abre el curso completo y, con #208, deja de ser reembolsable:
   // doble confirmación con el aviso del pago único (D7b), para admin y secretario.
@@ -397,17 +399,19 @@ Vuelve a ver el curso con los meses que ya tenía.
    * ESTA inscripción. Escribe por curso_cobrar (D16).
    */
   async function cobrarDe(i: CursoInscrito) {
+    const peticion = ++ultimoCobro.current
     setOcupadoId(i.inscripcion_id)
     try {
       const res = await fetch(`/api/admin/alumnos/${i.alumno_id}/cursos`)
       const json = await res.json().catch(() => ({} as { cursos?: FilaCursoAlumno[]; error?: string }))
+      if (peticion !== ultimoCobro.current) return
       const fila = (json.cursos ?? []).find((c: FilaCursoAlumno) => c.inscripcion_id === i.inscripcion_id)
       if (!res.ok || !fila) throw new Error(json.error ?? 'No se pudo preparar el cobro de este alumno')
       setCobrando({ fila, nombre: i.nombre })
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo preparar el cobro de este alumno')
+      if (peticion === ultimoCobro.current) onError(e instanceof Error ? e.message : 'No se pudo preparar el cobro de este alumno')
     } finally {
-      setOcupadoId(null)
+      if (peticion === ultimoCobro.current) setOcupadoId(null)
     }
   }
 
@@ -627,7 +631,7 @@ Se borra su inscripción y deja de ver el curso.
                 {i.pagado_falta_abrir && (
                   <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
                     style={{ background: 'rgba(245,158,11,0.15)', color: '#B45309' }}
-                    title="Registró un pago que abre acceso y todavía no se le abre">
+                    title="Registró un pago que abre acceso y todavía no se le abre: ábrelo con «+ Abrir mes», «Abrir todo» o «Activar según la ficha»">
                     Pagado · falta abrir
                   </span>
                 )}
@@ -803,6 +807,7 @@ Se borra su inscripción y deja de ver el curso.
 
       {cobrando && (
         <CobrarCursoModal
+          key={cobrando.fila.inscripcion_id}
           fila={cobrando.fila}
           alumnoNombre={cobrando.nombre}
           moneda={codigoMoneda(CONFIG.moneda)}

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserRol, verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
 import { porActivar, ultimosMovimientos } from '@/lib/cursos/bitacora'
 import { cobroPorInscripcion } from '@/lib/cursos/cobro-servidor'
+import { topeMeses } from '@/lib/cursos/acceso'
 import { removeFolder, signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
@@ -142,14 +143,20 @@ export async function GET(
         }
       })
       // D18 (#207-7): lo pagado y «Pagado · falta abrir» de cada uno, con las
-      // reglas de lib/cursos/cobro.ts (sin B1 o si falla: sin insignia).
+      // reglas de lib/cursos/cobro.ts (sin B1 o si falla: sin insignia). Con el
+      // tope del curso (espejo de curso_tope_meses): un mes pagado que el curso
+      // ya no tiene no deja la insignia encendida para siempre.
+      const c = curso as { precio_inscripcion?: number | null; precio_mensualidad?: number | null; duracion_meses?: number | null; modulos_por_mes?: number | null }
+      const { count: nModulos, error: errMods } = await admin
+        .from('curso_modulos').select('id', { count: 'exact', head: true }).eq('curso_id', params.id)
+      const tope = errMods ? null : topeMeses(c.duracion_meses ?? null, nModulos ?? 0, c.modulos_por_mes ?? 0)
       const cobros = await cobroPorInscripcion(admin, {
-        precio_inscripcion: (curso as { precio_inscripcion?: number | null }).precio_inscripcion ?? 0,
-        precio_mensualidad: (curso as { precio_mensualidad?: number | null }).precio_mensualidad ?? 0,
+        precio_inscripcion: c.precio_inscripcion ?? 0,
+        precio_mensualidad: c.precio_mensualidad ?? 0,
       }, inscritos.map(x => ({
         id: x.inscripcion_id, estado: x.estado, meses_desbloqueados: x.meses_desbloqueados,
         acceso_total: x.acceso_total === true, por_activar: x.por_activar === true,
-      })))
+      })), tope)
       inscritos = inscritos.map(x => {
         const c = cobros.get(x.inscripcion_id)
         return c ? { ...x, pagado: c.pagado, pagado_falta_abrir: c.pagado_falta_abrir } : x
