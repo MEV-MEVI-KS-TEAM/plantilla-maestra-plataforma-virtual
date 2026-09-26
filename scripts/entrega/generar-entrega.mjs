@@ -57,6 +57,11 @@ const flag = (n) => args.includes(`--${n}`)
 const opt = (n, def) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : def }
 
 const log = (...a) => console.log(...a)
+// Lo que el operador tiene que revisar antes de enviar: se imprime al momento y
+// otra vez al final, junto al «✓», para que no quede enterrado arriba del
+// volcado del WhatsApp.
+const AVISOS = []
+const avisar = (msg) => { AVISOS.push(msg); log(`  ⚠ ${msg}`) }
 const abortar = (msg, ayuda) => {
   console.error(`\n✖ ${msg}`)
   if (ayuda) console.error(`\n${ayuda}`)
@@ -86,6 +91,13 @@ const { inscripcionDe, mensualidadDe, certificacionDe } =
 // regla que usa la plataforma al fusionar (Bloque B): también es puro.
 const { licenciaturaEfectiva, bloqueLicEditable } =
   await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-licenciatura.ts')).href)
+// Los CURSOS (Bloque C): cómo se leen, qué precio se pinta y si el documento
+// contradice al registro, con las MISMAS reglas que la página (precio-regla.ts y
+// oferta-regla.ts, sin imports). Se importa aquí, después de revisar la versión
+// de Node, porque arrastra .ts. Antes el PDF decía «Lo defines tú» donde la
+// página ya decía «Pide informes».
+const { leerCursosPublicados, precioDeCurso: precioDeCursoCon, revisarCursos, filaResumenCursos, cursosParaDocumento, registroPideIngreso } =
+  await import('./cursos-entrega.mjs')
 
 
 const dominio = String(CONFIG.dominio || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -257,11 +269,10 @@ if (JSON.stringify(LIC) !== JSON.stringify(CONFIG.licenciaturas)) log('  · lice
 
 /* ── 3. Conteo real de contenido ─────────────────────────────────────────── */
 async function inventario() {
-  const env = path.join(RAIZ, '.env.local')
-  if (!fs.existsSync(env)) { log('  · sin .env.local — se omite el inventario'); return {} }
-  const vars = Object.fromEntries(fs.readFileSync(env, 'utf8').split('\n')
-    .map(l => l.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean)
-    .map(m => [m[1], m[2].replace(/^["']|["']$/g, '')]))
+  // leerEnvLocal: la misma lectura que lo publicado, que aguanta un .env.local
+  // guardado en Windows (CRLF) y con BOM.
+  const vars = leerEnvLocal()
+  if (!vars) { log('  · sin .env.local — se omite el inventario'); return {} }
   const url = vars.NEXT_PUBLIC_SUPABASE_URL, key = vars.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) { log('  · .env.local sin credenciales — se omite el inventario'); return {} }
   const { createClient } = await import('@supabase/supabase-js')
@@ -319,27 +330,13 @@ async function inventario() {
    * documento decía «módulo vacío, crea tu primer curso»: el papel contradecía
    * lo que el cliente acababa de pagar y lo que su propia página ya mostraba.
    *
-   * `precio_inscripcion`, `duracion_meses` y compañía las añade la migración B1,
-   * así que el select va en dos pasos: si esas columnas no existen en este clon,
-   * se cae al nombre y el tipo, que sí están desde la primera migración.
+   * `precio_inscripcion`, `duracion_meses` y compañía las añade la migración B1:
+   * si esas columnas no existen en este clon, se lee solo el nombre y el tipo,
+   * y la revisión de abajo lo detiene (el documento los pintaría sin precio).
    */
-  inv.cursosLista = []
-  {
-    const campos = 'nombre, tipo, precio_inscripcion, precio_mensualidad, duracion_meses, orden'
-    let { data, error } = await sb.from('cursos').select(campos)
-      .eq('estado', 'publicado').order('orden')
-    if (error) {
-      ;({ data } = await sb.from('cursos').select('nombre, tipo')
-        .eq('estado', 'publicado').order('nombre'))
-    }
-    inv.cursosLista = (data || []).map(c => ({
-      nombre: c.nombre,
-      tipo: c.tipo,
-      inscripcion: Number(c.precio_inscripcion ?? 0),
-      mensualidad: Number(c.precio_mensualidad ?? 0),
-      meses: Number(c.duracion_meses ?? 0),
-    }))
-  }
+  // leerCursosPublicados distingue «no se pudo leer» (null) de «no hay cursos»
+  // ([]): antes un error de lectura salía como 0 cursos.
+  inv.cursosLectura = await leerCursosPublicados(sb)
   const { data: al } = await sb.from('alumnos').select('matricula')
     .not('matricula', 'is', null).order('created_at').limit(1)
   inv.matricula = al?.[0]?.matricula ?? null
@@ -358,27 +355,34 @@ async function inventario() {
 log('· Leyendo inventario de contenido…')
 const INV = await inventario()
 
+/** El menú de cursos del panel: en solo_cursos se llama «Diplomados». */
+const MENU_CURSOS = CONFIG.modo === 'solo_cursos' ? 'Diplomados' : 'Gestionar Cursos'
+
+/**
+ * Los cursos vendidos no se niegan en silencio, y el documento no contradice al
+ * registro: revisarCursos (cursos-entrega.mjs) aborta si una escuela que vende
+ * cursos (add-on de cursos de ingreso, o solo_cursos) no los pudo leer, si el
+ * add-on está encendido y no hay cursos publicados, o si el registro vende una
+ * oferta de un curso que este documento pintaría distinta (ficha en 0/0 con
+ * precio en config.ts, curso sin publicar). En las demás escuelas, una lectura
+ * fallida se avisa en «REVISA ANTES DE ENVIAR».
+ */
+{
+  const r = revisarCursos({ lectura: INV.cursosLectura ?? null, ing: CONFIG.cursosIngreso, mxn, menu: MENU_CURSOS, modo: CONFIG.modo })
+  for (const a of r.avisos) avisar(a)
+  if (r.abortar) abortar(r.abortar.msg, r.abortar.ayuda)
+}
+
 /**
  * Los cursos que el cliente YA TIENE publicados y a la venta el día de la
  * entrega. Vacío en un combo normal; con contenido cuando compró el add-on de
  * Cursos de Ingreso, y entonces el documento y el mensaje los nombran con su
  * precio en vez de invitarle a crear su primer curso.
  */
-const CURSOS_PUBLICADOS = INV.cursosLista || []
-
-/** «$1,500 de pago único», «$800 al mes × 3 meses» o '' si no hay precio. */
-function precioDeCurso(c) {
-  const partes = []
-  if (c.inscripcion > 0) {
-    // Un curso sin mensualidad se cobra una sola vez: decirlo evita la duda de
-    // si además hay algo mensual. Es la objeción que trae el prospecto.
-    partes.push(c.mensualidad > 0 ? `${mxn(c.inscripcion)} de inscripción` : `${mxn(c.inscripcion)} de pago único`)
-  }
-  if (c.mensualidad > 0) {
-    partes.push(c.meses > 0 ? `${mxn(c.mensualidad)} al mes × ${c.meses} ${c.meses === 1 ? 'mes' : 'meses'}` : `${mxn(c.mensualidad)} al mes`)
-  }
-  return partes.join(' + ')
-}
+const CURSOS_PUBLICADOS = cursosParaDocumento(INV.cursosLectura)
+/** ¿El registro tiene el camino «pide un curso de preparación y se le asigna»? */
+const VENDE_INGRESO = registroPideIngreso(CONFIG.cursosIngreso, CONFIG.modo)
+const precioDeCurso = (c) => precioDeCursoCon(c, mxn)
 
 /* ── 4. Modalidades y precios, adaptados a lo CONTRATADO ─────────────────── */
 /**
@@ -622,11 +626,10 @@ if (CARRERAS.length) {
 // 🛑 «módulo vacío» solo si LO ESTÁ. Con el add-on de Cursos de Ingreso el
 // cliente entrega con cursos publicados y a la venta, y ponerle «vacío» en la
 // tabla resumen le niega por escrito lo que acaba de comprar.
-modalidadesFilas.push([
-  CURSOS_PUBLICADOS.length
-    ? `Cursos propios (${CURSOS_PUBLICADOS.length} publicado${CURSOS_PUBLICADOS.length === 1 ? '' : 's'})`
-    : 'Cursos propios (módulo vacío)',
-  'La define cada curso', 'Por curso', 'Por módulos'])
+//
+// Y con la regla del precio de CADA curso: uno de pago único no tiene
+// mensualidad y se abre completo al asignarlo (C3b), no «por módulos».
+modalidadesFilas.push(filaResumenCursos(CURSOS_PUBLICADOS))
 
 /* ── Infraestructura (dominio, registrador, proyecto de Supabase) ──────── */
 // Solo direcciones e identificadores públicos: de .env.local se toma únicamente
@@ -746,8 +749,10 @@ const datos = {
   anclaProgramas,
   etiquetaProgramas: ETIQUETA_PROGRAMAS,
   incluirCursos: true,
-  cursosPublicados: INV.cursos || 0,
+  cursosPublicados: CURSOS_PUBLICADOS.length,
   cursosLista: CURSOS_PUBLICADOS.map(c => ({ ...c, precio: precioDeCurso(c) })),
+  menuCursos: MENU_CURSOS,
+  vendeIngreso: VENDE_INGRESO,
   validez: VALIDEZ,
   folioVerificable: FOLIO_VERIFICABLE,
   soporte: D.soporte || SOPORTE,
@@ -773,7 +778,9 @@ const datos = {
     ...(CARRERAS.length ? [CARRERAS.length === 1
       ? `${CARRERAS[0].nombre}, con su contenido cargado`
       : `${CARRERAS.length} ${soloLicenciaturas(CARRERAS) ? 'licenciaturas ya cargadas' : 'programas ya cargados'}: ${unirConY(CARRERAS.map(c => c.nombre))}`] : []),
-    'Módulo de Cursos y Diplomados listo para tu propio contenido',
+    CURSOS_PUBLICADOS.length
+      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso ya publicado' : 'cursos ya publicados'} y a la venta`
+      : 'Módulo de Cursos y Diplomados listo para tu propio contenido',
     VALIDEZ && 'Sección de Validez Oficial México + Estados Unidos',
     'Panel de pagos, reportes y estado de cuenta',
   ].filter(Boolean),
@@ -798,7 +805,9 @@ const datos = {
     ...(CARRERAS.length ? [
       `${ETIQUETA_PROGRAMAS} ya ${soloLicenciaturas(CARRERAS) ? 'cargadas y listas' : 'cargados y listos'} para inscribir: ${unirConY(CARRERAS.map(c => c.nombre))}`,
     ] : []),
-    'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
+    CURSOS_PUBLICADOS.length
+      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso publicado' : 'cursos publicados'}: al asignar a un alumno, un curso de pago único se le abre completo; a quien se registró desde tu página eligiendo el curso, con «Abrir todo» (pago único) o «+ Abrir mes» (mensual)`
+      : 'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
     'Rol de secretario con accesos delimitados',
 
     // ── Lo que se construyó a medida para este cliente ────────────────
@@ -998,7 +1007,8 @@ if (!flag('solo-pdf')) {
     INFORMES_EXCEL ? '• Consultar tus Informes de ingresos por semana y por mes, y descargarlos en Excel' : '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
     CURSOS_PUBLICADOS.length
-      ? `• Inscribir alumnos a tus ${CURSOS_PUBLICADOS.length} curso${CURSOS_PUBLICADOS.length === 1 ? '' : 's'}, seguir su avance y crear todos los que quieras`
+      ? `• Asignar alumnos a ${CURSOS_PUBLICADOS.length === 1 ? 'tu curso' : `tus ${CURSOS_PUBLICADOS.length} cursos`} en ${MENU_CURSOS} → el curso → Alumnos (en uno de pago único se les abre completo; a quien ya se registró desde tu página eligiendo el curso, con «Abrir todo» o «+ Abrir mes»${
+        VENDE_INGRESO ? '; a quien pidió un curso de preparación para examen, con «Asignar» en Alumnos' : ''}), seguir su avance y crear todos los que quieras`
       : '• Crear tus propios Cursos y Diplomados cuando quieras',
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
@@ -1033,10 +1043,7 @@ if (!flag('solo-pdf')) {
     // 🛑 Los cursos que el cliente compró y que YA están a la venta se nombran
     // con su precio. Sin esto, el mensaje de entrega del add-on de Cursos de
     // Ingreso no mencionaba en ninguna línea lo que el cliente acababa de pagar.
-    ...CURSOS_PUBLICADOS.map(c => {
-      const p = precioDeCurso(c)
-      return `• ${c.nombre}${p ? ` — ${p}` : ''}: ${URL_BASE}/diplomados`
-    }),
+    ...CURSOS_PUBLICADOS.map(c => `• ${c.nombre} — ${precioDeCurso(c)}: ${URL_BASE}/diplomados`),
   ].filter(Boolean)
   if (publicas.length) L.push('🌐 LO QUE YA VE TU PROSPECTO', ...publicas, '')
   // ── El módulo que el cliente opera solo ────────────────────────────────
@@ -1068,5 +1075,9 @@ if (!flag('solo-pdf')) {
   log('\n──────── copia desde aquí ────────\n')
   log(L.join('\n'))
   log('\n──────── hasta aquí ────────')
+}
+if (AVISOS.length) {
+  log(`\n⚠ REVISA ANTES DE ENVIAR (${AVISOS.length}):`)
+  for (const a of AVISOS) log(`  · ${a}`)
 }
 log(`\n✓ Entrega lista para ${datos.nombreCompleto} · ${URL_BASE}`)
