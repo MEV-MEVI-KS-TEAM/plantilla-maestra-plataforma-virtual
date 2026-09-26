@@ -16,6 +16,9 @@ import { useSiteConfig } from '@/components/site-config-provider'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
+import { CursosDelAlumno } from '@/components/admin/alumnos/CursosDelAlumno'
+import { CobrarCursoModal } from '@/components/admin/alumnos/CobrarCursoModal'
+import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
 
 interface AlumnoDetalle {
   id: string
@@ -226,6 +229,11 @@ export default function AlumnoDetallePage() {
   const [totalCursos, setTotalCursos] = useState(0)
   const [totalPrograma, setTotalPrograma] = useState(0)
   const [modalRegistrarPago, setModalRegistrarPago] = useState(false)
+  // D17 (#207-6): los cursos del alumno (tarjeta «Cursos») y el que se está cobrando.
+  const [cursosAlumno, setCursosAlumno] = useState<FilaCursoAlumno[]>([])
+  const [cobroCurso, setCobroCurso] = useState<FilaCursoAlumno | null>(null)
+  // «¿A qué se aplica?» del modal del programa: 'programa' o el id de una inscripción.
+  const [destinoPago, setDestinoPago] = useState('programa')
   const [registrandoPago, setRegistrandoPago] = useState(false)
   const [pagoError, setPagoError] = useState<string | null>(null)
   const [pagoForm, setPagoForm] = useState({
@@ -291,6 +299,21 @@ export default function AlumnoDetallePage() {
 
   useEffect(() => { cargar() }, [cargar])
 
+  // D17: los cursos del alumno para cobrar (D16). Sin el módulo, la lista vacía y
+  // la tarjeta no se pinta; si falla, se conserva lo que había.
+  const cargarCursos = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/alumnos/${id}/cursos`)
+      if (!res.ok) return
+      const data = await res.json()
+      setCursosAlumno(Array.isArray(data.cursos) ? data.cursos : [])
+    } catch {
+      // silencioso: la tarjeta conserva los datos previos
+    }
+  }, [id])
+
+  useEffect(() => { void cargarCursos() }, [cargarCursos])
+
   // Refresca solo la tabla de pagos y el total, sin recargar toda la página
   const cargarPagos = useCallback(async () => {
     try {
@@ -332,6 +355,8 @@ export default function AlumnoDetallePage() {
       const montoEliminado = Number(pagoAEliminar.monto)
       setPagoAEliminar(null)
       await cargarPagos()
+      // Si era de un curso, la tarjeta «Cursos» (pagado, saldo, «falta abrir») cambia.
+      void cargarCursos()
       showToast(`🗑️ Pago de ${fmtMoneda(montoEliminado)} eliminado`, 'info')
       // D10: si ese pago abrió acceso, borrarlo NO lo revoca. La API lo dice
       // (desde la bitácora) y aquí se muestra, en rojo y con tiempo para leerlo.
@@ -547,6 +572,8 @@ export default function AlumnoDetallePage() {
 
   async function handleRegistrarPago(e: React.FormEvent) {
     e.preventDefault()
+    // Con un curso elegido en «¿A qué se aplica?» esto NO registra nada en el programa.
+    if (destinoPago !== 'programa') return
     setPagoError(null)
     const montoNum = Number(pagoForm.monto)
     if (!Number.isFinite(montoNum) || montoNum <= 0) {
@@ -874,6 +901,9 @@ export default function AlumnoDetallePage() {
         )}
       </div>
 
+      {/* Cursos (D17): cobrar un curso va al curso, no al programa. */}
+      <CursosDelAlumno filas={cursosAlumno} fmt={fmtMoneda} onCobrar={f => setCobroCurso(f)} />
+
       {/* Pagos */}
       <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
         <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3" style={{ borderBottom: '1px solid #2A2F3E' }}>
@@ -889,7 +919,13 @@ export default function AlumnoDetallePage() {
             </span>
           </div>
           <button
-            onClick={() => { setModalRegistrarPago(true); setPagoError(null) }}
+            onClick={() => {
+              // Un alumno sin programa escolar (de curso, o sin nivel) con cursos:
+              // por omisión, su curso. El programa se elige a propósito.
+              const sinPrograma = !alumno.nivel || alumno.nivel === 'diplomado'
+              setDestinoPago(sinPrograma && cursosAlumno.length > 0 ? cursosAlumno[0].inscripcion_id : 'programa')
+              setModalRegistrarPago(true); setPagoError(null)
+            }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
             style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.22)' }}
@@ -1845,6 +1881,21 @@ export default function AlumnoDetallePage() {
       )}
 
       {/* Modal Registrar Pago */}
+      {cobroCurso && (
+        <CobrarCursoModal
+          fila={cobroCurso}
+          alumnoNombre={alumno.usuario.nombre_completo}
+          moneda={codigoMoneda(CONFIG.moneda)}
+          fmt={fmtMoneda}
+          onClose={() => { setCobroCurso(null); void cargarCursos() }}
+          onCobrado={async (mensaje) => {
+            setCobroCurso(null)
+            showToast(mensaje, 'success')
+            await Promise.all([cargarCursos(), cargarPagos()])
+          }}
+        />
+      )}
+
       {modalRegistrarPago && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
@@ -1867,6 +1918,50 @@ export default function AlumnoDetallePage() {
             </div>
 
             <form onSubmit={handleRegistrarPago} className="space-y-4">
+              {/* D17: «¿A qué se aplica?». Un cobro de curso capturado aquí contaba
+                  como ingreso del PROGRAMA (Bug 73 por la UI): elegir un curso lleva
+                  a «Cobrar» de ese curso. */}
+              {cursosAlumno.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>¿A qué se aplica?</label>
+                  <select
+                    value={destinoPago}
+                    onChange={e => setDestinoPago(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={INPUT_STYLE}
+                  >
+                    <option value="programa">Programa (colegiatura, inscripción, etc.)</option>
+                    {cursosAlumno.map(c => (
+                      <option key={c.inscripcion_id} value={c.inscripcion_id}>
+                        {c.curso_tipo === 'diplomado' ? 'Diplomado' : 'Curso'} «{c.curso_nombre}»
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {destinoPago !== 'programa' ? (
+                <div className="space-y-3">
+                  <p className="text-xs" style={{ color: '#94A3B8' }}>
+                    Este cobro es del curso: se registra en el curso (y ahí se decide si abre algo), no en el programa.
+                  </p>
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => { setModalRegistrarPago(false); setPagoError(null) }}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+                      style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}>
+                      Cancelar
+                    </button>
+                    <button type="button"
+                      onClick={() => {
+                        const f = cursosAlumno.find(c => c.inscripcion_id === destinoPago)
+                        if (f) { setModalRegistrarPago(false); setPagoError(null); setCobroCurso(f) }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold"
+                      style={{ background: '#10B981', color: '#062B1F' }}>
+                      <DollarSign className="w-4 h-4" />Cobrar este curso
+                    </button>
+                  </div>
+                </div>
+              ) : (<>
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto ({codigoMoneda(CONFIG.moneda)})</label>
                 <input
@@ -1995,6 +2090,7 @@ export default function AlumnoDetallePage() {
                   }
                 </button>
               </div>
+              </>)}
             </form>
           </div>
         </div>
