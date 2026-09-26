@@ -125,6 +125,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | 14 | `20260926120000_c3b_acceso_total_cursos.sql` | **C3b** — pago único = acceso total al asignar; «Asignar» abre acceso con la regla del curso (sin ella, el código de hoy no puede asignar) |
    | 15 | `20260927120000_d7b_secretario_abre_cursos.sql` | **D7b** — el secretario también asigna, abre (mes o todo), cobra abriendo, cierra mes y quita el acceso total; estado, módulos y constancias siguen siendo solo del admin. Re-correr B3/B4/C3b ya no se lo quita (CHECK 16) |
    | 16 | `20260927130000_d8_activar_segun_ficha.sql` | **D8** — «Activar según la ficha»: a una inscripción por activar (registro público, 0 meses) le abre lo que dice la ficha hoy —pago único → todo; mensual o sin precio → mes 1—; admin y secretario (CHECK 17) |
+   | 17 | `20260927140000_d16_curso_cobrar.sql` | **D16** — el cobro de cursos con un solo escritor (`curso_cobrar`): pago ligado a la inscripción, con su moneda, el mes que CUBRE e idempotente por `p_pago_id`; abre SOLO si se pide y solo la primera activación, la mensualidad del mes siguiente o el pago único de una ficha de pago único; admin y secretario (CHECK 18) |
 
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
 

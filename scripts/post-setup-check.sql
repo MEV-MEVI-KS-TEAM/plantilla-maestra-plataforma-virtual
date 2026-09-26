@@ -369,3 +369,44 @@ SELECT
     ELSE '✅ OK (una sola versión, admin y secretario, anon sin EXECUTE)'
   END AS resultado
 FROM d8;
+
+-- ─── CHECK 18: el cobro de cursos (D16) ─────────────────────────────────────
+-- Solo aplica si la base tiene el módulo de cursos. Sin la función, «Cobrar» en
+-- la ficha y en la pestaña Alumnos responde 503 «corre la migración D16» y el
+-- cobro de un curso solo se podría capturar en el modal del PROGRAMA (Bug 73).
+WITH d16 AS (
+  SELECT
+    to_regclass('public.curso_inscripciones') IS NOT NULL AS hay_cursos,
+    to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)') IS NOT NULL AS instalada,
+    CASE WHEN to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)')), 'IF NOT public.es_staff() THEN') > 0
+         ELSE false END AS guarda_staff,
+    CASE WHEN to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)')), 'FOR UPDATE') > 0
+         ELSE false END AS candado,
+    CASE WHEN to_regprocedure('public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+         THEN has_function_privilege('anon', 'public.curso_cobrar(uuid,uuid,text,numeric,text,integer,boolean,integer,text,text,numeric,text,date)', 'EXECUTE')
+         ELSE false END AS anon_ejecuta,
+    (SELECT count(*) FROM pg_proc WHERE proname = 'curso_cobrar') AS versiones,
+    -- B3 intacta: una sola curso_registrar_pago (la de 8 argumentos).
+    (SELECT count(*) FROM pg_proc WHERE proname = 'curso_registrar_pago') AS registrar
+)
+SELECT
+  'Cobro de cursos (D16)' AS check_name,
+  CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
+       ELSE 'función ' || instalada::text || ' / guarda staff ' || guarda_staff::text || ' / candado ' || candado::text
+            || ' / anon ejecuta ' || anon_ejecuta::text || ' / versiones ' || versiones::text
+            || ' / curso_registrar_pago ' || registrar::text
+  END AS valor,
+  CASE
+    WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
+    WHEN NOT instalada
+      THEN '❌ FALTA → correr supabase/migrations/20260927140000_d16_curso_cobrar.sql (después de C3b, D7b y D8)'
+    WHEN NOT guarda_staff OR NOT candado OR anon_ejecuta OR versiones <> 1
+      THEN '❌ D16 ALTERADO (guarda, candado, permisos o sobrecargas) → vuelve a correr supabase/migrations/20260927140000_d16_curso_cobrar.sql'
+    WHEN registrar <> 1
+      THEN '❌ curso_registrar_pago con ' || registrar::text || ' versiones: PostgREST no sabe cuál llamar → deja solo la de B3'
+    ELSE '✅ OK (una sola versión, admin y secretario, con candado, anon sin EXECUTE)'
+  END AS resultado
+FROM d16;
