@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Loader2, CreditCard, Search, FileText, MessageCircle, TrendingUp, Receipt } from 'lucide-react'
 import { etiquetaNivel } from '@/lib/niveles-ui'
+import { CONCEPTOS_PROGRAMA, etiquetaConcepto } from '@/lib/pagos/conceptos'
 
 interface Pago {
   id: string
@@ -25,11 +26,6 @@ interface Pago {
 
 interface Kpis { ingresosMes: number; ingresosTotales: number; pagosRegistrados: number }
 
-const CONCEPTO_LABELS: Record<string, string> = {
-  inscripcion: 'Inscripción',
-  mensualidad: 'Mensualidad',
-  otro:        'Otro',
-}
 
 
 const mxn = (n: number) =>
@@ -157,9 +153,9 @@ export default function PagosPage() {
               className="mt-1 w-full px-3 py-2.5 rounded-xl text-sm outline-none"
               style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)', color: 'var(--color-texto)' }}>
               <option value="">Todos</option>
-              <option value="inscripcion">Inscripción</option>
-              <option value="mensualidad">Mensualidad</option>
-              <option value="otro">Otro</option>
+              {CONCEPTOS_PROGRAMA.map(c => (
+                <option key={c} value={c}>{etiquetaConcepto(c)}</option>
+              ))}
             </select>
           </label>
           <label className="text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)' }}>
@@ -227,7 +223,7 @@ export default function PagosPage() {
                       </p>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--color-texto)' }}>
-                      {CONCEPTO_LABELS[p.concepto] ?? p.concepto}
+                      {etiquetaConcepto(p.concepto)}
                       {p.mes_desbloqueado ? (
                         <span className="text-xs ml-1" style={{ color: 'var(--color-texto-secundario)' }}>· mes {p.mes_desbloqueado}</span>
                       ) : null}

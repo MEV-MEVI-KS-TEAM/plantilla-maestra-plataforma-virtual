@@ -123,9 +123,9 @@ test('4. api/alumno/pagos: total_plan con la inscripción del alumno y el campo 
   expect(total('licenciatura', conClaves, { activas: true, inscripcion: 1000 })).toBe(1000 + cuotas)
 })
 
-test('5. la ficha confirma la inscripción del programa del alumno, con el mismo formato crudo', () => {
+test('5. la ficha confirma la inscripción del programa del alumno, con el formato de moneda de la ficha (#203)', () => {
   const ficha = leer('src/app/(dashboard)/admin/alumnos/[id]/page.tsx')
-  expect(ficha).toContain("<span style={{ color: 'var(--color-acento)' }}>${alumno.monto_inscripcion}</span>?")
+  expect(ficha).toContain("<span style={{ color: 'var(--color-acento)' }}>{fmtMoneda(alumno.monto_inscripcion)}</span>?")
   // La calcula el servidor: la ficha solo tiene el config PÚBLICO, que no trae
   // la tabla de licenciaturas (#164).
   const api = leer('src/app/api/admin/alumnos/[id]/route.ts')

@@ -5,6 +5,7 @@ import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from '@
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig, type SiteConfig } from '@/lib/site-config'
 import { lineaContactoRecibo } from '@/lib/contacto-ui'
+import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 
 /**
  * Lo que el recibo toma de la config fusionada (defaults + overrides del
@@ -25,11 +26,6 @@ export interface ReciboData {
   registradoPor: string
 }
 
-const CONCEPTO_LABELS: Record<string, string> = {
-  inscripcion: 'Inscripción',
-  mensualidad: 'Mensualidad',
-  otro:        'Otro',
-}
 
 const fmtMoneda = (n: number) =>
   formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
@@ -126,7 +122,7 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
         <View style={styles.row}>
           <Text style={styles.label}>Concepto</Text>
           <Text style={styles.value}>
-            {CONCEPTO_LABELS[data.concepto] ?? data.concepto}
+            {etiquetaConcepto(data.concepto)}
             {data.mesDesbloqueado ? ` — Mes ${data.mesDesbloqueado}` : ''}
           </Text>
         </View>

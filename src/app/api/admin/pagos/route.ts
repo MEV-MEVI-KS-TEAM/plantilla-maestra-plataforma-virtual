@@ -5,8 +5,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
+import { CONCEPTOS_PROGRAMA } from '@/lib/pagos/conceptos'
 
-const CONCEPTOS = ['inscripcion', 'mensualidad', 'otro'] as const
+// El dominio del modal del PROGRAMA: fuente única en src/lib/pagos/conceptos.ts (D4).
+const CONCEPTOS = CONCEPTOS_PROGRAMA
 const METODOS = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'OTRO'] as const
 
 /**

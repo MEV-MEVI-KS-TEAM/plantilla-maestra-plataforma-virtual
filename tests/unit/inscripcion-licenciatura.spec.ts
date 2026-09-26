@@ -142,7 +142,7 @@ test('3c. licenciatura: su titulación; diplomado y sin nivel: 0 (no la de prepa
 
 test('4. la ficha pinta la cifra que calcula el servidor, con el config publicado', () => {
   const ficha = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/[id]/page.tsx'))
-  expect(ficha).toContain('${alumno.monto_inscripcion}</span>?')
+  expect(ficha).toContain('{fmtMoneda(alumno.monto_inscripcion)}</span>?')
   expect(ficha).not.toMatch(/\binscripcionDe\(/)
   const api = sinComentarios(leer('src/app/api/admin/alumnos/[id]/route.ts'))
   expect(api).toMatch(/import \{[^}]*\bgetSiteConfig\b[^}]*\} from '@\/lib\/site-config'/)

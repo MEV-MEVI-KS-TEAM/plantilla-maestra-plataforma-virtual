@@ -55,6 +55,33 @@ export const AVISO_MONEDA =
 
 const LOCALE: Record<Moneda, string> = { MXN: 'es-MX', USD: 'en-US' }
 
+/**
+ * El código ISO de una moneda, sin lanzar nunca (Bloque D · A1).
+ *
+ * Hay config.ts en la flota con `moneda` guardada como OBJETO (coacma:
+ * `{ codigo: 'USD', simbolo, locale, etiqueta }`). Con él, `LOCALE[moneda]` era
+ * undefined, Intl lanzaba RangeError y la ficha del alumno tronaba al ver pagos.
+ * Acepta el código en texto (con espacios o minúsculas) o un objeto con
+ * `codigo`/`code`/`iso`/`moneda`. Lo que no se reconozca cae al respaldo: la
+ * moneda de CONFIG cuando se normaliza la de un registro, o 'MXN'.
+ */
+export function codigoMoneda(valor: unknown, respaldo: Moneda = 'MXN'): Moneda {
+  const leer = (v: unknown): Moneda | null => {
+    if (typeof v !== 'string') return null
+    const c = v.trim().toUpperCase()
+    return c === 'MXN' || c === 'USD' ? c : null
+  }
+  const directo = leer(valor)
+  if (directo) return directo
+  if (valor && typeof valor === 'object') {
+    for (const k of ['codigo', 'code', 'iso', 'moneda']) {
+      const c = leer((valor as Record<string, unknown>)[k])
+      if (c) return c
+    }
+  }
+  return respaldo
+}
+
 function opcionesIntl(moneda: Moneda, decimales: 0 | 2): Intl.NumberFormatOptions {
   return decimales === 2
     ? { style: 'currency', currency: moneda, minimumFractionDigits: 2, maximumFractionDigits: 2 }
@@ -76,7 +103,7 @@ export function formatearMoneda(
 ): string {
   const n = Number.isFinite(monto) ? monto : 0
   const decimales = opciones.decimales ?? 0
-  const moneda = cfg.moneda
+  const moneda = codigoMoneda(cfg.moneda)
   const texto = new Intl.NumberFormat(LOCALE[moneda], opcionesIntl(moneda, decimales)).format(n)
   // El código ISO solo se añade cuando la moneda NO es la del país: en MXN
   // sobra, y ponerlo cambiaría la cadena de 144 clientes en producción.
@@ -100,7 +127,7 @@ export function equivalenteMXN(
   cfg: ConfigMoneda,
   tipoCambio?: number | null,
 ): string | null {
-  if (cfg.moneda === 'MXN') return null
+  if (codigoMoneda(cfg.moneda) === 'MXN') return null
   const tc = tipoCambio ?? cfg.tipoCambioMXN
   if (!Number.isFinite(tc) || (tc as number) <= 0) return null
   if (!Number.isFinite(monto)) return null
@@ -118,7 +145,7 @@ export function equivalenteMXN(
  * no hay nada que aclarar.
  */
 export function avisoMoneda(cfg: ConfigMoneda): string | null {
-  return cfg.moneda === 'MXN' ? null : AVISO_MONEDA
+  return codigoMoneda(cfg.moneda) === 'MXN' ? null : AVISO_MONEDA
 }
 
 /**
@@ -126,7 +153,7 @@ export function avisoMoneda(cfg: ConfigMoneda): string | null {
  * las pantallas tienen que hacerle sitio a la equivalencia y al aviso.
  */
 export function tieneEquivalencia(cfg: ConfigMoneda): boolean {
-  return cfg.moneda !== 'MXN' && Number.isFinite(cfg.tipoCambioMXN) && cfg.tipoCambioMXN > 0
+  return codigoMoneda(cfg.moneda) !== 'MXN' && Number.isFinite(cfg.tipoCambioMXN) && cfg.tipoCambioMXN > 0
 }
 
 /**

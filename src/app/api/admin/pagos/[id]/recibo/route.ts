@@ -7,18 +7,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { renderReciboPdf } from '@/lib/pdf/recibo-pago'
 import { mensajeRecibo, waUrl } from '@/lib/whatsapp'
+import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 
 // Misma ventana que las constancias (86400s = 24h): el alumno abre el link
 // desde WhatsApp, a veces horas después de recibirlo.
 const SIGNED_URL_TTL = 86400
 
-const CONCEPTO_LABELS: Record<string, string> = {
-  inscripcion:   'inscripción',
-  mensualidad:   'mensualidad',
-  cuota_semanal: 'cuota semanal',
-  certificacion: 'certificación',
-  otro:          'pago',
-}
 
 /**
  * Cuántas semanas tiene el calendario de este alumno, para el «de M» del
@@ -122,7 +116,7 @@ export async function GET(
     }
 
     // ── URL de WhatsApp con mensaje prellenado (convención Contactar) ───────
-    let conceptoLabel = CONCEPTO_LABELS[pago.concepto ?? 'mensualidad'] ?? pago.concepto
+    let conceptoLabel = etiquetaConcepto(pago.concepto ?? 'mensualidad', 'mensaje')
     // 🛑 En un cobro semanal el recibo tiene que decir QUÉ semana cubre. "Cuota
     // semanal" a secas no le sirve a un alumno con veinticuatro recibos
     // iguales, ni a la escuela cuando el alumno reclama que ya pagó esa.
