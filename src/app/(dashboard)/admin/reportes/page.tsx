@@ -4,7 +4,7 @@ import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 import { useState, useEffect } from 'react'
 import { Users, UserCheck, DollarSign, TrendingUp, BarChart3, Loader2, BookOpen, Award, GraduationCap, Download, AlertTriangle } from 'lucide-react'
-import { etiquetaConcepto } from '@/lib/pagos/conceptos'
+import { aplicaA, etiquetaConcepto } from '@/lib/pagos/conceptos'
 
 interface Stats {
   total_alumnos: number
@@ -30,6 +30,10 @@ interface PagoReciente {
   metodo_pago: string
   referencia?: string | null
   fecha_pago: string
+  // D14 (#207-3): el curso del pago (null = programa), por la FK.
+  curso_inscripcion_id?: string | null
+  curso_nombre?: string | null
+  curso_tipo?: string | null
 }
 
 
@@ -189,6 +193,8 @@ export default function ReportesPage() {
   const [ingresosMeses, setIngresosMeses] = useState<IngresoMes[]>([])
   const [cursos, setCursos] = useState<DatosCursos | null>(null)
   const [coherencia, setCoherencia] = useState<Coherencia | null>(null)
+  // D14: pagos del PROGRAMA de alumnos que solo cursan cursos.
+  const [programaDeCurso, setProgramaDeCurso] = useState<{ pagos: number; monto: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -205,6 +211,7 @@ export default function ReportesPage() {
         setIngresosMeses(data.ingresos_ultimos_6_meses ?? [])
         setCursos(data.cursos ?? null)
         setCoherencia(data.coherencia ?? null)
+        setProgramaDeCurso(data.programa_de_alumnos_de_curso ?? null)
       })
       .catch(() => setError('Error al cargar reportes'))
       .finally(() => setLoading(false))
@@ -320,6 +327,22 @@ export default function ReportesPage() {
           }))}
         />
       </div>
+
+      {/* D14: fuera de la sección de cursos (que solo sale con datos de cursos):
+          un cobro de curso capturado en el modal del PROGRAMA justamente no los
+          genera. Se avisa, no se corrige solo. */}
+      {programaDeCurso && programaDeCurso.pagos > 0 && (
+        <div className="rounded-xl p-4 flex items-start gap-3" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#F59E0B' }} />
+          <div className="text-xs leading-relaxed" style={{ color: '#FCD34D' }}>
+            <strong>{programaDeCurso.pagos} pago{programaDeCurso.pagos !== 1 ? 's' : ''}</strong> ({fmt(programaDeCurso.monto)})
+            registrado{programaDeCurso.pagos !== 1 ? 's' : ''} como del PROGRAMA {programaDeCurso.pagos !== 1 ? 'son' : 'es'} de
+            alumnos que solo cursan cursos o diplomados. ¿Era{programaDeCurso.pagos !== 1 ? 'n' : ''} de un curso? Así
+            cuenta{programaDeCurso.pagos !== 1 ? 'n' : ''} como ingreso del programa. En la ficha del alumno, bórralo
+            y vuelve a registrarlo como cobro de su curso.
+          </div>
+        </div>
+      )}
 
       {/* ── VERTICAL DE DIPLOMADOS (B6) ──────────────────────────────────────
           Solo se pinta si el cliente TIENE datos de cursos. Los 144 clientes
@@ -573,7 +596,7 @@ export default function ReportesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid #2A2F3E' }}>
-                  {['Fecha', 'Alumno', 'Concepto', 'Monto', 'Método', 'Referencia'].map(h => (
+                  {['Fecha', 'Alumno', 'Concepto', 'Aplica a', 'Monto', 'Método', 'Referencia'].map(h => (
                     <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: '#94A3B8' }}>{h}</th>
                   ))}
                 </tr>
@@ -591,6 +614,7 @@ export default function ReportesPage() {
                     </td>
                     <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>{p.alumno}</td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.concepto ? etiquetaConcepto(p.concepto) : '—'}</td>
+                    <td className="px-4 py-3" style={{ color: p.curso_inscripcion_id ? '#C4B5FD' : '#94A3B8' }}>{aplicaA(p)}</td>
                     <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmt(Number(p.monto))}</td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: '#64748B' }}>{p.referencia ?? '—'}</td>

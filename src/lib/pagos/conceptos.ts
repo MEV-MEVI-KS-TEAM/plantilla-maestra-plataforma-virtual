@@ -26,6 +26,16 @@ export const CONCEPTOS_PROGRAMA_LECTURA = [...CONCEPTOS_PROGRAMA, 'cuota_semanal
 export const CONCEPTOS_CURSO = ['curso_mensualidad', 'curso_inscripcion', 'curso_otro'] as const
 export type ConceptoCurso = (typeof CONCEPTOS_CURSO)[number]
 
+/**
+ * Los de curso que se LEEN: los de arriba más el pago único (`curso_pago_unico`,
+ * decisión 2), que escribe el cobro por la ficha (D16). `CONCEPTOS_CURSO` sigue
+ * siendo la lista del escritor viejo (B3) y su prueba de paridad con el SQL.
+ */
+export const CONCEPTOS_CURSO_LECTURA = [...CONCEPTOS_CURSO, 'curso_pago_unico'] as const
+
+/** Todo concepto que puede tener una fila de `pagos` (el filtro de /admin/pagos). */
+export const CONCEPTOS_LECTURA = [...CONCEPTOS_PROGRAMA_LECTURA, ...CONCEPTOS_CURSO_LECTURA] as const
+
 export function esConceptoPrograma(v: unknown): v is ConceptoPrograma {
   return typeof v === 'string' && (CONCEPTOS_PROGRAMA as readonly string[]).includes(v)
 }
@@ -50,6 +60,7 @@ const TITULO: Readonly<Record<string, string>> = {
   curso_inscripcion: 'Inscripción de curso',
   curso_mensualidad: 'Mensualidad de curso',
   curso_otro:        'Otro pago de curso',
+  curso_pago_unico:  'Pago único de curso',
 }
 
 const MENSAJE: Readonly<Record<string, string>> = {
@@ -62,6 +73,7 @@ const MENSAJE: Readonly<Record<string, string>> = {
   curso_mensualidad: 'mensualidad del curso',
   // «tu recibo de pago de curso»: con «pago del curso» la frase decía «de pago de pago».
   curso_otro:        'curso',
+  curso_pago_unico:  'pago único del curso',
 }
 
 /**
@@ -79,4 +91,51 @@ export function etiquetaConcepto(
 /** ¿De qué vertical es el pago? Por la FK, no por el concepto (B6/B7). */
 export function verticalDePago(p: { curso_inscripcion_id?: string | null }): 'programa' | 'curso' {
   return p.curso_inscripcion_id ? 'curso' : 'programa'
+}
+
+/** Un pago con su curso, ya aplanado (ver lib/pagos/con-curso.ts). */
+export type PagoConCurso = {
+  curso_inscripcion_id?: string | null
+  curso_nombre?: string | null
+  curso_tipo?: string | null
+  mes_desbloqueado?: number | null
+}
+
+/**
+ * «Aplica a» (D14, #207-3): «Programa» o el curso, con su tipo. Por la FK: un
+ * pago con `curso_inscripcion_id` es del curso aunque su concepto diga otra cosa.
+ */
+export function aplicaA(p: PagoConCurso): string {
+  const v = etiquetaVertical(p)
+  return p.curso_inscripcion_id && p.curso_nombre ? `${v} «${p.curso_nombre}»` : v
+}
+
+/** La vertical dicha: «Programa», «Curso» o «Diplomado» (por `cursos.tipo`). */
+export function etiquetaVertical(p: PagoConCurso): 'Programa' | 'Curso' | 'Diplomado' {
+  if (!p.curso_inscripcion_id) return 'Programa'
+  return p.curso_tipo === 'diplomado' ? 'Diplomado' : 'Curso'
+}
+
+/**
+ * «Mes que cubre» (decisión 5): `mes_desbloqueado` es el mes que el pago CUBRE,
+ * en las dos verticales. En un curso se dice que es del curso («mes 2 del
+ * curso»), para no confundirlo con el mes 2 del programa.
+ */
+export function mesQueCubre(p: PagoConCurso): string {
+  if (p.mes_desbloqueado == null) return '—'
+  return p.curso_inscripcion_id ? `mes ${p.mes_desbloqueado} del curso` : String(p.mes_desbloqueado)
+}
+
+/** Los totales partidos por vertical (la ficha, /admin/pagos). */
+export function totalesPorVertical(pagos: ReadonlyArray<{ monto: number | string | null; curso_inscripcion_id?: string | null }>): {
+  total: number; programa: number; cursos: number
+} {
+  let programa = 0, cursos = 0
+  for (const p of pagos) {
+    const m = Number(p.monto ?? 0)
+    if (!Number.isFinite(m)) continue
+    if (p.curso_inscripcion_id) cursos += m
+    else programa += m
+  }
+  return { total: programa + cursos, programa, cursos }
 }

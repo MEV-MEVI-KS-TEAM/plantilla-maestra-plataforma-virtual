@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Loader2, CreditCard, Search, FileText, MessageCircle, TrendingUp, Receipt } from 'lucide-react'
 import { etiquetaNivel } from '@/lib/niveles-ui'
-import { CONCEPTOS_PROGRAMA, etiquetaConcepto } from '@/lib/pagos/conceptos'
+import { CONCEPTOS_LECTURA, CONCEPTOS_PROGRAMA_LECTURA, aplicaA, etiquetaConcepto, mesQueCubre } from '@/lib/pagos/conceptos'
 
 interface Pago {
   id: string
@@ -22,9 +22,17 @@ interface Pago {
   alumno_nivel: string | null
   matricula: string | null
   tiene_telefono: boolean
+  // D14 (#207-3): el curso del pago (null = programa), por la FK.
+  curso_inscripcion_id?: string | null
+  curso_nombre?: string | null
+  curso_tipo?: string | null
 }
 
-interface Kpis { ingresosMes: number; ingresosTotales: number; pagosRegistrados: number }
+type PorVertical = { programa: number; cursos: number }
+interface Kpis {
+  ingresosMes: number; ingresosTotales: number; pagosRegistrados: number
+  porVertical?: { mes: PorVertical; total: PorVertical }
+}
 
 
 
@@ -42,6 +50,7 @@ export default function PagosPage() {
 
   const [busqueda, setBusqueda] = useState('')
   const [concepto, setConcepto] = useState('')
+  const [vertical, setVertical] = useState('')
   const [desde, setDesde]       = useState('')
   const [hasta, setHasta]       = useState('')
 
@@ -52,6 +61,7 @@ export default function PagosPage() {
   const cargar = useCallback(() => {
     const qs = new URLSearchParams()
     if (concepto) qs.set('concepto', concepto)
+    if (vertical) qs.set('vertical', vertical)
     if (desde)    qs.set('desde', desde)
     if (hasta)    qs.set('hasta', hasta)
     setLoad(true)
@@ -65,7 +75,7 @@ export default function PagosPage() {
       })
       .catch(() => setError('Error al cargar el historial de pagos'))
       .finally(() => setLoad(false))
-  }, [concepto, desde, hasta])
+  }, [concepto, vertical, desde, hasta])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -102,10 +112,12 @@ export default function PagosPage() {
     }
   }
 
+  // D14: el subtítulo «Programa · Cursos», solo cuando hay pagos de cursos.
+  const partido = (v?: PorVertical) => (v && v.cursos > 0 ? `Programa ${mxn(v.programa)} · Cursos ${mxn(v.cursos)}` : null)
   const KPI = [
-    { label: 'Ingresos del mes',  valor: mxn(kpis.ingresosMes),     Icon: TrendingUp },
-    { label: 'Ingresos totales',  valor: mxn(kpis.ingresosTotales), Icon: CreditCard },
-    { label: 'Pagos registrados', valor: String(kpis.pagosRegistrados), Icon: Receipt },
+    { label: 'Ingresos del mes',  valor: mxn(kpis.ingresosMes),     Icon: TrendingUp, sub: partido(kpis.porVertical?.mes) },
+    { label: 'Ingresos totales',  valor: mxn(kpis.ingresosTotales), Icon: CreditCard, sub: partido(kpis.porVertical?.total) },
+    { label: 'Pagos registrados', valor: String(kpis.pagosRegistrados), Icon: Receipt, sub: null },
   ]
 
   return (
@@ -128,6 +140,7 @@ export default function PagosPage() {
             </div>
             <p className="text-2xl font-bold" style={{ color: 'var(--color-primario)' }}>{k.valor}</p>
             <p className="text-sm mt-0.5" style={{ color: 'var(--color-texto-secundario)' }}>{k.label}</p>
+            {k.sub && <p className="text-xs mt-1" style={{ color: 'var(--color-texto-secundario)' }}>{k.sub}</p>}
           </div>
         ))}
       </div>
@@ -146,16 +159,34 @@ export default function PagosPage() {
             style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)', color: 'var(--color-texto)' }}
           />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <label className="text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)' }}>
             Concepto
             <select value={concepto} onChange={e => setConcepto(e.target.value)}
               className="mt-1 w-full px-3 py-2.5 rounded-xl text-sm outline-none"
               style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)', color: 'var(--color-texto)' }}>
               <option value="">Todos</option>
-              {CONCEPTOS_PROGRAMA.map(c => (
-                <option key={c} value={c}>{etiquetaConcepto(c)}</option>
-              ))}
+              {/* D14: también los de curso (el filtro los acepta). */}
+              <optgroup label="Programa">
+                {CONCEPTOS_PROGRAMA_LECTURA.map(c => (
+                  <option key={c} value={c}>{etiquetaConcepto(c)}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Cursos">
+                {CONCEPTOS_LECTURA.filter(c => !(CONCEPTOS_PROGRAMA_LECTURA as readonly string[]).includes(c)).map(c => (
+                  <option key={c} value={c}>{etiquetaConcepto(c)}</option>
+                ))}
+              </optgroup>
+            </select>
+          </label>
+          <label className="text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)' }}>
+            Aplica a
+            <select value={vertical} onChange={e => setVertical(e.target.value)}
+              className="mt-1 w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+              style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)', color: 'var(--color-texto)' }}>
+              <option value="">Todo</option>
+              <option value="programa">Programa</option>
+              <option value="curso">Cursos</option>
             </select>
           </label>
           <label className="text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)' }}>
@@ -225,7 +256,11 @@ export default function PagosPage() {
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--color-texto)' }}>
                       {etiquetaConcepto(p.concepto)}
                       {p.mes_desbloqueado ? (
-                        <span className="text-xs ml-1" style={{ color: 'var(--color-texto-secundario)' }}>· mes {p.mes_desbloqueado}</span>
+                        <span className="text-xs ml-1" style={{ color: 'var(--color-texto-secundario)' }}>· {p.curso_inscripcion_id ? mesQueCubre(p) : `mes ${p.mes_desbloqueado}`}</span>
+                      ) : null}
+                      {/* D14: la insignia de la vertical (por la FK). */}
+                      {p.curso_inscripcion_id ? (
+                        <span className="block text-xs mt-0.5 font-semibold" style={{ color: '#7C3AED' }}>{aplicaA(p)}</span>
                       ) : null}
                     </td>
                     <td className="px-4 py-3 font-bold whitespace-nowrap" style={{ color: 'var(--color-primario)' }}>{mxn(p.monto)}</td>

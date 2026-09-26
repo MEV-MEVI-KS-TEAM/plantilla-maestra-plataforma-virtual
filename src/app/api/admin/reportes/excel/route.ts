@@ -7,7 +7,8 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getSiteConfig } from '@/lib/site-config'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { etiquetaDuracionModalidad } from '@/lib/modalidades'
-import { etiquetaConcepto } from '@/lib/pagos/conceptos'
+import { etiquetaConcepto, etiquetaVertical, totalesPorVertical } from '@/lib/pagos/conceptos'
+import { leerPagosConCurso } from '@/lib/pagos/con-curso'
 
 /**
  * GET /api/admin/reportes/excel
@@ -63,14 +64,18 @@ export async function GET() {
       mesRes, semRes,
     ] = await Promise.all([
       admin.from('alumnos').select('id, matricula, nivel, modalidad, activo, inscripcion_pagada, meses_desbloqueados, fecha_inscripcion'),
-      admin.from('pagos').select('id, alumno_id, monto, concepto, mes_desbloqueado, metodo_pago, referencia, fecha_pago, registrado_por').order('fecha_pago', { ascending: false }),
+      // D14: con su curso (sin B1, sin él: todos del programa).
+      leerPagosConCurso<{ alumno_id: string; registrado_por: string | null; monto: number | string | null; concepto: string | null; mes_desbloqueado: number | null; metodo_pago: string | null; referencia: string | null; fecha_pago: string | null }>(
+        (select) => admin.from('pagos').select(select).order('fecha_pago', { ascending: false }),
+        'id, alumno_id, monto, concepto, mes_desbloqueado, metodo_pago, referencia, fecha_pago, registrado_por',
+      ),
       admin.from('calificaciones').select('materia_id, calificacion, acreditado, materias(nombre)'),
       admin.rpc('reporte_ingresos_mensuales', { num_meses: 12 }),
       admin.rpc('reporte_ingresos_semanales', { num_semanas: 12 }),
     ])
 
     const alumnos = alumnosRaw ?? []
-    const pagos   = pagosRaw   ?? []
+    const pagos   = pagosRaw   ?? []  // un error deja la hoja vacía, como antes
 
     // Nombres de alumnos y de quien registró cada pago, en una sola consulta.
     const ids = [...new Set([
@@ -95,13 +100,18 @@ export async function GET() {
     const COL_TOTAL      = `Total (${M})`
 
     // ── Hoja 2 · Pagos ─────────────────────────────────────────────────────
+    // D14 (#207-3): a qué se aplica (por la FK), el curso y «Mes que cubre»
+    // (decisión 5: `mes_desbloqueado` es el mes que el pago CUBRE; en un curso,
+    // el mes del curso).
     const hojaPagos = pagos.map(p => ({
       'Fecha':          soloFecha(p.fecha_pago),
       'Alumno':         nombreDe(uMap.get(p.alumno_id)),
       'Matrícula':      aMap.get(p.alumno_id)?.matricula ?? '',
       'Nivel':          etiquetaNivel(aMap.get(p.alumno_id)?.nivel),
+      'Aplica a':       etiquetaVertical(p),
+      'Curso':          p.curso_nombre ?? '',
       'Concepto':       etiquetaConcepto(p.concepto),
-      'Mes que abrió':  p.mes_desbloqueado ?? '',
+      'Mes que cubre':  p.mes_desbloqueado ?? '',
       [COL_MONTO]:      Number(p.monto ?? 0),
       'Método':         p.metodo_pago ?? '',
       'Referencia':     p.referencia ?? '',
@@ -171,6 +181,7 @@ export async function GET() {
 
     // ── Hoja 1 · Resumen ───────────────────────────────────────────────────
     const totalIngresos = pagos.reduce((s, p) => s + Number(p.monto ?? 0), 0)
+    const porVertical = totalesPorVertical(pagos)
     const ingresosMes = hojaMes.length ? Number(hojaMes[hojaMes.length - 1][COL_TOTAL] ?? 0) : 0
     const hoy = new Date()
     const hojaResumen = [
@@ -182,6 +193,9 @@ export async function GET() {
       { Concepto: 'Pagos registrados',       Valor: pagos.length },
       { Concepto: `Ingresos del mes (${M})`, Valor: ingresosMes },
       { Concepto: `Ingresos totales (${M})`, Valor: totalIngresos },
+      // D14: partido por vertical (por la FK), como las hojas por mes y semana.
+      { Concepto: `Ingresos totales · programa (${M})`, Valor: porVertical.programa },
+      { Concepto: `Ingresos totales · diplomados (${M})`, Valor: porVertical.cursos },
       { Concepto: 'Materias con calificaciones', Valor: hojaRendimiento.length },
     ]
 
@@ -196,7 +210,7 @@ export async function GET() {
         : XLSX.utils.aoa_to_sheet([encabezados])
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hojaResumen), 'Resumen')
-    XLSX.utils.book_append_sheet(wb, hoja(hojaPagos,       ['Fecha', 'Alumno', 'Matrícula', 'Nivel', 'Concepto', 'Mes que abrió', COL_MONTO, 'Método', 'Referencia', 'Registrado por']), 'Pagos')
+    XLSX.utils.book_append_sheet(wb, hoja(hojaPagos,       ['Fecha', 'Alumno', 'Matrícula', 'Nivel', 'Aplica a', 'Curso', 'Concepto', 'Mes que cubre', COL_MONTO, 'Método', 'Referencia', 'Registrado por']), 'Pagos')
     XLSX.utils.book_append_sheet(wb, hoja(hojaAlumnos,     ['Matrícula', 'Alumno', 'Correo', 'Teléfono', 'Nivel', 'Modalidad', 'Inscripción pagada', 'Meses desbloqueados', 'Estado', 'Fecha de inscripción']), 'Alumnos')
     XLSX.utils.book_append_sheet(wb, hoja(hojaRendimiento, ['Materia', 'Calificaciones', 'Acreditados', 'No acreditados', '% de acreditación', 'Promedio']), 'Rendimiento')
     XLSX.utils.book_append_sheet(wb, hoja(hojaMes,         ['Mes', COL_PROGRAMA, COL_DIPLOMADOS, COL_TOTAL]), 'Ingresos por mes')

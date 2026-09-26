@@ -2,7 +2,7 @@
 
 import { CONFIG } from '@/lib/config'
 import { codigoMoneda, formatearMoneda } from '@/lib/moneda'
-import { etiquetaConcepto } from '@/lib/pagos/conceptos'
+import { aplicaA, etiquetaConcepto, mesQueCubre } from '@/lib/pagos/conceptos'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, X, Loader2, Key, Eye, EyeOff, Download, FileText, FileDown, StickyNote, Save, LockOpen, Undo2, CheckCircle2, CreditCard, DollarSign, Plus, Trash2, ChevronDown, ChevronRight, Pencil } from 'lucide-react'
@@ -57,6 +57,10 @@ interface PagoAlumno {
   referencia: string | null
   fecha_pago: string
   created_at: string
+  // D14 (#207-3): el curso del pago (null = programa), por la FK.
+  curso_inscripcion_id?: string | null
+  curso_nombre?: string | null
+  curso_tipo?: string | null
 }
 
 
@@ -218,6 +222,9 @@ export default function AlumnoDetallePage() {
   // Pagos
   const [pagos, setPagos] = useState<PagoAlumno[]>([])
   const [totalPagado, setTotalPagado] = useState(0)
+  // D14: «Total pagado» partido por vertical (antes sumaba programa y cursos juntos).
+  const [totalCursos, setTotalCursos] = useState(0)
+  const [totalPrograma, setTotalPrograma] = useState(0)
   const [modalRegistrarPago, setModalRegistrarPago] = useState(false)
   const [registrandoPago, setRegistrandoPago] = useState(false)
   const [pagoError, setPagoError] = useState<string | null>(null)
@@ -261,6 +268,8 @@ export default function AlumnoDetallePage() {
         const pagosData = await pagosRes.json()
         setPagos(pagosData.pagos ?? [])
         setTotalPagado(pagosData.total_pagado ?? 0)
+        setTotalPrograma(pagosData.total_programa ?? pagosData.total_pagado ?? 0)
+        setTotalCursos(pagosData.total_cursos ?? 0)
       }
       if (alumnoData.notas_admin !== undefined) {
         setNotas(alumnoData.notas_admin ?? '')
@@ -290,6 +299,8 @@ export default function AlumnoDetallePage() {
       const data = await res.json()
       setPagos(data.pagos ?? [])
       setTotalPagado(data.total_pagado ?? 0)
+      setTotalPrograma(data.total_programa ?? data.total_pagado ?? 0)
+      setTotalCursos(data.total_cursos ?? 0)
     } catch {
       // silencioso: la tabla conserva los datos previos
     }
@@ -871,6 +882,10 @@ export default function AlumnoDetallePage() {
             <h3 className="text-sm font-semibold text-gray-100">Pagos</h3>
             <span className="text-xs" style={{ color: '#94A3B8' }}>
               Total pagado: <span className="font-semibold" style={{ color: '#10B981' }}>{fmtMoneda(totalPagado)}</span>
+              {/* D14: partido por vertical cuando hay pagos de cursos. */}
+              {totalCursos > 0 && (
+                <span> · Programa {fmtMoneda(totalPrograma)} · Cursos {fmtMoneda(totalCursos)}</span>
+              )}
             </span>
           </div>
           <button
@@ -891,7 +906,7 @@ export default function AlumnoDetallePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid #2A2F3E' }}>
-                  {['Fecha', 'Concepto', 'Mes', 'Monto', 'Método', 'Referencia', ''].map((h, i) => (
+                  {['Fecha', 'Concepto', 'Aplica a', 'Mes', 'Monto', 'Método', 'Referencia', ''].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 font-medium" style={{ color: '#94A3B8' }}>{h}</th>
                   ))}
                 </tr>
@@ -905,8 +920,11 @@ export default function AlumnoDetallePage() {
                     <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>
                       {etiquetaConcepto(p.concepto)}
                     </td>
+                    <td className="px-4 py-3" style={{ color: p.curso_inscripcion_id ? '#C4B5FD' : '#94A3B8' }}>
+                      {aplicaA(p)}
+                    </td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>
-                      {p.mes_desbloqueado ?? '—'}
+                      {mesQueCubre(p)}
                     </td>
                     <td className="px-4 py-3 font-semibold" style={{ color: '#10B981' }}>{fmtMoneda(Number(p.monto))}</td>
                     <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{p.metodo_pago}</td>
