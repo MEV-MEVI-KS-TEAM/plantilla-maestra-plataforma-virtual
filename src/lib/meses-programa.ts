@@ -66,6 +66,8 @@ export function errorRpcMes(error: ErrorPg): { status: number; mensaje: string }
   const msg = error?.message ?? ''
   switch (error?.code) {
     case '42501': return { status: 403, mensaje: msg || 'Solo el personal de la escuela puede abrir o cerrar meses.' }
+    // PT409: el alumno cambió en medio (la función NO usa 40001: PostgREST lo reintenta sin fin).
+    case 'PT409':
     case '40001': return { status: 409, mensaje: msg || 'El alumno cambió mientras tanto. Recarga la ficha y vuelve a intentarlo.' }
     case '22023': return { status: 400, mensaje: msg || 'No se pudo mover el mes.' }
     case 'P0002': return { status: 404, mensaje: 'Alumno no encontrado' }

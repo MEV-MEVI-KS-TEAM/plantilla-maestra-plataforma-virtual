@@ -31,7 +31,7 @@ import {
  *
  * D20a: la única escritura va por public.alumno_mover_mes() (solo el servidor,
  * con quien cierra como actor): candado de fila, idempotente por
- * `operacion_id`, 40001 si el alumno cambió en medio y el evento en la
+ * `operacion_id`, 409 (PT409) si el alumno cambió en medio y el evento en la
  * bitácora (alumno_mes_eventos).
  */
 export async function POST(

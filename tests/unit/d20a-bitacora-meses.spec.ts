@@ -52,7 +52,8 @@ test('2. el cuerpo, el mapeo de errores y el id de la operación', () => {
   expect(leerCuerpoMes({ antes: -1, operacion_id: 'x' })).toEqual({ antes: null, operacionId: null })
   expect(leerCuerpoMes({ antes: 2.5 })).toEqual({ antes: null, operacionId: null })
 
-  expect(errorRpcMes({ code: '40001', message: 'El alumno cambió mientras tanto' })).toEqual({ status: 409, mensaje: 'El alumno cambió mientras tanto' })
+  expect(errorRpcMes({ code: 'PT409', message: 'El alumno cambió mientras tanto' })).toEqual({ status: 409, mensaje: 'El alumno cambió mientras tanto' })
+  expect(errorRpcMes({ code: '40001', message: 'x' }).status).toBe(409)
   expect(errorRpcMes({ code: '42501', message: 'x' }).status).toBe(403)
   expect(errorRpcMes({ code: '22023', message: 'Todos los meses ya están desbloqueados.' }).status).toBe(400)
   expect(errorRpcMes({ code: 'P0002', message: 'x' }).status).toBe(404)
@@ -87,7 +88,13 @@ test('3. la migración: transaccional, un escritor con candado ANTES de la idemp
   expect(busca).toBeGreaterThan(candado)
   expect(cambio).toBeGreaterThan(busca)
   expect(escribe).toBeGreaterThan(cambio)
-  expect(SQL).toContain("USING ERRCODE = '40001'")
+  // PT409, nunca 40001: PostgREST reintenta 40001 sin fin y la petición se cuelga.
+  expect(SQL).toContain("USING ERRCODE = 'PT409'")
+  expect(SQL).not.toContain("'40001'")
+  // Mover un mes no borra avance (la regla de cerrar-mes-no-borra, ahora en SQL).
+  const fn = SQL.slice(SQL.indexOf('CREATE OR REPLACE FUNCTION public.alumno_mover_mes('), SQL.indexOf('$$;', SQL.indexOf('AS $$')))
+  expect(fn).not.toMatch(/\bDELETE\b/)
+  for (const t of ['calificaciones', 'intentos_evaluacion', 'progreso_semanas', 'quiz_respuestas']) expect(fn).not.toContain(t)
   // Abrir a un alumno de diplomado no; quitar sí (limpia un dato sucio de antes de B7).
   expect(SQL).toContain("IF v_nivel = 'diplomado' AND p_accion = 'abrir' THEN")
   // La bitácora: id de operación ÚNICO, coherencia antes/después y solo lectura para el personal.

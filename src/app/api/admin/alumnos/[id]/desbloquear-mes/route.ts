@@ -68,8 +68,8 @@ export async function POST(
     }
 
     // ── D20a: un solo escritor (solo el servidor; el actor es quien abre) ─────
-    // Candado de fila, idempotente por operacion_id, 40001 si el alumno cambió
-    // en medio, y el evento en la bitácora con nombre y rol.
+    // Candado de fila, idempotente por operacion_id, 409 (PT409) si el alumno
+    // cambió en medio, y el evento en la bitácora con nombre y rol.
     const { data, error: rpcError } = await admin.rpc('alumno_mover_mes', {
       p_alumno_id:    params.id,
       p_accion:       'abrir',

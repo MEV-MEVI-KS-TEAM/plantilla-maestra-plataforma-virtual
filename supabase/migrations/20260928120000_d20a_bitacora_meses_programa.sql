@@ -19,8 +19,9 @@
 --   · candado de fila (FOR UPDATE) sobre el alumno ANTES de mirar nada;
 --   · idempotente por p_operacion_id (uno por apertura del modal): repetir la
 --     misma operación devuelve lo que hizo la primera, sin mover nada;
---   · p_antes = lo que la pantalla vio; si el alumno cambió en medio, 40001 y
---     nada (dos pestañas no suman dos meses);
+--   · p_antes = lo que la pantalla vio; si el alumno cambió en medio, PT409
+--     (HTTP 409) y nada: dos pestañas no suman dos meses. Nunca 40001, que
+--     PostgREST reintenta sin fin;
 --   · el tope (duración del plan) lo manda el servidor desde su config, que es
 --     donde vive; aquí solo se valida el rango;
 --   · a un alumno de diplomado no se le ABRE un mes de PROGRAMA (B7): 22023.
@@ -222,9 +223,12 @@ BEGIN
   END IF;
 
   -- Lo que la pantalla vio. Si cambió (otra pestaña, otro usuario), nada.
+  -- PT409 y NO 40001: PostgREST toma 40001 (serialization_failure) por una falla
+  -- pasajera y reintenta la transacción sin fin (Supabase lo documenta; se
+  -- arregla hasta PostgREST 16). PT409 le llega a la ruta como HTTP 409.
   IF v_actual <> p_antes THEN
     RAISE EXCEPTION 'El alumno cambió mientras tanto: ahora tiene % mes(es) abierto(s). Recarga la ficha y vuelve a intentarlo.', v_actual
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   IF p_accion = 'abrir' THEN

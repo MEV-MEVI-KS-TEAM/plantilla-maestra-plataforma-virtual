@@ -2773,9 +2773,12 @@ BEGIN
   END IF;
 
   -- Lo que la pantalla vio. Si cambió (otra pestaña, otro usuario), nada.
+  -- PT409 y NO 40001: PostgREST toma 40001 (serialization_failure) por una falla
+  -- pasajera y reintenta la transacción sin fin (Supabase lo documenta; se
+  -- arregla hasta PostgREST 16). PT409 le llega a la ruta como HTTP 409.
   IF v_actual <> p_antes THEN
     RAISE EXCEPTION 'El alumno cambió mientras tanto: ahora tiene % mes(es) abierto(s). Recarga la ficha y vuelve a intentarlo.', v_actual
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   IF p_accion = 'abrir' THEN

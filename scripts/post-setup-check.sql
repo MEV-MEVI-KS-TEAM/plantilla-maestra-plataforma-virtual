@@ -432,6 +432,11 @@ WITH d20a AS (
     CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
          THEN strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), 'FOR UPDATE') > 0
          ELSE false END AS candado,
+    -- 409 con PT409: un 40001 lo reintenta PostgREST sin fin (la petición se cuelga).
+    CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), 'ERRCODE = ''PT409''') > 0
+              AND strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), '''40001''') = 0
+         ELSE false END AS conflicto_409,
     -- El actor se revalida adentro (admin o secretario de HOY).
     CASE WHEN to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)') IS NOT NULL
          THEN strpos(pg_get_functiondef(to_regprocedure('public.alumno_mover_mes(uuid,text,integer,integer,uuid,uuid)')), 'v_rol NOT IN (''admin'', ''secretario'')') > 0
@@ -464,15 +469,15 @@ WITH d20a AS (
 SELECT
   'Meses del programa con bitácora (D20a)' AS check_name,
   'tabla ' || tabla::text || ' / función ' || instalada::text || ' / candado ' || candado::text
-    || ' / guarda actor ' || guarda_actor::text || ' / único ' || unico::text
+    || ' / guarda actor ' || guarda_actor::text || ' / 409 ' || conflicto_409::text || ' / único ' || unico::text
     || ' / anon ejecuta ' || anon_ejecuta::text || ' / authenticated ejecuta ' || auth_ejecuta::text
     || ' / authenticated escribe ' || auth_escribe::text || ' / definer ' || definer::text
     || ' / versiones ' || versiones::text AS valor,
   CASE
     WHEN NOT tabla OR NOT instalada
       THEN '❌ FALTA → correr supabase/migrations/20260928120000_d20a_bitacora_meses_programa.sql (sin ella abrir/cerrar mes no deja bitácora)'
-    WHEN NOT candado OR NOT guarda_actor OR NOT unico OR anon_ejecuta OR auth_ejecuta OR auth_escribe OR NOT definer OR versiones <> 1
-      THEN '❌ D20a ALTERADO (candado, guarda del actor, índice único, permisos, definer o sobrecargas) → vuelve a correr supabase/migrations/20260928120000_d20a_bitacora_meses_programa.sql'
+    WHEN NOT candado OR NOT guarda_actor OR NOT conflicto_409 OR NOT unico OR anon_ejecuta OR auth_ejecuta OR auth_escribe OR NOT definer OR versiones <> 1
+      THEN '❌ D20a ALTERADO (candado, guarda del actor, 409, índice único, permisos, definer o sobrecargas) → vuelve a correr supabase/migrations/20260928120000_d20a_bitacora_meses_programa.sql'
     ELSE '✅ OK (un solo escritor, con candado e idempotente; solo el servidor lo llama)'
   END AS resultado
 FROM d20a;
