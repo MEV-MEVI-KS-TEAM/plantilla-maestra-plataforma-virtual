@@ -100,14 +100,39 @@ export function errorDePlanDeRegistro(
   pedido: { nivel: unknown; modalidad: string | null; carrera: string | null },
   catalogo: CatalogoRegistro,
 ): string | null {
+  const motivo = motivoPlanInvalido(pedido, catalogo)
+  return motivo ? MENSAJES_PLAN_REGISTRO[motivo] : null
+}
+
+/** Por qué un plan no cabe; cada puerta pone su propio mensaje. */
+export type MotivoPlan = 'nivel' | 'sinModalidad' | 'modalidad' | 'sinCarrera' | 'carrera'
+
+/**
+ * La regla ESTRUCTURAL de arriba, sin mensaje: la usan el registro público
+ * (`errorDePlanDeRegistro`) y el alta del admin (D9, #199-admin), cada una con
+ * sus palabras. Mismas exenciones: sin nivel y 'diplomado' no se juzgan aquí.
+ */
+export function motivoPlanInvalido(
+  pedido: { nivel: unknown; modalidad: string | null; carrera: string | null },
+  catalogo: CatalogoRegistro,
+): MotivoPlan | null {
   const { nivel, modalidad, carrera } = pedido
   if (nivel === null || nivel === undefined || nivel === 'diplomado') return null
-  if (typeof nivel !== 'string' || !catalogo.niveles.includes(nivel)) return MENSAJES_PLAN_REGISTRO.nivel
-  if (!modalidad) return MENSAJES_PLAN_REGISTRO.sinModalidad
-  if (!(catalogo.planes[nivel] ?? []).includes(modalidad)) return MENSAJES_PLAN_REGISTRO.modalidad
+  if (typeof nivel !== 'string' || !catalogo.niveles.includes(nivel)) return 'nivel'
+  if (!modalidad) return 'sinModalidad'
+  if (!(catalogo.planes[nivel] ?? []).includes(modalidad)) return 'modalidad'
   if (nivel === 'licenciatura') {
-    if (!carrera) return MENSAJES_PLAN_REGISTRO.sinCarrera
-    if (!catalogo.carreras.includes(carrera)) return MENSAJES_PLAN_REGISTRO.carrera
+    if (!carrera) return 'sinCarrera'
+    if (!catalogo.carreras.includes(carrera)) return 'carrera'
   }
   return null
+}
+
+/** Mensajes del alta del admin (D9): a él sí se le puede pedir que corrija el formulario. */
+export const MENSAJES_PLAN_ADMIN: Record<MotivoPlan, string> = {
+  nivel:        'Ese nivel no está disponible en esta escuela.',
+  sinModalidad: 'Selecciona la modalidad.',
+  modalidad:    'Esa modalidad no corresponde al nivel elegido: elige una de las que se ofrecen para ese nivel.',
+  sinCarrera:   'Selecciona la carrera.',
+  carrera:      'Esa carrera no está en el catálogo de la escuela.',
 }

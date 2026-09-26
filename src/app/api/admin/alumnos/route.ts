@@ -6,7 +6,8 @@ import { CONFIG } from '@/lib/config'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { nivelForzadoDeRegistro } from '@/lib/modo'
 import { getCarreras, getPlanNombre } from '@/lib/licenciatura-utils'
-import { nivelesPermitidos } from '@/lib/niveles'
+import { catalogoDeRegistro, nivelesPermitidos } from '@/lib/niveles'
+import { MENSAJES_PLAN_ADMIN, motivoPlanInvalido } from '@/lib/registro-reglas'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
@@ -444,6 +445,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // D9 (#199-admin): el plan tiene que ser uno que config.ts declara PARA ESE
+    // nivel —la misma regla estructural del registro público—, y se comprueba
+    // ANTES de crear la cuenta de Auth. Antes el alta guardaba cualquier id del
+    // CHECK para cualquier nivel (Secundaria con el ritmo de licenciatura). El
+    // modal ya solo ofrece los del nivel (planesPorNivel). Se guarda lo MISMO que
+    // se validó (recortado): «3_meses » pasaba aquí y tronaba en el CHECK de la base.
+    const modalidadLimpia = typeof modalidad === 'string' && modalidad.trim() ? modalidad.trim() : null
+    if (!nivelForzado && nivelElegido !== 'diplomado') {
+      const motivo = motivoPlanInvalido({
+        nivel:     nivelElegido,
+        modalidad: modalidadLimpia,
+        carrera:   carreraNormalizada || null,
+      }, catalogoDeRegistro())
+      if (motivo) return NextResponse.json({ error: MENSAJES_PLAN_ADMIN[motivo] }, { status: 400 })
+    }
+
     // Crear usuario en Supabase Auth
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
       email,
@@ -497,7 +514,7 @@ export async function POST(request: NextRequest) {
         // modalidad activa» en vez de devolver null.
         modalidad:           (nivelForzado || nivelElegido === 'diplomado')
                                ? null
-                               : (modalidad ?? getDefaultModalidadId()),
+                               : (modalidadLimpia ?? getDefaultModalidadId()),
         carrera:             carreraNormalizada || null,
         meses_desbloqueados: 0,
       })
