@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, Search, Plus, X, Loader2, Eye, MessageSquare, CheckCheck, Clock, AlertCircle } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
@@ -10,7 +10,11 @@ import { useSiteConfig } from '@/components/site-config-provider'
 // el catálogo de carreras y el switch del add-on.
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin, esOpcionCurso } from '@/lib/niveles'
-import { hayOfertasIngreso } from '@/lib/cursos/oferta'
+import { hayOfertasIngreso, getOfertaIngreso } from '@/lib/cursos/oferta'
+import { precioCursoNumerico, resolverPrecioOferta, type PreciosCurso } from '@/lib/cursos/precio-curso'
+
+/** El aviso de «se abrió solo el mes 1» se queda lo bastante para leerlo. */
+const AVISO_MS = 10000
 
 interface Alumno {
   id: string
@@ -94,7 +98,7 @@ export default function AlumnosPage() {
   // mismo endpoint que usa el registro público, que ya filtra por
   // `estado = 'publicado'` y devuelve id, nombre, tipo y precios. Sin él, la opción
   // «Curso o diplomado» no se ofrece y el admin no tiene dónde inscribir.
-  const [cursos, setCursos] = useState<{ id: string; nombre: string; tipo: string }[]>([])
+  const [cursos, setCursos] = useState<({ id: string; nombre: string; tipo: string } & PreciosCurso)[]>([])
   useEffect(() => {
     let vivo = true
     fetch('/api/catalogo-publico')
@@ -103,6 +107,9 @@ export default function AlumnosPage() {
       .catch(() => {})   // sin catálogo el alta sigue sirviendo para alumnos con nivel
     return () => { vivo = false }
   }, [])
+  // Los precios publicados, para saber qué le anunció el registro a quien pidió
+  // un curso (resolverPrecioOferta, la misma regla que /register).
+  const preciosPublicados = useMemo(() => new Map(cursos.map(c => [c.id, c])), [cursos])
 
   const opcionesNivel = getOpcionesNivelAdmin(cursos.length > 0)
 
@@ -182,13 +189,26 @@ export default function AlumnosPage() {
       setModalOpen(false)
       setForm({ nombre_completo: '', email: '', password: '', telefono: '', nivel: '', modalidad: '', carrera: '', cursos_ids: [] })
       await cargarAlumnos()
-      showToast(`✓ Alumno ${nombre} creado${matricula ? ` con matrícula ${matricula}` : ''}`, 'success')
-      // El alta inscribe con la regla de «Asignar» (curso_inscribir). Si algún
-      // curso no quedó, se dice: antes solo quedaba un console.error en el servidor.
+      // El alta inscribe con la regla de «Asignar» (curso_inscribir): se dice qué
+      // abrió cada curso y, si alguno falló, por qué (antes solo quedaba un
+      // console.error en el servidor).
+      const resultado = (Array.isArray(data.cursos_resultado) ? data.cursos_resultado : []) as
+        { nombre: string; acceso_total: boolean; sin_precio: boolean }[]
+      const totales = resultado.filter(r => r.acceso_total).length
+      const abierto = resultado.length === 0 ? ''
+        : totales === resultado.length ? ` · ${resultado.length === 1 ? 'curso con acceso total' : `${totales} cursos con acceso total`}`
+        : totales === 0 ? ` · ${resultado.length === 1 ? 'curso con el mes 1 abierto' : `${resultado.length} cursos con el mes 1 abierto`}`
+        : ` · ${totales} con acceso total y ${resultado.length - totales} con el mes 1 abierto`
+      showToast(`✓ Alumno ${nombre} creado${matricula ? ` con matrícula ${matricula}` : ''}${abierto}`, 'success')
+      const sinPrecio = resultado.filter(r => r.sin_precio && !r.acceso_total).map(r => r.nombre)
+      if (sinPrecio.length) {
+        showToast(`Ojo: ${sinPrecio.join(', ')} no tiene precio en su ficha y se abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en Gestionar cursos → el curso → Alumnos, y ponle precio al curso.`, 'error', AVISO_MS)
+      }
       const pedidos = form.cursos_ids.length
       const asignados = typeof data.cursos_asignados === 'number' ? data.cursos_asignados : pedidos
       if (pedidos > 0 && asignados < pedidos) {
-        showToast(`No se pudo asignar ${pedidos - asignados} de ${pedidos} curso(s): asígnalo desde Gestionar cursos → el curso → Alumnos`, 'error')
+        showToast(`No se pudo asignar ${pedidos - asignados} de ${pedidos} curso(s)${
+          data.cursos_error ? `: ${data.cursos_error}` : ': asígnalo desde Gestionar cursos → el curso → Alumnos'}`, 'error', AVISO_MS)
       }
     } catch {
       setFormError('Error inesperado. Intenta de nuevo.')
@@ -216,6 +236,7 @@ export default function AlumnosPage() {
     setActivando(a.id)
     try {
       const fallos: string[] = []
+      let causa: string | null = null  // el error del servidor del primer fallo
       const abiertos: boolean[] = []   // acceso_total de cada curso asignado ahora
       let sinPrecio = false            // alguna ficha en 0/0: se abrió el mes 1
       for (const cursoId of a.curso_solicitado_ids) {
@@ -225,7 +246,13 @@ export default function AlumnosPage() {
           body:    JSON.stringify({ alumno_id: a.id }),
         })
         // 409 = ya estaba inscrito: no es un fallo, es el resultado deseado.
-        if (!res.ok && res.status !== 409) fallos.push(cursoId)
+        if (!res.ok && res.status !== 409) {
+          fallos.push(cursoId)
+          if (causa === null) {
+            const j = await res.json().catch(() => ({} as { error?: string }))
+            causa = typeof j.error === 'string' ? j.error : null
+          }
+        }
         if (res.ok) {
           const json = await res.json().catch(() => ({} as { acceso_total?: boolean; sin_precio?: boolean }))
           abiertos.push(json.acceso_total === true)
@@ -233,7 +260,7 @@ export default function AlumnosPage() {
         }
       }
       if (fallos.length) {
-        showToast(`No se pudo asignar ${fallos.length} de ${a.curso_solicitado_ids.length} curso(s)`, 'error')
+        showToast(`No se pudo asignar ${fallos.length} de ${a.curso_solicitado_ids.length} curso(s)${causa ? `: ${causa}` : ''}`, 'error', AVISO_MS)
       } else {
         // Asignar abre acceso con la regla del curso (C3b): pago único → todo;
         // mensual o sin precio → el mes 1. Se dice lo que el servidor abrió; la
@@ -245,10 +272,17 @@ export default function AlumnosPage() {
             : abiertos.some(Boolean) ? 'acceso abierto según cada curso'
             : 'mes 1 abierto'
           showToast(`✓ Curso asignado a ${a.nombre_completo}: ${queSeAbrio}.`, 'success')
-          // El registro puede anunciar un pago único con el precio de config.ts
-          // aunque la ficha del curso esté en 0/0: ahí «Asignar» abre solo el mes 1.
-          if (sinPrecio) {
-            showToast('Ojo: el curso no tiene precio en su ficha y se abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en Gestionar cursos → el curso → Alumnos, y ponle precio al curso.', 'error')
+          // El registro le anunció un pago único (un paquete, o la ficha en 0/0
+          // con el precio de config.ts) y «Asignar» abrió solo el mes 1 porque la
+          // ficha es mensual o no tiene precio: se avisa, con tiempo para leerlo.
+          const oferta = getOfertaIngreso(a.curso_solicitado)
+          const anuncioUnico = oferta !== null
+            && resolverPrecioOferta(oferta, cursos.length ? preciosPublicados : null).tipo === 'unico'
+          if (abiertos.some(x => !x) && (anuncioUnico || sinPrecio)) {
+            showToast(anuncioUnico
+              ? 'Ojo: al registrarse se le anunció un pago único, pero se abrió solo el mes 1 (la ficha del curso es mensual o no tiene precio). Si cobraste el pago único, usa «Abrir todo» en Gestionar cursos → el curso → Alumnos.'
+              : 'Ojo: el curso no tiene precio en su ficha y se abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en Gestionar cursos → el curso → Alumnos, y ponle precio al curso.',
+            'error', AVISO_MS)
           }
         }
       }
@@ -838,7 +872,18 @@ export default function AlumnosPage() {
                             }))}
                             style={{ accentColor: 'var(--color-acento)' }}
                           />
-                          {c.nombre}
+                          <span className="min-w-0">
+                            {c.nombre}
+                            {/* Qué le abre el alta, con el precio de hoy de su ficha */}
+                            <span className="block text-xs" style={{ color: '#64748B' }}>
+                              {(() => {
+                                const p = precioCursoNumerico(c)
+                                return p.tipo === 'unico' ? 'Pago único: se abre el curso completo'
+                                  : p.tipo === 'mensual' ? 'Mensual: se abre el mes 1'
+                                  : 'Sin precio en su ficha: se abre el mes 1'
+                              })()}
+                            </span>
+                          </span>
                         </label>
                       )
                     })}

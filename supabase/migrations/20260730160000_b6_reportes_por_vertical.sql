@@ -42,20 +42,22 @@
 -- `estado_cuenta_alumnos` NO cambia de firma (solo cambia el cuerpo), así que
 -- para esa sí basta CREATE OR REPLACE.
 
--- ── PREFLIGHT ───────────────────────────────────────────────────────────────
-DO $c3b$
-BEGIN
-  -- Re-correr esta migración en una base que YA tiene C3b (acceso total) revierte
-  -- su parte: se avisa. Correr la cadena completa en orden llega a C3b (paso 14
-  -- de la lista 7bis de SETUP.md) y lo restaura.
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-              WHERE table_schema = 'public' AND table_name = 'curso_inscripciones'
-                AND column_name = 'acceso_total') THEN
-    RAISE WARNING 'Esta base ya tiene C3b (acceso total). Al terminar, vuelve a correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql o los alumnos de pago único se quedan sin acceso.';
-  END IF;
-END
-$c3b$;
+-- ── C3b · re-correr esta migración NO revierte el acceso total ─────────────
+-- Si la base ya tiene C3b (20260926120000_c3b_acceso_total_cursos.sql), sus
+-- versiones de reporte_curso_inscripciones son las vigentes y esta
+-- migración las pisaría. Se guardan aquí y se restauran al final de este
+-- archivo. Sin C3b no hace nada.
+DROP TABLE IF EXISTS pg_temp.c3b_vigentes;
+CREATE TEMP TABLE c3b_vigentes AS
+SELECT pg_get_functiondef(p.oid) AS def
+  FROM pg_proc p
+ WHERE p.oid IN (SELECT to_regprocedure(f) FROM unnest(ARRAY[
+         'public.reporte_curso_inscripciones()']) AS f)
+   AND EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'curso_inscripciones'
+                  AND column_name = 'acceso_total');
 
+-- ── PREFLIGHT ───────────────────────────────────────────────────────────────
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -415,3 +417,20 @@ GRANT EXECUTE ON FUNCTION public.reporte_curso_inscripciones()         TO servic
 GRANT EXECUTE ON FUNCTION public.reporte_curso_pagos()                 TO service_role;
 GRANT EXECUTE ON FUNCTION public.reporte_curso_constancias()           TO service_role;
 GRANT EXECUTE ON FUNCTION public.reporte_curso_avance()                TO service_role;
+
+-- ── C3b · restaurar lo que esta migración acaba de pisar (ver el inicio) ────
+DO $c3b$
+DECLARE
+  v_def TEXT;
+  v_n   INTEGER := 0;
+BEGIN
+  FOR v_def IN SELECT def FROM pg_temp.c3b_vigentes LOOP
+    EXECUTE v_def;
+    v_n := v_n + 1;
+  END LOOP;
+  IF v_n > 0 THEN
+    RAISE NOTICE 'Esta base ya tiene C3b (acceso total): se conservaron sus versiones de % función(es).', v_n;
+  END IF;
+END
+$c3b$;
+DROP TABLE IF EXISTS pg_temp.c3b_vigentes;

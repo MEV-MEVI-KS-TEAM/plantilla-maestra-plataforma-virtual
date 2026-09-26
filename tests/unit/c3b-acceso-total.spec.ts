@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   ORDEN_SIN_DEFINIR, aperturaAlAsignar, limiteVentana, modulosVisibles, motivoBloqueo,
@@ -34,21 +34,25 @@ function cuerpo(sql: string, nombre: string): string {
 
 test('1. paridad SQL ↔ TS ↔ catálogo: la regla de apertura al asignar', () => {
   const sql = plano(cuerpo(MIG, 'curso_regla_apertura'))
-  // Se interpreta el CASE tal como está escrito: WHEN COALESCE(p, 0) > 0 THEN '...' … ELSE '...'.
-  const whens = [...sql.matchAll(/WHEN COALESCE\((p_\w+), 0\) > 0 THEN '(\w+)'/g)].map(m => [m[1], m[2]] as const)
+  // Se interpreta el CASE tal como está escrito:
+  //   WHEN COALESCE(NULLIF(p, 'NaN'), 0) > 0 THEN '...' … ELSE '...'.
+  // En Postgres NaN es MAYOR que todo; NULLIF lo vuelve NULL → 0, como en TS,
+  // donde NaN > 0 es falso. Parámetro por parámetro, sin atajos.
+  const whens = [...sql.matchAll(/WHEN COALESCE\(NULLIF\((p_\w+), 'NaN'\), 0\) > 0 THEN '(\w+)'/g)].map(m => [m[1], m[2]] as const)
   const otro = /ELSE '(\w+)'/.exec(sql)?.[1]
   expect(whens).toEqual([['p_mensualidad', 'mes1'], ['p_inscripcion', 'total']])
   expect(otro).toBe('mes1')
-  // Primero la rama NaN: en Postgres NaN es mayor que todo; en TS, NaN > 0 es falso.
-  expect(sql.indexOf("WHEN p_inscripcion = 'NaN' OR p_mensualidad = 'NaN' THEN 'mes1'")).toBeGreaterThan(-1)
-  expect(sql.indexOf("'NaN'")).toBeLessThan(sql.indexOf('WHEN COALESCE'))
-  expect(aperturaAlAsignar({ precio_inscripcion: Number.NaN, precio_mensualidad: 0 })).toBe('mes1')
+  expect(sql.match(/WHEN /g)?.length).toBe(2)
+  expect(sql).not.toMatch(/= 'NaN'/)
   const evalSql = (ins: number | null, men: number | null) => {
     const v: Record<string, number | null> = { p_inscripcion: ins, p_mensualidad: men }
-    for (const [param, res] of whens) if ((v[param] ?? 0) > 0) return res
+    for (const [param, res] of whens) {
+      const x = v[param]
+      if ((x === null || Number.isNaN(x) ? 0 : x) > 0) return res
+    }
     return otro
   }
-  const valores = [null, -5, 0, 0.01, 1, 900, 2490]
+  const valores = [null, Number.NaN, -5, 0, 0.01, 1, 900, 2490]
   for (const ins of valores) for (const men of valores) {
     const c = { precio_inscripcion: ins, precio_mensualidad: men }
     const ts = aperturaAlAsignar(c)
@@ -56,6 +60,11 @@ test('1. paridad SQL ↔ TS ↔ catálogo: la regla de apertura al asignar', () 
     // Y es la regla del catálogo: «pago único» ⇔ acceso total.
     expect(ts === 'total').toBe(precioCursoNumerico(c).tipo === 'unico')
   }
+  // NaN (revisión, ronda 2): 2490/NaN es pago único en el catálogo y en SQL.
+  expect(aperturaAlAsignar({ precio_inscripcion: 2490, precio_mensualidad: Number.NaN })).toBe('total')
+  expect(aperturaAlAsignar({ precio_inscripcion: Number.NaN, precio_mensualidad: 0 })).toBe('mes1')
+  expect(evalSql(2490, Number.NaN)).toBe('total')
+  expect(evalSql(Number.NaN, 900)).toBe('mes1')
   // Las decisiones de Kevin: pago único → todo; mensual → mes 1; 0/0 → mes 1 (D2).
   expect(aperturaAlAsignar({ precio_inscripcion: 2490, precio_mensualidad: 0 })).toBe('total')
   expect(aperturaAlAsignar({ precio_inscripcion: 1500, precio_mensualidad: 900 })).toBe('mes1')
@@ -118,10 +127,47 @@ test('4. la migración: idempotente, en transacción, NOTIFY, sin políticas, co
   expect(MIG).not.toMatch(/GRANT[^;]*TO anon/)
 })
 
-test('4b. re-correr B2, B4 o B6 en una base con C3b avisa; B4 acepta los eventos de C3b; nadie lee el techo por RPC', () => {
-  for (const f of ['20260730130000_b2_gate_ventana_cursos.sql', '20260730150000_b4_constancia_y_eventos.sql', '20260730160000_b6_reportes_por_vertical.sql']) {
-    expect(leer(`supabase/migrations/${f}`), f).toContain("RAISE WARNING 'Esta base ya tiene C3b (acceso total).")
+test('4b. re-correr una migración vieja NO revierte C3b: guarda y restaura sus funciones; nadie lee el techo por RPC', () => {
+  // Toda migración anterior que redefina una función de C3b la guarda al empezar
+  // (si la base ya tiene la columna) y la restaura al final. Se deduce de los
+  // archivos: una migración nueva que pise otra función de C3b tiene que entrar.
+  const deC3b = new Set([...MIG.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)\(/g)].map(m => m[1]))
+  const firmas: Record<string, string> = {
+    curso_ventana_limite: 'curso_ventana_limite(uuid,uuid)',
+    curso_abrir_mes: 'curso_abrir_mes(uuid,integer)',
+    curso_cerrar_mes: 'curso_cerrar_mes(uuid,integer)',
+    reporte_curso_inscripciones: 'reporte_curso_inscripciones()',
   }
+  const viejas = readdirSync(join(process.cwd(), 'supabase/migrations'))
+    .filter(f => f.endsWith('.sql') && f < '20260926120000_c3b_acceso_total_cursos.sql')
+  let cubiertas = 0
+  for (const f of viejas) {
+    const sql = sinComentariosSql(leer(`supabase/migrations/${f}`))
+    const pisa = [...sql.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)\(/g)].map(m => m[1]).filter(n => deC3b.has(n))
+    if (pisa.length === 0) continue
+    cubiertas++
+    const guarda = sql.indexOf('CREATE TEMP TABLE c3b_vigentes AS')
+    const restaura = sql.indexOf('FOR v_def IN SELECT def FROM pg_temp.c3b_vigentes LOOP')
+    expect(guarda, f).toBeGreaterThan(-1)
+    expect(restaura, f).toBeGreaterThan(-1)
+    for (const n of new Set(pisa)) {
+      expect(firmas[n], `${f}: ${n} sin firma conocida`).toBeTruthy()
+      const lista = sql.slice(guarda, sql.indexOf(';', guarda))
+      expect(lista, `${f} guarda ${n}`).toContain(`'public.${firmas[n]}'`)
+      // Se guarda ANTES de pisarla y se restaura DESPUÉS de la última vez que la pisa.
+      expect(guarda, `${f}: ${n}`).toBeLessThan(sql.indexOf(`CREATE OR REPLACE FUNCTION public.${n}(`))
+      expect(restaura, `${f}: ${n}`).toBeGreaterThan(sql.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${n}(`))
+    }
+    // La guarda solo actúa con C3b; en una transacción, antes del COMMIT.
+    expect(sql.slice(guarda, sql.indexOf(';', guarda)), f).toContain("column_name = 'acceso_total'")
+    if (/^\s*COMMIT;/m.test(sql)) expect(restaura, f).toBeLessThan(sql.lastIndexOf('COMMIT;'))
+    expect(sql, f).not.toContain("RAISE WARNING 'Esta base ya tiene C3b")
+  }
+  expect(cubiertas).toBe(4)   // B2, B3, B4 y B6
+  // B2 le da EXECUTE del techo a authenticated: al restaurar, se lo vuelve a quitar.
+  const b2 = B2.slice(B2.indexOf('FOR v_def IN SELECT def FROM pg_temp.c3b_vigentes LOOP'))
+  expect(B2.indexOf("GRANT EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) TO authenticated")).toBeLessThan(B2.indexOf('FOR v_def IN SELECT def FROM pg_temp.c3b_vigentes LOOP'))
+  expect(b2).toContain("REVOKE EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) FROM authenticated")
   const b4 = plano(sinComentariosSql(leer('supabase/migrations/20260730150000_b4_constancia_y_eventos.sql')))
   expect(b4).toContain("'inscripcion', 'abrir_todo', 'quitar_acceso_total'")
   expect(MIG).toContain('REVOKE EXECUTE ON FUNCTION public.curso_ventana_limite(UUID, UUID) FROM PUBLIC;')
@@ -138,6 +184,17 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   const post = alta.slice(alta.indexOf('export async function POST'))
   expect(post).toContain("supabase.rpc('curso_inscribir',")
   expect(post).not.toMatch(/from\('curso_inscripciones'\)[\s\S]{0,80}\.insert\(/)
+  // …y dice qué abrió cada curso (con el aviso de ficha sin precio) y por qué falló.
+  expect(post).toMatch(/cursos_resultado: cursosResultado/)
+  expect(post).toContain("sin_precio: precioCursoNumerico(curso).tipo === 'informes'")
+  expect(post).toContain('cursosError ??= errorDeRpcCurso(insError).mensaje')
+  const alumnosPag = sinComentariosTs(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
+  expect(alumnosPag).toContain('data.cursos_resultado')
+  expect(alumnosPag).toContain('data.cursos_error')
+  // «Asignar curso» muestra la causa del servidor (p. ej. el 503 de la migración)
+  // y avisa si el registro le anunció un pago único y se abrió el mes 1.
+  expect(alumnosPag).toMatch(/causa \? `: \$\{causa\}`/)
+  expect(alumnosPag).toContain('resolverPrecioOferta(oferta,')
   // /admin/alumnos «Asignar» reusa la ruta de arriba.
   expect(leer('src/app/(dashboard)/admin/alumnos/page.tsx')).toContain('/api/admin/cursos/${cursoId}/inscripciones')
   // El registro público: prospecto que no ha pagado → 0 meses, sin acceso total, sin la función.
@@ -149,7 +206,8 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
 
 test('6. quien calcula la ventana lee acceso_total, y una base sin C3b no se rompe', async () => {
   for (const f of ['src/lib/cursos/alumno-data.ts', 'src/lib/cursos/examen.ts', 'src/app/api/admin/alumnos/route.ts',
-    'src/app/api/admin/cursos/[id]/route.ts', 'src/app/api/admin/inscripciones/[id]/route.ts']) {
+    'src/app/api/admin/cursos/[id]/route.ts', 'src/app/api/admin/inscripciones/[id]/route.ts',
+    'src/app/api/admin/inscripciones/[id]/pago/route.ts']) {
     const src = sinComentariosTs(leer(f))
     expect(src, f).toMatch(/conAccesoTotal<[\s\S]*?>\(\s*'[^']*'\s*,\s*campos => admin\s*\.from\('curso_inscripciones'\)\s*\.select\(campos\)/)
     expect(src, f).not.toMatch(/from\('curso_inscripciones'\)\s*\.select\('[^']*acceso_total/)
@@ -184,8 +242,20 @@ test('6b. errores de las funciones: 23505 → 409, 22P02 → 400, función ausen
 test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dice cuántos y qué (D3)', () => {
   const tab = sinComentariosTs(leer('src/components/admin/cursos/AlumnosTab.tsx'))
   expect(tab).toContain('Acceso total')
-  expect(tab).toContain("cambiarAccesoTotal(i.inscripcion_id, 'abrir-todo', i.nombre)")
-  expect(tab).toContain("cambiarAccesoTotal(i.inscripcion_id, 'quitar-acceso-total', i.nombre)")
+  expect(tab).toContain("cambiarAccesoTotal(i, 'abrir-todo')")
+  expect(tab).toContain("cambiarAccesoTotal(i, 'quitar-acceso-total')")
+  // «Vigente» con los MISMOS filtros del candado, curso publicado incluido.
+  expect(tab).toContain('function accesoVigente(i: CursoInscrito, publicado: boolean): boolean')
+  expect(tab).toContain('if (!publicado) return false')
+  expect(tab).not.toMatch(/accesoVigente\(i\)/)
+  // Las acciones de la fila hacen wrap (4 botones no caben a 360 px).
+  expect(tab).toContain('<div className="flex flex-wrap items-center gap-1">')
+  // Antes del clic se dice qué abre «Asignar»; el aviso de ficha sin precio va
+  // en rojo y dura lo bastante para leerse.
+  expect(tab).toMatch(/apertura === 'total'\s*\?\s*<>Este curso es de <strong>pago único<\/strong>/)
+  expect(tab).toMatch(/if \(json\.sin_precio\) \{\s*onError\([\s\S]*?, AVISO_MS\)/)
+  expect(tab).toContain("onError('No hay alumnos activos que asignar')")
+  expect(tab).not.toMatch(/alumnos activos \(\{totalActivos\}\)/)
   // «+ Abrir mes» y «−» no se ofrecen con acceso total.
   expect(tab).toMatch(/i\.acceso_total \? \(\s*<button[\s\S]*?Quitar acceso total[\s\S]*?\) : \(\s*<>[\s\S]*?\+ Abrir mes/)
   // La confirmación masiva da el número de nuevos y, en pago único, ACCESO TOTAL.
@@ -200,7 +270,26 @@ test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dic
   const ruta = sinComentariosTs(leer('src/app/api/admin/cursos/[id]/inscripciones/route.ts'))
   expect(ruta).toContain("supabase.rpc('curso_inscribir_todos', { p_curso_id: params.id, p_simular: true })")
   expect(ruta).toMatch(/p_esperados: esperados/)
-  expect(plano(cuerpo(MIG, 'curso_inscribir_todos'))).toContain('IF p_esperados IS NOT NULL AND p_esperados <> v_n THEN RAISE EXCEPTION')
+  // Número Y regla son obligatorios, en la ruta y en SQL (una llamada a mano no
+  // abre acceso total sin confirmación), y el 40001 habla en palabras.
+  expect(ruta).toMatch(/if \(reglaEsperada === null\) \{\s*return NextResponse\.json\([^\n]*\{ status: 400 \}\)/)
+  const todos = plano(cuerpo(MIG, 'curso_inscribir_todos'))
+  expect(todos).toContain("IF p_esperados IS NULL OR p_regla_esperada IS NULL OR p_regla_esperada NOT IN ('total', 'mes1') THEN RAISE EXCEPTION")
+  expect(todos.indexOf('IF p_simular THEN')).toBeLessThan(todos.indexOf('IF p_esperados IS NULL'))
+  expect(todos).toContain('IF p_esperados <> v_n THEN RAISE EXCEPTION')
+  expect(todos).toContain("CASE v_regla WHEN 'total' THEN 'el curso completo (acceso total)' ELSE 'solo el mes 1' END")
   const pagina = sinComentariosTs(leer('src/app/(dashboard)/admin/cursos/[id]/page.tsx'))
   expect(pagina).toContain('apertura={aperturaAlAsignar(curso)}')
+  expect(pagina).toContain('publicado={publicado}')
+})
+
+test('8. CHECK 15 detecta un C3b revertido, no solo uno ausente', () => {
+  const chk = leer('scripts/post-setup-check.sql')
+  const c15 = chk.slice(chk.indexOf('CHECK 15'))
+  for (const f of ['curso_ventana_limite(uuid,uuid)', 'curso_abrir_mes(uuid,integer)', 'curso_cerrar_mes(uuid,integer)', 'reporte_curso_inscripciones()']) {
+    expect(c15).toContain(`'${f}'`)
+  }
+  expect(c15).toContain("strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'acceso_total') = 0")
+  expect(c15).toContain("has_function_privilege('authenticated', 'public.curso_ventana_limite(uuid,uuid)', 'EXECUTE')")
+  expect(c15).toContain('❌ C3b REVERTIDO')
 })

@@ -28,10 +28,15 @@ export async function GET(
     }
     const fila = (Array.isArray(data) ? data[0] : data) as
       { agregados?: number; total_activos?: number; regla?: string } | null
+    // Ficha sin precio (0/0): la masiva abre el mes 1 aunque el registro anuncie
+    // un pago único con el precio de config.ts. La confirmación lo dice.
+    const { data: curso } = await supabase
+      .from('cursos').select('precio_inscripcion, precio_mensualidad').eq('id', params.id).maybeSingle()
     return NextResponse.json({
       nuevos: fila?.agregados ?? 0,
       totalActivos: fila?.total_activos ?? 0,
       regla: fila?.regla ?? null,
+      sinPrecio: precioCursoNumerico(curso ?? {}).tipo === 'informes',
     })
   } catch (err) {
     console.error('[GET /api/admin/cursos/[id]/inscripciones]', err)
@@ -41,8 +46,10 @@ export async function GET(
 
 // ─── POST /api/admin/cursos/[id]/inscripciones ────────────────────────────────
 // body { alumno_id }                          → asignar un alumno
-// body { todos_activos: true, esperados: n }  → asignar a todos los alumnos activos
-//   (`esperados` = el número que el admin confirmó; si hoy son otros, 409)
+// body { todos_activos: true, esperados: n, regla_esperada: 'total' | 'mes1' }
+//   → asignar a todos los alumnos activos. `esperados` y `regla_esperada` son lo
+//   que el admin confirmó (cuántos y qué se abre, D3): los dos son obligatorios,
+//   y si hoy son otros, 409.
 //
 // Asignar ABRE ACCESO con la regla del curso (C3b, #183): pago único → acceso
 // total; mensual o sin precio → el mes 1. La decisión vive en SQL
@@ -73,6 +80,9 @@ export async function POST(
         return NextResponse.json({ error: 'Falta `esperados`: el número de alumnos que confirmaste' }, { status: 400 })
       }
       const reglaEsperada = body.regla_esperada === 'total' || body.regla_esperada === 'mes1' ? body.regla_esperada : null
+      if (reglaEsperada === null) {
+        return NextResponse.json({ error: "Falta `regla_esperada`: lo que confirmaste que se abre ('total' o 'mes1')" }, { status: 400 })
+      }
       const { data, error } = await supabase.rpc('curso_inscribir_todos', {
         p_curso_id: params.id,
         p_esperados: esperados,

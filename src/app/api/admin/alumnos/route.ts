@@ -12,6 +12,8 @@ import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 import { limiteVentana, hayModuloVisible } from '@/lib/cursos/acceso'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
+import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
+import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
 
 // ─── Verificar rol ADMIN (normaliza mayúsculas) ───────────────────────────────
 async function checkAdmin(userId: string): Promise<boolean> {
@@ -387,14 +389,14 @@ export async function POST(request: NextRequest) {
     // mano con el UUID de un curso en borrador no debe inscribir a nadie.
     const admin = createAdminClient()
 
-    let cursosValidados: string[] = []
+    let cursosValidados: { id: string; nombre: string; precio_inscripcion: number | null; precio_mensualidad: number | null }[] = []
     if (cursosIds.length > 0) {
       const { data: publicados } = await admin
         .from('cursos')
-        .select('id')
+        .select('id, nombre, precio_inscripcion, precio_mensualidad')
         .in('id', cursosIds)
         .eq('estado', 'publicado')
-      cursosValidados = ((publicados ?? []) as { id: string }[]).map(c => c.id)
+      cursosValidados = (publicados ?? []) as typeof cursosValidados
       if (cursosValidados.length === 0) {
         return NextResponse.json(
           { error: 'Los cursos seleccionados ya no están disponibles. Elige otros.' },
@@ -522,22 +524,41 @@ export async function POST(request: NextRequest) {
     // el mes 1 en uno mensual o sin precio, y deja el evento con actor. Es el
     // admin dando de alta a alguien que ya pagó; el registro público, en
     // cambio, sigue creando la inscripción con 0 meses (register-complete).
+    //
+    // La respuesta dice qué abrió cada curso y si su ficha está sin precio (0/0:
+    // se abrió el mes 1 aunque la escuela haya cobrado un pago único), igual que
+    // «Asignar». Y si alguno falló, el porqué (p. ej. la migración que falta).
     let cursosAsignados = 0
-    for (const curso_id of cursosValidados) {
-      const { error: insError } = await supabase.rpc('curso_inscribir', {
-        p_curso_id: curso_id, p_alumno_id: newUserId,
+    let cursosError: string | null = null
+    const cursosResultado: { curso_id: string; nombre: string; acceso_total: boolean; sin_precio: boolean }[] = []
+    for (const curso of cursosValidados) {
+      const { data: insData, error: insError } = await supabase.rpc('curso_inscribir', {
+        p_curso_id: curso.id, p_alumno_id: newUserId,
       })
       if (insError && insError.code !== '23505') {
         // No es fatal: el alumno ya existe y es válido. Tumbar el alta por esto
         // dejaría una cuenta de Auth huérfana; el admin puede inscribirlo desde
         // la ficha. Se registra para que quede rastro.
         console.error('[POST /api/admin/alumnos] curso_inscribir:', insError.message)
-      } else {
-        cursosAsignados++
+        cursosError ??= errorDeRpcCurso(insError).mensaje
+        continue
       }
+      cursosAsignados++
+      const fila = (Array.isArray(insData) ? insData[0] : insData) as { acceso_total?: boolean } | null
+      cursosResultado.push({
+        curso_id: curso.id,
+        nombre: curso.nombre,
+        acceso_total: fila?.acceso_total === true,
+        sin_precio: precioCursoNumerico(curso).tipo === 'informes',
+      })
     }
 
-    return NextResponse.json({ ...(alumno ?? {}), cursos_asignados: cursosAsignados }, { status: 201 })
+    return NextResponse.json({
+      ...(alumno ?? {}),
+      cursos_asignados: cursosAsignados,
+      cursos_resultado: cursosResultado,
+      cursos_error: cursosError,
+    }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/admin/alumnos]', err)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })

@@ -35,6 +35,12 @@
 -- curso_progreso y storage.objects llaman a curso_ventana_limite (B2) y heredan
 -- el cambio solas.
 --
+-- RE-CORRER B2, B3, B4 O B6 DESPUÉS YA NO LA REVIERTE: cada una guarda las
+-- versiones vigentes de las funciones que comparte con esta migración y las
+-- restaura al final (B2, además, vuelve a quitar el EXECUTE del techo). El
+-- CHECK 15 de scripts/post-setup-check.sql comprueba el candado, abrir/cerrar
+-- mes, el reporte y el REVOKE.
+--
 -- IDEMPOTENTE Y RE-EJECUTABLE. En transacción. Requiere B1–B4 y B6.
 -- Aplicar por conexión directa o pooler en MODO SESIÓN (5432, NUNCA 6543).
 -- ============================================================================
@@ -121,13 +127,12 @@ LANGUAGE sql
 IMMUTABLE
 SET search_path = public
 AS $$
+  -- NUMERIC admite 'NaN' y en Postgres NaN es MAYOR que todo. En TypeScript,
+  -- Number('NaN') > 0 es falso: cada precio 'NaN' cuenta como 0, uno por uno,
+  -- igual que en precioCursoNumerico (2490/NaN = pago único; NaN/0 = sin precio).
   SELECT CASE
-    -- NUMERIC admite 'NaN' y en Postgres NaN es MAYOR que todo: sin esta rama,
-    -- un precio 'NaN' abría acceso total mientras la página (Number('NaN') > 0
-    -- es falso) decía «Pide informes».
-    WHEN p_inscripcion = 'NaN' OR p_mensualidad = 'NaN' THEN 'mes1'
-    WHEN COALESCE(p_mensualidad, 0) > 0 THEN 'mes1'
-    WHEN COALESCE(p_inscripcion, 0) > 0 THEN 'total'
+    WHEN COALESCE(NULLIF(p_mensualidad, 'NaN'), 0) > 0 THEN 'mes1'
+    WHEN COALESCE(NULLIF(p_inscripcion, 'NaN'), 0) > 0 THEN 'total'
     ELSE 'mes1'
   END;
 $$;
@@ -254,6 +259,8 @@ $$;
 --                        admin asignó, se dio de alta a alguien…), 40001 y nada;
 --   p_regla_esperada  → la regla que la confirmación le dijo ('total' o 'mes1'):
 --                        si alguien cambió el precio en medio, 40001 y nada.
+-- Sin simular, los DOS son obligatorios (22023): sin ellos no hay con qué
+-- comparar, y una llamada a mano abriría acceso total sin que nadie lo confirmara.
 DROP FUNCTION IF EXISTS public.curso_inscribir_todos(UUID);
 DROP FUNCTION IF EXISTS public.curso_inscribir_todos(UUID, INTEGER, BOOLEAN);
 CREATE OR REPLACE FUNCTION public.curso_inscribir_todos(
@@ -304,13 +311,21 @@ BEGIN
     RETURN;
   END IF;
 
-  IF p_regla_esperada IS NOT NULL AND p_regla_esperada <> v_regla THEN
+  IF p_esperados IS NULL OR p_regla_esperada IS NULL OR p_regla_esperada NOT IN ('total', 'mes1') THEN
     RAISE EXCEPTION
-      'La confirmación decía que se abriría «%» y el curso hoy abre «%» (alguien cambió su precio). Vuelve a abrir la asignación masiva.',
-      p_regla_esperada, v_regla USING ERRCODE = '40001';
+      'Falta lo que confirmó el administrador: cuántos alumnos y qué se abre. Vuelve a abrir la asignación masiva.'
+      USING ERRCODE = '22023';
   END IF;
 
-  IF p_esperados IS NOT NULL AND p_esperados <> v_n THEN
+  IF p_regla_esperada <> v_regla THEN
+    RAISE EXCEPTION
+      'La confirmación decía que se abriría %, y hoy el curso abre % (alguien cambió su precio). Vuelve a abrir la asignación masiva.',
+      CASE p_regla_esperada WHEN 'total' THEN 'el curso completo (acceso total)' ELSE 'solo el mes 1' END,
+      CASE v_regla WHEN 'total' THEN 'el curso completo (acceso total)' ELSE 'solo el mes 1' END
+      USING ERRCODE = '40001';
+  END IF;
+
+  IF p_esperados <> v_n THEN
     RAISE EXCEPTION
       'La confirmación decía % alumno(s) nuevo(s) y hoy son %. Vuelve a abrir la asignación masiva para ver el número actual.',
       p_esperados, v_n USING ERRCODE = '40001';

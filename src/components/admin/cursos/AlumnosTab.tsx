@@ -11,22 +11,33 @@ interface AlumnosTabProps {
   inscritos: CursoInscrito[]
   /**
    * Qué abre «Asignar» en ESTE curso, con su precio de hoy (aperturaAlAsignar):
-   * 'total' si es de pago único, 'mes1' si es mensual o no tiene precio. Solo
-   * para los textos: la decisión la toma curso_inscribir en SQL.
+   * 'total' si es de pago único, 'mes1' si es mensual o no tiene precio. Es el
+   * aviso bajo el buscador ANTES del clic; la decisión la toma curso_inscribir
+   * en SQL y el toast dice lo que de verdad abrió.
    */
   apertura: AperturaAlAsignar
+  /** El candado exige curso publicado: en borrador nadie ve nada todavía. */
+  publicado: boolean
   onChanged: (mensaje?: string) => void | Promise<void>
-  onError: (mensaje: string) => void
+  onError: (mensaje: string, duracion?: number) => void
 }
 
-/** ¿La inscripción concede hoy lo que tiene abierto? Los mismos filtros del candado. */
-function accesoVigente(i: CursoInscrito): boolean {
+/** Un aviso que hay que leer (se abrió menos de lo cobrado) no se va en 4 s. */
+const AVISO_MS = 10000
+
+/**
+ * ¿La inscripción concede hoy lo que tiene abierto? Los mismos filtros del
+ * candado (curso_ventana_limite): inscripción activa o completada, vigente, y
+ * curso publicado.
+ */
+function accesoVigente(i: CursoInscrito, publicado: boolean): boolean {
+  if (!publicado) return false
   if (i.estado !== 'activa' && i.estado !== 'completada') return false
   if (i.fecha_vencimiento && i.fecha_vencimiento < new Date().toISOString().slice(0, 10)) return false
   return true
 }
 
-export function AlumnosTab({ cursoId, inscritos, apertura, onChanged, onError }: AlumnosTabProps) {
+export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged, onError }: AlumnosTabProps) {
   const [alumnos, setAlumnos] = useState<AlumnoAdminRow[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
@@ -34,7 +45,7 @@ export function AlumnosTab({ cursoId, inscritos, apertura, onChanged, onError }:
   const [asignandoTodos, setAsignandoTodos] = useState(false)
   // Lo que la masiva haría, contado por el SERVIDOR (D3): cuántos nuevos y con
   // qué regla. La confirmación muestra esto, y la ejecución lo manda de vuelta.
-  const [simulacion, setSimulacion] = useState<{ nuevos: number; totalActivos: number; regla: string | null } | null>(null)
+  const [simulacion, setSimulacion] = useState<{ nuevos: number; totalActivos: number; regla: string | null; sinPrecio?: boolean } | null>(null)
 
   // El buscador usa el endpoint admin existente (usuarios con rol alumno)
   useEffect(() => {
@@ -122,10 +133,10 @@ Esto REVOCA acceso que el alumno ya tenia: ` +
    * bitácora. Quitarlo REVOCA acceso: se confirma antes.
    */
   const cambiarAccesoTotal = async (
-    inscripcionId: string,
-    accion: 'abrir-todo' | 'quitar-acceso-total',
-    nombre: string
+    inscripcion: CursoInscrito,
+    accion: 'abrir-todo' | 'quitar-acceso-total'
   ) => {
+    const { inscripcion_id: inscripcionId, nombre } = inscripcion
     const ok = window.confirm(accion === 'abrir-todo'
       ? `Abrir TODO el curso a ${nombre}.
 
@@ -147,7 +158,9 @@ Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró 
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? 'No se pudo actualizar')
-      onChanged(accion === 'abrir-todo' ? `${nombre}: acceso total al curso` : `${nombre}: se quitó el acceso total`)
+      onChanged(accion === 'abrir-todo'
+        ? `${nombre}: acceso total al curso${sinEfectoHoy(inscripcion)}`
+        : `${nombre}: se quitó el acceso total`)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo actualizar')
     } finally {
@@ -192,15 +205,19 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       .slice(0, 8)
   }, [busqueda, alumnos, inscritosIds])
 
-  const totalActivos = useMemo(
-    () => (alumnos ?? []).filter(a => a.activo).length,
-    [alumnos]
-  )
   // El número de la confirmación masiva lo da el servidor (simulación): la
   // lista de /api/admin/alumnos no sirve para contar (tope de 1000 filas, omite
-  // a quien no tiene usuario, y sale en 0 si falla la carga).
+  // a quien no tiene usuario, y sale en 0 si falla la carga). Por eso el botón
+  // ya no muestra un conteo propio.
   const nuevosActivos = simulacion?.nuevos ?? 0
-  const esPagoUnico = simulacion ? simulacion.regla === 'total' : apertura === 'total'
+  const esPagoUnico = simulacion?.regla === 'total'
+
+  /** Lo que se abrió no se ve hoy si el curso está en borrador o la inscripción no está vigente. */
+  function sinEfectoHoy(i?: CursoInscrito): string {
+    if (!publicado) return ' (lo verá cuando publiques el curso)'
+    if (i && !accesoVigente(i, publicado)) return ' (sin efecto hasta que su inscripción esté activa y vigente)'
+    return ''
+  }
 
   async function abrirMasiva() {
     setAsignandoTodos(true)
@@ -208,6 +225,10 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones?simular=todos`)
       const json = await res.json().catch(() => ({} as { error?: string }))
       if (!res.ok) throw new Error(json.error ?? 'No se pudo contar a los alumnos activos')
+      if (!json.totalActivos) {
+        onError('No hay alumnos activos que asignar')
+        return
+      }
       if (!json.nuevos) {
         onError(`Nadie nuevo que asignar: los ${json.totalActivos} alumnos activos ya están en el curso`)
         return
@@ -237,10 +258,14 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       if (!res.ok) throw new Error(json.error ?? 'Error al asignar')
       // Lo que se abrió lo decide el servidor con el precio del curso: se dice tal cual.
       onChanged(json.acceso_total
-        ? `${nombre} asignado: acceso total al curso (pago único)`
-        : json.sin_precio
-          ? `${nombre} asignado: mes 1 abierto (el curso no tiene precio; si cobraste un pago único, usa «Abrir todo»)`
-          : `${nombre} asignado: mes 1 abierto`)
+        ? `${nombre} asignado: acceso total al curso (pago único)${sinEfectoHoy()}`
+        : `${nombre} asignado: mes 1 abierto${sinEfectoHoy()}`)
+      // Ficha sin precio: se abrió el mes 1 aunque el registro anuncie un pago
+      // único con el precio de config.ts. Es un aviso, no un éxito: en rojo y
+      // con tiempo para leerlo.
+      if (json.sin_precio) {
+        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila y ponle precio al curso.`, AVISO_MS)
+      }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Error al asignar')
     } finally {
@@ -312,9 +337,17 @@ Se borra su inscripción y deja de ver el curso.
             style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: '#fff' }}
           >
             <Users className="w-3.5 h-3.5" />
-            Asignar a todos los alumnos activos ({totalActivos})
+            Asignar a todos los alumnos activos
           </button>
         </div>
+
+        {/* Qué abre «Asignar» ANTES del clic (C3b): en pago único, todo el curso. */}
+        <p className="text-xs px-1" style={{ color: 'var(--color-texto-secundario)' }}>
+          {apertura === 'total'
+            ? <>Este curso es de <strong>pago único</strong>: «Asignar» le abre <strong>todo el curso</strong> (acceso total).</>
+            : <>«Asignar» le abre el <strong>mes 1</strong>. Si cobraste un pago único, usa «Abrir todo» en su fila.</>}
+          {!publicado && <> El curso está en <strong>borrador</strong>: nadie lo ve hasta que lo publiques.</>}
+        </p>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9CA3AF' }} />
@@ -413,8 +446,9 @@ Se borra su inscripción y deja de ver el curso.
                 {/* Ventana de pago: lo que el alumno ve hoy */}
                 {i.acceso_total ? (
                   // Solo cuenta con la inscripción activa o completada y vigente,
-                  // como el candado (curso_ventana_limite): si no, se dice.
-                  accesoVigente(i) ? (
+                  // y el curso publicado, como el candado (curso_ventana_limite):
+                  // si no, se dice.
+                  accesoVigente(i, publicado) ? (
                     <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
                       style={{ background: 'rgba(16,185,129,0.12)', color: '#047857' }}
                       title="Pago único: ve el curso completo, también los módulos que se agreguen">
@@ -423,7 +457,9 @@ Se borra su inscripción y deja de ver el curso.
                   ) : (
                     <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
                       style={{ background: 'rgba(148,163,184,0.15)', color: '#475569' }}
-                      title="Tiene acceso total, pero su inscripción no está vigente: hoy no ve nada">
+                      title={publicado
+                        ? 'Tiene acceso total, pero su inscripción no está vigente: hoy no ve nada'
+                        : 'Tiene acceso total, pero el curso está en borrador: lo verá cuando lo publiques'}>
                       Acceso total (sin efecto)
                     </span>
                   )
@@ -435,10 +471,12 @@ Se borra su inscripción y deja de ver el curso.
                   </span>
                 )}
 
-                <div className="flex items-center gap-1 flex-shrink-0">
+                {/* flex-wrap también aquí: con «Abrir todo» son 4 botones y a
+                    360 px no caben en una línea. */}
+                <div className="flex flex-wrap items-center gap-1">
                   {i.acceso_total ? (
                     <button
-                      onClick={() => cambiarAccesoTotal(i.inscripcion_id, 'quitar-acceso-total', i.nombre)}
+                      onClick={() => cambiarAccesoTotal(i, 'quitar-acceso-total')}
                       disabled={ocupadoId === i.inscripcion_id}
                       title="Quitar el acceso total (revoca acceso)"
                       className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
@@ -467,7 +505,7 @@ Se borra su inscripción y deja de ver el curso.
                         + Abrir mes
                       </button>
                       <button
-                        onClick={() => cambiarAccesoTotal(i.inscripcion_id, 'abrir-todo', i.nombre)}
+                        onClick={() => cambiarAccesoTotal(i, 'abrir-todo')}
                         disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
                         title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala primero` : 'Acceso total: todo el curso (pago único)'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
@@ -513,8 +551,10 @@ Se borra su inscripción y deja de ver el curso.
             Se asignará este curso a <strong>{nuevosActivos}</strong> alumno(s) activo(s) nuevo(s)
             ({(simulacion?.totalActivos ?? 0) - nuevosActivos} ya estaban asignados y no se tocan).{' '}
             {esPagoUnico
-              ? <>Como el curso es de <strong>pago único</strong>, cada uno tendrá <strong>ACCESO TOTAL</strong> al curso completo desde ahora.</>
+              ? <>Como el curso es de <strong>pago único</strong>, cada uno tendrá <strong>ACCESO TOTAL</strong> al curso completo.</>
               : <>A cada uno se le abre el <strong>mes 1</strong>.</>}
+            {simulacion?.sinPrecio && <> El curso <strong>no tiene precio</strong> en su ficha: si cobraste un pago único, ponle precio antes de asignar.</>}
+            {!publicado && <> El curso está en <strong>borrador</strong>: lo verán cuando lo publiques.</>}
             {' '}¿Continuar?
           </>
         }

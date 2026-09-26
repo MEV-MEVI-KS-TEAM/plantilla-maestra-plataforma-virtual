@@ -69,8 +69,8 @@ export default function EditorCursoPage() {
     await cargar()
   }, [cargar, showToast])
 
-  const onError = useCallback((mensaje: string) => {
-    showToast(mensaje, 'error')
+  const onError = useCallback((mensaje: string, duracion?: number) => {
+    showToast(mensaje, 'error', duracion)
   }, [showToast])
 
   // El examen no forma parte de CursoDetalle: avisa sin refetchear el curso.
@@ -199,7 +199,7 @@ export default function EditorCursoPage() {
 
       {tab === 'alumnos' && (
         <AlumnosTab cursoId={curso.id} inscritos={inscritos} apertura={aperturaAlAsignar(curso)}
-          onChanged={onChanged} onError={onError} />
+          publicado={publicado} onChanged={onChanged} onError={onError} />
       )}
 
       {tab === 'publicacion' && (
