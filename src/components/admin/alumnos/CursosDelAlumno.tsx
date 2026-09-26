@@ -30,7 +30,7 @@ export function precioDeReferencia(f: Pick<FilaCursoAlumno, 'precio_referencia' 
   const de = origen === 'inscripcion' ? 'precio al asignar' : 'ficha de hoy'
   if (f.resumen.tipo === 'unico') return `${fmt(inscripcion)} pago único · ${de}`
   if (f.resumen.tipo === 'mensual') return `${inscripcion > 0 ? `${fmt(inscripcion)} + ` : ''}${fmt(mensualidad)}/mes · ${de}`
-  return `Sin precio en la ficha · ${de}`
+  return f.precio_referencia.origen === 'inscripcion' ? 'Sin precio al asignar' : 'Sin precio en la ficha de hoy'
 }
 
 export function CursosDelAlumno({
@@ -73,6 +73,7 @@ export function CursosDelAlumno({
             </div>
             <button
               onClick={() => onCobrar(f)}
+              aria-label={`Cobrar ${f.curso_tipo === 'diplomado' ? 'el diplomado' : 'el curso'} ${f.curso_nombre}`}
               className="flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
               style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}
             >

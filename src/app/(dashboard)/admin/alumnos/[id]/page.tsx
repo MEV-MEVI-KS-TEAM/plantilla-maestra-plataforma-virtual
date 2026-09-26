@@ -232,6 +232,8 @@ export default function AlumnoDetallePage() {
   // D17 (#207-6): los cursos del alumno (tarjeta «Cursos») y el que se está cobrando.
   const [cursosAlumno, setCursosAlumno] = useState<FilaCursoAlumno[]>([])
   const [cobroCurso, setCobroCurso] = useState<FilaCursoAlumno | null>(null)
+  // «¿A qué se aplica?» del modal del programa: 'programa' o el id de una inscripción.
+  const [destinoPago, setDestinoPago] = useState('programa')
   const [registrandoPago, setRegistrandoPago] = useState(false)
   const [pagoError, setPagoError] = useState<string | null>(null)
   const [pagoForm, setPagoForm] = useState({
@@ -353,6 +355,8 @@ export default function AlumnoDetallePage() {
       const montoEliminado = Number(pagoAEliminar.monto)
       setPagoAEliminar(null)
       await cargarPagos()
+      // Si era de un curso, la tarjeta «Cursos» (pagado, saldo, «falta abrir») cambia.
+      void cargarCursos()
       showToast(`🗑️ Pago de ${fmtMoneda(montoEliminado)} eliminado`, 'info')
       // D10: si ese pago abrió acceso, borrarlo NO lo revoca. La API lo dice
       // (desde la bitácora) y aquí se muestra, en rojo y con tiempo para leerlo.
@@ -568,6 +572,8 @@ export default function AlumnoDetallePage() {
 
   async function handleRegistrarPago(e: React.FormEvent) {
     e.preventDefault()
+    // Con un curso elegido en «¿A qué se aplica?» esto NO registra nada en el programa.
+    if (destinoPago !== 'programa') return
     setPagoError(null)
     const montoNum = Number(pagoForm.monto)
     if (!Number.isFinite(montoNum) || montoNum <= 0) {
@@ -913,7 +919,13 @@ export default function AlumnoDetallePage() {
             </span>
           </div>
           <button
-            onClick={() => { setModalRegistrarPago(true); setPagoError(null) }}
+            onClick={() => {
+              // Un alumno sin programa escolar (de curso, o sin nivel) con cursos:
+              // por omisión, su curso. El programa se elige a propósito.
+              const sinPrograma = !alumno.nivel || alumno.nivel === 'diplomado'
+              setDestinoPago(sinPrograma && cursosAlumno.length > 0 ? cursosAlumno[0].inscripcion_id : 'programa')
+              setModalRegistrarPago(true); setPagoError(null)
+            }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
             style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.22)' }}
@@ -1875,7 +1887,7 @@ export default function AlumnoDetallePage() {
           alumnoNombre={alumno.usuario.nombre_completo}
           moneda={codigoMoneda(CONFIG.moneda)}
           fmt={fmtMoneda}
-          onClose={() => setCobroCurso(null)}
+          onClose={() => { setCobroCurso(null); void cargarCursos() }}
           onCobrado={async (mensaje) => {
             setCobroCurso(null)
             showToast(mensaje, 'success')
@@ -1913,11 +1925,8 @@ export default function AlumnoDetallePage() {
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>¿A qué se aplica?</label>
                   <select
-                    value="programa"
-                    onChange={e => {
-                      const f = cursosAlumno.find(c => c.inscripcion_id === e.target.value)
-                      if (f) { setModalRegistrarPago(false); setPagoError(null); setCobroCurso(f) }
-                    }}
+                    value={destinoPago}
+                    onChange={e => setDestinoPago(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                     style={INPUT_STYLE}
                   >
@@ -1930,6 +1939,29 @@ export default function AlumnoDetallePage() {
                   </select>
                 </div>
               )}
+              {destinoPago !== 'programa' ? (
+                <div className="space-y-3">
+                  <p className="text-xs" style={{ color: '#94A3B8' }}>
+                    Este cobro es del curso: se registra en el curso (y ahí se decide si abre algo), no en el programa.
+                  </p>
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => { setModalRegistrarPago(false); setPagoError(null) }}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+                      style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}>
+                      Cancelar
+                    </button>
+                    <button type="button"
+                      onClick={() => {
+                        const f = cursosAlumno.find(c => c.inscripcion_id === destinoPago)
+                        if (f) { setModalRegistrarPago(false); setPagoError(null); setCobroCurso(f) }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold"
+                      style={{ background: '#10B981', color: '#062B1F' }}>
+                      <DollarSign className="w-4 h-4" />Cobrar este curso
+                    </button>
+                  </div>
+                </div>
+              ) : (<>
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto ({codigoMoneda(CONFIG.moneda)})</label>
                 <input
@@ -2058,6 +2090,7 @@ export default function AlumnoDetallePage() {
                   }
                 </button>
               </div>
+              </>)}
             </form>
           </div>
         </div>

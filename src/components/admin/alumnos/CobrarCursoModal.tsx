@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2, X, DollarSign } from 'lucide-react'
 import { ConfirmDialog } from '@/components/admin/cursos/ConfirmDialog'
 import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
@@ -68,8 +68,24 @@ export function CobrarCursoModal({
   const [abrirTocado, setAbrirTocado] = useState(false)
   const [abrirMarcado, setAbrirMarcado] = useState(p.abrirPorDefecto)
   const [confirmar, setConfirmar] = useState<0 | 1 | 2>(0)
+  // La segunda confirmación no acepta el clic en su primer instante: el segundo
+  // clic de un doble clic en «Continuar» caía en «Sí, cobrar y abrir todo».
+  const [paso2Listo, setPaso2Listo] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (confirmar !== 2) { setPaso2Listo(false); return }
+    const t = setTimeout(() => setPaso2Listo(true), 600)
+    return () => clearTimeout(t)
+  }, [confirmar])
+
+  // Escape cierra (salvo a medio envío: el resultado no se perdería en silencio).
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape' && !enviando && confirmar === 0) onClose() }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [enviando, confirmar, onClose])
 
   const mesNum = concepto === 'curso_mensualidad' && mes !== '' ? Number(mes) : null
   const abre = queAbre(fila, concepto, mesNum)
@@ -129,13 +145,14 @@ export function CobrarCursoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-      <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl max-h-[92vh] overflow-y-auto" style={CARD_STYLE}>
+      <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl max-h-[92vh] overflow-y-auto" style={CARD_STYLE}
+        role="dialog" aria-modal="true" aria-labelledby="cobrar-curso-titulo">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-lg font-bold text-gray-100">Cobrar</h3>
+            <h3 id="cobrar-curso-titulo" className="text-lg font-bold text-gray-100">Cobrar</h3>
             <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>{titulo} · {alumnoNombre}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: '#94A3B8' }} aria-label="Cerrar">
+          <button onClick={onClose} disabled={enviando} className="p-1.5 rounded-lg disabled:opacity-40" style={{ color: '#94A3B8' }} aria-label="Cerrar">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -183,6 +200,16 @@ export function CobrarCursoModal({
           </label>
 
           {p.aviso && <p className="text-xs" style={{ color: '#FBBF24' }}>{p.aviso}</p>}
+          {fila.resumen.pagadoFaltaAbrir && fila.resumen.tipo === 'unico' && (
+            <p className="text-xs" style={{ color: '#FBBF24' }}>
+              Ya pagó el curso completo y no se le ha abierto: ábrelo con «Abrir todo» en la pestaña Alumnos del curso, sin cobrar de nuevo.
+            </p>
+          )}
+          {fila.estado && fila.estado !== 'activa' && (
+            <p className="text-xs" style={{ color: '#FBBF24' }}>
+              La inscripción está {fila.estado}: el cobro se registra, pero no abre nada.
+            </p>
+          )}
 
           {abre ? (
             <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: '#E2E8F0' }}>
@@ -206,7 +233,7 @@ export function CobrarCursoModal({
           )}
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+            <button type="button" onClick={onClose} disabled={enviando} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-40"
               style={{ background: 'rgba(255,255,255,0.05)', color: '#94A3B8', border: '1px solid #2A2F3E' }}>
               Cancelar
             </button>
@@ -231,9 +258,9 @@ export function CobrarCursoModal({
         open={confirmar === 2}
         danger
         title="¿Seguro? Segunda confirmación"
-        message={<>{AVISO_PAGO_UNICO}</>}
+        message={<>Cobrar {Number.isFinite(montoNum) ? fmt(montoNum) : '—'} y abrir TODO el {titulo}. {AVISO_PAGO_UNICO}</>}
         confirmLabel="Sí, cobrar y abrir todo"
-        busy={enviando}
+        busy={enviando || !paso2Listo}
         onConfirm={() => { void enviar() }}
         onCancel={() => setConfirmar(0)}
       />
