@@ -39,6 +39,8 @@ export default function AdminCursosPage() {
   const router = useRouter()
   const { toasts, showToast, removeToast } = useToast()
   const [cursos, setCursos] = useState<CursoListItem[] | null>(null)
+  // D7b: el secretario entra a asignar y abrir; crear y eliminar cursos es del admin.
+  const [esAdmin, setEsAdmin] = useState(true)
   const [aEliminar, setAEliminar] = useState<CursoListItem | null>(null)
   const [borrando, setBorrando] = useState(false)
 
@@ -46,6 +48,7 @@ export default function AdminCursosPage() {
     try {
       const res = await fetch('/api/admin/cursos')
       if (!res.ok) throw new Error()
+      setEsAdmin(res.headers.get('x-rol-visor') !== 'SECRETARIO')
       setCursos(await res.json())
     } catch {
       setCursos([])
@@ -88,14 +91,16 @@ export default function AdminCursosPage() {
             Crea cursos con módulos y lecciones, y asígnalos a tus alumnos.
           </p>
         </div>
-        <button
-          onClick={() => router.push('/admin/cursos/nuevo')}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo curso
-        </button>
+        {esAdmin && (
+          <button
+            onClick={() => router.push('/admin/cursos/nuevo')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo curso
+          </button>
+        )}
       </div>
 
       {/* Estado de carga */}
@@ -115,14 +120,16 @@ export default function AdminCursosPage() {
           <p className="text-sm mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
             Crea tu primer curso o diplomado para empezar.
           </p>
-          <Link
-            href="/admin/cursos/nuevo"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo curso
-          </Link>
+          {esAdmin && (
+            <Link
+              href="/admin/cursos/nuevo"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo curso
+            </Link>
+          )}
         </div>
       )}
 
@@ -176,17 +183,19 @@ export default function AdminCursosPage() {
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
                     style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
                   >
-                    <Pencil className="w-3.5 h-3.5" />
-                    Editar
+                    {esAdmin ? <Pencil className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                    {esAdmin ? 'Editar' : 'Alumnos'}
                   </Link>
-                  <button
-                    onClick={() => setAEliminar(curso)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
-                    style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
-                    aria-label={`Eliminar ${curso.nombre}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {esAdmin && (
+                    <button
+                      onClick={() => setAEliminar(curso)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
+                      style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
+                      aria-label={`Eliminar ${curso.nombre}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

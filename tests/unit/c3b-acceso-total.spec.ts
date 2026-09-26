@@ -187,7 +187,11 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   const ruta = sinComentariosTs(leer('src/app/api/admin/cursos/[id]/inscripciones/route.ts'))
   expect(ruta).toContain("supabase.rpc('curso_inscribir',")
   expect(ruta).toContain("supabase.rpc('curso_inscribir_todos',")
-  expect(ruta).not.toContain('createAdminClient')
+  // Asignar va SIEMPRE por la función SQL con la sesión. El cliente admin solo LEE la
+  // ficha del curso (D7b: con la sesión del secretario la RLS de `cursos` la ocultaba).
+  expect(ruta.match(/createAdminClient\(\)/g)?.length).toBe(2)
+  expect(ruta.match(/createAdminClient\(\)\s*\.from\('cursos'\)\.select\(/g)?.length).toBe(2)
+  expect(ruta).not.toMatch(/createAdminClient\(\)\s*\.(rpc|from\('curso_inscripciones'\))/)
   expect(ruta).not.toMatch(/\.insert\(/)
   const alta = sinComentariosTs(leer('src/app/api/admin/alumnos/route.ts'))
   const post = alta.slice(alta.indexOf('export async function POST'))
@@ -273,7 +277,9 @@ test('6b. errores de las funciones: 23505 → 409, 22P02 → 400, función ausen
 test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dice cuántos y qué (D3)', () => {
   const tab = sinComentariosTs(leer('src/components/admin/cursos/AlumnosTab.tsx'))
   expect(tab).toContain('Acceso total')
-  expect(tab).toContain("cambiarAccesoTotal(i, 'abrir-todo')")
+  // D7b: «Abrir todo» pasa por una doble confirmación con AVISO_PAGO_UNICO.
+  expect(tab).toContain('setConfirmAbrirTodo({ i, paso: 1 })')
+  expect(tab).toContain("cambiarAccesoTotal(confirmAbrirTodo.i, 'abrir-todo')")
   expect(tab).toContain("cambiarAccesoTotal(i, 'quitar-acceso-total')")
   // «Vigente» con los MISMOS filtros del candado, curso publicado incluido.
   expect(tab).toContain('function accesoVigente(i: CursoInscrito, publicado: boolean): boolean')

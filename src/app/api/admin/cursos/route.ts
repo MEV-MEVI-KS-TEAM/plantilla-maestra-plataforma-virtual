@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { getUserRol, verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
 import { signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import type { Curso, CursoListItem } from '@/types/cursos'
@@ -13,8 +13,11 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const denied = await verifyAdmin(supabase, user.id)
+    // La lista la ve el staff (D7b: el secretario asigna y abre desde el curso);
+    // crear (POST) sigue siendo del admin.
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+    const viewerRol = (await getUserRol(supabase, user.id)) === 'SECRETARIO' ? 'SECRETARIO' : 'ADMIN'
 
     const admin = createAdminClient()
 
@@ -58,7 +61,9 @@ export async function GET() {
       })
     )
 
-    return NextResponse.json(items)
+    // El cuerpo sigue siendo el arreglo de siempre; el rol va en una cabecera
+    // para que la pantalla esconda «Nuevo curso» y «Eliminar» al secretario.
+    return NextResponse.json(items, { headers: { 'x-rol-visor': viewerRol } })
   } catch (err) {
     console.error('[GET /api/admin/cursos]', err)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })

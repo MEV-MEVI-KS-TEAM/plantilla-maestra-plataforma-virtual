@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { getMateriasPorMesByModalidad, getMateriasPorMesLicenciatura } from '@/lib/modalidades'
 import { rangoMateriasDelMes } from '@/lib/acceso-materias'
 
@@ -34,15 +35,9 @@ export async function POST(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    // ── Verificar rol ADMIN (case-insensitive, igual que desbloquear-mes) ─────
-    const { data: usuarioAdmin } = await supabase
-      .from('usuarios')
-      .select('rol')
-      .eq('id', user.id)
-      .single()
-
-    const esAdmin = (usuarioAdmin?.rol as string | undefined)?.toLowerCase() === 'admin'
-    if (!esAdmin) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    // ── Staff: admin o secretario, igual que desbloquear-mes (D7b, decisión 6) ─
+    const denied = await verifyStaff(supabase, user.id)
+    if (denied) return denied
 
     // ── Admin client con service role (bypassa RLS) ───────────────────────────
     const admin = createAdminClient()

@@ -51,8 +51,8 @@ function sinPlanEscolar(nivel: string | null | undefined): boolean {
 async function anexarCursoIngreso<T extends { id: string }>(
   admin: ReturnType<typeof createAdminClient>,
   filas: T[],
-  // Asignar (POST inscripciones) y abrir meses son solo de ADMIN. El SECRETARIO
-  // ve la columna pero sin botón ni enlace: /admin/cursos lo manda a /alumno.
+  // Asignar (POST inscripciones) y abrir meses: todo el staff desde D7b
+  // (decisión 6). Queda el parámetro por si un rol futuro solo mira.
   puedeGestionar: boolean,
 ) {
   const sinCurso = {
@@ -141,7 +141,8 @@ export async function GET() {
     // Lectura de la lista: staff (ADMIN o SECRETARIO)
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
-    const esAdmin = await checkAdmin(user.id)
+    // D7b (decisión 6): asignar y abrir cursos es de todo el staff, no solo del admin.
+    const puedeGestionarCursos = true
 
     const admin = createAdminClient()
 
@@ -211,7 +212,7 @@ export async function GET() {
           telefono:             u?.telefono ?? null,
         }
       })
-      return NextResponse.json(await anexarCursoIngreso(admin, result, esAdmin))
+      return NextResponse.json(await anexarCursoIngreso(admin, result, puedeGestionarCursos))
     }
 
     // ── Intento 2: schema antiguo — alumnos.usuario_id → usuarios.id ─────────
@@ -272,7 +273,7 @@ export async function GET() {
           telefono:             u?.telefono ?? null,
         }
       })
-      return NextResponse.json(await anexarCursoIngreso(admin, result2, esAdmin))
+      return NextResponse.json(await anexarCursoIngreso(admin, result2, puedeGestionarCursos))
     }
 
     // ── Fallback: alumnos sin join + usuarios por separado ────────────────────
@@ -317,7 +318,7 @@ export async function GET() {
         telefono:             (u as {telefono?:string|null}|null)?.telefono ?? null,
       })
     }
-    return NextResponse.json(await anexarCursoIngreso(admin, resultFallback, esAdmin))
+    return NextResponse.json(await anexarCursoIngreso(admin, resultFallback, puedeGestionarCursos))
 
   } catch (err) {
     console.error('[GET /api/admin/alumnos] excepción:', err)

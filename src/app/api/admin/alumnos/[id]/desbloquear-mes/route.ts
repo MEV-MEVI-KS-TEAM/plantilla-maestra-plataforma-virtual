@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { getMesesByModalidad } from '@/lib/modalidades'
 
 export async function POST(
@@ -13,15 +14,9 @@ export async function POST(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    // ── Verificar rol ADMIN (case-insensitive) ────────────────────────────────
-    const { data: usuarioAdmin } = await supabase
-      .from('usuarios')
-      .select('rol')
-      .eq('id', user.id)
-      .single()
-
-    const esAdmin = (usuarioAdmin?.rol as string | undefined)?.toLowerCase() === 'admin'
-    if (!esAdmin) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    // ── Staff: admin o secretario (D7b, decisión 6: el secretario también abre) ─
+    const denied = await verifyStaff(supabase, user.id)
+    if (denied) return denied
 
     // ── Usar service role para saltarse RLS ───────────────────────────────────
     const admin = createServiceClient(

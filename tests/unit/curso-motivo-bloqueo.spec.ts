@@ -132,10 +132,12 @@ test('5. «Activado» sale de la ventana real, no de que exista la fila (Bug 106
   expect(page.match(/'Asignando…' : 'Asignar'/g)?.length).toBe(2)
 })
 
-test('5b. el SECRETARIO no recibe botón ni enlace a /admin/cursos (lo manda a /alumno)', () => {
+test('5b. D7b (decisión 6): el SECRETARIO también asigna y abre; los botones siguen detrás de curso_puede_gestionar', () => {
   const api = sinComentarios(leer('src/app/api/admin/alumnos/route.ts'))
-  expect(api).toContain('const esAdmin = await checkAdmin(user.id)')
-  expect(api.match(/anexarCursoIngreso\(admin, \w+, esAdmin\)/g)?.length).toBe(3)
+  expect(api).toContain('const puedeGestionarCursos = true')
+  expect(api.match(/anexarCursoIngreso\(admin, \w+, puedeGestionarCursos\)/g)?.length).toBe(3)
+  // El alta de alumnos (POST) sigue siendo del admin.
+  expect(api).toContain('const isAdmin = await checkAdmin(user.id)')
   expect(api).toContain('curso_puede_gestionar:   puedeGestionar')
   const page = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
   // Cada enlace y cada botón de curso van detrás de curso_puede_gestionar.

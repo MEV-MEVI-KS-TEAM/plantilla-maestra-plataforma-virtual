@@ -105,6 +105,11 @@ export default function EditorCursoPage() {
 
   const { curso, modulos, inscritos } = detalle
   const publicado = curso.estado === 'publicado'
+  // D7b (decisión 6): el secretario asigna, abre y cierra desde «Alumnos»; editar
+  // el curso (contenido, examen, publicación) sigue siendo del admin.
+  const esAdmin = detalle.viewer_rol !== 'SECRETARIO'
+  const tabs = esAdmin ? TABS : TABS.filter(t => t.id === 'alumnos')
+  const tabActiva: Tab = esAdmin ? tab : 'alumnos'
 
   return (
     <div className="space-y-5">
@@ -143,9 +148,9 @@ export default function EditorCursoPage() {
       {/* Pestañas — con scroll horizontal: las cuatro no caben en un móvil */}
       <div className="overflow-x-auto">
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(27,48,104,0.06)', width: 'fit-content' }} role="tablist">
-          {TABS.map(t => {
+          {tabs.map(t => {
             const Icon = t.icon
-            const active = tab === t.id
+            const active = tabActiva === t.id
             return (
               <button
                 key={t.id}
@@ -174,7 +179,7 @@ export default function EditorCursoPage() {
       </div>
 
       {/* Contenido de pestañas */}
-      {tab === 'contenido' && (
+      {tabActiva === 'contenido' && (
         <div className="space-y-5">
           {/* `inscritosActivos` alimenta la advertencia de cambio retroactivo:
               tocar el ritmo con alumnos dentro les mueve la ventana (B2). */}
@@ -193,16 +198,16 @@ export default function EditorCursoPage() {
         </div>
       )}
 
-      {tab === 'examen' && (
+      {tabActiva === 'examen' && (
         <ExamenTab cursoId={curso.id} onExito={onExito} onError={onError} />
       )}
 
-      {tab === 'alumnos' && (
+      {tabActiva === 'alumnos' && (
         <AlumnosTab cursoId={curso.id} inscritos={inscritos} apertura={aperturaAlAsignar(curso)}
-          publicado={publicado} onChanged={onChanged} onError={onError} />
+          publicado={publicado} onChanged={onChanged} onError={onError} esAdmin={esAdmin} />
       )}
 
-      {tab === 'publicacion' && (
+      {tabActiva === 'publicacion' && (
         <PublicacionTab curso={curso} numInscritos={inscritos.length} onChanged={onChanged} onError={onError} />
       )}
     </div>

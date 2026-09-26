@@ -797,7 +797,7 @@ export default function AlumnoDetallePage() {
               {alumno.meses_desbloqueados} de {alumno.plan.duracion_meses} meses desbloqueados
             </p>
           </div>
-          {!esSecretario && (
+          {/* D7b (decisión 6): abrir el mes siguiente también lo hace el secretario. */}
           <div className="flex items-center gap-2 flex-wrap">
             {todosBloqueados ? (
               <div
@@ -820,7 +820,6 @@ export default function AlumnoDetallePage() {
               </button>
             )}
           </div>
-          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -844,7 +843,8 @@ export default function AlumnoDetallePage() {
 
         {/* Acción secundaria, deliberadamente separada de "Abrir Mes N+1":
             corrige el mes mal abierto, no "concluye" nada y no borra avance. */}
-        {!esSecretario && alumno.meses_desbloqueados > 0 && (
+        {/* D7b: cerrar el mes mal abierto (corrección) también el secretario. */}
+        {alumno.meses_desbloqueados > 0 && (
           <div className="flex justify-end pt-3" style={{ borderTop: '1px solid #2A2F3E' }}>
             <button
               onClick={() => { setModalCerrarMes(true); setCerrarMesError(null) }}

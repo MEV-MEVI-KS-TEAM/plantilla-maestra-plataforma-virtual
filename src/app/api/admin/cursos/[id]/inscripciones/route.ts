@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { createAdminClient } from '@/lib/supabase/admin'
+// D7b (decisión 6): asignar —una o a todos— es del staff; la función SQL decide igual.
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
 
@@ -16,7 +18,7 @@ export async function GET(
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    const denied = await verifyAdmin(supabase, user.id)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
     if (request.nextUrl.searchParams.get('simular') !== 'todos') {
       return NextResponse.json({ error: 'Usa ?simular=todos' }, { status: 400 })
@@ -31,7 +33,9 @@ export async function GET(
     // Ficha sin precio (0/0): la masiva abre el mes 1 aunque el registro anuncie
     // un pago único con el precio de config.ts. La confirmación lo dice. Si la
     // ficha no se pudo leer, no se afirma nada.
-    const { data: curso, error: errCurso } = await supabase
+    // Con el cliente admin (ya pasó verifyStaff): la RLS de `cursos` es de admin o
+    // inscritos, y con la sesión del secretario la ficha salía null (D7b).
+    const { data: curso, error: errCurso } = await createAdminClient()
       .from('cursos').select('precio_inscripcion, precio_mensualidad').eq('id', params.id).maybeSingle()
     return NextResponse.json({
       nuevos: fila?.agregados ?? 0,
@@ -69,7 +73,7 @@ export async function POST(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const denied = await verifyAdmin(supabase, user.id)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
 
     const body = await request.json().catch(() => ({}))
@@ -121,7 +125,8 @@ export async function POST(
     // el registro anuncie un pago único con el precio de config.ts: la pantalla
     // lo avisa y ofrece «Abrir todo». Si la ficha no se pudo leer, o se abrió
     // todo, no se afirma nada. `publicado`: en borrador nadie ve nada todavía.
-    const { data: curso, error: errCurso } = await supabase
+    // Con el cliente admin (ya pasó verifyStaff), igual que la simulación (D7b).
+    const { data: curso, error: errCurso } = await createAdminClient()
       .from('cursos').select('nombre, precio_inscripcion, precio_mensualidad, estado').eq('id', params.id).maybeSingle()
     const sinPrecio = !errCurso && curso != null && fila?.acceso_total !== true
       && precioCursoNumerico(curso).tipo === 'informes'

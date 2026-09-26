@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
+import { conActores } from '@/lib/cursos/bitacora'
 import { errorDeRpcCurso, esEstadoInscripcion, fechaValida } from '@/lib/cursos/inscripciones'
 
 // ─── GET /api/admin/inscripciones/[id] ───────────────────────────────────────
-// Vista por inscripción: lo que el admin necesita enfrente para decidir.
+// Vista por inscripción: lo que el staff necesita enfrente para decidir. Desde D7b
+// la ve también el secretario, que abre y cierra (decisión 6).
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -15,7 +17,7 @@ export async function GET(
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    const denied = await verifyAdmin(supabase, user.id)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
 
     const admin = createAdminClient()
@@ -69,12 +71,14 @@ export async function GET(
     const meses = (i.meses_desbloqueados as number) ?? 0
     const accesoTotal = i.acceso_total === true
 
-    // Bitácora: solo la ve el admin (RLS de curso_inscripcion_eventos).
-    const { data: eventos } = await admin
+    // Bitácora (RLS de curso_inscripcion_eventos: se lee con el cliente admin),
+    // con el nombre y el rol de quien hizo cada movimiento (D7b).
+    const { data: eventosCrudos } = await admin
       .from('curso_inscripcion_eventos')
       .select('id, tipo, meses_antes, meses_despues, detalle, actor, created_at')
       .eq('inscripcion_id', params.id)
       .order('created_at', { ascending: false })
+    const eventos = await conActores(admin, (eventosCrudos ?? []) as { actor: string | null }[])
 
     const { data: constancia } = await admin
       .from('curso_constancias')
