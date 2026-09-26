@@ -11,7 +11,7 @@ import { getCarreras } from '@/lib/licenciatura-utils'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
-import { modalidadDeRegistro } from '@/lib/registro-reglas'
+import { modalidadDeRegistro, exigeCursoEnRegistro } from '@/lib/registro-reglas'
 
 export async function POST(request: Request) {
   try {
@@ -79,7 +79,10 @@ export async function POST(request: Request) {
       )
     }
 
-    if (nivel === 'diplomado' && !(typeof body.diplomado_id === 'string' && body.diplomado_id)) {
+    // Solo si el nivel 'diplomado' lo eligió el alumno («Curso o diplomado»). En
+    // solo_cursos lo pone el servidor a todos y el formulario no tiene selector:
+    // exigirlo ahí dejaba a la escuela sin registro público (#213).
+    if (exigeCursoEnRegistro(nivel, nivelForzado) && !(typeof body.diplomado_id === 'string' && body.diplomado_id)) {
       return Response.json(
         { error: 'Selecciona el curso o diplomado al que quieres inscribirte.' },
         { status: 400 },
