@@ -16,6 +16,11 @@
 --       alumno_nombre): si luego lo renombran o lo dan de baja, el diploma dice
 --       quién lo emitió entonces. El evento 'constancia_emitida' también lleva
 --       folio, nombre y rol en su detalle.
+--   (4) EL PREFIJO NO LO INVENTA QUIEN LLAMA: el secretario puede llamar la
+--       función directo (PostgREST, con su sesión) y el folio es PERMANENTE.
+--       Para todos, el prefijo tiene la forma de la flota (MAYÚSCULAS y dígitos,
+--       con guiones entre bloques, hasta 20); y quien NO es admin solo usa el
+--       prefijo que ya trae el libro de folios (estrenar uno es del admin).
 --   (3) CANCELADA = SIN FOLIO, EN EL SERVIDOR: la inscripción se lee con
 --       FOR UPDATE (serializa con «Cancelar inscripción», que también la
 --       bloquea) y una cancelada responde 22023 antes de sacar folio. El folio
@@ -113,6 +118,8 @@ DECLARE
   v_emitido     TIMESTAMPTZ;
   v_actor_nom   TEXT;
   v_actor_rol   TEXT;
+  v_prefijo     TEXT := btrim(p_prefijo);
+  v_libro       TEXT;
 BEGIN
   -- (1) Permiso primero: admin o secretario, con SU sesión.
   IF NOT public.es_staff() THEN  -- D20b: tambien el secretario emite
@@ -137,6 +144,24 @@ BEGIN
   IF FOUND THEN
     RETURN QUERY SELECT v_existente.id, v_existente.folio, v_existente.emitido_en, TRUE;
     RETURN;
+  END IF;
+
+  -- (4) El prefijo, solo cuando va a salir un folio NUEVO (una ya emitida se
+  -- devuelve arriba tal cual): la forma de la flota para todos; el del libro
+  -- para el secretario.
+  IF v_prefijo IS NULL OR length(v_prefijo) > 20 OR v_prefijo !~ '^[A-Z0-9]+(-[A-Z0-9]+)*$' THEN
+    RAISE EXCEPTION 'Prefijo de folio inválido: usa MAYÚSCULAS y dígitos (con guiones entre bloques), hasta 20.'
+      USING ERRCODE = '22023';
+  END IF;
+  IF NOT public.es_admin() THEN
+    SELECT regexp_replace(c.folio, '-[0-9]+$', '') INTO v_libro
+      FROM public.curso_constancias c
+     ORDER BY c.emitido_en DESC NULLS LAST, c.folio DESC
+     LIMIT 1;
+    IF v_libro IS NOT NULL AND v_libro <> v_prefijo THEN
+      RAISE EXCEPTION 'Solo el administrador puede estrenar un prefijo de folio nuevo (el libro usa %).', v_libro
+        USING ERRCODE = '42501';
+    END IF;
   END IF;
 
   -- (3) Una inscripción cancelada no recibe folio.
@@ -177,7 +202,7 @@ BEGIN
     FROM public.usuarios u WHERE u.id = auth.uid();
 
   -- El folio al FINAL, después de todas las guardas (nextval no se deshace).
-  v_folio := public.generar_folio_constancia(p_prefijo);
+  v_folio := public.generar_folio_constancia(v_prefijo);
 
   BEGIN
     INSERT INTO public.curso_constancias

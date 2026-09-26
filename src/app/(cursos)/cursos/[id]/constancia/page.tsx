@@ -33,7 +33,7 @@ interface Constancia {
   calificacion: number | null
 }
 
-type Motivo = 'sin_inscripcion' | 'examen_pendiente' | 'no_aprobado' | 'aprobado_en_emision' | null
+type Motivo = 'sin_inscripcion' | 'examen_pendiente' | 'no_aprobado' | 'aprobado_en_emision' | 'inscripcion_cancelada' | null
 
 const MENSAJE: Record<string, { titulo: string; detalle: string }> = {
   sin_inscripcion: {
@@ -54,6 +54,11 @@ const MENSAJE: Record<string, { titulo: string; detalle: string }> = {
   aprobado_en_emision: {
     titulo: '¡Examen aprobado! Tu constancia está en emisión',
     detalle: 'Tu institución la está preparando. En cuanto la emitan, la verás aquí lista para descargar.',
+  },
+  // D20b: a una inscripción cancelada no se le emite constancia.
+  inscripcion_cancelada: {
+    titulo: 'Tu inscripción a este curso está cancelada',
+    detalle: 'No se emite constancia para una inscripción cancelada. Si crees que es un error, comunícate con tu institución.',
   },
 }
 

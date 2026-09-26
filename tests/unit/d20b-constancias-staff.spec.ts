@@ -38,15 +38,19 @@ test('1. la migración: staff, candado, cancelada sin folio, el folio al final y
   expect(CRUDO.slice(CRUDO.indexOf(MARCA) - 3, CRUDO.indexOf(MARCA) + 60)).toMatch(/^[ -~]+$/)
   expect(SQL).toContain(RETURNS)
   expect(B82).toContain(RETURNS)
-  expect(SQL).not.toContain('public.es_admin()')
-  // Orden: permiso → candado de la inscripción → idempotencia → cancelada → aprobación → folio.
+  // es_admin() solo aparece en la guarda del prefijo (estrenar uno es del admin), nunca como permiso de emitir.
+  expect(SQL.match(/public\.es_admin\(\)/g)).toHaveLength(1)
+  expect(SQL.indexOf('IF NOT public.es_admin() THEN')).toBeLessThan(SQL.indexOf('estrenar un prefijo de folio nuevo'))
+  // Orden: permiso → candado de la inscripción → idempotencia → prefijo → cancelada → aprobación → folio.
   const orden = [
     'IF NOT public.es_staff() THEN',
     'FOR UPDATE;',
     'FROM public.curso_constancias c WHERE c.inscripcion_id = p_inscripcion_id;',
+    "v_prefijo !~ '^[A-Z0-9]+(-[A-Z0-9]+)*$'",
+    'IF v_libro IS NOT NULL AND v_libro <> v_prefijo THEN',
     "IF v_estado = 'cancelada' THEN",
     HUELLA_B82,
-    'v_folio := public.generar_folio_constancia(p_prefijo);',
+    'v_folio := public.generar_folio_constancia(v_prefijo);',
     'INSERT INTO public.curso_constancias',
   ].map(t => SQL.indexOf(t, SQL.indexOf('CREATE OR REPLACE FUNCTION public.curso_emitir_constancia(')))
   for (const i of orden) expect(i).toBeGreaterThan(0)
@@ -108,9 +112,9 @@ test('4. el guardián: CHECK 16 ya no la trata como solo admin; CHECK 20 la vigi
   const c16 = check.slice(check.indexOf('CHECK 16'), check.indexOf('CHECK 17'))
   expect(c16).not.toContain("'curso_emitir_constancia(uuid,text,numeric)'")
   expect(c16).toContain("unnest(ARRAY['curso_cambiar_estado(uuid,text,text)', 'curso_borrar_modulo(uuid)'])")
-  const c20 = check.slice(check.indexOf('CHECK 20'))
+  const c20 = check.slice(check.indexOf('─── CHECK 20'))
   expect(c20).not.toContain("'::regprocedure")
-  for (const h of [HUELLA_B82, MARCA, "IF v_estado = ''cancelada'' THEN", 'FOR UPDATE', 'emitida_por_rol']) {
+  for (const h of [HUELLA_B82, MARCA, "IF v_estado = ''cancelada'' THEN", 'FOR UPDATE', 'emitida_por_rol', 'estrenar un prefijo de folio nuevo']) {
     expect(c20).toContain(`'${h}') > 0`)
   }
   expect(c20).toContain("has_function_privilege('authenticated', 'public.curso_emitir_constancia(uuid,text,numeric)', 'EXECUTE')")
@@ -174,4 +178,18 @@ test('8. los textos del rol dicen la verdad', () => {
   expect(leer('src/app/(dashboard)/admin/usuarios/page.tsx')).not.toContain('registra pagos y ve alumnos (solo lectura)')
   expect(leer('SOLO-CURSOS-ARQUITECTURA.md')).toContain('403 (`es_staff()`)')
   expect(leer('src/lib/cursos/constancia.ts')).toContain('el PERSONAL (admin o secretario, D20b) emite la constancia')
+})
+
+test('9. revisión: el prefijo no lo inventa quien llama; el alumno cancelado no se queda «en emisión»; la bitácora usa la foto', () => {
+  // El folio es permanente: el prefijo se valida y el secretario no estrena uno.
+  expect(SQL).toContain("RAISE EXCEPTION 'Solo el administrador puede estrenar un prefijo de folio nuevo (el libro usa %).', v_libro")
+  expect(SQL).toContain('IF NOT public.es_admin() THEN')
+  const r = leer('src/app/api/alumno/cursos/[id]/constancia/route.ts')
+  const leeConstancia = r.indexOf(".from('curso_constancias')")
+  const cancelada = r.indexOf("motivo: 'inscripcion_cancelada'")
+  expect(cancelada).toBeGreaterThan(leeConstancia)
+  expect(r).toContain(".from('curso_inscripciones')\n      .select('*')")
+  expect(leer('src/app/(cursos)/cursos/[id]/constancia/page.tsx')).toContain("titulo: 'Tu inscripción a este curso está cancelada'")
+  const b = leer('src/lib/cursos/bitacora.ts')
+  expect(b).toContain("actor_nombre: typeof foto?.actor_nombre === 'string' ? foto.actor_nombre : e.actor_nombre,")
 })

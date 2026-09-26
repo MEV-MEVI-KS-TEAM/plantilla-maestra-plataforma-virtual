@@ -31,7 +31,7 @@ type EventoFila = {
   meses_despues: number | null
   actor: string | null
   created_at: string
-  detalle?: { folio?: unknown } | null
+  detalle?: { folio?: unknown; actor_nombre?: unknown; actor_rol?: unknown } | null
 }
 
 /** «administración», «secretaría»; otro rol tal cual; vacío sin rol. */
@@ -139,9 +139,13 @@ export async function ultimosMovimientos(
   const ultimos = new Map<string, EventoFila>()
   for (const e of data) if (!ultimos.has(e.inscripcion_id)) ultimos.set(e.inscripcion_id, e)
   for (const e of await conActores(admin, [...ultimos.values()])) {
+    // D20b: la emisión guarda la FOTO de quién emitió (la misma que el folio y la
+    // ficha); los eventos de antes no la traen y caen en el nombre de hoy.
+    const foto = e.tipo === 'constancia_emitida' ? e.detalle : null
     out.set(e.inscripcion_id, {
       tipo: e.tipo, meses_antes: e.meses_antes, meses_despues: e.meses_despues, created_at: e.created_at,
-      actor_nombre: e.actor_nombre, actor_rol: e.actor_rol,
+      actor_nombre: typeof foto?.actor_nombre === 'string' ? foto.actor_nombre : e.actor_nombre,
+      actor_rol: typeof foto?.actor_rol === 'string' ? foto.actor_rol : e.actor_rol,
       folio: e.tipo === 'constancia_emitida' && typeof e.detalle?.folio === 'string' ? e.detalle.folio : null,
     })
   }

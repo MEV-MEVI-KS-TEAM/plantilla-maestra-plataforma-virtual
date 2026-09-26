@@ -505,6 +505,9 @@ WITH d20b AS (
     CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
          THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), 'emitida_por_rol') > 0
          ELSE false END AS autor,
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), 'estrenar un prefijo de folio nuevo') > 0
+         ELSE false END AS prefijo,
     (SELECT count(*) FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name = 'curso_constancias'
         AND column_name IN ('emitida_por', 'emitida_por_nombre', 'emitida_por_rol')) AS columnas,
@@ -524,7 +527,7 @@ SELECT
   'Constancias del personal (B8.2 + D20b)' AS check_name,
   CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
        ELSE 'función ' || instalada::text || ' / aprobación ' || aprobacion::text || ' / guarda staff ' || guarda_staff::text
-            || ' / cancelada ' || cancelada::text || ' / candado ' || candado::text || ' / autor ' || autor::text
+            || ' / cancelada ' || cancelada::text || ' / candado ' || candado::text || ' / autor ' || autor::text || ' / prefijo ' || prefijo::text
             || ' / columnas ' || columnas::text || ' / anon ejecuta ' || anon_ejecuta::text
             || ' / authenticated ' || auth_ejecuta::text || ' / definer ' || definer::text || ' / versiones ' || versiones::text
   END AS valor,
@@ -534,8 +537,8 @@ SELECT
       THEN '❌ FALTA curso_emitir_constancia → correr B4, B8.2 y D20b (supabase/migrations/20260730150000, 20260730180000 y 20260928130000)'
     WHEN NOT aprobacion
       THEN '❌ B8.2 REVERTIDO (se corrió una copia vieja de B4: sin guarda de aprobación y sin EXECUTE para authenticated) → corre supabase/migrations/20260730180000_b82_emision_manual_con_actor.sql y después supabase/migrations/20260928130000_d20b_constancia_staff.sql'
-    WHEN NOT guarda_staff OR NOT cancelada OR NOT autor OR columnas <> 3
-      THEN '❌ FALTA D20b (o una copia vieja de B8.2 la revirtió: solo el admin emite, una cancelada recibe folio o el folio no guarda su autor) → corre supabase/migrations/20260928130000_d20b_constancia_staff.sql'
+    WHEN NOT guarda_staff OR NOT cancelada OR NOT autor OR NOT prefijo OR columnas <> 3
+      THEN '❌ FALTA D20b (o una copia vieja de B8.2 la revirtió: solo el admin emite, una cancelada recibe folio, el folio no guarda su autor o el prefijo no se valida) → corre supabase/migrations/20260928130000_d20b_constancia_staff.sql'
     WHEN NOT candado OR anon_ejecuta OR NOT auth_ejecuta OR NOT definer OR versiones <> 1
       THEN '❌ EMISIÓN ALTERADA (candado, permisos, definer o sobrecargas) → vuelve a correr supabase/migrations/20260928130000_d20b_constancia_staff.sql'
     ELSE '✅ OK (admin y secretario emiten con su sesión; sin aprobación no hay folio; cancelada sin folio; el folio guarda su autor)'
