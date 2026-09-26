@@ -115,7 +115,9 @@ test('el registro IGNORA body.nivel en solo_cursos, no lo valida', () => {
   // El forzado va PRIMERO en el ?? — si estuviera al revés, body.nivel ganaría.
   expect(src).toContain('nivelForzado ?? body.nivel')
   // Y la modalidad se anula: es la duración del programa, no del diplomado.
-  expect(src).toContain('nivelForzado ? null :')
+  // La regla vive en modalidadDeRegistro() (#212), que recibe el forzado; su
+  // comportamiento se prueba en registro-modalidad.spec.ts.
+  expect(src).toContain('modalidadDeRegistro(nivel, body.modalidad, nivelForzado)')
 })
 
 // ─────────────────── T3: validación de los seis parámetros ───────────────────
