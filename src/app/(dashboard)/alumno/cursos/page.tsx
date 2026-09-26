@@ -6,6 +6,11 @@ import Image from 'next/image'
 import { GraduationCap, Loader2, BookOpen } from 'lucide-react'
 import { ProgressBar } from '@/components/cursos/ProgressBar'
 import type { CursoCatalogoItem } from '@/types/cursos-alumno'
+import { CONFIG } from '@/lib/config'
+import { formatearMoneda } from '@/lib/moneda'
+import { resumenPagosCurso } from '@/lib/cursos/pagos-alumno'
+
+const fmtCurso = (n: number) => formatearMoneda(n, CONFIG, { decimales: 2, conCodigo: true })
 
 function TipoBadge({ tipo }: { tipo: string }) {
   return (
@@ -142,6 +147,12 @@ export default function MisCursosPage() {
                     <BookOpen className="w-3 h-3" />
                     {curso.completadas}/{curso.totalLecciones} lecciones
                   </p>
+                  {/* D19: lo que ha pagado a este curso. */}
+                  {resumenPagosCurso(curso.pagos, fmtCurso) && (
+                    <p className="text-[11px] font-medium" style={{ color: '#047857' }}>
+                      {resumenPagosCurso(curso.pagos, fmtCurso)}
+                    </p>
+                  )}
                 </div>
               </div>
             </button>

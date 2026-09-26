@@ -16,7 +16,7 @@ export async function GET() {
     // Cursos a los que el alumno está inscrito (RLS select propio en inscripciones)
     const { data: inscripciones } = await supabase
       .from('curso_inscripciones')
-      .select('curso_id')
+      .select('id, curso_id')
       .eq('alumno_id', user.id)
 
     const admin = createAdminClient()
@@ -30,6 +30,30 @@ export async function GET() {
       .in('id', cursoIds)
       .order('orden', { ascending: true })
       .order('created_at', { ascending: true })
+
+    // D19 (#207-8, decisión 8): sus pagos de curso, por la FK (cliente admin y
+    // SIEMPRE filtrando por el alumno de la sesión). Sin B1 (sin la columna) o si
+    // falla, sin resumen: el catálogo sale como siempre.
+    const cursoDeInscripcion = new Map((inscripciones ?? []).map(i => [i.id as string, i.curso_id as string]))
+    const { data: pagosCurso, error: errPagos } = await admin
+      .from('pagos')
+      .select('curso_inscripcion_id, monto, fecha_pago, created_at')
+      .eq('alumno_id', user.id)
+      .not('curso_inscripcion_id', 'is', null)
+    const pagosPorCurso = new Map<string, { pagado: number; ultimo: { fecha: string; monto: number } | null }>()
+    if (!errPagos) {
+      for (const p of (pagosCurso ?? []) as Array<{ curso_inscripcion_id: string; monto: number | string; fecha_pago: string | null; created_at: string }>) {
+        const cursoId = cursoDeInscripcion.get(p.curso_inscripcion_id)
+        if (!cursoId) continue
+        const monto = Number(p.monto)
+        if (!Number.isFinite(monto)) continue
+        const fecha = (p.fecha_pago ?? p.created_at ?? '').slice(0, 10)
+        const acc = pagosPorCurso.get(cursoId) ?? { pagado: 0, ultimo: null }
+        acc.pagado += monto
+        if (!acc.ultimo || fecha > acc.ultimo.fecha) acc.ultimo = { fecha, monto }
+        pagosPorCurso.set(cursoId, acc)
+      }
+    }
 
     const items: CursoCatalogoItem[] = await Promise.all(
       (cursos ?? []).map(async curso => {
@@ -49,6 +73,7 @@ export async function GET() {
           totalLecciones: total,
           completadas: completadas.size,
           porcentaje: porcentajeProgreso(completadas.size, total),
+          pagos: pagosPorCurso.get(curso.id as string) ?? null,
         }
       })
     )
