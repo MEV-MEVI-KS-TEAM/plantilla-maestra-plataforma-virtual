@@ -3,6 +3,26 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { destinoSiEsRutaDeProgama, aterrizajeAlumno } from '@/lib/modo'
 import { destinoSiEsRutaDePagoAjena } from '@/lib/periodicidad'
 
+/**
+ * ¿A quien YA tiene sesión y abre esta ruta PÚBLICA se le manda a su panel?
+ *
+ * Sí en /login, /register y compañía: ahí no tiene nada que hacer. Excepciones:
+ * - la landing "/" y el catálogo "/diplomados" son páginas públicas de
+ *   consulta. Un alumno o un admin con sesión abierta que abre el link de un
+ *   diplomado quiere VERLO, no que lo boten a su panel — y ese link circula por
+ *   WhatsApp, así que lo abre gente con y sin sesión indistintamente.
+ * - las rutas de API: una API pública responde lo mismo con o sin sesión.
+ *   Redirigirla le entregaba el HTML del panel a un fetch que espera JSON:
+ *   /admin/alumnos pide el catálogo a /api/catalogo-publico y, con la sesión
+ *   del admin, se quedaba sin la opción «Curso o diplomado» (#211).
+ */
+export function rebotaConSesion(pathname: string): boolean {
+  if (pathname === '/') return false
+  if (pathname.startsWith('/diplomados')) return false
+  if (pathname.startsWith('/api/')) return false
+  return true
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
   const supabase = createServerClient(
@@ -58,14 +78,9 @@ export async function updateSession(request: NextRequest) {
       : request.nextUrl.pathname.startsWith(route)
   )
 
-  // Usuario autenticado intentando acceder a ruta pública → redirigir a su dashboard
-  // Excepciones: la landing "/" y el catálogo "/diplomados" son páginas públicas
-  // de consulta. Un alumno o un admin con sesión abierta que abre el link de un
-  // diplomado quiere VERLO, no que lo boten a su panel — y ese link circula por
-  // WhatsApp, así que lo abre gente con y sin sesión indistintamente.
-  const isLandingRoot = request.nextUrl.pathname === '/'
-  const isCatalogo = request.nextUrl.pathname.startsWith('/diplomados')
-  if (user && isPublicRoute && !isLandingRoot && !isCatalogo) {
+  // Usuario autenticado intentando acceder a ruta pública → redirigir a su
+  // dashboard, salvo las excepciones de rebotaConSesion() (landing, catálogo y APIs).
+  if (user && isPublicRoute && rebotaConSesion(request.nextUrl.pathname)) {
     const { data: usuario } = await supabase
       .from('usuarios')
       .select('rol')
