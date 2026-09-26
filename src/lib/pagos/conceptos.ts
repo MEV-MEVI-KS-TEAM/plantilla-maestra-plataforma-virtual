@@ -60,7 +60,8 @@ const MENSAJE: Readonly<Record<string, string>> = {
   certificacion:     'certificación',
   curso_inscripcion: 'inscripción del curso',
   curso_mensualidad: 'mensualidad del curso',
-  curso_otro:        'pago del curso',
+  // «tu recibo de pago de curso»: con «pago del curso» la frase decía «de pago de pago».
+  curso_otro:        'curso',
 }
 
 /**

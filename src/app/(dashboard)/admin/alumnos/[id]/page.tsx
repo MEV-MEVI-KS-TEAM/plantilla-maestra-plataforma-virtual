@@ -1,7 +1,7 @@
 'use client'
 
 import { CONFIG } from '@/lib/config'
-import { formatearMoneda } from '@/lib/moneda'
+import { codigoMoneda, formatearMoneda } from '@/lib/moneda'
 import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
@@ -1847,7 +1847,7 @@ export default function AlumnoDetallePage() {
 
             <form onSubmit={handleRegistrarPago} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto ({CONFIG.moneda})</label>
+                <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Monto ({codigoMoneda(CONFIG.moneda)})</label>
                 <input
                   type="number"
                   required

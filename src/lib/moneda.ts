@@ -62,14 +62,19 @@ const LOCALE: Record<Moneda, string> = { MXN: 'es-MX', USD: 'en-US' }
  * `{ codigo: 'USD', simbolo, locale, etiqueta }`). Con él, `LOCALE[moneda]` era
  * undefined, Intl lanzaba RangeError y la ficha del alumno tronaba al ver pagos.
  * Acepta el código en texto (con espacios o minúsculas) o un objeto con
- * `codigo`/`code`/`iso`/`moneda`. Lo que no se reconozca cae al respaldo: la
- * moneda de CONFIG cuando se normaliza la de un registro, o 'MXN'.
+ * `codigo`/`code`/`iso`/`moneda`. Lo que no tenga forma de código ISO (tres
+ * letras) cae al respaldo: la moneda de CONFIG cuando se normaliza la de un
+ * registro, o 'MXN'.
+ *
+ * Un código de tres letras que no sea MXN/USD se CONSERVA: la base lo admite
+ * (CHECK pagos_moneda_iso) y antes llegaba tal cual a Intl. Convertirlo en MXN
+ * pintaría pesos sin avisar.
  */
 export function codigoMoneda(valor: unknown, respaldo: Moneda = 'MXN'): Moneda {
   const leer = (v: unknown): Moneda | null => {
     if (typeof v !== 'string') return null
     const c = v.trim().toUpperCase()
-    return c === 'MXN' || c === 'USD' ? c : null
+    return /^[A-Z]{3}$/.test(c) ? (c as Moneda) : null
   }
   const directo = leer(valor)
   if (directo) return directo

@@ -7,6 +7,7 @@ import {
 } from '@/lib/pagos/conceptos'
 import * as inscripciones from '@/lib/cursos/inscripciones'
 import { codigoMoneda, formatearMoneda, avisoMoneda, tieneEquivalencia, equivalenteMXN, type ConfigMoneda } from '@/lib/moneda'
+import { mensajeRecibo } from '@/lib/whatsapp'
 
 /**
  * Bloque D · D4 — etiquetas de concepto con una sola fuente (#207-1), el monto de
@@ -55,6 +56,11 @@ test('#207-1 · cada concepto de curso tiene etiqueta propia, en TS y en la list
   // Los de curso nunca son del programa, y viceversa.
   for (const c of CONCEPTOS_CURSO) expect(esConceptoPrograma(c), c).toBe(false)
   for (const c of CONCEPTOS_PROGRAMA_LECTURA) expect(esConceptoCurso(c), c).toBe(false)
+  // El mensaje del recibo nunca dice «de pago de pago».
+  for (const c of CONCEPTOS_CURSO) {
+    const m = mensajeRecibo({ alumnoNombre: 'Ana', conceptoLabel: etiquetaConcepto(c, 'mensaje'), montoFmt: '$1', url: 'u' })
+    expect(m, c).not.toMatch(/pago de pago/)
+  }
   // cursos/inscripciones.ts re-exporta lo MISMO (no una copia).
   expect(inscripciones.CONCEPTOS_CURSO).toBe(CONCEPTOS_CURSO)
   expect(inscripciones.esConceptoCurso).toBe(esConceptoCurso)
@@ -103,10 +109,20 @@ test('A1 · la moneda guardada como objeto (coacma) no truena: se normaliza a su
   expect(codigoMoneda('USD')).toBe('USD')
   expect(codigoMoneda(' usd ')).toBe('USD')
   expect(codigoMoneda({ code: 'mxn' })).toBe('MXN')
-  expect(codigoMoneda({ codigo: 'EUR' })).toBe('MXN')
+  // Otro código ISO se conserva (antes llegaba tal cual a Intl); lo que no es código, al respaldo.
+  expect(codigoMoneda({ codigo: 'EUR' })).toBe('EUR')
+  expect(codigoMoneda('eur')).toBe('EUR')
+  expect(formatearMoneda(10, { moneda: 'EUR', tipoCambioMXN: 0 } as unknown as ConfigMoneda, { decimales: 2 }))
+    .toBe(new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(10))
+  expect(codigoMoneda('pesos')).toBe('MXN')
+  expect(codigoMoneda({ codigo: 'dolares' }, 'USD')).toBe('USD')
   expect(codigoMoneda(undefined, 'USD')).toBe('USD')
   expect(codigoMoneda(null)).toBe('MXN')
   // Un objeto irreconocible no truena: cae al respaldo.
   const raro = { moneda: { foo: 1 }, tipoCambioMXN: 0 } as unknown as ConfigMoneda
   expect(formatearMoneda(10, raro, { decimales: 2 })).toBe('$10.00')
+  // La etiqueta «Monto (…)» del modal «Registrar pago» de la ficha tampoco pinta el objeto.
+  const ficha = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/[id]/page.tsx'))
+  expect(ficha).toContain('Monto ({codigoMoneda(CONFIG.moneda)})')
+  expect(ficha).not.toContain('{CONFIG.moneda}')
 })
