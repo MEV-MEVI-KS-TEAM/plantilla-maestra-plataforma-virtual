@@ -81,12 +81,14 @@ test('el API valida los cursos contra los PUBLICADOS antes de inscribir', () => 
   expect(apiAlta).toMatch(/from\('cursos'\)[\s\S]{0,200}estado'?\s*,\s*'publicado'/)
 })
 
-test('el API inscribe en curso_inscripciones DENTRO del POST', () => {
+test('el API inscribe DENTRO del POST, con la regla de «Asignar» (curso_inscribir)', () => {
   // `curso_inscripciones` ya se leía en el GET para derivar «curso activado»:
   // buscarlo en todo el archivo daría positivo sin que el alta inscriba nada.
+  // Desde C3b el alta inscribe con curso_inscribir (con la sesión del admin),
+  // que abre todo en un curso de pago único y el mes 1 en uno mensual.
   const post = apiAlta.slice(apiAlta.indexOf('export async function POST'))
-  expect(post).toContain("from('curso_inscripciones')")
-  expect(post).toMatch(/curso_inscripciones'\)[\s\S]{0,120}\.insert\(/)
+  expect(post).toContain("supabase.rpc('curso_inscribir',")
+  expect(post).not.toMatch(/curso_inscripciones'\)[\s\S]{0,120}\.insert\(/)
 })
 
 test('un alta de curso sin curso seleccionado se rechaza antes de crear el usuario', () => {

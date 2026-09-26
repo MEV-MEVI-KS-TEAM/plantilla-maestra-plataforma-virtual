@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { SIGNED_URL_TTL } from './storage'
 import { BUCKET_CURSOS } from './archivos'
 import { limiteVentana, motivoBloqueo, modulosPorAbrir, topeMeses } from './acceso'
+import { conAccesoTotal } from './acceso-total'
 import type { CursoVentana, InscripcionVentana } from './acceso'
 import type { LeccionAlumno, ModuloAlumno, VentanaCurso } from '@/types/cursos-alumno'
 
@@ -154,12 +155,13 @@ export async function resumenVentana(
   alumnoId: string,
   cursoId: string
 ): Promise<VentanaCurso | null> {
-  const { data: insc } = await admin
+  // Con acceso_total si la base ya tiene C3b; sin él, la ventana por meses.
+  const { data: insc } = await conAccesoTotal<InscripcionVentana>('meses_desbloqueados, estado, fecha_vencimiento', campos => admin
     .from('curso_inscripciones')
-    .select('meses_desbloqueados, estado, fecha_vencimiento')
+    .select(campos)
     .eq('curso_id', cursoId)
     .eq('alumno_id', alumnoId)
-    .maybeSingle()
+    .maybeSingle())
 
   if (!insc) return null
 

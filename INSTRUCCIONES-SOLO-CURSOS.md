@@ -78,7 +78,8 @@ Igual que `SETUP.md`, **más el módulo de Cursos, que aquí no es opcional**:
 | Módulo de Cursos | `scripts/migracion-cursos-diplomados.sql` |
 | Examen final | `supabase/migrations/20260728120000_examen_final_cursos.sql` |
 | Parches de seguridad | los tres `20260729*` |
-| Línea Solo-Cursos | los `20260730*`, en orden (B1 → B2 → B3 → B4 → B6 → B7) |
+| Línea Solo-Cursos | los `20260730*`, en orden (B1 → B2 → B3 → B4 → B6 → B7 → B8.2) |
+| Acceso total (C3b) | `supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql`, después de los `20260730*`: «Asignar» abre el curso completo si es de pago único y el mes 1 si no |
 
 > **El schema base de esta línea es `supabase/schema.sql`, a propósito** — no lo
 > cambies por `scripts/schema.sql` aunque `SETUP.md` use ese otro. Solo

@@ -5,6 +5,7 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { removeFolder, signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
+import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import type { Curso, CursoDetalle, CursoInscrito, CursoLeccion, CursoModulo } from '@/types/cursos'
 
 type LeccionRow = Omit<CursoLeccion, 'materialUrl'>
@@ -72,11 +73,19 @@ export async function GET(
     }))
 
     // Inscritos con datos del usuario (alumnos.id = usuarios.id)
-    const { data: inscripciones } = await admin
-      .from('curso_inscripciones')
-      .select('id, alumno_id, created_at, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento')
-      .eq('curso_id', params.id)
-      .order('created_at', { ascending: false })
+    // Con acceso_total si la base ya tiene C3b; sin él, la lista sale igual
+    // (antes, una columna faltante vaciaba «Alumnos asignados»).
+    const { data: inscripciones } = await conAccesoTotal<{
+      id: string; alumno_id: string; created_at: string
+      meses_desbloqueados: number | null; estado: string | null
+      fecha_inscripcion: string | null; fecha_vencimiento: string | null; acceso_total?: boolean | null
+    }[]>(
+      'id, alumno_id, created_at, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento',
+      campos => admin
+        .from('curso_inscripciones')
+        .select(campos)
+        .eq('curso_id', params.id)
+        .order('created_at', { ascending: false }))
 
     const alumnoIds = (inscripciones ?? []).map(i => i.alumno_id)
     let inscritos: CursoInscrito[] = []
@@ -94,6 +103,7 @@ export async function GET(
           id: string; alumno_id: string; created_at: string
           meses_desbloqueados: number | null; estado: string | null
           fecha_inscripcion: string | null; fecha_vencimiento: string | null
+          acceso_total: boolean | null
         }
         return {
           inscripcion_id: row.id,
@@ -107,6 +117,7 @@ export async function GET(
           estado: row.estado ?? 'activa',
           fecha_inscripcion: row.fecha_inscripcion,
           fecha_vencimiento: row.fecha_vencimiento,
+          acceso_total: row.acceso_total === true,
         }
       })
     }

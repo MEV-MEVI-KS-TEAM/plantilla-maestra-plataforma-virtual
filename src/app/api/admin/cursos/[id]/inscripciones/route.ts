@@ -1,11 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
+import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
+
+// ─── GET /api/admin/cursos/[id]/inscripciones?simular=todos ───────────────────
+// Cuántos alumnos activos NUEVOS inscribiría la asignación masiva y con qué regla,
+// sin inscribir a nadie. Es el número que la confirmación le muestra al admin
+// (D3): lo cuenta el servidor con la misma consulta que después inserta.
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    const denied = await verifyAdmin(supabase, user.id)
+    if (denied) return denied
+    if (request.nextUrl.searchParams.get('simular') !== 'todos') {
+      return NextResponse.json({ error: 'Usa ?simular=todos' }, { status: 400 })
+    }
+    const { data, error } = await supabase.rpc('curso_inscribir_todos', { p_curso_id: params.id, p_simular: true })
+    if (error) {
+      const { status, mensaje } = errorDeRpcCurso(error)
+      return NextResponse.json({ error: mensaje }, { status })
+    }
+    const fila = (Array.isArray(data) ? data[0] : data) as
+      { agregados?: number; total_activos?: number; regla?: string } | null
+    // Ficha sin precio (0/0): la masiva abre el mes 1 aunque el registro anuncie
+    // un pago único con el precio de config.ts. La confirmación lo dice. Si la
+    // ficha no se pudo leer, no se afirma nada.
+    const { data: curso, error: errCurso } = await supabase
+      .from('cursos').select('precio_inscripcion, precio_mensualidad').eq('id', params.id).maybeSingle()
+    return NextResponse.json({
+      nuevos: fila?.agregados ?? 0,
+      totalActivos: fila?.total_activos ?? 0,
+      regla: fila?.regla ?? null,
+      sinPrecio: !errCurso && curso != null && fila?.regla !== 'total' && precioCursoNumerico(curso).tipo === 'informes',
+    })
+  } catch (err) {
+    console.error('[GET /api/admin/cursos/[id]/inscripciones]', err)
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+  }
+}
 
 // ─── POST /api/admin/cursos/[id]/inscripciones ────────────────────────────────
-// body { alumno_id }            → asignar un alumno
-// body { todos_activos: true }  → asignar a todos los alumnos activos
+// body { alumno_id }                          → asignar un alumno
+// body { todos_activos: true, esperados: n, regla_esperada: 'total' | 'mes1' }
+//   → asignar a todos los alumnos activos. `esperados` y `regla_esperada` son lo
+//   que el admin confirmó (cuántos y qué se abre, D3): los dos son obligatorios,
+//   y si hoy son otros, 409.
+//
+// Asignar ABRE ACCESO con la regla del curso (C3b, #183): pago único → acceso
+// total; mensual o sin precio → el mes 1. La decisión vive en SQL
+// (curso_inscribir / curso_inscribir_todos) para que sea atómica, deje el evento
+// con actor y sea UNA regla para todas las puertas del admin.
+//
+// ⚠️ SE LLAMA CON LA SESIÓN DEL ADMIN, NO con el cliente admin: las funciones
+// comprueban es_admin(), que usa auth.uid() (con service_role sería NULL y
+// rechazaría al propio administrador). El registro público no pasa por aquí.
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -18,72 +72,68 @@ export async function POST(
     const denied = await verifyAdmin(supabase, user.id)
     if (denied) return denied
 
-    const admin = createAdminClient()
-    const { data: curso } = await admin
-      .from('cursos')
-      .select('id')
-      .eq('id', params.id)
-      .single()
-    if (!curso) return NextResponse.json({ error: 'Curso no encontrado' }, { status: 404 })
-
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
     // ── Asignación masiva a alumnos activos ──────────────────────────────────
     if (body.todos_activos === true) {
-      const { data: activos, error: actError } = await admin
-        .from('alumnos')
-        .select('id')
-        .eq('activo', true)
-      if (actError) return NextResponse.json({ error: actError.message }, { status: 500 })
-
-      const ids = (activos ?? []).map(a => a.id)
-      if (ids.length === 0) {
-        return NextResponse.json({ agregados: 0, totalActivos: 0 })
+      const esperados = typeof body.esperados === 'number' && Number.isInteger(body.esperados) ? body.esperados : null
+      if (esperados === null) {
+        return NextResponse.json({ error: 'Falta `esperados`: el número de alumnos que confirmaste' }, { status: 400 })
       }
-
-      const { data: existentes } = await admin
-        .from('curso_inscripciones')
-        .select('alumno_id')
-        .eq('curso_id', params.id)
-        .in('alumno_id', ids)
-      const yaInscritos = new Set((existentes ?? []).map(e => e.alumno_id))
-      const nuevos = ids.filter(id => !yaInscritos.has(id))
-
-      if (nuevos.length > 0) {
-        const { error: insError } = await admin
-          .from('curso_inscripciones')
-          .insert(nuevos.map(alumno_id => ({ curso_id: params.id, alumno_id })))
-        if (insError) return NextResponse.json({ error: insError.message }, { status: 500 })
+      const reglaEsperada = body.regla_esperada === 'total' || body.regla_esperada === 'mes1' ? body.regla_esperada : null
+      if (reglaEsperada === null) {
+        return NextResponse.json({ error: "Falta `regla_esperada`: lo que confirmaste que se abre ('total' o 'mes1')" }, { status: 400 })
       }
-
-      return NextResponse.json({ agregados: nuevos.length, totalActivos: ids.length })
+      const { data, error } = await supabase.rpc('curso_inscribir_todos', {
+        p_curso_id: params.id,
+        p_esperados: esperados,
+        p_regla_esperada: reglaEsperada,
+      })
+      if (error) {
+        const { status, mensaje } = errorDeRpcCurso(error)
+        return NextResponse.json({ error: mensaje }, { status })
+      }
+      const fila = (Array.isArray(data) ? data[0] : data) as
+        { agregados?: number; total_activos?: number; regla?: string } | null
+      return NextResponse.json({
+        agregados: fila?.agregados ?? 0,
+        totalActivos: fila?.total_activos ?? 0,
+        regla: fila?.regla ?? null,
+      })
     }
 
     // ── Asignación individual ─────────────────────────────────────────────────
     const alumnoId = body.alumno_id as string | undefined
     if (!alumnoId) return NextResponse.json({ error: 'alumno_id es requerido' }, { status: 400 })
 
-    const { data: alumno } = await admin
-      .from('alumnos')
-      .select('id')
-      .eq('id', alumnoId)
-      .single()
-    if (!alumno) return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
-
-    const { data: inscripcion, error } = await admin
-      .from('curso_inscripciones')
-      .insert({ curso_id: params.id, alumno_id: alumnoId })
-      .select()
-      .single()
-
+    const { data, error } = await supabase.rpc('curso_inscribir', {
+      p_curso_id: params.id,
+      p_alumno_id: alumnoId,
+    })
     if (error) {
-      // 23505 = unique_violation en UNIQUE(curso_id, alumno_id)
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'Este alumno ya está asignado al curso' }, { status: 409 })
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      // 23505 = ya estaba asignado (409), P0002 = curso o alumno inexistente (404).
+      const { status, mensaje } = errorDeRpcCurso(error)
+      return NextResponse.json({ error: mensaje }, { status })
     }
-    return NextResponse.json(inscripcion, { status: 201 })
+    const fila = (Array.isArray(data) ? data[0] : data) as
+      { inscripcion_id?: string; acceso_total?: boolean; meses_desbloqueados?: number; regla?: string } | null
+    // ¿La ficha del curso está sin precio (0/0)? Entonces se abrió el mes 1 aunque
+    // el registro anuncie un pago único con el precio de config.ts: la pantalla
+    // lo avisa y ofrece «Abrir todo». Si la ficha no se pudo leer, o se abrió
+    // todo, no se afirma nada. `publicado`: en borrador nadie ve nada todavía.
+    const { data: curso, error: errCurso } = await supabase
+      .from('cursos').select('nombre, precio_inscripcion, precio_mensualidad, estado').eq('id', params.id).maybeSingle()
+    const sinPrecio = !errCurso && curso != null && fila?.acceso_total !== true
+      && precioCursoNumerico(curso).tipo === 'informes'
+    return NextResponse.json({
+      inscripcion_id: fila?.inscripcion_id ?? null,
+      acceso_total: fila?.acceso_total === true,
+      meses_desbloqueados: fila?.meses_desbloqueados ?? 0,
+      regla: fila?.regla ?? null,
+      sin_precio: sinPrecio,
+      publicado: curso?.estado !== undefined ? curso.estado === 'publicado' : null,
+      nombre: curso?.nombre ?? null,
+    }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/admin/cursos/[id]/inscripciones]', err)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })

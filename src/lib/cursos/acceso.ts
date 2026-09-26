@@ -16,6 +16,8 @@
  * `orden ?? algo` suelto en otro archivo es el Bug 61 volviendo a entrar.
  */
 
+import { precioCursoNumerico, type PreciosCurso } from './precio-curso'
+
 /**
  * `orden` sin definir va al FINAL, o sea BLOQUEADO — nunca 0, que lo pondría
  * primero y lo abriría.
@@ -35,6 +37,8 @@ export interface InscripcionVentana {
   meses_desbloqueados?: number | null
   estado?: string | null
   fecha_vencimiento?: string | null
+  /** Pago único (C3b): foto del contrato al asignar. Ver `limiteVentana`. */
+  acceso_total?: boolean | null
 }
 
 export interface CursoVentana {
@@ -83,6 +87,13 @@ export function limiteVentana(
     const hoy = new Date().toISOString().slice(0, 10)
     if (inscripcion.fecha_vencimiento < hoy) return 0
   }
+
+  // Pago único (C3b): la FOTO del contrato al asignar abre el curso completo,
+  // pero SOLO aquí, después de los filtros que fallan cerrado (publicado,
+  // estado, vencimiento): el mismo lugar que el CASE de curso_ventana_limite
+  // en SQL. ORDEN_SIN_DEFINIR (análogo de 2147483647) deja un `orden` sin
+  // definir bloqueado. `=== true`: null o ausente es la ventana por meses.
+  if (inscripcion.acceso_total === true) return ORDEN_SIN_DEFINIR
 
   const meses = inscripcion.meses_desbloqueados
   const porMes = curso.modulos_por_mes
@@ -162,6 +173,21 @@ export function mesDeLiberacion(
  * debajo del límite (base 1 con un módulo por mes, #204) no ve nada.
  */
 export type MotivoBloqueo = 'sin_contenido' | 'no_publicado' | 'no_vigente' | 'vencida' | 'sin_apertura'
+
+/**
+ * Qué se abre al ASIGNAR un curso (C3b, decisiones D1 y D2 de Kevin):
+ *   pago único (solo inscripción > 0)      → 'total': ve el curso completo;
+ *   mensual, o sin precio (0/0)            → 'mes1': se abre el mes 1.
+ * Espejo EXACTO de public.curso_regla_apertura (migración 20260926120000), y
+ * sale de la MISMA regla del catálogo (precioCursoNumerico): lo que la portada
+ * anuncia como «pago único» es lo que abre todo. La prueba de paridad está en
+ * tests/unit/c3b-acceso-total.spec.ts.
+ */
+export type AperturaAlAsignar = 'total' | 'mes1'
+
+export function aperturaAlAsignar(c: PreciosCurso): AperturaAlAsignar {
+  return precioCursoNumerico(c).tipo === 'unico' ? 'total' : 'mes1'
+}
 
 /**
  * Espejo de public.curso_tope_meses (B3): hasta qué mes se puede abrir un

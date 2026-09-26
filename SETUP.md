@@ -122,6 +122,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | 11 | `20260730160000_b6_reportes_por_vertical.sql` | **B6** — ingresos programa vs diplomados |
    | 12 | `20260730170000_b7_estado_cuenta_excluye_diplomado.sql` | **B7** — el estado de cuenta ignora a los de diplomado |
    | 13 | `20260730180000_b82_emision_manual_con_actor.sql` | **B8.2** — emisión manual con actor + guard de aprobación |
+   | 14 | `20260926120000_c3b_acceso_total_cursos.sql` | **C3b** — pago único = acceso total al asignar; «Asignar» abre acceso con la regla del curso (sin ella, el código de hoy no puede asignar) |
 
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
 

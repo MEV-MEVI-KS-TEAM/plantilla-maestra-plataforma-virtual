@@ -68,6 +68,8 @@ export interface CursoInscrito {
   estado: string
   fecha_inscripcion: string | null
   fecha_vencimiento: string | null
+  /** Pago único (C3b): ve el curso completo; los meses no aplican. */
+  acceso_total: boolean
 }
 
 export interface CursoDetalle {

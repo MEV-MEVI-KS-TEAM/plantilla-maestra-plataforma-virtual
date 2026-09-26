@@ -20,6 +20,12 @@ export function errorDeRpcCurso(error: PostgrestError): { status: number; mensaj
       return { status: 404, mensaje }
     case '40001': // serialization_failure — el valor esperado no coincide (doble clic)
       return { status: 409, mensaje }
+    case '23505': // unique_violation — curso_inscribir: el alumno ya estaba asignado
+      return { status: 409, mensaje }
+    case '22P02': // invalid_text_representation — un id que no es UUID
+      return { status: 400, mensaje: 'Identificador inválido.' }
+    case 'PGRST202': // la función no existe en esta base (falta la migración)
+      return { status: 503, mensaje: 'A esta base le falta una migración del módulo de cursos (la función no existe). Revisa la lista 7bis de SETUP.md; el acceso total es supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql.' }
     case '22023': // invalid_parameter_value — tope alcanzado, estado inválido, monto <= 0
       return { status: 422, mensaje }
     default:

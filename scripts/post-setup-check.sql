@@ -239,3 +239,44 @@ SELECT
     ELSE '✅ OK (no admite ' || ids || ': solo hace falta si config.ts vende alguno → correr supabase/migrations/20260925120000_licenciatura_plan_6_meses.sql de la plantilla maestra)'
   END AS resultado
 FROM faltan;
+
+-- ─── CHECK 15: acceso total de cursos (C3b) ─────────────────────────────────
+-- Solo aplica si la base tiene el módulo de cursos. Sin esta migración, el código
+-- de hoy no puede asignar un curso («Asignar», la asignación masiva y el alta con
+-- cursos llaman a curso_inscribir) y el candado no conoce el pago único.
+-- No basta con que existan la columna y la función: una copia VIEJA de B2, B3,
+-- B4 o B6 (o una corrida a medias) la pisa en silencio (el pago único deja de ver el
+-- curso, abrir mes vuelve a moverse, el reporte cuenta mal, y cualquiera lee el
+-- techo de otro alumno). Por eso se revisan también los cuerpos y el REVOKE.
+WITH c3b AS (
+  SELECT
+    to_regclass('public.curso_inscripciones') IS NOT NULL AS hay_cursos,
+    EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'curso_inscripciones'
+               AND column_name = 'acceso_total') AS columna,
+    to_regproc('public.curso_inscribir') IS NOT NULL AS asignar,
+    (SELECT string_agg(f, ', ' ORDER BY f)
+       FROM unnest(ARRAY['curso_ventana_limite(uuid,uuid)', 'curso_abrir_mes(uuid,integer)',
+                         'curso_cerrar_mes(uuid,integer)', 'reporte_curso_inscripciones()']) AS f
+      WHERE to_regprocedure('public.' || f) IS NULL
+         OR strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'acceso_total') = 0) AS revertidas,
+    CASE WHEN to_regprocedure('public.curso_ventana_limite(uuid,uuid)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+         THEN has_function_privilege('authenticated', 'public.curso_ventana_limite(uuid,uuid)', 'EXECUTE')
+         ELSE false END AS techo_legible
+)
+SELECT
+  'Acceso total de cursos (C3b)' AS check_name,
+  CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
+       ELSE 'columna ' || columna::text || ' / curso_inscribir ' || asignar::text
+            || ' / sin C3b: ' || COALESCE(revertidas, 'ninguna') || ' / techo legible ' || techo_legible::text
+  END AS valor,
+  CASE
+    WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
+    WHEN NOT columna OR NOT asignar
+      THEN '❌ FALTA → correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql (después de los 20260730*)'
+    WHEN revertidas IS NOT NULL OR techo_legible
+      THEN '❌ C3b REVERTIDO (' || COALESCE(revertidas, 'el techo volvió a ser legible') || '): se corrió después una copia vieja o una corrida a medias de B2/B3/B4/B6 → vuelve a correr supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql'
+    ELSE '✅ OK (acceso_total, curso_inscribir, candado, abrir/cerrar mes, reporte y techo privado)'
+  END AS resultado
+FROM c3b;
