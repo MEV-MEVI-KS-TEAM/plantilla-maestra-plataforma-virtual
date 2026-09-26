@@ -26,8 +26,10 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
  *
  * NO se editan aquí, a propósito:
  *   - `nivel`, `modalidad` y `carrera` (D9, #199-admin): el plan de estudio se
- *     cambia SOLO con «Corregir plan», que lo valida y tiene candados (pagos,
- *     meses abiertos, avance). Aquí se escribían sin validar nada.
+ *     cambia SOLO con «Corregir plan», que tiene sus candados (pagos, meses
+ *     abiertos, avance). Aquí se escribían sin validar nada. Ojo: «Corregir plan»
+ *     todavía ofrece los planes activos de TODOS los niveles (decisión 16: filtrar
+ *     esos modales por nivel solo si se venden escuelas asimétricas).
  *   - `matricula`: es la identidad del alumno en constancias y pagos ya
  *     emitidos, y la genera un trigger. Cambiarla rompe el historial.
  *   - `meses_desbloqueados`: tiene su propio endpoint con las reglas de avance.

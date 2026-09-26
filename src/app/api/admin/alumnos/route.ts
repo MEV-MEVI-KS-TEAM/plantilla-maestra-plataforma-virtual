@@ -449,11 +449,13 @@ export async function POST(request: NextRequest) {
     // nivel —la misma regla estructural del registro público—, y se comprueba
     // ANTES de crear la cuenta de Auth. Antes el alta guardaba cualquier id del
     // CHECK para cualquier nivel (Secundaria con el ritmo de licenciatura). El
-    // modal ya solo ofrece los del nivel (planesPorNivel).
+    // modal ya solo ofrece los del nivel (planesPorNivel). Se guarda lo MISMO que
+    // se validó (recortado): «3_meses » pasaba aquí y tronaba en el CHECK de la base.
+    const modalidadLimpia = typeof modalidad === 'string' && modalidad.trim() ? modalidad.trim() : null
     if (!nivelForzado && nivelElegido !== 'diplomado') {
       const motivo = motivoPlanInvalido({
         nivel:     nivelElegido,
-        modalidad: typeof modalidad === 'string' && modalidad.trim() ? modalidad.trim() : null,
+        modalidad: modalidadLimpia,
         carrera:   carreraNormalizada || null,
       }, catalogoDeRegistro())
       if (motivo) return NextResponse.json({ error: MENSAJES_PLAN_ADMIN[motivo] }, { status: 400 })
@@ -512,7 +514,7 @@ export async function POST(request: NextRequest) {
         // modalidad activa» en vez de devolver null.
         modalidad:           (nivelForzado || nivelElegido === 'diplomado')
                                ? null
-                               : (modalidad ?? getDefaultModalidadId()),
+                               : (modalidadLimpia ?? getDefaultModalidadId()),
         carrera:             carreraNormalizada || null,
         meses_desbloqueados: 0,
       })

@@ -15,7 +15,7 @@ import { getCarreras } from '@/lib/licenciatura-utils'
  *    registro público, ANTES de crear la cuenta de Auth, y el modal solo ofrece
  *    los planes de ese nivel;
  *  - PATCH /datos deja de escribir nivel, modalidad y carrera: el plan se cambia
- *    solo con «Corregir plan», que valida y tiene candados.
+ *    solo con «Corregir plan», que tiene sus candados.
  */
 const leer = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n')
 const sinComentarios = (s: string) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -56,20 +56,66 @@ test('3. el modal solo ofrece los planes de ESE nivel, y todo lo que ofrece pasa
   const page = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
   expect(page).toContain("form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(form.nivel, cfg.modalidades)")
   expect(page).not.toContain('getModalidadesActivas(cfg.modalidades)')
-  // Con todo lo que el panel pueda encender, cada combinación del modal pasa el servidor.
-  const cat = catalogoDeRegistro()
-  const todo = (CONFIG.modalidades as readonly ModalidadPrograma[]).map(m => ({ ...m, activa: true }))
-  let n = 0
-  for (const o of getOpcionesNivelAdmin(true)) {
-    if (o.nivel === 'diplomado') continue
-    const planes = o.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(o.nivel, todo)
-    const carreras = o.nivel === 'licenciatura' ? getCarreras().map(c => c.slug) : [null]
-    for (const p of planes) for (const c of carreras) {
-      n++
-      expect(motivoPlanInvalido({ nivel: o.nivel, modalidad: p.id, carrera: c }, cat), `${o.nivel}/${p.id}/${c}`).toBeNull()
-    }
+
+  // Una escuela ASIMÉTRICA (Secundaria solo en 3 meses; Preparatoria en 6, más un
+  // plan apagado) con licenciaturas encendidas. La plantilla trae ambos niveles
+  // con los mismos planes y el riel apagado, así que se cambia CONFIG aquí (y se
+  // restaura) para que el filtro por nivel y la rama de licenciatura sí corran.
+  const cfg = CONFIG as unknown as { modalidades: unknown; licenciaturas?: unknown }
+  const antes = { modalidades: cfg.modalidades, licenciaturas: cfg.licenciaturas }
+  const base = (CONFIG.modalidades as readonly ModalidadPrograma[])[0]
+  const mods: ModalidadPrograma[] = [
+    { ...base, id: '3_meses', nivel: 'secundaria', activa: true },
+    { ...base, id: '6_meses', nivel: 'preparatoria', activa: true },
+    { ...base, id: '12_meses', nivel: 'preparatoria', activa: false },
+  ]
+  cfg.modalidades = mods
+  cfg.licenciaturas = {
+    activas: true,
+    carreras: [
+      { slug: 'derecho', nombre: 'Derecho' },
+      { slug: 'diplomado-docencia', nombre: 'Docencia', esDiplomado: true },
+    ],
+    modalidades: [
+      { id: '12_meses', label: '12', meses: 12, mensualidad: 1, materiasPorMes: 3, activa: true },
+    ],
   }
-  expect(n).toBeGreaterThan(0)
+  try {
+    const cat = catalogoDeRegistro()
+    const ofrecidos: Record<string, string[]> = {}
+    let n = 0
+    for (const o of getOpcionesNivelAdmin(true)) {
+      if (o.nivel === 'diplomado') continue
+      const planes = o.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(o.nivel, mods)
+      ofrecidos[o.nivel] = planes.map(p => p.id)
+      const carreras = o.nivel === 'licenciatura' ? getCarreras().map(c => c.slug) : [null]
+      for (const p of planes) for (const c of carreras) {
+        n++
+        expect(motivoPlanInvalido({ nivel: o.nivel, modalidad: p.id, carrera: c }, cat), `${o.nivel}/${p.id}/${c}`).toBeNull()
+      }
+    }
+    // Cada nivel ve SOLO lo suyo (y el plan apagado no se ofrece).
+    expect(ofrecidos).toEqual({ secundaria: ['3_meses'], preparatoria: ['6_meses'], licenciatura: ['12_meses'] })
+    expect(n).toBe(4)
+    // El modal viejo (todas las activas) ofrecía combinaciones que el servidor rechaza.
+    expect(motivoPlanInvalido({ nivel: 'secundaria', modalidad: '6_meses', carrera: null }, cat)).toBe('modalidad')
+    expect(motivoPlanInvalido({ nivel: 'preparatoria', modalidad: '3_meses', carrera: null }, cat)).toBe('modalidad')
+    expect(motivoPlanInvalido({ nivel: 'licenciatura', modalidad: '3_meses', carrera: 'derecho' }, cat)).toBe('modalidad')
+    // Estructural: el plan apagado desde el panel se sigue aceptando.
+    expect(motivoPlanInvalido({ nivel: 'preparatoria', modalidad: '12_meses', carrera: null }, cat)).toBeNull()
+  } finally {
+    cfg.modalidades = antes.modalidades
+    cfg.licenciaturas = antes.licenciaturas
+  }
+})
+
+test('3b. se guarda la modalidad que se validó (recortada), no la cruda', () => {
+  const api = sinComentarios(leer('src/app/api/admin/alumnos/route.ts'))
+  const post = api.slice(api.indexOf('export async function POST'))
+  expect(post).toContain("const modalidadLimpia = typeof modalidad === 'string' && modalidad.trim() ? modalidad.trim() : null")
+  expect(post).toContain('modalidad: modalidadLimpia,')
+  expect(post).toContain(': (modalidadLimpia ?? getDefaultModalidadId()),')
+  expect(post).not.toContain(': (modalidad ?? getDefaultModalidadId()),')
 })
 
 test('4. PATCH /datos ya no escribe el plan: lo rechaza antes de tocar Auth, y no hay update a alumnos', () => {
