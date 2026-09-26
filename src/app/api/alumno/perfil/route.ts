@@ -11,10 +11,10 @@ import { costoProgramaAlumno, type CostoPrograma } from '@/lib/costo-programa'
  * publicado. Solo en esa rama se lee getSiteConfig: el resto de los alumnos
  * no paga esa lectura. Si algo falla, null (el inicio no pinta la tarjeta).
  */
-async function programaDe(nivel?: string | null, modalidad?: string | null): Promise<CostoPrograma | null> {
-  if (nivel !== 'licenciatura') return null
+async function programaDe(a: { nivel?: string | null; modalidad?: string | null; carrera?: string | null }): Promise<CostoPrograma | null> {
+  if (a.nivel !== 'licenciatura') return null
   try {
-    return costoProgramaAlumno(nivel, modalidad ?? null, await getSiteConfig())
+    return costoProgramaAlumno(a, await getSiteConfig())
   } catch (e) {
     console.error('[api/alumno/perfil] programa:', e)
     return null
@@ -69,7 +69,7 @@ export async function GET() {
         nombre_completo:     nombreCompleto,
         email:               a.usuarios?.email ?? user.email ?? '',
         avatar_url:          a.usuarios?.avatar_url ?? null,
-        programa:            await programaDe(a.nivel, (a as { modalidad?: string | null }).modalidad),
+        programa:            await programaDe(a as { nivel?: string | null; modalidad?: string | null; carrera?: string | null }),
       })
     }
 
@@ -130,7 +130,7 @@ export async function GET() {
         nombre_completo:     nombreCompleto,
         email:               u?.email ?? user.email ?? '',
         avatar_url:          u?.foto_url ?? null,
-        programa:            await programaDe(a.nivel, a.modalidad),
+        programa:            await programaDe(a as { nivel?: string | null; modalidad?: string | null; carrera?: string | null }),
       })
     }
 
