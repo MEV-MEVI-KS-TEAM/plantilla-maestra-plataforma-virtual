@@ -162,11 +162,13 @@ export async function conEventosDeAcceso(
   inscripcionIds: readonly string[],
 ): Promise<Set<string> | null> {
   if (inscripcionIds.length === 0) return new Set()
-  const { data, error } = await admin
+  const data = await leerTodo<{ inscripcion_id: string }>((desde, hasta) => admin
     .from('curso_inscripcion_eventos')
     .select('inscripcion_id')
     .in('inscripcion_id', [...inscripcionIds])
     .in('tipo', [...EVENTOS_DE_ACCESO])
-  if (error || !data) return null
-  return new Set((data as { inscripcion_id: string }[]).map(e => e.inscripcion_id))
+    .order('id', { ascending: true })
+    .range(desde, hasta))
+  if (!data) return null
+  return new Set(data.map(e => e.inscripcion_id))
 }
