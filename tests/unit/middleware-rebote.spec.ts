@@ -40,6 +40,11 @@ function peticionConSesion(ruta: string): NextRequest {
 
 test.describe('updateSession con sesión de admin', () => {
   const fetchReal = globalThis.fetch
+  // El worker se reutiliza entre archivos: lo que se cambia aquí se devuelve tal cual.
+  const envReal = {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  }
   test.beforeEach(() => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = URL_SB
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-de-prueba'
@@ -50,7 +55,13 @@ test.describe('updateSession con sesión de admin', () => {
       return new Response('inesperado: ' + url, { status: 599 })
     }) as typeof fetch
   })
-  test.afterEach(() => { globalThis.fetch = fetchReal })
+  test.afterEach(() => {
+    globalThis.fetch = fetchReal
+    for (const [k, v] of Object.entries(envReal)) {
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+  })
 
   test('/api/catalogo-publico y /api/validar pasan a la ruta (no 307 al panel)', async () => {
     for (const ruta of ['/api/catalogo-publico', '/api/validar/MEV-2026-0001']) {
