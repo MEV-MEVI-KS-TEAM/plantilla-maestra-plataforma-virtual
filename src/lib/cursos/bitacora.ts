@@ -20,6 +20,8 @@ export interface MovimientoInscripcion {
   actor_nombre: string | null
   /** El rol tal como está en usuarios.rol (admin, secretario…), o null. */
   actor_rol: string | null
+  /** D20b: el folio, si el evento es la emisión de la constancia. */
+  folio?: string | null
 }
 
 type EventoFila = {
@@ -29,6 +31,7 @@ type EventoFila = {
   meses_despues: number | null
   actor: string | null
   created_at: string
+  detalle?: { folio?: unknown } | null
 }
 
 /** «administración», «secretaría»; otro rol tal cual; vacío sin rol. */
@@ -49,7 +52,7 @@ export function quienHizo(m: Pick<MovimientoInscripcion, 'actor_nombre' | 'actor
 }
 
 /** Qué pasó, en una frase corta para la fila del alumno. */
-export function describirMovimiento(m: Pick<MovimientoInscripcion, 'tipo' | 'meses_antes' | 'meses_despues'>): string {
+export function describirMovimiento(m: Pick<MovimientoInscripcion, 'tipo' | 'meses_antes' | 'meses_despues'> & { folio?: string | null }): string {
   const despues = m.meses_despues ?? 0
   const antes = m.meses_antes ?? 0
   switch (m.tipo) {
@@ -59,7 +62,7 @@ export function describirMovimiento(m: Pick<MovimientoInscripcion, 'tipo' | 'mes
     case 'quitar_acceso_total': return 'quitó el acceso total'
     case 'inscripcion': return despues > 0 ? `asignó el curso (mes ${despues})` : 'asignó el curso'
     case 'cambio_estado': return 'cambió el estado'
-    case 'constancia_emitida': return 'emitió la constancia'
+    case 'constancia_emitida': return m.folio ? `emitió la constancia ${m.folio}` : 'emitió la constancia'
     default: return m.tipo
   }
 }
@@ -124,7 +127,7 @@ export async function ultimosMovimientos(
     const lote = inscripcionIds.slice(i, i + LOTE_IDS)
     const filas = await leerTodo<EventoFila>((desde, hasta) => admin
       .from('curso_inscripcion_eventos')
-      .select('inscripcion_id, tipo, meses_antes, meses_despues, actor, created_at')
+      .select('inscripcion_id, tipo, meses_antes, meses_despues, actor, created_at, detalle')
       .in('inscripcion_id', [...lote])
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
@@ -139,6 +142,7 @@ export async function ultimosMovimientos(
     out.set(e.inscripcion_id, {
       tipo: e.tipo, meses_antes: e.meses_antes, meses_despues: e.meses_despues, created_at: e.created_at,
       actor_nombre: e.actor_nombre, actor_rol: e.actor_rol,
+      folio: e.tipo === 'constancia_emitida' && typeof e.detalle?.folio === 'string' ? e.detalle.folio : null,
     })
   }
   return out

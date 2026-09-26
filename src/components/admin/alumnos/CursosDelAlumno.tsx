@@ -2,6 +2,7 @@
 
 import { GraduationCap, DollarSign } from 'lucide-react'
 import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
+import { quienHizo } from '@/lib/cursos/bitacora'
 
 /**
  * Tarjeta «Cursos» de la ficha del alumno (Bloque D · D17, #207-6; decisión 4).
@@ -31,6 +32,25 @@ export function precioDeReferencia(f: Pick<FilaCursoAlumno, 'precio_referencia' 
   if (f.resumen.tipo === 'unico') return `${fmt(inscripcion)} pago único · ${de}`
   if (f.resumen.tipo === 'mensual') return `${inscripcion > 0 ? `${fmt(inscripcion)} + ` : ''}${fmt(mensualidad)}/mes · ${de}`
   return f.precio_referencia.origen === 'inscripcion' ? 'Sin precio al asignar' : 'Sin precio en la ficha de hoy'
+}
+
+/**
+ * D20b (remate a): «Constancia DIP-00012 · 26/09/2026 · emitida por Ana López
+ * (secretaría)». null si no hay constancia. Sin autor (emitida antes de D20b
+ * sin evento), solo folio y fecha.
+ */
+export function textoConstancia(f: Pick<FilaCursoAlumno, 'constancia'>): string | null {
+  const c = f.constancia
+  if (!c) return null
+  const partes = [`Constancia ${c.folio}`]
+  if (c.emitido_en) {
+    const d = new Date(c.emitido_en)
+    if (!Number.isNaN(d.getTime())) partes.push(d.toLocaleDateString('es-MX'))
+  }
+  if (c.emitida_por_nombre || c.emitida_por_rol) {
+    partes.push(`emitida por ${quienHizo({ actor_nombre: c.emitida_por_nombre, actor_rol: c.emitida_por_rol })}`)
+  }
+  return partes.join(' · ')
 }
 
 export function CursosDelAlumno({
@@ -64,6 +84,9 @@ export function CursosDelAlumno({
                 {f.resumen.saldo !== null && <> · Saldo {fmt(f.resumen.saldo)}</>}
                 {f.resumen.mesesCubiertos.length > 0 && <> · Mensualidades pagadas: {f.resumen.mesesCubiertos.join(', ')}</>}
               </p>
+              {textoConstancia(f) && (
+                <p className="text-xs" style={{ color: '#A78BFA' }}>{textoConstancia(f)}</p>
+              )}
               {f.resumen.pagadoFaltaAbrir && (
                 <span className="inline-block text-xs px-2 py-0.5 rounded-full font-semibold"
                   style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>

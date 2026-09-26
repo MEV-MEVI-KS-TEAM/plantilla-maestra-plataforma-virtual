@@ -30,12 +30,20 @@ interface AlumnosTabProps {
   onError: (mensaje: string, duracion?: number) => void
   /**
    * D7b (decisión 6): el secretario asigna, abre, cierra, abre todo y quita el
-   * acceso total, igual que el admin. Lo que sigue siendo SOLO del admin se
-   * esconde: quitar a un alumno del curso (borra la inscripción) y emitir la
-   * constancia. Las funciones SQL y las rutas lo vuelven a comprobar.
+   * acceso total, igual que el admin; desde D20b también emite la constancia.
+   * Lo que sigue siendo SOLO del admin se esconde: quitar a un alumno del curso
+   * (borra la inscripción), cancelarla y reactivarla. Las funciones SQL y las
+   * rutas lo vuelven a comprobar.
    */
   esAdmin: boolean
 }
+
+/**
+ * D20b (remate a): en una inscripción CANCELADA solo queda «Reactivar» (admin);
+ * lo demás de la fila se apaga con este motivo. El servidor también rechaza
+ * abrir y emitir la constancia de una cancelada.
+ */
+const CANCELADA_TITULO = 'Inscripción cancelada: reactívala primero'
 
 /** Un aviso que hay que leer (se abrió menos de lo cobrado) no se va en 4 s. */
 const AVISO_MS = 10000
@@ -139,20 +147,6 @@ Esto REVOCA acceso que el alumno ya tenia: ` +
   }
 
   /**
-   * Emite la constancia de una inscripción.
-   *
-   * ⚠️ Este botón faltaba. El endpoint, la función SQL con sus guards, el folio
-   * permanente, la bitácora con actor y la vista del alumno YA existían — pero
-   * nada en la UI llamaba a POST /api/admin/inscripciones/[id]/constancia, así
-   * que la emisión era imposible y el alumno que aprobaba se quedaba para
-   * siempre en "Tu constancia está en emisión" (TICKET-2026-09-07-51).
-   *
-   * Los guards viven en la función SQL: sin examen aprobado responde 422, y si
-   * la constancia ya existe devuelve la existente sin quemar un folio nuevo.
-   * Por eso aquí no se comprueba nada: preguntarle al cliente si el alumno
-   * aprobó sería confiar en el caller justo en el dato que decide el folio.
-   */
-  /**
    * Abre el curso completo (pago único cobrado a quien entró por meses) o quita
    * el acceso total (corrección). Las dos dejan evento con actor en la
    * bitácora. Quitarlo REVOCA acceso: se confirma antes. Abrir todo llega aquí
@@ -228,6 +222,21 @@ Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró 
     }
   }
 
+  /**
+   * Emite la constancia de una inscripción.
+   *
+   * ⚠️ Este botón faltaba. El endpoint, la función SQL con sus guards, el folio
+   * permanente, la bitácora con actor y la vista del alumno YA existían — pero
+   * nada en la UI llamaba a POST /api/admin/inscripciones/[id]/constancia, así
+   * que la emisión era imposible y el alumno que aprobaba se quedaba para
+   * siempre en "Tu constancia está en emisión" (TICKET-2026-09-07-51).
+   *
+   * Los guards viven en la función SQL: sin examen aprobado responde 422, una
+   * inscripción cancelada también (D20b), y si la constancia ya existe devuelve
+   * la existente sin quemar un folio nuevo. Por eso aquí no se comprueba nada:
+   * preguntarle al cliente si el alumno aprobó sería confiar en el caller justo
+   * en el dato que decide el folio. Desde D20b la emite también el secretario.
+   */
   const emitirConstancia = async (inscripcionId: string, nombre: string) => {
     const ok = window.confirm(
       `Emitir la constancia de ${nombre}.
@@ -246,7 +255,10 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? 'No se pudo emitir la constancia')
-      onChanged()
+      // D20b: el folio en el aviso (antes no se decía nada).
+      onChanged(json.ya_existia
+        ? (json.aviso ?? `${nombre} ya tenía constancia (folio ${json.folio}).`)
+        : `${nombre}: constancia emitida, folio ${json.folio}`)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo emitir la constancia')
     } finally {
@@ -642,8 +654,8 @@ Se borra su inscripción y deja de ver el curso.
                   {/* D18: el atajo «Cobrar» (admin y secretario). */}
                   <button
                     onClick={() => cobrarDe(i)}
-                    disabled={ocupadoId === i.inscripcion_id}
-                    title="Registrar un cobro de este curso (y, si corresponde, abrir)"
+                    disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
+                    title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Registrar un cobro de este curso (y, si corresponde, abrir)'}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
                     style={{ border: '1px solid rgba(16,185,129,0.35)', color: '#047857', background: 'var(--color-superficie)' }}
                   >
@@ -652,8 +664,8 @@ Se borra su inscripción y deja de ver el curso.
                   {i.acceso_total ? (
                     <button
                       onClick={() => cambiarAccesoTotal(i, 'quitar-acceso-total')}
-                      disabled={ocupadoId === i.inscripcion_id}
-                      title="Quitar el acceso total (revoca acceso)"
+                      disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
+                      title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Quitar el acceso total (revoca acceso)'}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                       style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                     >
@@ -666,8 +678,8 @@ Se borra su inscripción y deja de ver el curso.
                       {i.por_activar && (
                         <button
                           onClick={() => pedirActivar(i)}
-                          disabled={ocupadoId === i.inscripcion_id}
-                          title={apertura === 'total'
+                          disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
+                          title={i.estado === 'cancelada' ? CANCELADA_TITULO : apertura === 'total'
                             ? 'Según su ficha (pago único): abre TODO el curso'
                             : 'Según su ficha: abre el mes 1'}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
@@ -678,8 +690,8 @@ Se borra su inscripción y deja de ver el curso.
                       )}
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'cerrar-mes', i.meses_desbloqueados, i.nombre)}
-                        disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0}
-                        title="Cerrar un mes (revoca acceso)"
+                        disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0 || i.estado === 'cancelada'}
+                        title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Cerrar un mes (revoca acceso)'}
                         className="px-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                       >
@@ -707,18 +719,16 @@ Se borra su inscripción y deja de ver el curso.
                       </button>
                     </>
                   )}
-                  {/* Solo admin (D7b): el folio es permanente. */}
-                  {esAdmin && (
-                    <button
+                  {/* D20b: admin y secretario. El folio es permanente; una cancelada no recibe folio. */}
+                  <button
                       onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}
-                      disabled={ocupadoId === i.inscripcion_id}
-                      title="Emitir la constancia (requiere examen aprobado; el folio es permanente)"
+                      disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
+                      title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Emitir la constancia (requiere examen aprobado; el folio es permanente)'}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                       style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                     >
                       Constancia
                     </button>
-                  )}
                 </div>
 
                 {/* Solo admin (D11): reactivar deshace la cancelación. */}

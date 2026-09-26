@@ -285,8 +285,9 @@ FROM c3b;
 -- Solo aplica si la base tiene el módulo de cursos. Las siete funciones de
 -- apertura (asignar, asignar a todos, abrir mes, abrir todo, cobrar abriendo el
 -- mes, cerrar mes y quitar el acceso total) tienen que aceptar al secretario
--- (guarda «es_staff() … D7b:»), y las de SOLO ADMIN (cambiar estado/cancelar,
--- borrar módulos, emitir constancias) seguir pidiendo es_admin(). Una corrida
+-- (guarda «es_staff() … D7b:»), y las de SOLO ADMIN (cambiar estado/cancelar y
+-- borrar módulos) seguir pidiendo es_admin(). Emitir constancias ya es del
+-- personal (D20b): lo vigila el CHECK 20. Una corrida
 -- vieja de B3, B4 o C3b sin su epílogo le quita la apertura al secretario en
 -- silencio: por eso se revisan los cuerpos, no solo los nombres.
 WITH d7b AS (
@@ -301,13 +302,10 @@ WITH d7b AS (
       WHERE to_regprocedure('public.' || f) IS NULL
          OR strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'NOT public.es_staff() THEN  -- D7b:') = 0) AS sin_secretario,
     (SELECT string_agg(f, ', ' ORDER BY f)
-       FROM unnest(ARRAY['curso_cambiar_estado(uuid,text,text)', 'curso_borrar_modulo(uuid)',
-                         'curso_emitir_constancia(uuid,text,numeric)']) AS f
+       FROM unnest(ARRAY['curso_cambiar_estado(uuid,text,text)', 'curso_borrar_modulo(uuid)']) AS f
       WHERE to_regprocedure('public.' || f) IS NOT NULL
         AND strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'IF NOT public.es_admin() THEN') = 0
-        -- «Abierta» = sin la guarda de admin Y ejecutable con la sesión. (Una corrida
-        -- vieja de B4 deja emitir_constancia sin guarda, pero también sin EXECUTE para
-        -- authenticated: nadie con sesión la llama; eso lo ve el flujo de constancias.)
+        -- «Abierta» = sin la guarda de admin Y ejecutable con la sesión.
         AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
         AND has_function_privilege('authenticated', 'public.' || f, 'EXECUTE')) AS admin_abiertas,
     CASE WHEN to_regprocedure('public.d7b_staff_abre()') IS NOT NULL
@@ -333,7 +331,7 @@ SELECT
       THEN '❌ SOLO ADMIN ABIERTO (' || admin_abiertas || '): estas funciones ya no piden es_admin() → revisa quién las cambió'
     WHEN herramienta_expuesta
       THEN '❌ d7b_staff_abre() ejecutable por authenticated → vuelve a correr la migración D7b'
-    ELSE '✅ OK (asignar, abrir, cerrar, abrir todo y cobrar abriendo: admin y secretario; estado, módulos y constancias: solo admin)'
+    ELSE '✅ OK (asignar, abrir, cerrar, abrir todo y cobrar abriendo: admin y secretario; estado y módulos: solo admin)'
   END AS resultado
 FROM d7b;
 
@@ -481,3 +479,65 @@ SELECT
     ELSE '✅ OK (un solo escritor, con candado e idempotente; solo el servidor lo llama)'
   END AS resultado
 FROM d20a;
+-- ─── CHECK 20: constancias del personal (B8.2 + D20b) ───────────────────────
+-- Solo aplica si la base tiene el módulo de cursos. La emisión es MANUAL
+-- (B8.2: sin examen aprobado no hay folio) y desde D20b la hacen el admin y el
+-- secretario con su sesión; una inscripción cancelada no recibe folio y el
+-- folio guarda quién lo emitió. Una copia vieja de B4 (sin su prólogo) deja la
+-- función sin guardas y sin EXECUTE para authenticated: nadie puede emitir
+-- desde el panel y ningún otro CHECK lo ve.
+WITH d20b AS (
+  SELECT
+    to_regclass('public.curso_inscripciones') IS NOT NULL AS hay_cursos,
+    to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL AS instalada,
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), 'IF v_mejor < v_minima THEN') > 0
+         ELSE false END AS aprobacion,
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), 'NOT public.es_staff() THEN  -- D20b:') > 0
+         ELSE false END AS guarda_staff,
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), 'IF v_estado = ''cancelada'' THEN') > 0
+         ELSE false END AS cancelada,
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), 'FOR UPDATE') > 0
+         ELSE false END AS candado,
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), 'emitida_por_rol') > 0
+         ELSE false END AS autor,
+    (SELECT count(*) FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'curso_constancias'
+        AND column_name IN ('emitida_por', 'emitida_por_nombre', 'emitida_por_rol')) AS columnas,
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+         THEN has_function_privilege('anon', 'public.curso_emitir_constancia(uuid,text,numeric)', 'EXECUTE')
+         ELSE false END AS anon_ejecuta,
+    -- La ruta llama con la sesión: sin EXECUTE para authenticated nadie emite.
+    CASE WHEN to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+         THEN has_function_privilege('authenticated', 'public.curso_emitir_constancia(uuid,text,numeric)', 'EXECUTE')
+         ELSE true END AS auth_ejecuta,
+    COALESCE((SELECT p.prosecdef FROM pg_proc p WHERE p.oid = to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')), false) AS definer,
+    (SELECT count(*) FROM pg_proc WHERE proname = 'curso_emitir_constancia') AS versiones
+)
+SELECT
+  'Constancias del personal (B8.2 + D20b)' AS check_name,
+  CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
+       ELSE 'función ' || instalada::text || ' / aprobación ' || aprobacion::text || ' / guarda staff ' || guarda_staff::text
+            || ' / cancelada ' || cancelada::text || ' / candado ' || candado::text || ' / autor ' || autor::text
+            || ' / columnas ' || columnas::text || ' / anon ejecuta ' || anon_ejecuta::text
+            || ' / authenticated ' || auth_ejecuta::text || ' / definer ' || definer::text || ' / versiones ' || versiones::text
+  END AS valor,
+  CASE
+    WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
+    WHEN NOT instalada
+      THEN '❌ FALTA curso_emitir_constancia → correr B4, B8.2 y D20b (supabase/migrations/20260730150000, 20260730180000 y 20260928130000)'
+    WHEN NOT aprobacion
+      THEN '❌ B8.2 REVERTIDO (se corrió una copia vieja de B4: sin guarda de aprobación y sin EXECUTE para authenticated) → corre supabase/migrations/20260730180000_b82_emision_manual_con_actor.sql y después supabase/migrations/20260928130000_d20b_constancia_staff.sql'
+    WHEN NOT guarda_staff OR NOT cancelada OR NOT autor OR columnas <> 3
+      THEN '❌ FALTA D20b (o una copia vieja de B8.2 la revirtió: solo el admin emite, una cancelada recibe folio o el folio no guarda su autor) → corre supabase/migrations/20260928130000_d20b_constancia_staff.sql'
+    WHEN NOT candado OR anon_ejecuta OR NOT auth_ejecuta OR NOT definer OR versiones <> 1
+      THEN '❌ EMISIÓN ALTERADA (candado, permisos, definer o sobrecargas) → vuelve a correr supabase/migrations/20260928130000_d20b_constancia_staff.sql'
+    ELSE '✅ OK (admin y secretario emiten con su sesión; sin aprobación no hay folio; cancelada sin folio; el folio guarda su autor)'
+  END AS resultado
+FROM d20b;

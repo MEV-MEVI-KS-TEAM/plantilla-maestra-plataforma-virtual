@@ -189,6 +189,16 @@ export type FilaCursoAlumno = {
   resumen: ResumenCobro
   precarga: PrecargaCobro
   cobro: EstadoCobro
+  /** D20b: la constancia emitida (folio, fecha y quién la emitió), o null. */
+  constancia?: ConstanciaDeCurso | null
+}
+
+/** D20b: el folio de una inscripción y quién lo emitió (foto de su nombre y rol). */
+export type ConstanciaDeCurso = {
+  folio: string
+  emitido_en: string | null
+  emitida_por_nombre: string | null
+  emitida_por_rol: string | null
 }
 
 /**

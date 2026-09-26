@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONFIG } from '@/lib/config'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 
 // ─── POST /api/admin/inscripciones/[id]/constancia ───────────────────────────
 // LA emisión de la constancia. No es un respaldo de nada: desde B8.2 la emisión
-// es MANUAL y este es el único camino — el admin verifica y emite a conciencia,
-// porque el folio es permanente e irrepetible (decisión de producto, ver
-// SOLO-CURSOS-ARQUITECTURA.md).
+// es MANUAL y este es el único camino — el personal verifica y emite a
+// conciencia, porque el folio es permanente e irrepetible (decisión de
+// producto, ver SOLO-CURSOS-ARQUITECTURA.md). Desde D20b (remate a) emiten el
+// admin Y el secretario; el folio guarda quién lo emitió y una inscripción
+// cancelada no recibe folio (la función responde 22023 → 422).
 //
 // ⚠️ LA LLAMADA VA CON LA SESIÓN, NO CON service_role. Es la trampa que B3
 // documentó: `curso_emitir_constancia` registra `actor = auth.uid()` en la
 // bitácora, y con service_role eso es NULL — el evento más consecuente del
-// sistema (emitir un folio) quedaba sin autor. Con la sesión, el actor es el
-// admin que emitió, que es además el único dato correcto posible. La función
-// tiene GRANT a authenticated + guard es_admin() interno (patrón B3), así que
-// la sesión del admin pasa y la de un alumno recibe 403.
+// sistema (emitir un folio) quedaba sin autor. Con la sesión, el actor es quien
+// emitió, que es además el único dato correcto posible. La función tiene GRANT
+// a authenticated + guard es_staff() interno (D20b), así que la sesión del
+// admin o del secretario pasa y la de un alumno recibe 403.
 //
 // Los guards viven EN LA FUNCIÓN, no aquí: sin examen aprobado no hay emisión
 // (422), y si la constancia ya existe se devuelve la existente sin quemar folio.
@@ -30,7 +32,8 @@ export async function POST(
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    const denied = await verifyAdmin(supabase, user.id)
+    // D20b: admin o secretario (la función lo vuelve a comprobar con es_staff()).
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
 
     const { data, error } = await supabase.rpc('curso_emitir_constancia', {

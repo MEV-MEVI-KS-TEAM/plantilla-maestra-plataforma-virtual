@@ -38,7 +38,22 @@
 --     función acaba de verificar contra el umbral. Bug 78: lo que se congela se
 --     valida antes — y la mejor validación es no aceptar el dato de fuera.
 --
--- IDEMPOTENTE Y RE-EJECUTABLE.
+-- IDEMPOTENTE Y RE-EJECUTABLE. En transacción (D20b): el prólogo y el epílogo
+-- de abajo van juntos o no van.
+
+BEGIN;
+
+-- ── D20b · re-correr esta migración NO le quita al secretario la emisión ─────
+-- Si la base ya tiene D20b (20260928130000_d20b_constancia_staff.sql), su
+-- versión es la vigente (también el secretario; cancelada sin folio; el folio
+-- con su autor) y esta migración la pisaría: se guarda aquí y se restaura al
+-- final. La huella es la marca de D20b, la misma que busca el CHECK 20.
+DROP TABLE IF EXISTS pg_temp.d20b_vigente;
+CREATE TEMP TABLE d20b_vigente AS
+SELECT pg_get_functiondef(p.oid) AS def
+  FROM pg_proc p
+ WHERE p.oid = to_regprocedure('public.curso_emitir_constancia(uuid,text,numeric)')
+   AND strpos(pg_get_functiondef(p.oid), 'NOT public.es_staff() THEN  -- D20b:') > 0;
 
 CREATE OR REPLACE FUNCTION public.curso_emitir_constancia(
   p_inscripcion_id UUID,
@@ -156,3 +171,23 @@ BEGIN
   END IF;
 END
 $$;
+
+-- ── D20b · restaurar la emisión del secretario (ver el inicio) ───────────────
+-- Los GRANT de arriba son los mismos que pide D20b (authenticated y
+-- service_role; anon fuera): solo vuelve el cuerpo.
+DO $d20b$
+DECLARE
+  v_def TEXT;
+BEGIN
+  SELECT def INTO v_def FROM pg_temp.d20b_vigente;
+  IF FOUND THEN
+    EXECUTE v_def;
+    RAISE NOTICE 'Esta base ya tiene D20b: se conservó la emisión del secretario (cancelada sin folio, folio con su autor).';
+  END IF;
+END
+$d20b$;
+DROP TABLE IF EXISTS pg_temp.d20b_vigente;
+
+NOTIFY pgrst, 'reload schema';
+
+COMMIT;
