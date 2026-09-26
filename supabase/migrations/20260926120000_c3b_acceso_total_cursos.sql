@@ -69,6 +69,12 @@ BEGIN
   IF to_regproc('public.es_admin') IS NULL THEN
     RAISE EXCEPTION 'Falta public.es_admin().';
   END IF;
+  -- Las funciones de aquí deciden con es_admin() (la sesión del admin). La versión
+  -- vieja comparaba rol = 'admin' exacto: un admin guardado como 'ADMIN' no podría
+  -- asignar. La cadena de la plantilla ya trae la buena (fix S2, antes de B1).
+  IF pg_get_functiondef('public.es_admin()'::regprocedure) !~* 'lower\s*\(\s*rol\s*\)' THEN
+    RAISE EXCEPTION 'public.es_admin() no normaliza el rol (LOWER). Corre antes supabase/migrations/20260729121000_fix_s2_es_admin.sql.';
+  END IF;
   -- curso_inscribir usa ON CONFLICT (curso_id, alumno_id): sin ese UNIQUE,
   -- Postgres lo rechazaría a media transacción.
   IF NOT EXISTS (
