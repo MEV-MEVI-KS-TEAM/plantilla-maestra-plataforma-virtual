@@ -238,15 +238,16 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
 })
 
 test('6. quien calcula la ventana lee acceso_total, y una base sin C3b no se rompe', async () => {
+  // D16: el cobro (inscripciones/[id]/pago) ya no lee acceso_total en la app: curso_cobrar
+  // lo decide en la base, con la fila bloqueada (d16-curso-cobrar.spec.ts).
   for (const f of ['src/lib/cursos/alumno-data.ts', 'src/lib/cursos/examen.ts', 'src/app/api/admin/alumnos/route.ts',
-    'src/app/api/admin/cursos/[id]/route.ts', 'src/app/api/admin/inscripciones/[id]/route.ts',
-    'src/app/api/admin/inscripciones/[id]/pago/route.ts']) {
+    'src/app/api/admin/cursos/[id]/route.ts', 'src/app/api/admin/inscripciones/[id]/route.ts']) {
     const src = sinComentariosTs(leer(f))
     expect(src, f).toMatch(/conAccesoTotal<[\s\S]*?>\(\s*'[^']*'\s*,\s*campos => admin\s*\.from\('curso_inscripciones'\)\s*\.select\(campos\)/)
     expect(src, f).not.toMatch(/from\('curso_inscripciones'\)\s*\.select\('[^']*acceso_total/)
   }
-  // El pago lee el booleano con el cliente admin (el secretario no ve la fila por RLS).
-  expect(sinComentariosTs(leer('src/app/api/admin/inscripciones/[id]/pago/route.ts'))).toContain('const admin = createAdminClient()')
+  // El cobro no lee la inscripción desde la app (el secretario no la ve por RLS): lo hace la función.
+  expect(sinComentariosTs(leer('src/app/api/admin/inscripciones/[id]/pago/route.ts'))).toContain("supabase.rpc('curso_cobrar', {")
   // El lector: pide acceso_total; si la columna no existe (42703), repite sin ella.
   const pedidas: string[] = []
   const falsa = (campos: string) => {

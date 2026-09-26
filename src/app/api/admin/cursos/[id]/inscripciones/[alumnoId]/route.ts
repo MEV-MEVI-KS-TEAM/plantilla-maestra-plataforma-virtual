@@ -89,6 +89,10 @@ export async function DELETE(
     // Red de seguridad: si entre la comprobación y el DELETE se emitiera una
     // constancia, Postgres devuelve 23503 y se traduce igual, sin 500 crudo.
     if (error) {
+      // D16: la red de seguridad de la base (un cobro entró entre el conteo y el borrado).
+      if (error.code === '23001') {
+        return NextResponse.json({ error: error.message, tiene_pagos: true }, { status: 409 })
+      }
       if (error.code === '23503') {
         return NextResponse.json({
           error: 'Esta inscripción tiene un diploma emitido y no puede borrarse. Cancélala (estado = cancelada) para darla de baja conservando el registro.',
