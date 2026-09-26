@@ -254,7 +254,9 @@ test('6. los textos del módulo: cómo se abre un curso, el alumno que se regist
   const html = texto(cursos({ ...BASE, cursosPublicados: 1, cursosLista: [{ nombre: 'EXANI-II', precio: '$2,490 de pago único' }] }))
   expect(html).toContain('un curso de pago único se le abre completo')
   expect(html).toContain('Cuando un alumno te pague, asígnalo en Gestionar Cursos → el curso → Alumnos')
-  expect(html).toContain('Si se registró desde tu página eligiendo el curso, ya está en esa lista sin acceso: pulsa Abrir todo (pago único) o + Abrir mes (mensual)')
+  // D20c: quien se registró solo se abre con «Activar según la ficha» (D8), no con «Abrir todo» / «+ Abrir mes».
+  expect(html).toContain('Si se registró desde tu página eligiendo el curso, ya está en esa lista sin acceso: pulsa Activar según la ficha en su fila y se le abre con esa misma regla')
+  expect(html).not.toContain('pulsa Abrir todo')
   expect(html).toContain('Contenido → Precios y ritmo')
   expect(html).not.toContain('curso de preparación para examen')
   // Con el add-on, el otro camino del registro: lo pidió y se asigna en Alumnos.
@@ -290,8 +292,8 @@ test('7. el generador: usa el módulo de cursos, no se niega en silencio y repit
   expect(g).toContain('modalidadesFilas.push(filaResumenCursos(CURSOS_PUBLICADOS))')
   // La línea del WhatsApp siempre lleva el precio (o «Pide informes»).
   expect(g).toContain('`• ${c.nombre} — ${precioDeCurso(c)}: ${URL_BASE}/diplomados`')
-  expect(g).toContain('a quien ya se registró desde tu página eligiendo el curso, con «Abrir todo» o «+ Abrir mes»')
-  expect(g).toContain('a quien se registró desde tu página eligiendo el curso, con «Abrir todo» (pago único) o «+ Abrir mes» (mensual)')
+  expect(g).toContain('a quien ya se registró desde tu página eligiendo el curso, con «Activar según la ficha» en su fila')
+  expect(g).toContain('a quien se registró desde tu página eligiendo el curso, con «Activar según la ficha»; y «Cobrar» registra cada pago y, con su casilla marcada, le abre lo que pagó, también desde una cuenta de secretario')
   expect(g).toContain("a quien pidió un curso de preparación para examen, con «Asignar» en Alumnos")
   // Lo leído llega al documento por UN camino: cursosParaDocumento(INV.cursosLectura).
   expect(g).toContain('const CURSOS_PUBLICADOS = cursosParaDocumento(INV.cursosLectura)')

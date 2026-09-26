@@ -104,3 +104,88 @@ export function politicaPublicado(l) {
       return { abortar: { msg: `No se pudo leer lo publicado en el panel (site_config): ${l?.detalle ?? 'error desconocido'}`, ayuda: AYUDA } }
   }
 }
+
+/* ── ¿De QUÉ proyecto se leyó, y es de esta escuela? (Bloque D · D20c) ──────
+ *
+ * Un .env.local de OTRA escuela (se bajó el de otro proyecto, se copió el repo de
+ * un clon a otro) se leía sin decir nada: el documento salía con los precios, el
+ * WhatsApp, el logo y los textos de otra escuela, y el operador no tenía forma de
+ * notarlo. Ahora el script dice de qué proyecto leyó y qué escuela está
+ * publicada ahí, y si el nombre publicado no es el de config.ts, aborta (salvo
+ * --forzar-proyecto: la escuela cambió su nombre en el panel a propósito).
+ */
+
+/** El ref del proyecto (el subdominio de `https://<ref>.supabase.co`), o null. */
+export function refDeProyecto(url) {
+  const m = String(url ?? '').trim().replace(/\/+$/, '').match(/^https?:\/\/([a-z0-9-]+)\.supabase\.(?:co|in)$/i)
+  return m ? m[1] : null
+}
+
+/** Lo que se imprime del proyecto leído: el ref; con dominio propio, el host; sin URL, null. */
+export function proyectoLeido(vars) {
+  const url = vars?.NEXT_PUBLIC_SUPABASE_URL
+  if (!url) return null
+  return refDeProyecto(url) ?? (() => { try { return new URL(url).host } catch { return String(url) } })()
+}
+
+/**
+ * Lo invisible que un nombre puede traer pegado (espacios de ancho cero, marcas
+ * de dirección, BOM): la MISMA clase que INVISIBLES en src/lib/site-config-validacion.ts.
+ * Se QUITA, no se cambia por un espacio: «Instituto» con un espacio de ancho cero
+ * delante sigue siendo «Instituto».
+ */
+const INVISIBLES = /[\u200B-\u200F\u2060\uFEFF]/g
+/** Para comparar nombres: sin invisibles, sin acentos, sin mayúsculas y con los espacios colapsados. */
+const normNombre = (s) => String(s ?? '').replace(INVISIBLES, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ').trim().toLowerCase()
+
+/**
+ * ¿Lo publicado es de ESTA escuela? Compara `nombre` y `nombreCompleto`
+ * publicados (solo los que son texto) contra los de config.ts, sin distinguir
+ * mayúsculas, acentos ni espacios. Con --solo-config no se leyó nada y no se
+ * compara nada.
+ *
+ * Devuelve siempre `log` (el renglón de consola) y `revisa` (la primera línea
+ * de «REVISA»); con una diferencia, `abortar`, o con `forzar`, un `aviso`.
+ * @param {{ lectura: Lectura | null | undefined,
+ *           configTs: { nombre?: unknown, nombreCompleto?: unknown } | null | undefined,
+ *           proyecto: string | null | undefined, forzar?: boolean }} opciones
+ * @returns {{ log: string, revisa: string, aviso?: string, abortar?: { msg: string, ayuda: string } }}
+ */
+export function revisarProyecto({ lectura, configTs, proyecto, forzar = false }) {
+  const pub = lectura?.estado === 'ok' ? (lectura.data ?? {}) : {}
+  const escuela = lectura?.estado === 'solo-config' ? 'no se leyó (--solo-config)'
+    : typeof pub.nombre === 'string' ? `«${pub.nombre}»`
+      : typeof pub.nombreCompleto === 'string' ? `«${pub.nombreCompleto}»`
+        : `nada publicado (config.ts: «${configTs?.nombre ?? ''}»)`
+  const revisa = `Proyecto de Supabase: ${proyecto ?? '— (sin .env.local)'} · Escuela publicada: ${escuela}`
+  const difs = ['nombre', 'nombreCompleto']
+    .filter(k => typeof pub[k] === 'string' && normNombre(pub[k]) !== normNombre(configTs?.[k]))
+    .map(k => `${k} publicado «${pub[k]}» ≠ config.ts «${configTs?.[k] ?? ''}»`)
+  const r = { log: `  · ${revisa}`, revisa }
+  if (!difs.length) return r
+  if (forzar) {
+    return { ...r, aviso: `Generado con --forzar-proyecto: ${difs.join('; ')} (proyecto ${proyecto}). Confirma que .env.local es de esta escuela.` }
+  }
+  return { ...r, abortar: {
+    msg: `Lo publicado en el proyecto ${proyecto} no es de esta escuela: ${difs.join('; ')}.`,
+    ayuda: '.env.local apunta a otro proyecto (baja el correcto: vercel env pull .env.local), o la escuela cambió su nombre en\n' +
+      '«Personalizar mi página». Si es lo segundo, vuelve a correr con --forzar-proyecto.',
+  } }
+}
+
+/**
+ * La página de Infraestructura nombra el proyecto de `supabaseUrl` en
+ * entrega.local.json si viene, y todo lo demás se lee del de .env.local. Si
+ * son proyectos distintos, el PDF diría uno y reflejaría otro: se aborta,
+ * salvo --forzar-proyecto (y entonces queda en «REVISA»).
+ * @param {{ urlDatos: unknown, urlEnv: unknown, forzar?: boolean }} opciones
+ * @returns {{ aviso?: string, abortar?: { msg: string, ayuda: string } }}
+ */
+export function revisarProyectoInfra({ urlDatos, urlEnv, forzar = false }) {
+  const deDatos = refDeProyecto(urlDatos), deEnv = refDeProyecto(urlEnv)
+  if (!deDatos || !deEnv || deDatos === deEnv) return {}
+  const msg = `"supabaseUrl" de entrega.local.json es del proyecto ${deDatos}, pero lo publicado y el inventario se leyeron del ${deEnv} (.env.local).`
+  if (forzar) return { aviso: `Generado con --forzar-proyecto: ${msg} La página de Infraestructura nombra el ${deDatos}.` }
+  return { abortar: { msg, ayuda: 'Quita "supabaseUrl" de entrega.local.json (sale de .env.local), o baja el .env.local del proyecto correcto\n(vercel env pull .env.local). Si de verdad son distintos a propósito, vuelve a correr con --forzar-proyecto.' } }
+}
