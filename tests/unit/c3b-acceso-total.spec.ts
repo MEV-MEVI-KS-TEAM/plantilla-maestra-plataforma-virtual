@@ -214,6 +214,14 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   expect(activar).not.toMatch(/\} else \{[\s\S]*avisoMes1/)
   // Un 409 (ya estaba) no cuenta como «acceso total» de esta asignación.
   expect(activar).toContain("if (res.status === 409) { yaEstaban++; continue }")
+  // Lo que abrió cada curso sale de la respuesta del servidor, tal cual.
+  expect(activar).toContain('acceso_total: json.acceso_total === true,')
+  expect(activar).toContain('sin_precio: json.sin_precio === true,')
+  expect(activar).toContain("nombre: json.nombre ?? preciosPublicados.get(cursoId)?.nombre ?? 'el curso',")
+  expect(activar).toContain('if (json.publicado === false) enBorrador = true')
+  expect(alumnosPag).toMatch(/if \(vivo && Array\.isArray\(d\)\) \{ setCursos\(d\); setCatalogoOk\(true\) \}/)
+  expect(ruta).toContain("publicado: curso?.estado !== undefined ? curso.estado === 'publicado' : null,")
+  expect(ruta).toContain('nombre: curso?.nombre ?? null,')
   // La ruta no afirma «sin precio» si no leyó la ficha o si abrió todo.
   expect(ruta).toMatch(/const sinPrecio = !errCurso && curso != null && fila\?\.acceso_total !== true/)
   // /admin/alumnos «Asignar» reusa la ruta de arriba.

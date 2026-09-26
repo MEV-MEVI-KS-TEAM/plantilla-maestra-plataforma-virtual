@@ -122,7 +122,7 @@ export async function POST(
     // lo avisa y ofrece «Abrir todo». Si la ficha no se pudo leer, o se abrió
     // todo, no se afirma nada. `publicado`: en borrador nadie ve nada todavía.
     const { data: curso, error: errCurso } = await supabase
-      .from('cursos').select('precio_inscripcion, precio_mensualidad, estado').eq('id', params.id).maybeSingle()
+      .from('cursos').select('nombre, precio_inscripcion, precio_mensualidad, estado').eq('id', params.id).maybeSingle()
     const sinPrecio = !errCurso && curso != null && fila?.acceso_total !== true
       && precioCursoNumerico(curso).tipo === 'informes'
     return NextResponse.json({
@@ -132,6 +132,7 @@ export async function POST(
       regla: fila?.regla ?? null,
       sin_precio: sinPrecio,
       publicado: curso?.estado !== undefined ? curso.estado === 'publicado' : null,
+      nombre: curso?.nombre ?? null,
     }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/admin/cursos/[id]/inscripciones]', err)

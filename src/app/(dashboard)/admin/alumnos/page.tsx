@@ -257,9 +257,10 @@ export default function AlumnosPage() {
           }
           continue
         }
-        const json = await res.json().catch(() => ({} as { acceso_total?: boolean; sin_precio?: boolean; publicado?: boolean | null }))
+        const json = await res.json().catch(() => ({} as { acceso_total?: boolean; sin_precio?: boolean; publicado?: boolean | null; nombre?: string | null }))
         nuevos.push({
-          nombre: preciosPublicados.get(cursoId)?.nombre ?? 'el curso',
+          // El nombre lo da el servidor: el catálogo no trae los cursos en borrador.
+          nombre: json.nombre ?? preciosPublicados.get(cursoId)?.nombre ?? 'el curso',
           acceso_total: json.acceso_total === true,
           sin_precio: json.sin_precio === true,
         })
