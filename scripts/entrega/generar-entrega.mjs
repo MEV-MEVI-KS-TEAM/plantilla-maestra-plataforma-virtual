@@ -1002,7 +1002,7 @@ if (!flag('solo-pdf')) {
     INFORMES_EXCEL ? '• Consultar tus Informes de ingresos por semana y por mes, y descargarlos en Excel' : '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
     CURSOS_PUBLICADOS.length
-      ? `• Asignar alumnos a tus ${CURSOS_PUBLICADOS.length} curso${CURSOS_PUBLICADOS.length === 1 ? '' : 's'} en ${MENU_CURSOS} → el curso → Alumnos (en uno de pago único se les abre completo; a quien ya se registró desde tu página eligiendo el curso, con «Abrir todo» o «+ Abrir mes»), seguir su avance y crear todos los que quieras`
+      ? `• Asignar alumnos a ${CURSOS_PUBLICADOS.length === 1 ? 'tu curso' : `tus ${CURSOS_PUBLICADOS.length} cursos`} en ${MENU_CURSOS} → el curso → Alumnos (en uno de pago único se les abre completo; a quien ya se registró desde tu página eligiendo el curso, con «Abrir todo» o «+ Abrir mes»), seguir su avance y crear todos los que quieras`
       : '• Crear tus propios Cursos y Diplomados cuando quieras',
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]

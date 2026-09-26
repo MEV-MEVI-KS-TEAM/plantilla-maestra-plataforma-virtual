@@ -135,7 +135,7 @@ test('3. leer los cursos: un error NO es «0 cursos»; el respaldo sin precio es
 test('4. revisar los cursos: se aborta antes que negar lo vendido o contradecir al registro', () => {
   const ing = (cursos: unknown[], extra: Record<string, unknown> = {}) => ({ activa: true, cursos, ...extra })
   const U = curso('U', 2490, 0), Z = curso('Z', 0, 0), M = curso('M', 0, 900), P = curso('P', 1990, 0)
-  const r = (args: Parameters<typeof revisarCursos>[0]) => revisarCursos({ mxn, ...args })
+  const r = (args: Omit<Parameters<typeof revisarCursos>[0], 'mxn'>) => revisarCursos({ mxn, ...args })
 
   // Sin add-on: sin inventario o sin cursos, sale; con un error de lectura, NO.
   expect(r({ lectura: null, ing: undefined }).abortar).toBeNull()
