@@ -24,7 +24,7 @@
 --         curso_abrir_mes;
 --       - el pago único de un curso cuya ficha ES de pago único: curso_abrir_todo.
 --     Nunca abre todo un curso mensual. p_meses_esperados es OBLIGATORIO para
---     abrir: lo que la pantalla vio; si cambió en medio, 40001 y nada.
+--     abrir: lo que la pantalla vio; si cambió en medio, PT409 (409) y nada.
 --   · Admin Y secretario cobran y abren (decisión 6, nueva): es_staff().
 --   · Guarda la moneda y el tipo de cambio del pago.
 --   · El pago y su apertura quedan en la MISMA transacción: el evento de la
@@ -209,7 +209,7 @@ BEGIN
     END IF;
     IF p_meses_esperados <> v_meses THEN
       RAISE EXCEPTION 'Mientras cobrabas, el acceso de esta inscripción cambió (tiene % mes(es) abiertos; la pantalla decía %). Recarga y vuelve a intentarlo.',
-        v_meses, p_meses_esperados USING ERRCODE = '40001';
+        v_meses, p_meses_esperados USING ERRCODE = 'PT409';
     END IF;
 
     SELECT c.precio_inscripcion, c.precio_mensualidad INTO v_ins, v_men FROM public.cursos c WHERE c.id = v_curso;

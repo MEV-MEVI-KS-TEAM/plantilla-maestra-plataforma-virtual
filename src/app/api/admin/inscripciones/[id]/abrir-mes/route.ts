@@ -14,7 +14,7 @@ import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 //
 // body { meses_esperados?: number } — el valor que el admin tenía a la vista.
 // Es el candado contra el doble clic: si alguien ya lo movió, la función
-// devuelve 40001 en vez de incrementar dos veces.
+// devuelve PT409 (409) en vez de incrementar dos veces.
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }

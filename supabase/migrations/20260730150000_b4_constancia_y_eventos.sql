@@ -252,7 +252,7 @@ BEGIN
   IF p_meses_esperados IS NOT NULL AND p_meses_esperados <> v_actual THEN
     RAISE EXCEPTION
       'La inscripción ya tiene % meses abiertos (esperabas %). Recarga la pantalla: alguien más la movió o el botón se pulsó dos veces.',
-      v_actual, p_meses_esperados USING ERRCODE = '40001';
+      v_actual, p_meses_esperados USING ERRCODE = 'PT409';
   END IF;
 
   v_tope := public.curso_tope_meses(v_curso);
@@ -308,7 +308,7 @@ BEGIN
   IF p_meses_esperados IS NOT NULL AND p_meses_esperados <> v_actual THEN
     RAISE EXCEPTION
       'La inscripción ya tiene % meses abiertos (esperabas %). Recarga la pantalla.',
-      v_actual, p_meses_esperados USING ERRCODE = '40001';
+      v_actual, p_meses_esperados USING ERRCODE = 'PT409';
   END IF;
 
   IF v_actual <= 0 THEN
