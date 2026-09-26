@@ -27,7 +27,6 @@ export function precioPublico(n: number): string {
   return formatearMoneda(n, CONFIG, { conCodigo: true })
 }
 
-
 /** `precioCursoNumerico` con los montos ya formateados, para pintarlos. */
 export type PrecioCatalogo =
   | { tipo: 'mensual'; mensualidad: string; inscripcion: string | null }
