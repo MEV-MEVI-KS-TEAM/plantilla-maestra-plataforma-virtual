@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { getUserRol, verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
+import { ultimosMovimientos } from '@/lib/cursos/bitacora'
 import { removeFolder, signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
@@ -21,13 +22,19 @@ async function authAdmin() {
 }
 
 // ─── GET /api/admin/cursos/[id] — detalle completo para el editor ────────────
+// Lo lee también el SECRETARIO (D7b, decisión 6): abre y cierra desde la pestaña
+// Alumnos. Editar el curso (PATCH/DELETE) sigue siendo solo del admin.
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { denied } = await authAdmin()
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+    const viewerRol = (await getUserRol(supabase, user.id)) === 'SECRETARIO' ? 'SECRETARIO' : 'ADMIN'
 
     const admin = createAdminClient()
 
@@ -90,9 +97,11 @@ export async function GET(
     const alumnoIds = (inscripciones ?? []).map(i => i.alumno_id)
     let inscritos: CursoInscrito[] = []
     if (alumnoIds.length > 0) {
-      const [{ data: usuarios }, { data: alumnos }] = await Promise.all([
+      const [{ data: usuarios }, { data: alumnos }, movimientos] = await Promise.all([
         admin.from('usuarios').select('id, nombre, apellidos, email').in('id', alumnoIds),
         admin.from('alumnos').select('id, matricula, activo').in('id', alumnoIds),
+        // Bitácora: el último movimiento de cada uno, con quién lo hizo (D7b).
+        ultimosMovimientos(admin, (inscripciones ?? []).map(i => i.id)),
       ])
       const uMap = new Map((usuarios ?? []).map(u => [u.id, u]))
       const aMap = new Map((alumnos ?? []).map(a => [a.id, a]))
@@ -118,6 +127,7 @@ export async function GET(
           fecha_inscripcion: row.fecha_inscripcion,
           fecha_vencimiento: row.fecha_vencimiento,
           acceso_total: row.acceso_total === true,
+          ultimo_movimiento: movimientos.get(row.id) ?? null,
         }
       })
     }
@@ -126,6 +136,7 @@ export async function GET(
       curso: { ...(curso as Curso), portadaUrl: await signedUrl(admin, (curso as Curso).portada_path) },
       modulos,
       inscritos,
+      viewer_rol: viewerRol,
     }
     return NextResponse.json(detalle)
   } catch (err) {

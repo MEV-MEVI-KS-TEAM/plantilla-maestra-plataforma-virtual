@@ -1,5 +1,7 @@
 /** Tipos del módulo Cursos y Diplomados (tablas nuevas de la migración F1). */
 
+import type { MovimientoInscripcion } from '@/lib/cursos/bitacora'
+
 export type CursoTipo = 'curso' | 'diplomado'
 export type CursoEstado = 'borrador' | 'publicado'
 
@@ -70,12 +72,16 @@ export interface CursoInscrito {
   fecha_vencimiento: string | null
   /** Pago único (C3b): ve el curso completo; los meses no aplican. */
   acceso_total: boolean
+  /** El último movimiento de la bitácora, con quién lo hizo (D7b). null sin bitácora. */
+  ultimo_movimiento?: MovimientoInscripcion | null
 }
 
 export interface CursoDetalle {
   curso: Curso & { portadaUrl: string | null }
   modulos: CursoModulo[]
   inscritos: CursoInscrito[]
+  /** Quién mira (D7b): el secretario solo ve la pestaña Alumnos. Sin el campo, admin. */
+  viewer_rol?: 'ADMIN' | 'SECRETARIO'
 }
 
 /** Fila del endpoint existente GET /api/admin/alumnos que consume la pestaña Alumnos. */

@@ -37,13 +37,15 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Personalizar mi página', href: '/admin/configuracion', emoji: '⚙️', icon: Settings  },
   ],
   // Rol acotado: ve Alumnos (lectura + registrar pagos) y Estado de Cuenta.
-  // Usuarios/Contenido/Documentos/Configuración/Reportes/Cursos quedan ocultos.
+  // Usuarios/Contenido/Documentos/Configuración/Reportes quedan ocultos.
   SECRETARIO: [
     { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users      },
     { label: 'Estado de Cuenta', href: '/admin/estado-cuenta', emoji: '🧾', icon: BarChart3  },
     // El secretario cobra, así que ve el historial de pagos. Informes NO:
     // /api/admin/reportes/export exige rol ADMIN.
     { label: 'Pagos',            href: '/admin/pagos',         emoji: '💳', icon: CreditCard },
+    // D7b (decisión 6): asigna y abre cursos. Dentro solo ve la pestaña Alumnos.
+    { label: 'Cursos',           href: '/admin/cursos',        emoji: '🎓', icon: GraduationCap },
   ],
   ALUMNO: [
     { label: 'Inicio',         href: '/alumno',                emoji: '🏠', icon: Home          },
@@ -84,9 +86,11 @@ const NAV_ITEMS_SOLO_CURSOS: Record<UserRole, NavItem[]> = {
     { label: 'Personalizar mi página', href: '/admin/configuracion', emoji: '⚙️', icon: Settings },
   ],
   // El secretario cobra. Estado de Cuenta es del programa y aquí no aplica, así
-  // que se queda con Alumnos, desde donde registra los pagos del diplomado.
+  // que se queda con Alumnos, desde donde registra los pagos del diplomado, y
+  // (D7b, decisión 6) con Diplomados, donde asigna y abre (solo la pestaña Alumnos).
   SECRETARIO: [
     { label: 'Alumnos',        href: '/admin/alumnos',       emoji: '👥', icon: Users     },
+    { label: 'Diplomados',     href: '/admin/cursos',        emoji: '🎓', icon: GraduationCap },
   ],
   ALUMNO: [
     { label: 'Mis Diplomados', href: '/alumno/cursos',       emoji: '🎓', icon: GraduationCap },

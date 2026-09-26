@@ -1,0 +1,111 @@
+/**
+ * Bitácora de una inscripción a curso (curso_inscripcion_eventos, B4/C3b) leída
+ * para el panel: qué pasó y QUIÉN lo hizo, con nombre y rol (Bloque D · D7b).
+ *
+ * Desde D7b el secretario también asigna, abre y cierra: la bitácora tiene que
+ * decir si fue la administración o la secretaría. Cada evento ya guarda su actor
+ * (auth.uid() de quien llamó la función SQL); aquí solo se le pone nombre.
+ *
+ * Sin la migración B4 no hay bitácora: `ultimosMovimientos` devuelve un mapa
+ * vacío y la lista de alumnos sale igual.
+ */
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+export interface MovimientoInscripcion {
+  tipo: string
+  meses_antes: number | null
+  meses_despues: number | null
+  created_at: string
+  /** null = sin actor (lo hizo el sistema o un proceso con service_role). */
+  actor_nombre: string | null
+  /** El rol tal como está en usuarios.rol (admin, secretario…), o null. */
+  actor_rol: string | null
+}
+
+type EventoFila = {
+  inscripcion_id: string
+  tipo: string
+  meses_antes: number | null
+  meses_despues: number | null
+  actor: string | null
+  created_at: string
+}
+
+/** «administración», «secretaría»; otro rol tal cual; vacío sin rol. */
+export function etiquetaRolActor(rol: string | null | undefined): string {
+  const r = (rol ?? '').trim().toLowerCase()
+  if (r === 'admin') return 'administración'
+  if (r === 'secretario') return 'secretaría'
+  return r
+}
+
+/** «Ana López (secretaría)» · «Ana López» · «el sistema». */
+export function quienHizo(m: Pick<MovimientoInscripcion, 'actor_nombre' | 'actor_rol'>): string {
+  const nombre = (m.actor_nombre ?? '').trim()
+  const rol = etiquetaRolActor(m.actor_rol)
+  if (!nombre && !rol) return 'el sistema'
+  if (!nombre) return rol
+  return rol ? `${nombre} (${rol})` : nombre
+}
+
+/** Qué pasó, en una frase corta para la fila del alumno. */
+export function describirMovimiento(m: Pick<MovimientoInscripcion, 'tipo' | 'meses_antes' | 'meses_despues'>): string {
+  const despues = m.meses_despues ?? 0
+  const antes = m.meses_antes ?? 0
+  switch (m.tipo) {
+    case 'abrir_mes': return `abrió el mes ${despues}`
+    case 'cerrar_mes': return `cerró el mes ${antes}`
+    case 'abrir_todo': return 'abrió todo el curso'
+    case 'quitar_acceso_total': return 'quitó el acceso total'
+    case 'inscripcion': return despues > 0 ? `asignó el curso (mes ${despues})` : 'asignó el curso'
+    case 'cambio_estado': return 'cambió el estado'
+    case 'constancia_emitida': return 'emitió la constancia'
+    default: return m.tipo
+  }
+}
+
+/** Pone nombre y rol a los actores de una lista de eventos. */
+export async function conActores<T extends { actor: string | null }>(
+  admin: SupabaseClient,
+  eventos: readonly T[],
+): Promise<Array<T & { actor_nombre: string | null; actor_rol: string | null }>> {
+  const ids = [...new Set(eventos.map(e => e.actor).filter((x): x is string => !!x))]
+  const porId = new Map<string, { nombre: string; rol: string | null }>()
+  if (ids.length > 0) {
+    const { data } = await admin.from('usuarios').select('id, nombre, apellidos, rol').in('id', ids)
+    for (const u of (data ?? []) as { id: string; nombre?: string | null; apellidos?: string | null; rol?: string | null }[]) {
+      porId.set(u.id, { nombre: [u.nombre, u.apellidos].filter(Boolean).join(' '), rol: u.rol ?? null })
+    }
+  }
+  return eventos.map(e => {
+    const u = e.actor ? porId.get(e.actor) : undefined
+    return { ...e, actor_nombre: u?.nombre || null, actor_rol: u?.rol ?? null }
+  })
+}
+
+/**
+ * El último movimiento de cada inscripción, con su actor. Mapa vacío si la base
+ * no tiene bitácora (sin B4) o si falla la lectura: la lista no depende de esto.
+ */
+export async function ultimosMovimientos(
+  admin: SupabaseClient,
+  inscripcionIds: readonly string[],
+): Promise<Map<string, MovimientoInscripcion>> {
+  const out = new Map<string, MovimientoInscripcion>()
+  if (inscripcionIds.length === 0) return out
+  const { data, error } = await admin
+    .from('curso_inscripcion_eventos')
+    .select('inscripcion_id, tipo, meses_antes, meses_despues, actor, created_at')
+    .in('inscripcion_id', [...inscripcionIds])
+    .order('created_at', { ascending: false })
+  if (error || !data) return out
+  const ultimos = new Map<string, EventoFila>()
+  for (const e of data as EventoFila[]) if (!ultimos.has(e.inscripcion_id)) ultimos.set(e.inscripcion_id, e)
+  for (const e of await conActores(admin, [...ultimos.values()])) {
+    out.set(e.inscripcion_id, {
+      tipo: e.tipo, meses_antes: e.meses_antes, meses_despues: e.meses_despues, created_at: e.created_at,
+      actor_nombre: e.actor_nombre, actor_rol: e.actor_rol,
+    })
+  }
+  return out
+}

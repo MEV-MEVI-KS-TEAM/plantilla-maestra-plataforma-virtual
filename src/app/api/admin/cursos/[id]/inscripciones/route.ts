@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+// D7b (decisión 6): asignar —una o a todos— es del staff; la función SQL decide igual.
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
 
@@ -16,7 +17,7 @@ export async function GET(
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    const denied = await verifyAdmin(supabase, user.id)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
     if (request.nextUrl.searchParams.get('simular') !== 'todos') {
       return NextResponse.json({ error: 'Usa ?simular=todos' }, { status: 400 })
@@ -69,7 +70,7 @@ export async function POST(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const denied = await verifyAdmin(supabase, user.id)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
 
     const body = await request.json().catch(() => ({}))

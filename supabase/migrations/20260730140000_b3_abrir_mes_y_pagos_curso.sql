@@ -460,6 +460,23 @@ BEGIN
   END IF;
 END
 $c3b$;
+-- ── D7b · re-correr esta migración NO le quita al secretario la apertura ─────
+-- Si la base ya tiene D7b (20260927120000_d7b_secretario_abre_cursos.sql), las
+-- funciones de apertura que esta migración acaba de pisar vuelven a aceptar al
+-- secretario (la regla vive en public.d7b_staff_abre()). Sin D7b no hace nada.
+DO $d7b$
+DECLARE
+  v_n INTEGER;
+BEGIN
+  IF to_regprocedure('public.d7b_staff_abre()') IS NOT NULL THEN
+    v_n := public.d7b_staff_abre();
+    IF v_n > 0 THEN
+      RAISE NOTICE 'Esta base ya tiene D7b: % función(es) de apertura vuelven a aceptar al secretario.', v_n;
+    END IF;
+  END IF;
+END
+$d7b$;
+
 DROP TABLE IF EXISTS pg_temp.c3b_vigentes;
 
 COMMIT;

@@ -280,3 +280,59 @@ SELECT
     ELSE '✅ OK (acceso_total, curso_inscribir, candado, abrir/cerrar mes, reporte y techo privado)'
   END AS resultado
 FROM c3b;
+
+-- ─── CHECK 16: el secretario también abre (D7b) ──────────────────────────────
+-- Solo aplica si la base tiene el módulo de cursos. Las siete funciones de
+-- apertura (asignar, asignar a todos, abrir mes, abrir todo, cobrar abriendo el
+-- mes, cerrar mes y quitar el acceso total) tienen que aceptar al secretario
+-- (guarda «es_staff() … D7b:»), y las de SOLO ADMIN (cambiar estado/cancelar,
+-- borrar módulos, emitir constancias) seguir pidiendo es_admin(). Una corrida
+-- vieja de B3, B4 o C3b sin su epílogo le quita la apertura al secretario en
+-- silencio: por eso se revisan los cuerpos, no solo los nombres.
+WITH d7b AS (
+  SELECT
+    to_regclass('public.curso_inscripciones') IS NOT NULL AS hay_cursos,
+    to_regprocedure('public.d7b_staff_abre()') IS NOT NULL AS instalada,
+    (SELECT string_agg(f, ', ' ORDER BY f)
+       FROM unnest(ARRAY['curso_inscribir(uuid,uuid)', 'curso_inscribir_todos(uuid,integer,text,boolean)',
+                         'curso_abrir_todo(uuid)', 'curso_quitar_acceso_total(uuid,text)',
+                         'curso_abrir_mes(uuid,integer)', 'curso_cerrar_mes(uuid,integer)',
+                         'curso_registrar_pago(uuid,numeric,text,text,text,date,boolean,integer)']) AS f
+      WHERE to_regprocedure('public.' || f) IS NULL
+         OR strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'NOT public.es_staff() THEN  -- D7b:') = 0) AS sin_secretario,
+    (SELECT string_agg(f, ', ' ORDER BY f)
+       FROM unnest(ARRAY['curso_cambiar_estado(uuid,text,text)', 'curso_borrar_modulo(uuid)',
+                         'curso_emitir_constancia(uuid,text,numeric)']) AS f
+      WHERE to_regprocedure('public.' || f) IS NOT NULL
+        AND strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'IF NOT public.es_admin() THEN') = 0
+        -- «Abierta» = sin la guarda de admin Y ejecutable con la sesión. (Una corrida
+        -- vieja de B4 deja emitir_constancia sin guarda, pero también sin EXECUTE para
+        -- authenticated: nadie con sesión la llama; eso lo ve el flujo de constancias.)
+        AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+        AND has_function_privilege('authenticated', 'public.' || f, 'EXECUTE')) AS admin_abiertas,
+    CASE WHEN to_regprocedure('public.d7b_staff_abre()') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+         THEN has_function_privilege('authenticated', 'public.d7b_staff_abre()', 'EXECUTE')
+         ELSE false END AS herramienta_expuesta
+  FROM (SELECT 1) AS x
+)
+SELECT
+  'El secretario abre cursos (D7b)' AS check_name,
+  CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
+       ELSE 'd7b_staff_abre ' || instalada::text || ' / sin el secretario: ' || COALESCE(sin_secretario, 'ninguna')
+            || ' / solo admin abiertas: ' || COALESCE(admin_abiertas, 'ninguna')
+            || ' / herramienta expuesta ' || herramienta_expuesta::text
+  END AS valor,
+  CASE
+    WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
+    WHEN NOT instalada
+      THEN '❌ FALTA → correr supabase/migrations/20260927120000_d7b_secretario_abre_cursos.sql (después de C3b)'
+    WHEN sin_secretario IS NOT NULL
+      THEN '❌ D7b REVERTIDO (' || sin_secretario || '): se corrió después una copia vieja de B3/B4/C3b → vuelve a correr supabase/migrations/20260927120000_d7b_secretario_abre_cursos.sql'
+    WHEN admin_abiertas IS NOT NULL
+      THEN '❌ SOLO ADMIN ABIERTO (' || admin_abiertas || '): estas funciones ya no piden es_admin() → revisa quién las cambió'
+    WHEN herramienta_expuesta
+      THEN '❌ d7b_staff_abre() ejecutable por authenticated → vuelve a correr la migración D7b'
+    ELSE '✅ OK (asignar, abrir, cerrar, abrir todo y cobrar abriendo: admin y secretario; estado, módulos y constancias: solo admin)'
+  END AS resultado
+FROM d7b;

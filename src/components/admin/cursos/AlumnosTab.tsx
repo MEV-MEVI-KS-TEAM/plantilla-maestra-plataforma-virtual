@@ -5,6 +5,8 @@ import { Search, UserMinus, UserPlus, Users } from 'lucide-react'
 import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
 import type { AperturaAlAsignar } from '@/lib/cursos/acceso'
+import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
+import { describirMovimiento, quienHizo } from '@/lib/cursos/bitacora'
 
 interface AlumnosTabProps {
   cursoId: string
@@ -20,6 +22,13 @@ interface AlumnosTabProps {
   publicado: boolean
   onChanged: (mensaje?: string) => void | Promise<void>
   onError: (mensaje: string, duracion?: number) => void
+  /**
+   * D7b (decisión 6): el secretario asigna, abre, cierra, abre todo y quita el
+   * acceso total, igual que el admin. Lo que sigue siendo SOLO del admin se
+   * esconde: quitar a un alumno del curso (borra la inscripción) y emitir la
+   * constancia. Las funciones SQL y las rutas lo vuelven a comprobar.
+   */
+  esAdmin: boolean
 }
 
 /** Un aviso que hay que leer (se abrió menos de lo cobrado) no se va en 4 s. */
@@ -37,11 +46,14 @@ function accesoVigente(i: CursoInscrito, publicado: boolean): boolean {
   return true
 }
 
-export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged, onError }: AlumnosTabProps) {
+export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged, onError, esAdmin }: AlumnosTabProps) {
   const [alumnos, setAlumnos] = useState<AlumnoAdminRow[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
   const [confirmTodos, setConfirmTodos] = useState<0 | 1 | 2>(0) // doble confirmación
+  // «Abrir todo» abre el curso completo y, con #208, deja de ser reembolsable:
+  // doble confirmación con el aviso del pago único (D7b), para admin y secretario.
+  const [confirmAbrirTodo, setConfirmAbrirTodo] = useState<{ i: CursoInscrito; paso: 1 | 2 } | null>(null)
   const [asignandoTodos, setAsignandoTodos] = useState(false)
   // Lo que la masiva haría, contado por el SERVIDOR (D3): cuántos nuevos y con
   // qué regla. La confirmación muestra esto, y la ejecución lo manda de vuelta.
@@ -130,25 +142,23 @@ Esto REVOCA acceso que el alumno ya tenia: ` +
   /**
    * Abre el curso completo (pago único cobrado a quien entró por meses) o quita
    * el acceso total (corrección). Las dos dejan evento con actor en la
-   * bitácora. Quitarlo REVOCA acceso: se confirma antes.
+   * bitácora. Quitarlo REVOCA acceso: se confirma antes. Abrir todo llega aquí
+   * DESPUÉS de su doble confirmación (ver `confirmAbrirTodo`).
    */
   const cambiarAccesoTotal = async (
     inscripcion: CursoInscrito,
     accion: 'abrir-todo' | 'quitar-acceso-total'
   ) => {
     const { inscripcion_id: inscripcionId, nombre } = inscripcion
-    const ok = window.confirm(accion === 'abrir-todo'
-      ? `Abrir TODO el curso a ${nombre}.
-
-Tendrá acceso total (pago único): todos los módulos, también los que se agreguen después.
-
-¿Continuar?`
-      : `Quitar el acceso total a ${nombre}.
+    if (accion === 'quitar-acceso-total') {
+      const ok = window.confirm(`Quitar el acceso total a ${nombre}.
 
 Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró por pago único).
 
 ¿Continuar?`)
-    if (!ok) return
+      if (!ok) return
+    }
+    setConfirmAbrirTodo(null)
     setOcupadoId(inscripcionId)
     try {
       const res = await fetch(`/api/admin/inscripciones/${inscripcionId}/${accion}`, {
@@ -428,6 +438,13 @@ Se borra su inscripción y deja de ver el curso.
                   <p className="text-xs truncate" style={{ color: '#9CA3AF' }}>
                     {i.email}{i.matricula ? ` · ${i.matricula}` : ''}
                   </p>
+                  {/* Bitácora (D7b): el último movimiento y QUIÉN lo hizo, con su rol. */}
+                  {i.ultimo_movimiento && (
+                    <p className="text-[11px] truncate" style={{ color: '#64748B' }}
+                      title={new Date(i.ultimo_movimiento.created_at).toLocaleString('es-MX')}>
+                      Último: {describirMovimiento(i.ultimo_movimiento)} · {quienHizo(i.ultimo_movimiento)}
+                    </p>
+                  )}
                 </div>
                 {!i.activo && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
@@ -505,7 +522,7 @@ Se borra su inscripción y deja de ver el curso.
                         + Abrir mes
                       </button>
                       <button
-                        onClick={() => cambiarAccesoTotal(i, 'abrir-todo')}
+                        onClick={() => setConfirmAbrirTodo({ i, paso: 1 })}
                         disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
                         title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala primero` : 'Acceso total: todo el curso (pago único)'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
@@ -515,26 +532,32 @@ Se borra su inscripción y deja de ver el curso.
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}
-                    disabled={ocupadoId === i.inscripcion_id}
-                    title="Emitir la constancia (requiere examen aprobado; el folio es permanente)"
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
-                    style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
-                  >
-                    Constancia
-                  </button>
+                  {/* Solo admin (D7b): el folio es permanente. */}
+                  {esAdmin && (
+                    <button
+                      onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}
+                      disabled={ocupadoId === i.inscripcion_id}
+                      title="Emitir la constancia (requiere examen aprobado; el folio es permanente)"
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+                      style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
+                    >
+                      Constancia
+                    </button>
+                  )}
                 </div>
 
-                <button
-                  onClick={() => quitar(i.alumno_id, i.nombre)}
-                  disabled={ocupadoId === i.alumno_id}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
-                  style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
-                >
-                  <UserMinus className="w-3.5 h-3.5" />
-                  Quitar
-                </button>
+                {/* Solo admin (D7b): quitar borra la inscripción. */}
+                {esAdmin && (
+                  <button
+                    onClick={() => quitar(i.alumno_id, i.nombre)}
+                    disabled={ocupadoId === i.alumno_id}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
+                    style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
+                  >
+                    <UserMinus className="w-3.5 h-3.5" />
+                    Quitar
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -579,6 +602,38 @@ Se borra su inscripción y deja de ver el curso.
         busy={asignandoTodos}
         onConfirm={asignarTodosActivos}
         onCancel={() => setConfirmTodos(0)}
+      />
+
+      {/* «Abrir todo»: doble confirmación con el aviso del pago único (D7b). */}
+      <ConfirmDialog
+        open={confirmAbrirTodo?.paso === 1}
+        title="Abrir todo el curso"
+        message={
+          <>
+            Se le abrirá <strong>TODO el curso</strong> a <strong>{confirmAbrirTodo?.i.nombre}</strong> (acceso
+            total): todos los módulos, también los que se agreguen después.{' '}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá cuando lo publiques. </>}
+            ¿Continuar?
+          </>
+        }
+        confirmLabel="Sí, continuar"
+        onConfirm={() => setConfirmAbrirTodo(c => (c ? { ...c, paso: 2 } : null))}
+        onCancel={() => setConfirmAbrirTodo(null)}
+      />
+      <ConfirmDialog
+        open={confirmAbrirTodo?.paso === 2}
+        danger
+        title="¿Seguro? Segunda confirmación"
+        message={
+          <>
+            <strong>{AVISO_PAGO_UNICO}.</strong> Una vez abierto, el pago único de{' '}
+            <strong>{confirmAbrirTodo?.i.nombre}</strong> ya no se reembolsa. Confirma una vez más para abrirlo.
+          </>
+        }
+        confirmLabel="Abrir todo"
+        busy={confirmAbrirTodo ? ocupadoId === confirmAbrirTodo.i.inscripcion_id : false}
+        onConfirm={() => { if (confirmAbrirTodo) void cambiarAccesoTotal(confirmAbrirTodo.i, 'abrir-todo') }}
+        onCancel={() => setConfirmAbrirTodo(null)}
       />
     </div>
   )

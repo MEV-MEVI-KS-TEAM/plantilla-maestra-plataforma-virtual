@@ -273,7 +273,9 @@ test('6b. errores de las funciones: 23505 → 409, 22P02 → 400, función ausen
 test('7. la pestaña Alumnos: acceso total, abrir todo / quitar, y la masiva dice cuántos y qué (D3)', () => {
   const tab = sinComentariosTs(leer('src/components/admin/cursos/AlumnosTab.tsx'))
   expect(tab).toContain('Acceso total')
-  expect(tab).toContain("cambiarAccesoTotal(i, 'abrir-todo')")
+  // D7b: «Abrir todo» pasa por una doble confirmación con AVISO_PAGO_UNICO.
+  expect(tab).toContain('setConfirmAbrirTodo({ i, paso: 1 })')
+  expect(tab).toContain("cambiarAccesoTotal(confirmAbrirTodo.i, 'abrir-todo')")
   expect(tab).toContain("cambiarAccesoTotal(i, 'quitar-acceso-total')")
   // «Vigente» con los MISMOS filtros del candado, curso publicado incluido.
   expect(tab).toContain('function accesoVigente(i: CursoInscrito, publicado: boolean): boolean')
