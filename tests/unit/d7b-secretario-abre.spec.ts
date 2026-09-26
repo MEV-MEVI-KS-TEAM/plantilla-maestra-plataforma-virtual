@@ -201,7 +201,7 @@ test('9. la bitácora dice quién, con su rol', () => {
   expect(describirMovimiento({ tipo: 'abrir_todo', meses_antes: 0, meses_despues: 0 })).toBe('abrió todo el curso')
   expect(describirMovimiento({ tipo: 'inscripcion', meses_antes: 0, meses_despues: 1 })).toBe('asignó el curso (mes 1)')
   // Las rutas que la leen le ponen nombre y rol al actor.
-  expect(leer('src/app/api/admin/cursos/[id]/route.ts')).toContain('ultimosMovimientos(admin, (inscripciones ?? []).map(i => i.id))')
+  expect(leer('src/app/api/admin/cursos/[id]/route.ts')).toMatch(/ultimosMovimientos\(admin, (\(inscripciones \?\? \[\]\)\.map\(i => i\.id\)|inscIds)\)/)
   expect(leer('src/app/api/admin/inscripciones/[id]/route.ts')).toContain('const eventos = await conActores(admin,')
 })
 
