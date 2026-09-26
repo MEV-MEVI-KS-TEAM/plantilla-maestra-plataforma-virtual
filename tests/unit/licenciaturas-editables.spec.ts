@@ -388,22 +388,25 @@ test('5. la entrega aplica lo publicado con la MISMA regla y solo toca la tabla 
   const gen = sinComentarios(leer('scripts/entrega/generar-entrega.mjs'))
   // D6 (#194) suma `planLicEditable` para el aviso de REVISA; la regla sigue siendo la del módulo.
   expect(gen).toMatch(/const \{ licenciaturaEfectiva, bloqueLicEditable(?:, planLicEditable)? \} =\s*await import\(pathToFileURL\(path\.join\(RAIZ, 'src\/lib\/precios-licenciatura\.ts'\)\)\.href\)/)
-  expect(gen).toContain('const LIC = licenciaturaEfectiva(CONFIG.licenciaturas, PUBLICADO.licenciaturas)')
-  // Toda lectura de la tabla pasa por LIC: `CONFIG.licenciaturas` solo para decidir si la escuela
-  // puede publicar, para definir LIC, para el aviso y (D6, #194) para saber si el panel publica
-  // ESE plan sin mensualidad: la editabilidad se juzga sobre config.ts, igual que en el panel.
-  expect(gen.match(/CONFIG\.licenciaturas/g)).toHaveLength(4)
-  expect(gen).toContain('const deConfig = (CONFIG.licenciaturas?.modalidades || []).find((x) => x && x.id === m.id)')
-  expect(gen).toContain('const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG.licenciaturas)')
-  // Aborta solo si la escuela puede publicar licenciatura; si no, avisa y sigue.
-  expect(gen).toContain('if (PUEDE_PUBLICAR_LIC) abortar(motivo, ayuda)')
+  // D12 (#201): la tabla BASE de licenciatura es la de config.ts (CONFIG_TS); la fusión
+  // general (CONFIG) no la aplica dos veces.
+  expect(gen).toContain('const LIC = licenciaturaEfectiva(CONFIG_TS.licenciaturas, PUBLICADO.licenciaturas)')
+  // Toda lectura de la tabla pasa por LIC: config.ts solo para decidir si la escuela puede
+  // publicar, para definir LIC, para el aviso y (D6, #194) para saber si el panel publica ESE
+  // plan sin mensualidad: la editabilidad se juzga sobre config.ts, igual que en el panel.
+  expect(gen.match(/CONFIG_TS\.licenciaturas/g)).toHaveLength(4)
+  expect(gen.match(/[^_]CONFIG\.licenciaturas/g) ?? []).toHaveLength(0)
+  expect(gen).toContain('const deConfig = (CONFIG_TS.licenciaturas?.modalidades || []).find((x) => x && x.id === m.id)')
+  expect(gen).toContain('const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG_TS.licenciaturas)')
   expect(gen).toContain(".replace(/^\\uFEFF/, '')")
   // Un .env.local en CRLF también se lee, y hay salida a sabiendas.
   expect(gen).toContain('split(/\\r?\\n/)')
-  expect(gen).toContain("flag('solo-config')")
-  expect(gen).toContain(".from('site_config').select('data').eq('id', 1).maybeSingle()")
-  // Sec/Prepa siguen saliendo de config.ts (decisión 14): se avisa, no se aplica.
-  expect(gen).not.toMatch(/PUBLICADO\.precios\s*[,)]/)
+  expect(gen).toContain("soloConfig: flag('solo-config'),")
+  expect(leer('scripts/entrega/publicado.mjs')).toContain(".from('site_config').select('data').eq('id', 1).maybeSingle()")
+  // D12 revierte la decisión 14 de la Fase 2 (decisión 17): TODO lo publicado llega al papel,
+  // con la misma fusión que la app, y si no se puede leer se aborta (decisión 18).
+  expect(gen).toContain('const CONFIG = mergeSiteConfig(CONFIG_TS, PUBLICADO)')
+  expect(gen).toContain('if (pol.abortar) abortar(pol.abortar.msg, pol.abortar.ayuda)')
   const readme = leer('scripts/entrega/README.md')
   expect(readme).toContain('--solo-config')
   expect(readme).toContain('src/lib/precios-licenciatura.ts')
