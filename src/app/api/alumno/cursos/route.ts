@@ -5,6 +5,7 @@ import { porcentajeProgreso } from '@/lib/cursos/progreso'
 import { leccionesDeCurso, completadasDe, portadaFirmada, totalLeccionesDelCurso } from '@/lib/cursos/alumno-data'
 import type { CursoCatalogoItem } from '@/types/cursos-alumno'
 import type { CursoTipo } from '@/types/cursos'
+import { pagosPorCurso as resumirPagos, type PagoCursoAlumno } from '@/lib/cursos/pagos-alumno'
 
 // ─── GET /api/alumno/cursos — catálogo del alumno (RLS: publicados + inscrito) ─
 export async function GET() {
@@ -16,7 +17,7 @@ export async function GET() {
     // Cursos a los que el alumno está inscrito (RLS select propio en inscripciones)
     const { data: inscripciones } = await supabase
       .from('curso_inscripciones')
-      .select('curso_id')
+      .select('id, curso_id')
       .eq('alumno_id', user.id)
 
     const admin = createAdminClient()
@@ -30,6 +31,22 @@ export async function GET() {
       .in('id', cursoIds)
       .order('orden', { ascending: true })
       .order('created_at', { ascending: true })
+
+    // D19 (#207-8, decisión 8): sus pagos de curso, por la FK (cliente admin y
+    // SIEMPRE filtrando por el alumno de la sesión). Sin B1 (sin la columna) o si
+    // falla, sin resumen: el catálogo sale como siempre.
+    const cursoDeInscripcion = new Map((inscripciones ?? []).map(i => [i.id as string, i.curso_id as string]))
+    const { data: pagosCurso, error: errPagos } = await admin
+      .from('pagos')
+      .select('curso_inscripcion_id, monto, fecha_pago, created_at')
+      .eq('alumno_id', user.id)
+      .not('curso_inscripcion_id', 'is', null)
+    // Sin la columna (42703, base sin B1) no hay pagos de curso; otro error se
+    // registra (el alumno se vería como si no hubiera pagado).
+    if (errPagos && errPagos.code !== '42703') console.error('[GET /api/alumno/cursos] pagos:', errPagos.message)
+    const pagosPorCurso = errPagos
+      ? new Map()
+      : resumirPagos(cursoDeInscripcion, (pagosCurso ?? []) as PagoCursoAlumno[])
 
     const items: CursoCatalogoItem[] = await Promise.all(
       (cursos ?? []).map(async curso => {
@@ -49,6 +66,7 @@ export async function GET() {
           totalLecciones: total,
           completadas: completadas.size,
           porcentaje: porcentajeProgreso(completadas.size, total),
+          pagos: pagosPorCurso.get(curso.id as string) ?? null,
         }
       })
     )

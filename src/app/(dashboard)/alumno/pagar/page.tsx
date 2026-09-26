@@ -30,6 +30,8 @@ const fmt = (n: number) =>
 export default function PagarPage() {
   const [nivel, setNivel]       = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
+  // D19: el perfil SÍ se leyó (un fallo de red no cuenta como «sin nivel»).
+  const [perfilLeido, setPerfilLeido] = useState(false)
   // Nombre y WhatsApp son editables desde "Personalizar mi página"; `pagos`
   // (enlaces de cobro) no lo es y sigue leyendo CONFIG.
   const cfg = useSiteConfig()
@@ -37,15 +39,20 @@ export default function PagarPage() {
   useEffect(() => {
     fetch('/api/alumno/perfil')
       .then(r => (r.ok ? r.json() : null))
-      .then((d: Perfil | null) => setNivel(d?.nivel?.toLowerCase() ?? null))
+      .then((d: Perfil | null) => { setNivel(d?.nivel?.toLowerCase() ?? null); setPerfilLeido(d !== null) })
       .catch(() => setNivel(null))
       .finally(() => setCargando(false))
   }, [])
 
   const cfgPagos = CONFIG.pagos
-  // Mientras carga el perfil no se filtra por nivel: es preferible que el
-  // alumno vea de más un instante a que la pantalla parezca vacía.
-  const enlaces = (cfgPagos?.enlaces ?? []).filter(e =>
+  // D19 (#207-8): sin nivel (NULL: quien se registró eligiendo un CURSO, o una
+  // cuenta sin su fila de alumno) no hay programa: los enlaces son del PROGRAMA y
+  // le cobrarían la mensualidad de un nivel que no cursa.
+  const sinPrograma = perfilLeido && nivel === null
+  // Mientras carga el perfil NO se muestran enlaces («Cargando…»): antes se
+  // mostraban todos un instante, también a quien no los debe ver. Si el perfil no
+  // se pudo leer, se muestran todos (como antes): la mayoría es de programa.
+  const enlaces = cargando || sinPrograma ? [] : (cfgPagos?.enlaces ?? []).filter(e =>
     e.niveles.length > 0 && (nivel === null ? true : e.niveles.includes(nivel)),
   )
 
@@ -71,6 +78,10 @@ export default function PagarPage() {
           <p className="text-sm" style={{ color: 'var(--color-texto)' }}>
             {cargando
               ? 'Cargando tus opciones de pago…'
+              : sinPrograma
+                ? (canal
+                  ? 'Tu inscripción no tiene un programa escolar: estos enlaces no aplican. Escríbenos y te decimos cómo pagar; lo que ya pagaste a un curso lo ves en tus cursos.'
+                  : 'Tu inscripción no tiene un programa escolar: estos enlaces no aplican. Pregunta en tu escuela cómo pagar; lo que ya pagaste a un curso lo ves en tus cursos.')
               : canal
                 ? 'Todavía no hay enlaces de pago para tu programa. Escríbenos y te decimos cómo hacer tu pago.'
                 : 'Todavía no hay enlaces de pago para tu programa. Pregunta en tu escuela cómo hacer tu pago.'}

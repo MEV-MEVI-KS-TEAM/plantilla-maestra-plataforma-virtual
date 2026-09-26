@@ -11,6 +11,11 @@ export interface CursoCatalogoItem {
   totalLecciones: number
   completadas: number
   porcentaje: number
+  /**
+   * D19 (#207-8; decisión 8): lo que el alumno ha pagado a ESTE curso y su
+   * último pago. null si no hay pagos legibles (sin B1, o sin pagos).
+   */
+  pagos?: { pagado: number; ultimo: { fecha: string; monto: number } | null } | null
 }
 
 export interface LeccionAlumno {
