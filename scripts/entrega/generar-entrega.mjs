@@ -11,6 +11,7 @@
  *   pnpm entrega --solo-pdf         # solo el PDF
  *   pnpm entrega --datos otro.json  # otro archivo de datos
  *   pnpm entrega --solo-config      # sin leer lo publicado en el panel
+ *   pnpm entrega --forzar-proyecto  # genera aunque el nombre publicado no sea el de config.ts
  *
  * TODO lo que sabe del cliente lo saca de `src/lib/config.ts` y de la base de
  * datos: nombre, dominio, colores, logo, niveles, modalidades, precios,
@@ -38,7 +39,7 @@ import {
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
 import {
   unirConY, soloLicenciaturas, desglosesLicenciatura, porcentajeTitulacionTexto, nombrarProgramas,
-  ritmoDeApertura, planLicVendible, planesLicSinMensualidad,
+  ritmoDeApertura, planLicVendible, planesLicSinMensualidad, conNombresPublicados,
 } from './licenciaturas.mjs'
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -90,8 +91,8 @@ const { CONFIG: CONFIG_TS } = await import(pathToFileURL(path.join(RAIZ, 'src/li
 // site-config-core importa con el alias '@/…': el hook lo resuelve a src/ sin
 // tocar el tsconfig de la app.
 await import('./alias-src.mjs')
-const { mergeSiteConfig } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/site-config-core.ts')).href)
-const { leerSiteConfig, politicaPublicado } = await import('./publicado.mjs')
+const { mergeSiteConfig, interpolar } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/site-config-core.ts')).href)
+const { leerSiteConfig, politicaPublicado, revisarProyecto, proyectoLeido, revisarProyectoInfra } = await import('./publicado.mjs')
 log('· Leyendo lo publicado en el panel…')
 const LECTURA_PUBLICADO = await leerSiteConfig({
   soloConfig: flag('solo-config'),
@@ -108,9 +109,26 @@ const LECTURA_PUBLICADO = await leerSiteConfig({
   if (pol.log) log(pol.log)
   if (pol.aviso) avisar(pol.aviso)
 }
+// D20c: de QUÉ proyecto se leyó y qué escuela está publicada ahí, en consola y
+// como primera línea de «REVISA». Un .env.local de otra escuela daba un
+// documento con los precios, el WhatsApp y el logo de otra escuela sin decir
+// nada: si el nombre publicado no es el de config.ts, se aborta ANTES de fusionar
+// y de contar nada (salvo --forzar-proyecto, que queda en «REVISA»).
+const PROYECTO = proyectoLeido(leerEnvLocal())
+const IDENTIDAD = revisarProyecto({ lectura: LECTURA_PUBLICADO, configTs: CONFIG_TS, proyecto: PROYECTO, forzar: flag('forzar-proyecto') })
+log(IDENTIDAD.log)
+if (IDENTIDAD.abortar) abortar(IDENTIDAD.abortar.msg, IDENTIDAD.abortar.ayuda)
+if (IDENTIDAD.aviso) avisar(IDENTIDAD.aviso)
 const PUBLICADO = LECTURA_PUBLICADO.data
 /** La config de la escuela como la ve su página: config.ts con lo publicado encima. */
 const CONFIG = mergeSiteConfig(CONFIG_TS, PUBLICADO)
+// ¿La escuela tiene un WhatsApp REAL? La MISMA regla con la que las dos portadas
+// encienden sus botones (urlWhatsAppEscuela → whatsappEscuelaDisponible). Antes
+// bastaba con que el campo no estuviera vacío: el marcador `520000000000` salía
+// en el PDF como «WhatsApp de contacto» y sin el aviso de cómo encender los
+// botones, que en la página no aparecen.
+const { whatsappEscuelaDisponible } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/contacto-ui.ts')).href)
+const SIN_WHATSAPP = !whatsappEscuelaDisponible(CONFIG.whatsapp)
 // El precio de cada NIVEL sale del mismo resolver que usa la plataforma
 // (landing, estado de cuenta, ficha). Es puro —solo un `import type`— y por eso
 // se importa igual que config.ts. Ver la Fase 2 en precios-nivel.ts.
@@ -185,6 +203,18 @@ if (!fs.existsSync(rutaDatos)) abortar(`No encuentro ${path.basename(rutaDatos)}
 const D = JSON.parse(fs.readFileSync(rutaDatos, 'utf8'))
 for (const k of ['adminNombre', 'adminEmail', 'adminPassword'])
   if (!D[k]) abortar(`Falta "${k}" en ${path.basename(rutaDatos)}`)
+// D20c: la página de Infraestructura nombra el proyecto de `supabaseUrl` (si
+// viene en el archivo de datos); lo publicado y el inventario salen del de
+// .env.local. Si son dos proyectos distintos, el PDF diría uno y reflejaría otro.
+{
+  const infraProyecto = revisarProyectoInfra({
+    urlDatos: D.infraestructura === false ? null : D.supabaseUrl,
+    urlEnv: leerEnvLocal()?.NEXT_PUBLIC_SUPABASE_URL,
+    forzar: flag('forzar-proyecto'),
+  })
+  if (infraProyecto.abortar) abortar(infraProyecto.abortar.msg, infraProyecto.abortar.ayuda)
+  if (infraProyecto.aviso) avisar(infraProyecto.aviso)
+}
 
 // 🛑 Un token o una llave en el archivo de datos acabaría en un PDF que se
 // reenvía y se guarda en cualquier parte. Se busca por forma en TODO el archivo
@@ -368,8 +398,18 @@ const tipoDePrograma = (c) => {
   if (n.startsWith('diplomado')) return 'diplomado'
   return 'licenciatura'
 }
-const CARRERAS = (LIC?.activas ? (LIC.carreras || []) : [])
-  .map(c => ({ ...c, tipo: tipoDePrograma(c), inv: INV.porCarrera?.[c.slug] ?? null }))
+// D20c: cada carrera con el nombre que el admin le puso en «Personalizar mi
+// página» (la tarjeta de la landing), con la MISMA regla que la landing. El
+// `tipo` se decide ANTES, con el nombre de config.ts: un nombre publicado no
+// convierte una licenciatura en curso.
+const CARRERAS = conNombresPublicados(
+  (LIC?.activas ? (LIC.carreras || []) : [])
+    .map(c => ({ ...c, tipo: tipoDePrograma(c), inv: INV.porCarrera?.[c.slug] ?? null })),
+  CONFIG.landing?.licenciaturas_carreras,
+  (s) => interpolar(s, { nombre: CONFIG.nombre, nombreCompleto: CONFIG.nombreCompleto }),
+)
+for (const c of CARRERAS.filter(x => x.nombreConfig))
+  avisar(`Carreras: el documento usa el nombre publicado en el panel, «${c.nombre}» (config.ts: «${c.nombreConfig}»). El registro, el panel y las constancias siguen diciendo «${c.nombreConfig}».`)
 const TIPOS = [...new Set(CARRERAS.map(c => c.tipo))]
 
 /**
@@ -736,13 +776,15 @@ const datos = {
   alumnosPrueba: ALUMNOS_PRUEBA.length > 1
     ? ALUMNOS_PRUEBA.map(a => ({ ...a, ...(INV.alumnos?.[a.email] || {}) }))
     : null,
-  whatsappDisplay: CONFIG.whatsappDisplay,
+  // Sin WhatsApp real no se imprime ningún «WhatsApp de contacto»: ni el
+  // marcador de ceros ni el número de la plantilla.
+  whatsappDisplay: SIN_WHATSAPP ? '' : CONFIG.whatsappDisplay,
   // Una escuela puede entregar SIN WhatsApp a propósito (el intake no trajo
   // número, o trajo un placeholder que no existe). En ese caso la página se
   // entrega con los botones apagados y la única forma de encenderlos es que el
   // cliente capture el suyo en «Personalizar mi página»: el documento se lo
   // dice, porque si no se queda sin su canal principal sin saber por qué.
-  sinWhatsApp: !String(CONFIG.whatsapp ?? '').trim(),
+  sinWhatsApp: SIN_WHATSAPP,
   infra,
   cuentas: CUENTAS_CLIENTE,
   registrador: REGISTRADOR,
@@ -827,9 +869,9 @@ const datos = {
       `${ETIQUETA_PROGRAMAS} ya ${soloLicenciaturas(CARRERAS) ? 'cargadas y listas' : 'cargados y listos'} para inscribir: ${unirConY(CARRERAS.map(c => c.nombre))}`,
     ] : []),
     CURSOS_PUBLICADOS.length
-      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso publicado' : 'cursos publicados'}: al asignar a un alumno, un curso de pago único se le abre completo; a quien se registró desde tu página eligiendo el curso, con «Abrir todo» (pago único) o «+ Abrir mes» (mensual)`
+      ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso publicado' : 'cursos publicados'}: al asignar a un alumno, un curso de pago único se le abre completo; a quien se registró desde tu página eligiendo el curso, con «Activar según la ficha»; y «Cobrar» registra cada pago y, con su casilla marcada, le abre lo que pagó, también desde una cuenta de secretario`
       : 'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
-    'Rol de secretario con accesos delimitados',
+    'Rol de secretario con accesos delimitados: registra pagos, abre meses del programa y de los cursos y emite constancias; precios, borrado de pagos, «Personalizar mi página» y alta de usuarios quedan solo en tu cuenta',
 
     // ── Lo que se construyó a medida para este cliente ────────────────
     // El documento listaba solo lo que trae la plantilla, así que todo lo
@@ -1028,10 +1070,16 @@ if (!flag('solo-pdf')) {
     '• Ver el estado de cuenta de cada alumno',
     INFORMES_EXCEL ? '• Consultar tus Informes de ingresos por semana y por mes, y descargarlos en Excel' : '• Consultar reportes de ingresos por semana y por mes',
     '• Revisar y validar los documentos que suben tus alumnos',
-    CURSOS_PUBLICADOS.length
-      ? `• Asignar alumnos a ${CURSOS_PUBLICADOS.length === 1 ? 'tu curso' : `tus ${CURSOS_PUBLICADOS.length} cursos`} en ${MENU_CURSOS} → el curso → Alumnos (en uno de pago único se les abre completo; a quien ya se registró desde tu página eligiendo el curso, con «Abrir todo» o «+ Abrir mes»${
-        VENDE_INGRESO ? '; a quien pidió un curso de preparación para examen, con «Asignar» en Alumnos' : ''}), seguir su avance y crear todos los que quieras`
-      : '• Crear tus propios Cursos y Diplomados cuando quieras',
+    // Con cursos: asignar, activar al que se registró solo, cobrar (con su
+    // casilla) y quién más puede hacerlo. Una línea por cosa: en una sola, el
+    // «Cobrar» se perdía entre paréntesis.
+    ...(CURSOS_PUBLICADOS.length ? [
+      `• Asignar alumnos a ${CURSOS_PUBLICADOS.length === 1 ? 'tu curso' : `tus ${CURSOS_PUBLICADOS.length} cursos`} en ${MENU_CURSOS} → el curso → Alumnos (en uno de pago único se les abre completo; en uno mensual o sin precio, el mes 1), seguir su avance y crear todos los que quieras`,
+      `• Abrir el curso a quien ya se registró desde tu página eligiendo el curso, con «Activar según la ficha» en su fila${
+        VENDE_INGRESO ? '; a quien pidió un curso de preparación para examen, con «Asignar» en Alumnos' : ''}`,
+      '• Registrar cada pago del curso con «Cobrar» (en su fila o en la tarjeta «Cursos» de la ficha del alumno): con la casilla marcada, ese mismo cobro le abre lo que pagó',
+      '• Todo esto también lo puede hacer quien tenga el rol de secretario, incluso emitir constancias; cambiar precios, cancelar o reactivar una inscripción y borrar pagos quedan solo en tu cuenta',
+    ] : ['• Crear tus propios Cursos y Diplomados cuando quieras']),
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
       : []),
@@ -1074,7 +1122,7 @@ if (!flag('solo-pdf')) {
   // encender sus propios botones: callarlo le cuesta su canal principal.
   L.push('🎨 TU PÁGINA LA CAMBIAS TÚ',
     `Desde «Personalizar mi página» en tu panel (${URL_BASE}/admin/configuracion) cambias tus textos, tu eslogan, tus colores y tu logo, y se publican en unos segundos. «Restaurar diseño original» devuelve todo a como se te entregó, así que puedes probar sin miedo.`, '')
-  if (!String(CONFIG.whatsapp ?? '').trim()) {
+  if (SIN_WHATSAPP) {
     L.push('⭐ LO PRIMERO QUE TE RECOMIENDO HACER',
       'Tu página se entregó *sin botones de WhatsApp* porque no tenemos tu número, y preferimos no publicar uno que no lleve a ningún lado.',
       'Entra a «Personalizar mi página», escribe tu WhatsApp y pulsa Publicar: los botones *aparecen solos* en tu portada, en tus planes y en el pie. Es el cambio de más impacto que puedes hacer hoy.', '')
@@ -1098,8 +1146,10 @@ if (!flag('solo-pdf')) {
   log(L.join('\n'))
   log('\n──────── hasta aquí ────────')
 }
-if (AVISOS.length) {
-  log(`\n⚠ REVISA ANTES DE ENVIAR (${AVISOS.length}):`)
-  for (const a of AVISOS) log(`  · ${a}`)
-}
+// Siempre, con el proyecto y la escuela leídos en la primera línea: aunque no
+// haya nada más que revisar, el operador ve de dónde salió el documento (y la
+// cuenta la incluye: también es algo que revisar).
+log(`\n⚠ REVISA ANTES DE ENVIAR (${AVISOS.length + 1}):`)
+log(`  · ${IDENTIDAD.revisa}`)
+for (const a of AVISOS) log(`  · ${a}`)
 log(`\n✓ Entrega lista para ${datos.nombreCompleto} · ${URL_BASE}`)

@@ -40,6 +40,16 @@ copiar y pegar en WhatsApp.
 |---|---|
 | `--solo-pdf` | No genera el mensaje |
 | `--datos otro.json` | Usa otro archivo de datos |
+| `--solo-config` | No lee lo publicado en el panel: todo sale de `config.ts`, y queda escrito en «REVISA ANTES DE ENVIAR». Solo si sabes que la escuela no ha publicado nada |
+| `--forzar-proyecto` | Genera aunque el nombre publicado en el panel (`nombre` o `nombreCompleto`) no sea el de `config.ts`, o aunque `supabaseUrl` de `entrega.local.json` sea de otro proyecto que `.env.local`. Queda escrito en «REVISA ANTES DE ENVIAR». Úsalo solo si la escuela cambió su nombre a propósito |
+
+Al leer lo publicado, el script dice en consola **de qué proyecto de Supabase
+leyó** (el ref de `NEXT_PUBLIC_SUPABASE_URL` de `.env.local`) y **qué escuela
+está publicada ahí**, y lo repite como primera línea de «⚠ REVISA ANTES DE
+ENVIAR», que ahora sale siempre. Si el `nombre` o el `nombreCompleto` publicados
+no son los de `config.ts` (sin distinguir mayúsculas, acentos ni espacios),
+**aborta** antes de generar nada: casi siempre es un `.env.local` de otra
+escuela. Con `--solo-config` no se compara nada.
 
 ## De dónde sale cada dato
 
@@ -61,7 +71,8 @@ la política viven en `scripts/entrega/publicado.mjs`.
 |---|---|
 | Nombre, colores, logo | `src/lib/config.ts` con lo publicado encima. El logo publicado (una URL) se descarga e incrusta; si no se puede, va el de `config.ts` y se avisa en REVISA |
 | Dominio, niveles | `src/lib/config.ts` (no se editan en el panel) |
-| Modalidades, precios, WhatsApp | `src/lib/config.ts` con lo publicado encima |
+| Modalidades, precios, WhatsApp | `src/lib/config.ts` con lo publicado encima. Un WhatsApp que la página no enciende (vacío, el marcador `520000000000` o un número que no se puede normalizar: la regla `whatsappEscuelaDisponible` de `src/lib/contacto-ui.ts`, la misma de las dos portadas) cuenta como **sin WhatsApp**: el documento no imprime «WhatsApp de contacto» y explica cómo encender los botones |
+| Nombre de cada carrera (licenciaturas, diplomados, cursos del riel) | El de `config.ts` con el publicado en «Personalizar mi página» encima (`landing.licenciaturas_carreras[].nombre`, casado por `slug`), con la MISMA regla que la tarjeta de la landing. Cada nombre cambiado se avisa en REVISA: el registro, el panel y las constancias siguen diciendo el de `config.ts`. El tipo de programa (licenciatura, diplomado, curso) se decide con el de `config.ts` |
 | Inscripción y mensualidad **por nivel** | El MISMO resolver de la plataforma (`src/lib/precios-nivel.ts`), con las mismas claves que leen la landing, el estado de cuenta y la ficha del alumno: `precios.inscripcionSecundaria` / `precios.inscripcionPreparatoria` y `precios.mensualidadSecundaria3Meses`, `…6Meses`, `precios.mensualidadPreparatoria3Meses`, `…6Meses`. Vacías (`null`) = la general. Sin mensualidad propia, Secundaria usa su alias `precios.secundaria_<n>meses_normal` si es mayor que 0 y Preparatoria, la del plan. Con lo publicado en «Personalizar mi página» encima (D12) |
 | Licenciaturas | `src/lib/config.ts` con lo publicado en «Personalizar mi página» encima: inscripción, titulación y la mensualidad de cada plan (`site_config` → `licenciaturas`, con la MISMA regla de la plataforma, `src/lib/precios-licenciatura.ts`). Sin fila o con `--solo-config`, solo `config.ts` |
 | Cursos de ingreso | La tabla `cursos` (los **publicados**, con su precio) vía `.env.local` con la service role, y con la MISMA regla de la página (`src/lib/cursos/precio-regla.ts`): sin precio dice «Pide informes». Lo hace `scripts/entrega/cursos-entrega.mjs`. Si la consulta falla (proyecto pausado, llave de otro proyecto, red: antes salía como «0 cursos»), **aborta** en una escuela que vende cursos (`CONFIG.cursosIngreso` encendido, o modo `solo_cursos`) y en las demás avisa. **Aborta** también si la base no tiene las columnas de precio (B1), o si `CONFIG.cursosIngreso` está encendido y no hay inventario o no hay cursos publicados. `CONFIG.cursosIngreso` se revisa con la MISMA regla del registro (`normalizarOfertas` y `resolverPrecioOferta`): el registro anuncia el precio de la ficha y, si la ficha está en 0/0, el de `config.ts` como pago único. Por eso **aborta** si una oferta de un curso tiene la ficha en 0/0 y precio en `config.ts` (el documento diría «Pide informes» y «Asignar» abriría solo el mes 1) o si apunta a un curso que no está publicado. Con la ficha con precio distinto al de `config.ts`, con paquete o con una oferta de varios cursos (el registro anuncia la oferta, no cada curso), solo avisa, y dice qué cursos abren solo el mes 1 o salen «Pide informes». Los avisos se repiten al final, en «⚠ REVISA ANTES DE ENVIAR» |
@@ -70,7 +81,7 @@ la política viven en `scripts/entrega/publicado.mjs`.
 | Cuentas del cliente con su contraseña: correo, Supabase y GoDaddy (Infraestructura) | `entrega.local.json` → `cuentas`: `{ "correo": { "email", "password" }, "supabase": {…}, "godaddy": {…} }`. En MEV salen de la ficha de `credenciales-clientes` (`outlook_*`, `supabase_*`, `godaddy_*`) |
 | Dominio y URL de la plataforma (Infraestructura) | `CONFIG.dominio` |
 | Registrador del dominio (Infraestructura) | `entrega.local.json` → `registrador`; si falta, **GoDaddy** |
-| Proyecto de Supabase: ref, URL y panel (Infraestructura) | `NEXT_PUBLIC_SUPABASE_URL` de `.env.local` (o `supabaseUrl` en `entrega.local.json` si no hay `.env.local`). El ref es el subdominio; el panel es `https://supabase.com/dashboard/project/<ref>`. |
+| Proyecto de Supabase: ref, URL y panel (Infraestructura) | `NEXT_PUBLIC_SUPABASE_URL` de `.env.local` (o `supabaseUrl` en `entrega.local.json` si no hay `.env.local`). El ref es el subdominio; el panel es `https://supabase.com/dashboard/project/<ref>`. El ref y el nombre de la escuela publicada salen en consola y en REVISA; un nombre publicado distinto del de `config.ts`, o un `supabaseUrl` de otro proyecto que `.env.local`, **aborta** salvo con `--forzar-proyecto` |
 
 Sin `.env.local`, o sin su URL o su llave, el script **aborta** antes de todo
 esto (D12: no puede leer lo publicado). Con `--solo-config` sigue sin lo

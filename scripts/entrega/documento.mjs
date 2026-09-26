@@ -376,10 +376,17 @@ ${ul([
     'Inscribir alumnos y seguir su avance lección por lección',
     'Precio por curso: de pago único, o inscripción y mensualidad, independiente del programa académico',
     'Al asignar a un alumno, un curso de pago único se le abre completo; uno mensual o sin precio, mes a mes',
+    // «Cobrar» (D17/D18) va SIEMPRE: también la escuela que aún no tiene cursos
+    // tiene que saber cómo se cobran.
+    'Registrar cada pago con <b>Cobrar</b> —en la ficha del alumno (tarjeta <b>Cursos</b>) o en la lista del curso— y abrirle en el mismo paso lo que pagó; también desde una cuenta de secretario',
   ])}
 <div class="note"><b>Cómo empezar</b><p>${hay
-    ? `Tu catálogo público ya muestra ${n === 1 ? 'este curso' : `estos ${n} cursos`}: enséñalo tal cual a tus prospectos. Cuando un alumno te pague, asígnalo en <b>${menu} → el curso → Alumnos</b>: en un curso de pago único se le abre completo; en uno mensual o sin precio, el mes 1. Si se registró desde tu página eligiendo el curso, ya está en esa lista sin acceso: pulsa <b>Abrir todo</b> (pago único) o <b>+ Abrir mes</b> (mensual) en su fila. Ahí sigues su avance, y el precio de cada curso lo cambias en su ficha (<b>Contenido → Precios y ritmo</b>), antes de asignar.${
-      d.vendeIngreso ? ' Si lo pidió como curso de preparación para examen, aparece en <b>Alumnos</b> con lo que solicitó: pulsa <b>Asignar</b> ahí y se le abre con la misma regla.' : ''}`
+    // Quien se registró eligiendo el curso se abre con «Activar según la ficha»
+    // (D8: es el botón principal de su fila); cada pago se registra con «Cobrar»
+    // y su casilla; y el secretario hace lo mismo (en su menú, «Cursos»).
+    ? `Tu catálogo público ya muestra ${n === 1 ? 'este curso' : `estos ${n} cursos`}: enséñalo tal cual a tus prospectos. Cuando un alumno te pague, asígnalo en <b>${menu} → el curso → Alumnos</b>: en un curso de pago único se le abre completo; en uno mensual o sin precio, el mes 1. Si se registró desde tu página eligiendo el curso, ya está en esa lista sin acceso: pulsa <b>Activar según la ficha</b> en su fila y se le abre con esa misma regla. Registra cada pago con <b>Cobrar</b>, en su fila o en la tarjeta <b>Cursos</b> de la ficha del alumno: si aparece la casilla para abrir y la dejas marcada, ese mismo cobro le abre lo que pagó; sin marcar, solo queda registrado. Abrir todo el curso pide doble confirmación, porque desde ese momento el pago único ya no se reembolsa. En esa lista sigues su avance, y el precio de cada curso lo cambias en su ficha (<b>Contenido → Precios y ritmo</b>), antes de asignar.${
+      d.vendeIngreso ? ' Si lo pidió como curso de preparación para examen, aparece en <b>Alumnos</b> con lo que solicitó: pulsa <b>Asignar</b> ahí y se le abre con la misma regla.' : ''} Quien tenga el rol de secretario también asigna, activa, cobra, abre y emite constancias${
+      menu === 'Gestionar Cursos' ? ' (en su menú, <b>Cursos</b>)' : ''}; cambiar precios, cancelar o reactivar una inscripción y borrar pagos quedan solo en tu cuenta.`
     : `Entra a <b>${menu}</b> en el menú de tu panel y crea tu primer curso. Mientras no publiques ninguno, la sección de diplomados no se muestra en tu página pública.`}</p></div>
 ${tablaModalidades(d)}`
 }
@@ -665,4 +672,4 @@ ${paginas}
 </body></html>`
 }
 
-export { mxn, cap, dt, kv, ul, paleta, infraestructura, soporte, cursos, personalizar }
+export { mxn, cap, dt, kv, ul, paleta, infraestructura, soporte, cursos, personalizar, licenciaturas }

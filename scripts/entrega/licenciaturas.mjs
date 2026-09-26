@@ -115,6 +115,38 @@ export function nombrarProgramas(carreras = []) {
 }
 
 /**
+ * Las carreras con el nombre VISIBLE publicado en «Personalizar mi página»
+ * (`landing.licenciaturas_carreras`, casado por `slug`), con la MISMA regla que
+ * la tarjeta de la landing (`resolverTextosLicenciaturas`): el nombre publicado
+ * se recorta; vacío o ausente, queda el de config.ts; un slug que ya no existe
+ * se ignora; un diplomado del riel (`esDiplomado`) no tiene tarjeta y no cambia.
+ * `interp` sustituye los comodines ({nombre}…) como la landing.
+ *
+ * Antes el documento y el WhatsApp decían el nombre de config.ts aunque el admin
+ * lo hubiera cambiado en su página. Lo que cambia se marca con `nombreConfig`
+ * (el de config.ts), para avisar en «REVISA»: el registro, el panel y las
+ * constancias siguen usando el de config.ts.
+ *
+ * 🛑 `tipo` tiene que venir YA decidido: el tipo de programa se deduce del
+ * nombre de config.ts, y un nombre publicado no lo cambia. Copiada de la regla
+ * de la landing, no importada —este archivo no importa nada—;
+ * `tests/unit/entrega-remate-d.spec.ts` prueba la paridad.
+ */
+export function conNombresPublicados(carreras = [], publicadas, interp = (s) => s) {
+  const porSlug = new Map((Array.isArray(publicadas) ? publicadas : [])
+    .filter(p => p && typeof p.slug === 'string')
+    .map(p => [p.slug, p]))
+  return carreras.map(c => {
+    const p = c?.esDiplomado === true ? null : porSlug.get(c?.slug)
+    const propio = typeof p?.nombre === 'string' ? p.nombre.trim() : ''
+    if (!propio) return c
+    const nombre = interp(propio)
+    // El mismo nombre publicado otra vez no es un cambio: sin aviso.
+    return nombre === c.nombre ? c : { ...c, nombre, nombreConfig: c.nombre }
+  })
+}
+
+/**
  * «4 materias por mes» · «1 materia por mes» · «2.67 materias por mes, en promedio».
  *
  * 32 materias en 12 meses dan 2.67 al mes: la plataforma abre 3, 6, 9… y la
