@@ -187,7 +187,11 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   const ruta = sinComentariosTs(leer('src/app/api/admin/cursos/[id]/inscripciones/route.ts'))
   expect(ruta).toContain("supabase.rpc('curso_inscribir',")
   expect(ruta).toContain("supabase.rpc('curso_inscribir_todos',")
-  expect(ruta).not.toContain('createAdminClient')
+  // Asignar va SIEMPRE por la función SQL con la sesión. El cliente admin solo LEE la
+  // ficha del curso (D7b: con la sesión del secretario la RLS de `cursos` la ocultaba).
+  expect(ruta.match(/createAdminClient\(\)/g)?.length).toBe(2)
+  expect(ruta.match(/createAdminClient\(\)\s*\.from\('cursos'\)\.select\(/g)?.length).toBe(2)
+  expect(ruta).not.toMatch(/createAdminClient\(\)\s*\.(rpc|from\('curso_inscripciones'\))/)
   expect(ruta).not.toMatch(/\.insert\(/)
   const alta = sinComentariosTs(leer('src/app/api/admin/alumnos/route.ts'))
   const post = alta.slice(alta.indexOf('export async function POST'))
