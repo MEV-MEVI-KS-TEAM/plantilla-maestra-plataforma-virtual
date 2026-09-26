@@ -16,7 +16,6 @@ import { useSiteConfig } from '@/components/site-config-provider'
 import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
-import { esSoloCursos } from '@/lib/modo'
 
 interface AlumnoDetalle {
   id: string
@@ -646,10 +645,6 @@ export default function AlumnoDetallePage() {
   const todosBloqueados = alumno.meses_desbloqueados >= alumno.plan.duracion_meses
   // Secretario: modo lectura — sin acciones de admin, sin notas internas ni documentos
   const esSecretario = alumno.viewer_rol === 'SECRETARIO'
-  // D14: «Marcar inscripción pagada» es del PROGRAMA escolar. Un alumno de curso
-  // (nivel 'diplomado' o sin nivel) o una escuela solo_cursos no tiene programa:
-  // su inscripción se cobra en el curso.
-  const tieneProgramaEscolar = !esSoloCursos() && !!alumno.nivel && alumno.nivel !== 'diplomado'
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -726,8 +721,8 @@ export default function AlumnoDetallePage() {
       <div className="rounded-xl p-5 space-y-3" style={CARD_STYLE}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h3 className="text-sm font-semibold text-gray-100">Información General</h3>
-          {/* Badge inscripción pagada / Botón marcar pagada (solo con programa escolar, D14) */}
-          {!tieneProgramaEscolar ? null : alumno.inscripcion_pagada ? (
+          {/* Badge inscripción pagada / Botón marcar pagada */}
+          {alumno.inscripcion_pagada ? (
             <span
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-semibold"
               style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}

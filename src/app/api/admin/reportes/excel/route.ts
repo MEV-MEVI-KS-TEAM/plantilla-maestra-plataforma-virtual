@@ -195,7 +195,7 @@ export async function GET() {
       { Concepto: `Ingresos totales (${M})`, Valor: totalIngresos },
       // D14: partido por vertical (por la FK), como las hojas por mes y semana.
       { Concepto: `Ingresos totales · programa (${M})`, Valor: porVertical.programa },
-      { Concepto: `Ingresos totales · cursos (${M})`,   Valor: porVertical.cursos },
+      { Concepto: `Ingresos totales · diplomados (${M})`, Valor: porVertical.cursos },
       { Concepto: 'Materias con calificaciones', Valor: hojaRendimiento.length },
     ]
 

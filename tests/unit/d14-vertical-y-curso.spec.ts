@@ -5,7 +5,7 @@ import {
   CONCEPTOS_CURSO, CONCEPTOS_CURSO_LECTURA, CONCEPTOS_LECTURA, CONCEPTOS_PROGRAMA_LECTURA,
   aplicaA, etiquetaConcepto, etiquetaVertical, mesQueCubre, totalesPorVertical,
 } from '@/lib/pagos/conceptos'
-import { COLUMNAS_CURSO, aplanarCurso, leerPagosConCurso } from '@/lib/pagos/con-curso'
+import { COLUMNAS_CURSO, aplanarCurso, leerPagosConCurso, olvidarSinB1 } from '@/lib/pagos/con-curso'
 
 /**
  * Bloque D · D14 — #207-3: la vertical (por la FK) y el nombre del curso en la
@@ -64,13 +64,40 @@ test('3. el embed del curso se aplana; sin B1 se relee sin él (todo es programa
   expect(pedidos).toEqual([`id, ${COLUMNAS_CURSO}`])
   expect(ok).toEqual({ data: [{ id: 'a', curso_inscripcion_id: null, curso_nombre: null, curso_tipo: null }], error: null, sinB1: false })
 
-  // Sin B1 (42703 o PGRST200): segunda consulta sin el curso.
-  for (const code of ['42703', 'PGRST200']) {
-    pedidos.length = 0
-    const r = await leerPagosConCurso(falsa([{ data: null, error: { code, message: 'x' } }, { data: [{ id: 'b' }], error: null }]), 'id')
-    expect(pedidos, code).toEqual([`id, ${COLUMNAS_CURSO}`, 'id'])
-    expect(r, code).toEqual({ data: [{ id: 'b', curso_inscripcion_id: null, curso_nombre: null, curso_tipo: null }], error: null, sinB1: true })
-  }
+  // Sin la COLUMNA (42703, base sin B1): segunda consulta sin el curso; todo es programa.
+  olvidarSinB1()
+  pedidos.length = 0
+  const sinB1 = await leerPagosConCurso(falsa([{ data: null, error: { code: '42703', message: 'x' } }, { data: [{ id: 'b' }], error: null }]), 'id')
+  expect(pedidos).toEqual([`id, ${COLUMNAS_CURSO}`, 'id'])
+  expect(sinB1).toEqual({ data: [{ id: 'b', curso_inscripcion_id: null, curso_nombre: null, curso_tipo: null }], error: null, sinB1: true })
+  // …y se recuerda: la siguiente lectura va directo sin el curso (sin la consulta fallida).
+  pedidos.length = 0
+  await leerPagosConCurso(falsa([{ data: [], error: null }]), 'id')
+  expect(pedidos).toEqual(['id'])
+  olvidarSinB1()
+
+  // Sin la RELACIÓN (PGRST200: sin módulo de cursos o caché de esquema atrasada): se relee
+  // con la columna sola. La vertical se conserva (va por la FK); solo se pierde el nombre.
+  pedidos.length = 0
+  const sinRel = await leerPagosConCurso(falsa([
+    { data: null, error: { code: 'PGRST200', message: 'Could not find a relationship' } },
+    { data: [{ id: 'c', curso_inscripcion_id: 'ci-9' }], error: null },
+  ]), 'id')
+  expect(pedidos).toEqual([`id, ${COLUMNAS_CURSO}`, 'id, curso_inscripcion_id'])
+  expect(sinRel).toEqual({ data: [{ id: 'c', curso_inscripcion_id: 'ci-9', curso_nombre: null, curso_tipo: null }], error: null, sinB1: false })
+  // PGRST200 y luego tampoco hay columna: sin B1.
+  pedidos.length = 0
+  const ninguna = await leerPagosConCurso(falsa([
+    { data: null, error: { code: 'PGRST200', message: 'x' } },
+    { data: null, error: { code: '42703', message: 'column pagos.curso_inscripcion_id does not exist' } },
+    { data: [{ id: 'd' }], error: null },
+  ]), 'id')
+  expect(pedidos).toEqual([`id, ${COLUMNAS_CURSO}`, 'id, curso_inscripcion_id', 'id'])
+  expect(ninguna.sinB1).toBe(true)
+  olvidarSinB1()
+  // El embed lleva la columna de cada FK como pista (sin ambigüedad PGRST201).
+  expect(COLUMNAS_CURSO).toBe('curso_inscripcion_id, curso_inscripciones!curso_inscripcion_id(cursos!curso_id(nombre, tipo))')
+
   // Cualquier otro error NO es «sin B1»: se devuelve tal cual.
   pedidos.length = 0
   const mal = await leerPagosConCurso(falsa([{ data: null, error: { code: '57014', message: 'timeout' } }]), 'id')
@@ -78,7 +105,7 @@ test('3. el embed del curso se aplana; sin B1 se relee sin él (todo es programa
   expect(mal.error).toEqual({ code: '57014', message: 'timeout' })
 })
 
-test('4. la ficha: «Aplica a», «Mes que cubre», total partido y «Marcar inscripción pagada» solo con programa', () => {
+test('4. la ficha: «Aplica a», «Mes que cubre» y el total partido', () => {
   const api = sinComentarios(leer('src/app/api/admin/alumnos/[id]/pagos/route.ts'))
   expect(api).toContain('await leerPagosConCurso<')
   expect(api).toContain('total_programa: t.programa,')
@@ -89,8 +116,12 @@ test('4. la ficha: «Aplica a», «Mes que cubre», total partido y «Marcar ins
   expect(f).toContain('{mesQueCubre(p)}')
   expect(f).not.toContain("{p.mes_desbloqueado ?? '—'}")
   expect(f).toMatch(/\{totalCursos > 0 && \(\s*<span> · Programa \{fmtMoneda\(totalPrograma\)\} · Cursos \{fmtMoneda\(totalCursos\)\}<\/span>/)
-  expect(f).toContain("const tieneProgramaEscolar = !esSoloCursos() && !!alumno.nivel && alumno.nivel !== 'diplomado'")
-  expect(f).toContain('{!tieneProgramaEscolar ? null : alumno.inscripcion_pagada ? (')
+  // «Marcar inscripción pagada» NO se oculta al alumno de curso: es lo único que
+  // escribe inscripcion_pagada (lista «Sin pagar», «Pendientes», contador del
+  // menú) y su modal ya tiene el texto para él (#203). Ocultarlo lo dejaba
+  // «Sin pagar» para siempre (revisión D14).
+  expect(f).toContain('{alumno.inscripcion_pagada ? (')
+  expect(f).not.toContain('tieneProgramaEscolar')
 })
 
 test('5. /admin/pagos: el filtro acepta cursos y la vertical; KPIs partidos; insignia', () => {
@@ -132,7 +163,7 @@ test('7. Excel y CSV: «Aplica a», «Curso», «Mes que cubre», Resumen partid
   expect(x).not.toContain('Mes que abrió')
   expect(x).toContain("['Fecha', 'Alumno', 'Matrícula', 'Nivel', 'Aplica a', 'Curso', 'Concepto', 'Mes que cubre', COL_MONTO, 'Método', 'Referencia', 'Registrado por']")
   expect(x).toContain('{ Concepto: `Ingresos totales · programa (${M})`, Valor: porVertical.programa },')
-  expect(x).toContain('{ Concepto: `Ingresos totales · cursos (${M})`,   Valor: porVertical.cursos },')
+  expect(x).toContain('{ Concepto: `Ingresos totales · diplomados (${M})`, Valor: porVertical.cursos },')
   const csv = sinComentarios(leer('src/app/api/admin/reportes/export/route.ts'))
   expect(csv).toContain("'Concepto', 'Concepto (etiqueta)', 'Monto'")
   expect(csv).toContain("r.concepto, etiquetaConcepto(String(r.concepto ?? '')), r.monto")

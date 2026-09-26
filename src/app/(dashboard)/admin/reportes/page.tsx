@@ -338,7 +338,8 @@ export default function ReportesPage() {
             <strong>{programaDeCurso.pagos} pago{programaDeCurso.pagos !== 1 ? 's' : ''}</strong> ({fmt(programaDeCurso.monto)})
             registrado{programaDeCurso.pagos !== 1 ? 's' : ''} como del PROGRAMA {programaDeCurso.pagos !== 1 ? 'son' : 'es'} de
             alumnos que solo cursan cursos o diplomados. ¿Era{programaDeCurso.pagos !== 1 ? 'n' : ''} de un curso? Así
-            cuenta{programaDeCurso.pagos !== 1 ? 'n' : ''} como ingreso del programa; revísalo en la ficha de cada alumno.
+            cuenta{programaDeCurso.pagos !== 1 ? 'n' : ''} como ingreso del programa. En la ficha del alumno, bórralo
+            y vuelve a registrarlo como cobro de su curso.
           </div>
         </div>
       )}
