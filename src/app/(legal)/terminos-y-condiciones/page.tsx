@@ -15,7 +15,10 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-const FECHA_VIGENCIA = '11 de mayo de 2025'
+// Fecha del último cambio del TEXTO del contrato: súbela cada vez que cambie lo
+// que dice (no por refactors que no lo cambian). 26-sep-2026: excepción del pago
+// único (#208) y su redacción «en cuanto se activa su acceso» (Bloque D · D1).
+const FECHA_VIGENCIA = '26 de septiembre de 2026'
 const DOMINIO       = CONFIG.dominio
 
 export default async function TerminosCondicionesPage() {
@@ -225,14 +228,15 @@ export default async function TerminosCondicionesPage() {
                 de la inscripción si se solicita dentro de los 3 días hábiles siguientes al pago.
               </li>
               {/* #208 (decisión de Kevin): el curso de PAGO ÚNICO abre el curso
-                  completo al asignarse (C3b), así que no hay «antes del inicio»
-                  que reembolsar una vez dado el acceso. Es una EXCEPCIÓN a la
+                  completo cuando se ACTIVA su acceso (al asignarlo, C3b, o con
+                  «Activar según la ficha»; el registro público no activa nada),
+                  así que no hay «antes del inicio» que reembolsar una vez dado. Es una EXCEPCIÓN a la
                   viñeta de arriba: el reembolso de las demás inscripciones no
                   cambia. Mismo aviso que ven antes de pagar (AVISO_PAGO_UNICO). */}
               <li>
                 <strong style={{ color: '#fff' }}>Excepción — cursos y diplomados de pago único:</strong> los
                 cursos y diplomados que se pagan en una sola exhibición dan acceso completo a todo su contenido
-                en cuanto se asignan al alumno y no son reembolsables una vez dado ese acceso, aunque la
+                en cuanto se activa su acceso y no son reembolsables una vez dado ese acceso, aunque la
                 solicitud se presente dentro del plazo anterior. Mientras el acceso no se haya activado, aplica
                 la cancelación antes del inicio.
               </li>
