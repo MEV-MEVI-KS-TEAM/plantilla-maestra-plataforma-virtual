@@ -166,9 +166,8 @@ export async function GET(
         id:             a.id,
         // getPlanNombre resuelve licenciatura por su carrera; el ternario
         // anterior pintaba 'Secundaria' para un alumno de licenciatura.
-        nombre:         esDiplomado
-                      ? 'Diplomado'
-                      : getPlanNombre(a.nivel as string | null, a.carrera as string | null),
+        // Con el alumno de curso incluido (#218): el mismo nombre en todo el panel.
+        nombre:         getPlanNombre(a.nivel as string | null, a.carrera as string | null),
         duracion_meses: duracion,
         precio_mensual: 0,
       },
