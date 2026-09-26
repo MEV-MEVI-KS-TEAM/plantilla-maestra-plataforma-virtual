@@ -473,7 +473,7 @@ function licenciaturas(d) {
   // y entonces la tabla de siempre sigue diciendo la verdad.
   const DESGLOSES = desglosesLicenciatura(L, L.carreras)
   // «Planes configurados» con la misma regla de la página: sin los apagados ni
-  // los de mensualidad 0, que se anunciaban como un plan de «$0/mes» (#194).
+  // los de mensualidad 0, que se anunciaban como un plan «Gratis/mes» (#194).
   const PLANES = (L.modalidades || []).filter(planLicVendible)
 
   // Devuelve UNA o DOS páginas. `.page` recorta en silencio lo que no cabe en

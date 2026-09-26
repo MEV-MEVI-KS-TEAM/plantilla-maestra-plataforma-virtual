@@ -89,7 +89,7 @@ const { inscripcionDe, mensualidadDe, certificacionDe } =
   await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-nivel.ts')).href)
 // Los precios de LICENCIATURA publicados en el panel se aplican con la MISMA
 // regla que usa la plataforma al fusionar (Bloque B): también es puro.
-const { licenciaturaEfectiva, bloqueLicEditable } =
+const { licenciaturaEfectiva, bloqueLicEditable, planLicEditable } =
   await import(pathToFileURL(path.join(RAIZ, 'src/lib/precios-licenciatura.ts')).href)
 // Los CURSOS (Bloque C): cómo se leen, qué precio se pinta y si el documento
 // contradice al registro, con las MISMAS reglas que la página (precio-regla.ts y
@@ -507,9 +507,16 @@ const ETIQUETA_PROGRAMAS = TIPOS.length === 0 ? 'Programas'
 const DESGLOSES_LIC = LIC?.activas ? desglosesLicenciatura(LIC, CARRERAS) : []
 // #194: un plan sin mensualidad no sale en el documento ni en la página, pero el
 // registro lo sigue ofreciendo. El cliente tiene que saberlo antes de entregar.
+// Solo se sugiere el panel si ESE plan se puede publicar ahí (la misma regla que
+// el panel: bloque editable y plan con forma estándar); si no, es de soporte.
 if (LIC?.activas) {
-  for (const m of planesLicSinMensualidad(LIC))
-    avisar(`Licenciaturas: el plan «${m.label || m.id}» no tiene mensualidad. El documento y la página no lo muestran, pero el registro aún lo ofrece. Si se vende, ponle precio en «Personalizar mi página»; si no, apágalo en config.ts (activa: false).`)
+  for (const m of planesLicSinMensualidad(LIC)) {
+    const deConfig = (CONFIG.licenciaturas?.modalidades || []).find((x) => x && x.id === m.id)
+    const enPanel = PUEDE_PUBLICAR_LIC && planLicEditable(deConfig)
+    avisar(`Licenciaturas: el plan «${m.label || m.id}» no tiene mensualidad. El documento y la página no lo muestran, pero el registro aún lo ofrece. ${enPanel
+      ? 'Si se vende, ponle precio en «Personalizar mi página»; si no, apágalo en config.ts (activa: false).'
+      : 'Su precio no se edita desde el panel: revísalo con soporte en config.ts.'}`)
+  }
 }
 
 const nivelesPrograma = CONFIG.niveles.filter(n => n !== 'licenciatura')
@@ -929,7 +936,7 @@ if (!flag('solo-pdf')) {
       .filter(([, cs]) => cs.length)
 
     for (const [titulo, carreras] of grupos) {
-    // «Precio:» con la regla de la página: sin «$0/mes» (#194).
+    // «Precio:» con la regla de la página: sin «Gratis/mes» (#194).
     const modsLic = (LIC.modalidades || []).filter(planLicVendible)
     L.push(`🎓 ${grupos.length > 1 ? titulo : ETIQUETA_PROGRAMAS.toUpperCase()}`)
     for (const c of carreras) {
