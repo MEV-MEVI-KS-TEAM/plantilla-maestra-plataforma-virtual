@@ -152,7 +152,9 @@ export function conceptoDeRecibo(p: PagoConCurso & { concepto?: string | null })
  * la forma 'mensaje' de siempre; de un curso, con su nombre.
  */
 export function conceptoMensajeRecibo(p: PagoConCurso & { concepto?: string | null }): string {
-  const base = etiquetaConcepto(p.concepto ?? 'mensualidad', 'mensaje')
+  let base = etiquetaConcepto(p.concepto ?? 'mensualidad', 'mensaje')
+  // Un diplomado se dice «del diplomado», como en el PDF («Diplomado «X»»).
+  if (p.curso_inscripcion_id && p.curso_tipo === 'diplomado') base = base.replace(/\bcurso\b/, 'diplomado')
   return p.curso_inscripcion_id && p.curso_nombre ? `${base} «${p.curso_nombre}»` : base
 }
 

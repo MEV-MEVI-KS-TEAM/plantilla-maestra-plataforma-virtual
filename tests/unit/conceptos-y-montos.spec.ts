@@ -74,11 +74,12 @@ test('#207-1 · la vertical sale de la FK, no del concepto', () => {
 
 test('#207-1 · los consumidores importan del módulo', () => {
   for (const f of ['src/app/(dashboard)/admin/alumnos/[id]/page.tsx', 'src/app/(dashboard)/admin/pagos/page.tsx',
-    'src/app/(dashboard)/admin/reportes/page.tsx', 'src/app/api/admin/pagos/[id]/recibo/route.ts',
-    'src/app/api/admin/reportes/excel/route.ts', 'src/lib/pdf/recibo-pago.tsx']) {
-    // D15: el recibo usa conceptoDeRecibo / conceptoMensajeRecibo, que etiquetan con etiquetaConcepto.
-    expect(leer(f), f).toMatch(/import \{[^}]*\b(etiquetaConcepto|conceptoDeRecibo|conceptoMensajeRecibo)\b[^}]*\} from '@\/lib\/pagos\/conceptos'/)
+    'src/app/(dashboard)/admin/reportes/page.tsx', 'src/app/api/admin/reportes/excel/route.ts']) {
+    expect(leer(f), f).toMatch(/import \{[^}]*\betiquetaConcepto\b[^}]*\} from '@\/lib\/pagos\/conceptos'/)
   }
+  // D15: los recibos, por sus helpers (que etiquetan con etiquetaConcepto).
+  expect(leer('src/app/api/admin/pagos/[id]/recibo/route.ts')).toMatch(/import \{[^}]*\bconceptoMensajeRecibo\b[^}]*\} from '@\/lib\/pagos\/conceptos'/)
+  expect(leer('src/lib/pdf/recibo-pago.tsx')).toMatch(/import \{[^}]*\bconceptoDeRecibo\b[^}]*\} from '@\/lib\/pagos\/conceptos'/)
   const api = sinComentarios(leer('src/app/api/admin/pagos/route.ts'))
   expect(api).toContain('const CONCEPTOS = CONCEPTOS_PROGRAMA')
   expect(sinComentarios(leer('src/app/api/admin/pagos/[id]/recibo/route.ts'))).toContain('let conceptoLabel = conceptoMensajeRecibo(conCurso)')

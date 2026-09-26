@@ -76,14 +76,19 @@ export async function GET(
     }
 
     // D15 (#207-4): el curso del pago, para el recibo y el WhatsApp. Dos lecturas
-    // simples (sin embed); si no se puede leer, el recibo dice «Curso» sin nombre.
+    // simples (sin embed). Si una FALLA no se genera nada: el PDF se guarda una
+    // sola vez y se quedaría para siempre sin el nombre del curso.
     let curso: { nombre: string | null; tipo: string | null } | null = null
     if (pago.curso_inscripcion_id) {
-      const { data: ins } = await admin.from('curso_inscripciones').select('curso_id').eq('id', pago.curso_inscripcion_id).maybeSingle()
+      const { data: ins, error: errIns } = await admin.from('curso_inscripciones').select('curso_id').eq('id', pago.curso_inscripcion_id).maybeSingle()
       const cursoId = (ins as { curso_id?: string } | null)?.curso_id
-      const { data: c } = cursoId
+      const { data: c, error: errCurso } = cursoId
         ? await admin.from('cursos').select('nombre, tipo').eq('id', cursoId).maybeSingle()
-        : { data: null }
+        : { data: null, error: null }
+      if (errIns || errCurso) {
+        console.error('[GET recibo] curso del pago:', (errIns ?? errCurso)?.message)
+        return NextResponse.json({ error: 'No se pudo leer el curso de este pago. Intenta de nuevo en un momento.' }, { status: 503 })
+      }
       curso = { nombre: (c as { nombre?: string } | null)?.nombre ?? null, tipo: (c as { tipo?: string } | null)?.tipo ?? null }
     }
     const conCurso = {
@@ -94,7 +99,13 @@ export async function GET(
       curso_tipo: curso?.tipo ?? null,
     }
     // La moneda REAL del pago (congelada al registrarlo); sin columna, la de la escuela.
-    const monedaPago = codigoMoneda(pago.moneda, codigoMoneda(CONFIG.moneda))
+    // ⚠️ El cobro de curso viejo (B3, curso_registrar_pago) NO escribe la moneda:
+    // su fila se queda con el DEFAULT 'MXN' aunque la escuela cobre en dólares. En
+    // una fila de curso, un 'MXN' que contradice a la escuela es ese default, no
+    // una moneda congelada (el cobro de D16 siempre escribe la de la escuela).
+    const monedaEscuela = codigoMoneda(CONFIG.moneda)
+    const monedaFila = codigoMoneda(pago.moneda, monedaEscuela)
+    const monedaPago = pago.curso_inscripcion_id && monedaFila === 'MXN' ? monedaEscuela : monedaFila
 
     const [{ data: alumnoUsuario }, { data: alumnoRow }, { data: registrador }] = await Promise.all([
       admin.from('usuarios').select('nombre, apellidos, telefono').eq('id', pago.alumno_id).single(),

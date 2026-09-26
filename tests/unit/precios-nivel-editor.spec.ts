@@ -301,7 +301,7 @@ test('9. PestanaPrecios pinta un campo por clave nueva, y sigue con tipo de camb
   expect(codigo).toContain('onClick={() => actualizar((prev) => restaurarPlan(prev, m, mods))}')
   expect(codigo).not.toContain('{override && puedeEditar && (')
   // Siguen: tipo de cambio fuera de MXN, cursos con permiso, notas.
-  expect(codigo).toContain("{CONFIG.moneda !== 'MXN' && (")
+  expect(codigo).toContain("{MONEDA !== 'MXN' && (")
   expect(codigo.split('{campoTipoCambio()}').length - 1).toBe(1)
   expect(codigo.split('href="/admin/cursos"').length - 1).toBe(1)
   expect(codigo).toContain('{NOTA_PRECIOS}')

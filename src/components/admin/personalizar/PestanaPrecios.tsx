@@ -573,7 +573,7 @@ export function PestanaPrecios({
           siempre (CLAVES_EDITABLES) y config.ts decía que el admin la cambia
           aquí, pero ninguna pestaña la pintaba: una escuela en USD no tenía
           forma de mantener al día sus equivalencias en pesos. */}
-      {CONFIG.moneda !== 'MXN' && (
+      {MONEDA !== 'MXN' && (
         <Tarjeta titulo="Tipo de cambio" icono={<ArrowLeftRight {...ICONO} aria-hidden="true" />}>
           {campoTipoCambio()}
         </Tarjeta>

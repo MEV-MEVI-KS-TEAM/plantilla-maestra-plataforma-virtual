@@ -117,7 +117,7 @@ test('6. PestanaPrecios: tipo de cambio solo fuera de MXN; cursos solo con permi
     expect(i, `falta el bloque {${condicion} && (…)}`).toBeGreaterThan(-1)
     return pestana.slice(i, pestana.indexOf('\n      )}', i))
   }
-  expect(bloque("CONFIG.moneda !== 'MXN'")).toContain('{campoTipoCambio()}')
+  expect(bloque("MONEDA !== 'MXN'")).toContain('{campoTipoCambio()}')
   const cursos = bloque('puedeEditar')
   expect(cursos).toContain('href="/admin/cursos"')
   // Otra pestaña: el borrador del editor no sobrevive a una navegación interna.

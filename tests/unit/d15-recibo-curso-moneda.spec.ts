@@ -38,6 +38,8 @@ test('1. el concepto del recibo: del programa, igual que antes; de un curso, con
   expect(conceptoMensajeRecibo({ concepto: 'mensualidad', curso_inscripcion_id: null })).toBe('mensualidad')
   expect(conceptoMensajeRecibo({ ...c, concepto: 'curso_mensualidad' })).toBe('mensualidad del curso «EXANI-II»')
   expect(conceptoMensajeRecibo({ ...c, concepto: 'curso_pago_unico' })).toBe('pago único del curso «EXANI-II»')
+  expect(conceptoMensajeRecibo({ curso_inscripcion_id: 'ci', curso_nombre: 'Docencia', curso_tipo: 'diplomado', concepto: 'curso_mensualidad' }))
+    .toBe('mensualidad del diplomado «Docencia»')
 })
 
 test('2. la ruta y el PDF: el curso del pago y su moneda REAL; select(*) (moneda y FK no existen en toda base)', () => {
@@ -45,7 +47,10 @@ test('2. la ruta y el PDF: el curso del pago y su moneda REAL; select(*) (moneda
   expect(r).toMatch(/\.from\('pagos'\)\s*\.select\('\*'\)\s*\.eq\('id', params\.id\)\s*\.single\(\)/)
   expect(r).toContain("admin.from('curso_inscripciones').select('curso_id').eq('id', pago.curso_inscripcion_id).maybeSingle()")
   expect(r).toContain("admin.from('cursos').select('nombre, tipo').eq('id', cursoId).maybeSingle()")
-  expect(r).toContain('const monedaPago = codigoMoneda(pago.moneda, codigoMoneda(CONFIG.moneda))')
+  // El cobro viejo de curso (B3) no escribe moneda: su 'MXN' por omisión no manda en una escuela en dólares.
+  expect(r).toContain('const monedaPago = pago.curso_inscripcion_id && monedaFila === \'MXN\' ? monedaEscuela : monedaFila')
+  // Si no se puede leer el curso, no se genera (el PDF se guarda una sola vez).
+  expect(r).toMatch(/if \(errIns \|\| errCurso\) \{[\s\S]{0,400}?status: 503 \}\)/)
   expect(r).toContain('moneda: monedaPago,')
   expect(r).toContain('let conceptoLabel = conceptoMensajeRecibo(conCurso)')
   expect(r).toContain('formatearMoneda(Number(pago.monto), { moneda: monedaPago, tipoCambioMXN: 0 }, { decimales: 2, conCodigo: true })')
@@ -82,4 +87,7 @@ test('4. la moneda se PINTA por su código: nada de «[object Object]»', () => 
   expect(resolverEstiloLanding('animada', { moneda: { codigo: 'USD' } })).toBe('clasica')
   expect(resolverEstiloLanding('animada', { moneda: 'MXN' })).toBe('animada')
   expect(resolverEstiloLanding('animada', { moneda: 'USD' })).toBe('clasica')
+  // Lo que no se entiende sigue siendo otra moneda (falla cerrado).
+  expect(resolverEstiloLanding('animada', { moneda: 'US$' })).toBe('clasica')
+  expect(resolverEstiloLanding('animada', { moneda: { simbolo: 'US$' } })).toBe('clasica')
 })
