@@ -50,7 +50,7 @@ BEGIN
     RAISE EXCEPTION 'Falta la migración C3b (20260926120000_c3b_acceso_total_cursos.sql).';
   END IF;
   IF to_regprocedure('public.es_staff()') IS NULL
-     OR pg_get_functiondef('public.es_staff()'::regprocedure) !~* 'lower\s*\(\s*rol\s*\)' THEN
+     OR pg_get_functiondef(to_regprocedure('public.es_staff()')) !~* 'lower\s*\(\s*rol\s*\)' THEN
     RAISE EXCEPTION 'public.es_staff() falta o no normaliza el rol (LOWER). Corre antes supabase/migrations/20260729121000_fix_s2_es_admin.sql.';
   END IF;
 END
@@ -132,11 +132,15 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Mes 1: el mismo tope que «+ Abrir mes». Un curso sin módulos no tiene mes 1.
+  -- Mes 1: que se VEA algo. El tope de «+ Abrir mes» (curso_tope_meses) no basta:
+  -- con duracion_meses fijada dice 3 aunque el curso no tenga módulos, y con 0
+  -- módulos por mes la ventana del mes 1 es 0. Se exige contenido de verdad.
   v_tope := public.curso_tope_meses(v_curso);
-  IF v_tope < 1 THEN
+  IF v_tope < 1
+     OR NOT EXISTS (SELECT 1 FROM public.curso_modulos m WHERE m.curso_id = v_curso)
+     OR COALESCE((SELECT c.modulos_por_mes FROM public.cursos c WHERE c.id = v_curso), 0) <= 0 THEN
     RAISE EXCEPTION
-      'Este curso todavía no tiene módulos: no hay un mes 1 que abrir. Agrega contenido primero.'
+      'Este curso todavía no tiene contenido para el mes 1 (sin módulos o sin módulos por mes). Agrega contenido primero.'
       USING ERRCODE = '22023';
   END IF;
 
@@ -150,6 +154,57 @@ BEGIN
   RETURN QUERY SELECT v_regla, false, 1;
 END;
 $$;
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- Quién está «por activar» — el MISMO predicado, calculado en la base
+-- ════════════════════════════════════════════════════════════════════════════
+-- Las pantallas (detalle del curso y /admin/alumnos) necesitan saber a quién
+-- ofrecerle «Activar según la ficha». Calcularlo en la app obligaba a traer todas
+-- las inscripciones y meter sus ids en la URL (.in(), ~39 caracteres por id): con
+-- unos 200 registros sin pagar la consulta fallaba y el botón desaparecía sin
+-- decir nada. Aquí es un NOT EXISTS indexado. Sin esta función (base sin D8) la
+-- app no ofrece el botón: no mostraría uno que respondería 503.
+-- Solo el servidor la llama (service_role): no hay GRANT para authenticated.
+CREATE OR REPLACE FUNCTION public.curso_inscripciones_por_activar(p_curso_id UUID DEFAULT NULL)
+RETURNS TABLE (inscripcion_id UUID, alumno_id UUID, curso_id UUID, curso_nombre TEXT)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT ci.id, ci.alumno_id, ci.curso_id, c.nombre
+    FROM public.curso_inscripciones ci
+    JOIN public.cursos c ON c.id = ci.curso_id
+   WHERE (p_curso_id IS NULL OR ci.curso_id = p_curso_id)
+     AND ci.estado = 'activa'
+     AND ci.acceso_total = false
+     AND COALESCE(ci.meses_desbloqueados, 0) = 0
+     AND NOT EXISTS (
+       SELECT 1 FROM public.curso_inscripcion_eventos e
+        WHERE e.inscripcion_id = ci.id
+          AND e.tipo IN ('abrir_mes', 'cerrar_mes', 'abrir_todo', 'quitar_acceso_total'))
+   ORDER BY c.nombre, ci.created_at;
+$$;
+
+COMMENT ON FUNCTION public.curso_inscripciones_por_activar(UUID) IS
+  'D8: las inscripciones POR ACTIVAR (activa, sin acceso total, 0 meses y sin eventos de '
+  'acceso), de un curso o de todos. El MISMO predicado que curso_activar_segun_ficha. '
+  'Solo service_role (lo llaman las rutas del panel con el cliente admin).';
+
+REVOKE ALL ON FUNCTION public.curso_inscripciones_por_activar(UUID) FROM PUBLIC;
+DO $grants_lista$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.curso_inscripciones_por_activar(UUID) FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.curso_inscripciones_por_activar(UUID) FROM authenticated';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_inscripciones_por_activar(UUID) TO service_role';
+  END IF;
+END
+$grants_lista$;
 
 COMMENT ON FUNCTION public.curso_activar_segun_ficha(UUID, TEXT) IS
   'D8: abre lo que dice la ficha HOY (curso_regla_apertura: pago único → acceso total; '

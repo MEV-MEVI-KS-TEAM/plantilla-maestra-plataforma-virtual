@@ -12,7 +12,7 @@ import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 import { limiteVentana, hayModuloVisible } from '@/lib/cursos/acceso'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
-import { conEventosDeAcceso, estaPorActivar } from '@/lib/cursos/bitacora'
+import { porActivar } from '@/lib/cursos/bitacora'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
 
@@ -42,33 +42,21 @@ function sinPlanEscolar(nivel: string | null | undefined): boolean {
 
 // ─── «Por activar» (D8) ────────────────────────────────────────────────────────
 // El registro público («¿Cuál?») crea la inscripción con 0 meses y aquí no se
-// veía: la escuela tenía que adivinar a quién abrirle el curso (D0, obs-b). Se
-// buscan las inscripciones activas con 0 meses y sin acceso total —las que
-// esperan cobro, pocas— y se descartan las que ya tuvieron eventos de acceso: la
-// MISMA regla que curso_activar_segun_ficha(). Sin C3b (no hay acceso_total) o
-// sin bitácora legible, nadie sale «por activar»: la función tampoco podría.
+// veía: la escuela tenía que adivinar a quién abrirle el curso (D0, obs-b). La
+// lista la calcula la base (curso_inscripciones_por_activar), con el MISMO
+// predicado que la función que activa: sin traer ids a la URL ni cortarse en
+// 1000 filas. Sin la migración D8 nadie sale «por activar» (el botón daría 503).
 type CursoPorActivar = { id: string; nombre: string }
 async function anexarPorActivar<T extends { id: string }>(
   admin: ReturnType<typeof createAdminClient>,
   filas: T[],
 ): Promise<Array<T & { cursos_por_activar: CursoPorActivar[] }>> {
-  const vacio = () => filas.map(f => ({ ...f, cursos_por_activar: [] as CursoPorActivar[] }))
-  if (filas.length === 0) return vacio()
-  type FilaIns = { id: string; alumno_id: string; curso_id: string; estado: string | null; meses_desbloqueados: number | null; acceso_total?: boolean | null }
-  const { data: ins, error } = await conAccesoTotal<FilaIns[]>('id, alumno_id, curso_id, estado, meses_desbloqueados',
-    campos => admin.from('curso_inscripciones').select(campos).eq('estado', 'activa').eq('meses_desbloqueados', 0))
-  const candidatas = (ins ?? []).filter(i => 'acceso_total' in i && i.acceso_total !== true)
-  if (error || candidatas.length === 0) return vacio()
-  const conEventos = await conEventosDeAcceso(admin, candidatas.map(i => i.id))
-  if (conEventos === null) return vacio()
-  const porActivar = candidatas.filter(i => estaPorActivar(i, conEventos.has(i.id)))
-  if (porActivar.length === 0) return vacio()
-  const { data: cs } = await admin.from('cursos').select('id, nombre').in('id', [...new Set(porActivar.map(i => i.curso_id))])
-  const nombres = new Map(((cs ?? []) as { id: string; nombre: string }[]).map(c => [c.id, c.nombre]))
   const porAlumno = new Map<string, CursoPorActivar[]>()
-  for (const i of porActivar) {
-    if (!porAlumno.has(i.alumno_id)) porAlumno.set(i.alumno_id, [])
-    porAlumno.get(i.alumno_id)!.push({ id: i.curso_id, nombre: nombres.get(i.curso_id) ?? 'Curso' })
+  if (filas.length > 0) {
+    for (const p of (await porActivar(admin)) ?? []) {
+      if (!porAlumno.has(p.alumno_id)) porAlumno.set(p.alumno_id, [])
+      porAlumno.get(p.alumno_id)!.push({ id: p.curso_id, nombre: p.curso_nombre })
+    }
   }
   return filas.map(f => ({ ...f, cursos_por_activar: porAlumno.get(f.id) ?? [] }))
 }

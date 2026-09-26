@@ -89,6 +89,9 @@ export async function conActores<T extends { actor: string | null }>(
  * con movimientos más viejos se quedaban sin su «Último:»). `null` si falla.
  * Con tope de páginas para no colgar la pantalla con una bitácora enorme.
  */
+/** Cuántos ids caben en una consulta con .in() sin pasarse del largo de URL. */
+const LOTE_IDS = 100
+
 async function leerTodo<T>(
   pagina: (desde: number, hasta: number) => PromiseLike<{ data: unknown; error: unknown }>,
   maxPaginas = 20,
@@ -114,14 +117,22 @@ export async function ultimosMovimientos(
 ): Promise<Map<string, MovimientoInscripcion>> {
   const out = new Map<string, MovimientoInscripcion>()
   if (inscripcionIds.length === 0) return out
-  const data = await leerTodo<EventoFila>((desde, hasta) => admin
-    .from('curso_inscripcion_eventos')
-    .select('inscripcion_id, tipo, meses_antes, meses_despues, actor, created_at')
-    .in('inscripcion_id', [...inscripcionIds])
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range(desde, hasta))
-  if (!data) return out
+  // Por lotes de ids: cada uno viaja en la URL (~39 caracteres) y PostgREST corta
+  // las URL largas; con un curso de cientos de alumnos la consulta entera fallaba.
+  const data: EventoFila[] = []
+  for (let i = 0; i < inscripcionIds.length; i += LOTE_IDS) {
+    const lote = inscripcionIds.slice(i, i + LOTE_IDS)
+    const filas = await leerTodo<EventoFila>((desde, hasta) => admin
+      .from('curso_inscripcion_eventos')
+      .select('inscripcion_id, tipo, meses_antes, meses_despues, actor, created_at')
+      .in('inscripcion_id', [...lote])
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(desde, hasta))
+    if (!filas) return out
+    data.push(...filas)
+  }
+  // Los lotes llegan cada uno ordenado; el último de cada inscripción está en su lote.
   const ultimos = new Map<string, EventoFila>()
   for (const e of data) if (!ultimos.has(e.inscripcion_id)) ultimos.set(e.inscripcion_id, e)
   for (const e of await conActores(admin, [...ultimos.values()])) {
@@ -135,40 +146,21 @@ export async function ultimosMovimientos(
 
 // ─── «Por activar» (D8) ──────────────────────────────────────────────────────
 
-/** Los tipos de evento que dan o quitan acceso. */
+/** Los tipos de evento que dan o quitan acceso (los mismos de las dos funciones SQL de D8). */
 export const EVENTOS_DE_ACCESO = ['abrir_mes', 'cerrar_mes', 'abrir_todo', 'quitar_acceso_total'] as const
 
-/**
- * «Por activar» (D8, decisión 12): activa, sin acceso total, con 0 meses y SIN
- * eventos de acceso — nunca se le abrió ni se le cerró nada. Es la MISMA regla
- * que curso_activar_segun_ficha() comprueba en SQL (con FOR UPDATE): esto solo
- * decide qué botón se ofrece.
- */
-export function estaPorActivar(
-  i: { estado: string | null; acceso_total?: boolean | null; meses_desbloqueados: number | null },
-  conEventosDeAcceso: boolean,
-): boolean {
-  return (i.estado ?? 'activa') === 'activa' && i.acceso_total !== true
-    && (i.meses_desbloqueados ?? 0) === 0 && !conEventosDeAcceso
-}
+export type PorActivar = { inscripcion_id: string; alumno_id: string; curso_id: string; curso_nombre: string }
 
 /**
- * De las inscripciones dadas, las que YA tienen algún evento de acceso. `null`
- * si la bitácora no se pudo leer (sin B4): entonces nadie se ofrece «por
- * activar», porque la función tampoco podría comprobarlo.
+ * Las inscripciones POR ACTIVAR (activa, sin acceso total, 0 meses y sin
+ * eventos de acceso), de un curso o de todos. Las calcula la base
+ * (curso_inscripciones_por_activar, el MISMO predicado que la función que
+ * activa): así no se traen ids a la URL y no se corta en 1000 filas. `null` si
+ * la base no tiene la función (sin D8) o falla: entonces no se ofrece el botón,
+ * que respondería 503. Con el cliente admin (solo service_role la ejecuta).
  */
-export async function conEventosDeAcceso(
-  admin: SupabaseClient,
-  inscripcionIds: readonly string[],
-): Promise<Set<string> | null> {
-  if (inscripcionIds.length === 0) return new Set()
-  const data = await leerTodo<{ inscripcion_id: string }>((desde, hasta) => admin
-    .from('curso_inscripcion_eventos')
-    .select('inscripcion_id')
-    .in('inscripcion_id', [...inscripcionIds])
-    .in('tipo', [...EVENTOS_DE_ACCESO])
-    .order('id', { ascending: true })
-    .range(desde, hasta))
-  if (!data) return null
-  return new Set(data.map(e => e.inscripcion_id))
+export async function porActivar(admin: SupabaseClient, cursoId?: string): Promise<PorActivar[] | null> {
+  const { data, error } = await admin.rpc('curso_inscripciones_por_activar', cursoId ? { p_curso_id: cursoId } : {})
+  if (error || !Array.isArray(data)) return null
+  return data as PorActivar[]
 }

@@ -201,11 +201,16 @@ Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ regla_esperada: apertura }),
       })
-      const json = await res.json().catch(() => ({} as { error?: string; acceso_total?: boolean }))
+      const json = await res.json().catch(() => ({} as { error?: string; acceso_total?: boolean; sin_precio?: boolean }))
       if (!res.ok) throw new Error(json.error ?? 'No se pudo activar')
       onChanged(json.acceso_total
         ? `${nombre}: acceso total al curso, según su ficha (pago único)${sinEfectoHoy(inscripcion)}`
         : `${nombre}: mes 1 abierto, según su ficha${sinEfectoHoy(inscripcion)}`)
+      // El mismo aviso de «Asignar»: la ficha sin precio abre el mes 1, aunque el
+      // registro le haya anunciado un pago único con el precio de config.ts.
+      if (json.sin_precio && !json.acceso_total) {
+        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila y ponle precio al curso.`, AVISO_MS)
+      }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo activar')
     } finally {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserRol, verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
-import { conEventosDeAcceso, estaPorActivar, ultimosMovimientos } from '@/lib/cursos/bitacora'
+import { porActivar, ultimosMovimientos } from '@/lib/cursos/bitacora'
 import { removeFolder, signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
@@ -101,14 +101,15 @@ export async function GET(
     let inscritos: CursoInscrito[] = []
     if (alumnoIds.length > 0) {
       const inscIds = (inscripciones ?? []).map(i => i.id)
-      const [{ data: usuarios }, { data: alumnos }, movimientos, conAcceso] = await Promise.all([
+      const [{ data: usuarios }, { data: alumnos }, movimientos, pendientes] = await Promise.all([
         admin.from('usuarios').select('id, nombre, apellidos, email').in('id', alumnoIds),
         admin.from('alumnos').select('id, matricula, activo').in('id', alumnoIds),
         // Bitácora: el último movimiento de cada uno, con quién lo hizo (D7b).
         ultimosMovimientos(admin, inscIds),
-        // «Por activar» (D8): quién ya tuvo algún evento de acceso.
-        conEventosDeAcceso(admin, inscIds),
+        // «Por activar» (D8): lo calcula la base, con el mismo predicado que activa.
+        porActivar(admin, params.id),
       ])
+      const porActivarIds = new Set((pendientes ?? []).map(p => p.inscripcion_id))
       const uMap = new Map((usuarios ?? []).map(u => [u.id, u]))
       const aMap = new Map((alumnos ?? []).map(a => [a.id, a]))
       inscritos = (inscripciones ?? []).map(i => {
@@ -134,8 +135,8 @@ export async function GET(
           fecha_vencimiento: row.fecha_vencimiento,
           acceso_total: row.acceso_total === true,
           ultimo_movimiento: movimientos.get(row.id) ?? null,
-          // Sin bitácora legible (conAcceso null) nadie se ofrece «por activar».
-          por_activar: conAcceso !== null && estaPorActivar(row, conAcceso.has(row.id)),
+          // Sin la función de D8 (o si falla) nadie se ofrece «por activar».
+          por_activar: porActivarIds.has(row.id),
         }
       })
     }

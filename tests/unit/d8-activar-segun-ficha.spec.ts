@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { EVENTOS_DE_ACCESO, estaPorActivar } from '@/lib/cursos/bitacora'
+import { EVENTOS_DE_ACCESO } from '@/lib/cursos/bitacora'
 
 /**
  * Bloque D · D8 — «Activar según la ficha» (obs-b; decisiones 11, 12 y 6).
@@ -34,7 +34,14 @@ test('1. la función: staff, FOR UPDATE, solo «por activar», la regla de C3b y
   expect(SQL).toContain("'precio_inscripcion', v_ins, 'precio_mensualidad', v_men")
   expect(SQL.match(/auth\.uid\(\)\);/g)?.length).toBe(2)
   // Solo LEE funciones de C3b: no redefine ninguna, y no toca el CHECK de tipos.
-  expect(SQL.match(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)).toEqual(['CREATE OR REPLACE FUNCTION public.curso_activar_segun_ficha'])
+  expect(SQL.match(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)).toEqual([
+    'CREATE OR REPLACE FUNCTION public.curso_activar_segun_ficha',
+    'CREATE OR REPLACE FUNCTION public.curso_inscripciones_por_activar',
+  ])
+  // El mes 1 tiene que verse: módulos y módulos por mes, no solo el tope.
+  expect(SQL).toContain('OR NOT EXISTS (SELECT 1 FROM public.curso_modulos m WHERE m.curso_id = v_curso)')
+  expect(SQL).toContain('OR COALESCE((SELECT c.modulos_por_mes FROM public.cursos c WHERE c.id = v_curso), 0) <= 0 THEN')
+  expect(SQL).not.toContain("'::regprocedure")
   expect(SQL).not.toMatch(/ALTER TABLE|CHECK \(tipo/)
   // Permisos y recarga de PostgREST.
   expect(SQL).toContain('REVOKE ALL ON FUNCTION public.curso_activar_segun_ficha(UUID, TEXT) FROM PUBLIC;')
@@ -43,20 +50,23 @@ test('1. la función: staff, FOR UPDATE, solo «por activar», la regla de C3b y
   expect(SQL).toContain("NOTIFY pgrst, 'reload schema';")
 })
 
-test('2. «por activar»: la regla de la pantalla es la MISMA que la del SQL', () => {
-  // Los tipos que cuentan como «ya tuvo acceso», iguales en TS y en SQL.
-  const lista = /e\.tipo IN \(([^)]*)\)/.exec(SQL)?.[1] ?? ''
-  expect([...lista.matchAll(/'(\w+)'/g)].map(m => m[1]).sort()).toEqual([...EVENTOS_DE_ACCESO].sort())
+test('2. «por activar»: el MISMO predicado en la función que activa y en la que lista', () => {
+  const listas = [...SQL.matchAll(/e\.tipo IN \(([^)]*)\)/g)].map(m => [...m[1].matchAll(/'(\w+)'/g)].map(x => x[1]).sort())
+  expect(listas).toHaveLength(2)
+  for (const l of listas) expect(l).toEqual([...EVENTOS_DE_ACCESO].sort())
+  // La que activa: activa, sin acceso total, 0 meses y sin eventos.
   expect(SQL).toContain('IF v_total OR COALESCE(v_meses, 0) > 0 OR EXISTS (')
   expect(SQL).toContain("IF v_estado <> 'activa' THEN")
-  // La función de la pantalla, caso por caso.
-  const base = { estado: 'activa', acceso_total: false, meses_desbloqueados: 0 }
-  expect(estaPorActivar(base, false)).toBe(true)
-  expect(estaPorActivar(base, true)).toBe(false) // ya tuvo eventos de acceso
-  expect(estaPorActivar({ ...base, acceso_total: true }, false)).toBe(false)
-  expect(estaPorActivar({ ...base, meses_desbloqueados: 1 }, false)).toBe(false)
-  expect(estaPorActivar({ ...base, estado: 'suspendida' }, false)).toBe(false)
-  expect(estaPorActivar({ ...base, meses_desbloqueados: null }, false)).toBe(true)
+  // La que lista: lo mismo, en un WHERE (sin traer ids a la URL de la app).
+  const lista = SQL.slice(SQL.indexOf('CREATE OR REPLACE FUNCTION public.curso_inscripciones_por_activar'))
+  expect(lista).toContain("AND ci.estado = 'activa'")
+  expect(lista).toContain('AND ci.acceso_total = false')
+  expect(lista).toContain('AND COALESCE(ci.meses_desbloqueados, 0) = 0')
+  expect(lista).toContain('AND NOT EXISTS (')
+  // Solo el servidor la llama.
+  expect(SQL).toContain("REVOKE ALL ON FUNCTION public.curso_inscripciones_por_activar(UUID) FROM authenticated")
+  expect(SQL).toContain("GRANT EXECUTE ON FUNCTION public.curso_inscripciones_por_activar(UUID) TO service_role")
+  expect(SQL).not.toMatch(/GRANT EXECUTE ON FUNCTION public\.curso_inscripciones_por_activar\(UUID\) TO authenticated/)
 })
 
 test('3. la ruta: con la sesión, la regla esperada validada y 503 si falta la migración', () => {
@@ -66,13 +76,25 @@ test('3. la ruta: con la sesión, la regla esperada validada y 503 si falta la m
   expect(ruta).toContain("esperada !== 'total' && esperada !== 'mes1'")
   expect(ruta).toContain("if (error.code === 'PGRST202') {")
   expect(ruta).toContain(MIG)
-  expect(ruta).not.toContain('createAdminClient')
+  // El cliente admin solo LEE la ficha para el aviso de «sin precio» (el de «Asignar»).
+  expect(ruta).toContain("sinPrecio = !errCurso && curso != null && precioCursoNumerico(curso).tipo === 'informes'")
+  expect(ruta).toContain('sin_precio: sinPrecio,')
+  expect(ruta).not.toMatch(/admin\s*\.rpc\(/)
 })
 
-test('4. el detalle del curso marca «por activar» con la bitácora (sin ella, nadie)', () => {
+test('4. el detalle del curso marca «por activar» con la lista de la base (sin D8, nadie)', () => {
   const api = sinComentarios(leer('src/app/api/admin/cursos/[id]/route.ts'))
-  expect(api).toContain('conEventosDeAcceso(admin, inscIds),')
-  expect(api).toContain('por_activar: conAcceso !== null && estaPorActivar(row, conAcceso.has(row.id)),')
+  expect(api).toContain('porActivar(admin, params.id),')
+  // `inscIds` son los ids de las INSCRIPCIONES del curso (los que lee la bitácora).
+  expect(api).toContain('const inscIds = (inscripciones ?? []).map(i => i.id)')
+  expect(api).toContain('ultimosMovimientos(admin, inscIds),')
+  expect(api).toContain('por_activar: porActivarIds.has(row.id),')
+  const bit = sinComentarios(leer('src/lib/cursos/bitacora.ts'))
+  expect(bit).toContain("admin.rpc('curso_inscripciones_por_activar', cursoId ? { p_curso_id: cursoId } : {})")
+  expect(bit).toContain('if (error || !Array.isArray(data)) return null')
+  // La bitácora se lee por lotes de ids (la URL de .in() tiene tope).
+  expect(bit).toContain('const LOTE_IDS = 100')
+  expect(bit).toContain('inscripcionIds.slice(i, i + LOTE_IDS)')
 })
 
 test('5. AlumnosTab: «Activar según la ficha» es el botón principal; confirma doble solo si abre TODO', () => {
@@ -89,14 +111,15 @@ test('5. AlumnosTab: «Activar según la ficha» es el botón principal; confirm
   expect(tab).toContain('body: JSON.stringify({ regla_esperada: apertura }),')
   // «Asignar» con 409 no activa nada: remite al botón de la fila.
   expect(tab).toContain('Si está «por activar», usa «Activar según la ficha» en su fila.')
+  // Ficha sin precio: el mismo aviso rojo de «Asignar», con tiempo para leerlo.
+  expect(tab).toMatch(/if \(json\.sin_precio && !json\.acceso_total\) \{\s*onError\(`Ojo: este curso no tiene precio en su ficha[\s\S]*?, AVISO_MS\)/)
 })
 
 test('6. /admin/alumnos: «Por activar» visible (el camino «¿Cuál?» del registro)', () => {
   const api = sinComentarios(leer('src/app/api/admin/alumnos/route.ts'))
   expect(api.match(/anexarPorActivar\(admin, await anexarCursoIngreso\(admin, \w+, puedeGestionarCursos\)\)/g)?.length).toBe(3)
-  expect(api).toContain(".eq('estado', 'activa').eq('meses_desbloqueados', 0)")
-  expect(api).toContain("'acceso_total' in i && i.acceso_total !== true")
-  expect(api).toContain('estaPorActivar(i, conEventos.has(i.id))')
+  expect(api).toContain('for (const p of (await porActivar(admin)) ?? []) {')
+  expect(api).not.toContain(".from('curso_inscripcion_eventos')")
   const page = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
   // Móvil y escritorio: un enlace al curso (o a la lista si son varios).
   expect(page.match(/Por activar: \{a\.cursos_por_activar!\.map\(c => c\.nombre\)\.join\(', '\)\}/g)?.length).toBe(2)
