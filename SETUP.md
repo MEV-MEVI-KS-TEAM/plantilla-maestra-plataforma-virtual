@@ -124,6 +124,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | 13 | `20260730180000_b82_emision_manual_con_actor.sql` | **B8.2** — emisión manual con actor + guard de aprobación |
    | 14 | `20260926120000_c3b_acceso_total_cursos.sql` | **C3b** — pago único = acceso total al asignar; «Asignar» abre acceso con la regla del curso (sin ella, el código de hoy no puede asignar) |
    | 15 | `20260927120000_d7b_secretario_abre_cursos.sql` | **D7b** — el secretario también asigna, abre (mes o todo), cobra abriendo, cierra mes y quita el acceso total; estado, módulos y constancias siguen siendo solo del admin. Re-correr B3/B4/C3b ya no se lo quita (CHECK 16) |
+   | 16 | `20260927130000_d8_activar_segun_ficha.sql` | **D8** — «Activar según la ficha»: a una inscripción por activar (registro público, 0 meses) le abre lo que dice la ficha hoy —pago único → todo; mensual o sin precio → mes 1—; admin y secretario (CHECK 17) |
 
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
 

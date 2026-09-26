@@ -336,3 +336,36 @@ SELECT
     ELSE '✅ OK (asignar, abrir, cerrar, abrir todo y cobrar abriendo: admin y secretario; estado, módulos y constancias: solo admin)'
   END AS resultado
 FROM d7b;
+
+-- ─── CHECK 17: «Activar según la ficha» (D8) ────────────────────────────────
+-- Solo aplica si la base tiene el módulo de cursos. Sin la función, el botón
+-- «Activar según la ficha» (y el «Por activar» de /admin/alumnos) responde 503:
+-- el registro público deja inscripciones con 0 meses que solo se abren a mano.
+WITH d8 AS (
+  SELECT
+    to_regclass('public.curso_inscripciones') IS NOT NULL AS hay_cursos,
+    to_regprocedure('public.curso_activar_segun_ficha(uuid,text)') IS NOT NULL AS instalada,
+    CASE WHEN to_regprocedure('public.curso_activar_segun_ficha(uuid,text)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_activar_segun_ficha(uuid,text)')), 'IF NOT public.es_staff() THEN') > 0
+         ELSE false END AS guarda_staff,
+    CASE WHEN to_regprocedure('public.curso_activar_segun_ficha(uuid,text)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+         THEN has_function_privilege('anon', 'public.curso_activar_segun_ficha(uuid,text)', 'EXECUTE')
+         ELSE false END AS anon_ejecuta,
+    (SELECT count(*) FROM pg_proc WHERE proname = 'curso_activar_segun_ficha') AS versiones
+)
+SELECT
+  'Activar según la ficha (D8)' AS check_name,
+  CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
+       ELSE 'función ' || instalada::text || ' / guarda staff ' || guarda_staff::text
+            || ' / anon ejecuta ' || anon_ejecuta::text || ' / versiones ' || versiones::text
+  END AS valor,
+  CASE
+    WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
+    WHEN NOT instalada
+      THEN '❌ FALTA → correr supabase/migrations/20260927130000_d8_activar_segun_ficha.sql (después de C3b y D7b)'
+    WHEN NOT guarda_staff OR anon_ejecuta OR versiones <> 1
+      THEN '❌ D8 ALTERADO (guarda, permisos o sobrecargas) → vuelve a correr supabase/migrations/20260927130000_d8_activar_segun_ficha.sql'
+    ELSE '✅ OK (una sola versión, admin y secretario, anon sin EXECUTE)'
+  END AS resultado
+FROM d8;

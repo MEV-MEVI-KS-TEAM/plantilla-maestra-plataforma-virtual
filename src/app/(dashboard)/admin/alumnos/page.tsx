@@ -44,6 +44,8 @@ interface Alumno {
   curso_acceso_pendiente: boolean
   /** Asignar y abrir: todo el staff desde D7b (decisión 6). */
   curso_puede_gestionar: boolean
+  /** Cursos a los que está inscrito POR ACTIVAR (registro público, 0 meses, sin eventos) — D8. */
+  cursos_por_activar?: { id: string; nombre: string }[]
 }
 
 
@@ -613,6 +615,15 @@ export default function AlumnosPage() {
                         </>
                       )}
                     </div>
+                    {/* D8: inscrito desde el registro y todavía sin acceso: se abre desde el curso. */}
+                    {(a.cursos_por_activar?.length ?? 0) > 0 && (
+                      <a href={a.cursos_por_activar!.length === 1 ? `/admin/cursos/${a.cursos_por_activar![0].id}` : '/admin/cursos'}
+                        className="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', textDecoration: 'underline' }}
+                        title={`Por activar: ${a.cursos_por_activar!.map(c => c.nombre).join(', ')}. Ábrelo con «Activar según la ficha» en la pestaña Alumnos del curso.`}>
+                        Por activar: {a.cursos_por_activar!.map(c => c.nombre).join(', ')}
+                      </a>
+                    )}
                     {a.curso_solicitado_nombre && (
                       <div className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2"
                         style={{ background: 'rgba(148,163,184,0.06)' }}>
@@ -688,7 +699,18 @@ export default function AlumnosPage() {
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                       >
                         <td className="px-4 py-3 font-mono text-xs" style={{ color: '#94A3B8' }}>{a.matricula}</td>
-                        <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>{a.nombre_completo}</td>
+                        <td className="px-4 py-3 font-medium" style={{ color: '#F1F5F9' }}>
+                          {a.nombre_completo}
+                          {/* D8: inscrito desde el registro y todavía sin acceso: se abre desde el curso. */}
+                          {(a.cursos_por_activar?.length ?? 0) > 0 && (
+                            <a href={a.cursos_por_activar!.length === 1 ? `/admin/cursos/${a.cursos_por_activar![0].id}` : '/admin/cursos'}
+                              className="block w-fit mt-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', textDecoration: 'underline' }}
+                              title={`Por activar: ${a.cursos_por_activar!.map(c => c.nombre).join(', ')}. Ábrelo con «Activar según la ficha» en la pestaña Alumnos del curso.`}>
+                              Por activar: {a.cursos_por_activar!.map(c => c.nombre).join(', ')}
+                            </a>
+                          )}
+                        </td>
                         <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{a.email}</td>
                         <td className="px-4 py-3" style={{ color: '#94A3B8' }}>{a.plan_nombre}</td>
                         {vendeCursosIngreso && (

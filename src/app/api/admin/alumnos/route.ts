@@ -12,6 +12,7 @@ import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 import { limiteVentana, hayModuloVisible } from '@/lib/cursos/acceso'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
+import { porActivar } from '@/lib/cursos/bitacora'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
 
@@ -37,6 +38,27 @@ async function checkAdmin(userId: string): Promise<boolean> {
  */
 function sinPlanEscolar(nivel: string | null | undefined): boolean {
   return !nivel || nivel === 'diplomado'
+}
+
+// ─── «Por activar» (D8) ────────────────────────────────────────────────────────
+// El registro público («¿Cuál?») crea la inscripción con 0 meses y aquí no se
+// veía: la escuela tenía que adivinar a quién abrirle el curso (D0, obs-b). La
+// lista la calcula la base (curso_inscripciones_por_activar), con el MISMO
+// predicado que la función que activa: sin traer ids a la URL ni cortarse en
+// 1000 filas. Sin la migración D8 nadie sale «por activar» (el botón daría 503).
+type CursoPorActivar = { id: string; nombre: string }
+async function anexarPorActivar<T extends { id: string }>(
+  admin: ReturnType<typeof createAdminClient>,
+  filas: T[],
+): Promise<Array<T & { cursos_por_activar: CursoPorActivar[] }>> {
+  const porAlumno = new Map<string, CursoPorActivar[]>()
+  if (filas.length > 0) {
+    for (const p of (await porActivar(admin)) ?? []) {
+      if (!porAlumno.has(p.alumno_id)) porAlumno.set(p.alumno_id, [])
+      porAlumno.get(p.alumno_id)!.push({ id: p.curso_id, nombre: p.curso_nombre })
+    }
+  }
+  return filas.map(f => ({ ...f, cursos_por_activar: porAlumno.get(f.id) ?? [] }))
 }
 
 // ─── Curso de ingreso solicitado ──────────────────────────────────────────────
@@ -212,7 +234,7 @@ export async function GET() {
           telefono:             u?.telefono ?? null,
         }
       })
-      return NextResponse.json(await anexarCursoIngreso(admin, result, puedeGestionarCursos))
+      return NextResponse.json(await anexarPorActivar(admin, await anexarCursoIngreso(admin, result, puedeGestionarCursos)))
     }
 
     // ── Intento 2: schema antiguo — alumnos.usuario_id → usuarios.id ─────────
@@ -273,7 +295,7 @@ export async function GET() {
           telefono:             u?.telefono ?? null,
         }
       })
-      return NextResponse.json(await anexarCursoIngreso(admin, result2, puedeGestionarCursos))
+      return NextResponse.json(await anexarPorActivar(admin, await anexarCursoIngreso(admin, result2, puedeGestionarCursos)))
     }
 
     // ── Fallback: alumnos sin join + usuarios por separado ────────────────────
@@ -318,7 +340,7 @@ export async function GET() {
         telefono:             (u as {telefono?:string|null}|null)?.telefono ?? null,
       })
     }
-    return NextResponse.json(await anexarCursoIngreso(admin, resultFallback, puedeGestionarCursos))
+    return NextResponse.json(await anexarPorActivar(admin, await anexarCursoIngreso(admin, resultFallback, puedeGestionarCursos)))
 
   } catch (err) {
     console.error('[GET /api/admin/alumnos] excepción:', err)

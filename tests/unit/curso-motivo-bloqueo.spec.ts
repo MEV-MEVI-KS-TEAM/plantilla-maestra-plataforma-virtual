@@ -128,7 +128,9 @@ test('5. «Activado» sale de la ventana real, no de que exista la fila (Bug 106
   expect(page).not.toContain('✓ Curso activado')
   // El botón ya no promete «Activar»: asignar crea la inscripción, no abre el acceso.
   // Ni texto ni título «Activar» (los nombres internos activarCurso y setActivando no cuentan).
-  expect(page).not.toMatch(/\bActivar\b|\bActivando\b|No se pudo activar|al activar el curso/)
+  // (D8: el nombre CITADO del botón del curso, «Activar según la ficha», sí puede aparecer:
+  // la lista remite a él; lo que no puede es prometer que aquí se activa.)
+  expect(page.replace(/«Activar según la ficha»/g, '')).not.toMatch(/\bActivar\b|\bActivando\b|No se pudo activar|al activar el curso/)
   expect(page.match(/'Asignando…' : 'Asignar'/g)?.length).toBe(2)
 })
 
