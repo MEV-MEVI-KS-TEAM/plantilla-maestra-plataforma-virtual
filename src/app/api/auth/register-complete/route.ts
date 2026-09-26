@@ -11,6 +11,7 @@ import { getCarreras } from '@/lib/licenciatura-utils'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
+import { modalidadDeRegistro } from '@/lib/registro-reglas'
 
 export async function POST(request: Request) {
   try {
@@ -42,10 +43,11 @@ export async function POST(request: Request) {
     //
     // Y `modalidad` va a null: es la duración del PROGRAMA (3 o 6 meses de
     // secundaria/prepa). El ritmo del diplomado lo fija el curso con
-    // `modulos_por_mes`, no el alumno.
+    // `modulos_por_mes`, no el alumno. Lo mismo con «Curso o diplomado» en
+    // tradicional, y un '' también es null: el CHECK de alumnos no lo admite (#212).
     const nivelForzado     = nivelForzadoDeRegistro()
     const nivel            = nivelForzado ?? body.nivel ?? null
-    const modalidad        = nivelForzado ? null : (body.modalidad ?? null)
+    const modalidad        = modalidadDeRegistro(nivel, body.modalidad, nivelForzado)
 
     // `carrera` decide qué catálogo ve el alumno. Este endpoint es PÚBLICO, así
     // que el valor no se guarda tal cual: se contrasta contra el catálogo del

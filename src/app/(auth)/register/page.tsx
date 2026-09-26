@@ -389,7 +389,9 @@ export default function RegisterPage() {
     if (!soloCursos && !nivel && !pidioCurso) {
       setError('Selecciona tu nivel educativo o un curso de preparación.'); return
     }
-    if (!soloCursos && nivel && !modalidad) { setError('Selecciona la modalidad.'); return }
+    // Un curso no tiene modalidad (su ritmo lo fija el propio curso): con
+    // «Curso o diplomado» el campo es «¿Cuál?» y no hay modalidad que pedir (#212).
+    if (!soloCursos && nivel && !esDiplomado && !modalidad) { setError('Selecciona la modalidad.'); return }
     // Sin carrera el alta se completa pero el alumno entra a un catálogo vacío.
     if (!soloCursos && esLicenciatura && !carrera) { setError('Selecciona tu carrera.'); return }
 
@@ -449,7 +451,8 @@ export default function RegisterPage() {
           // ⚠️ Se manda el NIVEL DE BD, no el valor del desplegable: «Diplomados» es
           // presentación de 'licenciatura'. La traducción vive en src/lib/niveles.ts.
           nivel: nivelDeOpcion(nivel),
-          modalidad,
+          // Nunca '': alumnos_modalidad_check solo admite NULL o un id (#212).
+          modalidad: esDiplomado ? null : (modalidad || null),
           carrera: esLicenciatura ? carrera : null,
           es_sindicalizado: false,
           sindicato:        null,
