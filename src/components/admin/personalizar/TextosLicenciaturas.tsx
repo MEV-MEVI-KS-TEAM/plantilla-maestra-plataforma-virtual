@@ -23,6 +23,7 @@
 import { CONFIG } from '@/lib/config'
 import type { Campo } from '@/lib/site-config-campos'
 import { formatearMoneda } from '@/lib/moneda'
+import { textoInscripcion } from '@/lib/precios-ui'
 import {
   getCarrerasLicenciatura,
   getDesglosesLicenciatura,
@@ -39,11 +40,14 @@ import type { SiteConfigOverrides } from '@/lib/site-config-core'
 import {
   PASOS_LICENCIATURA,
   textosAutoLicenciaturas,
+  usaInscripcionGeneral,
+  varsLicenciatura,
   type OverrideCarreraLanding,
   type OverridePasoLanding,
+  type OverridesLicenciaturasLanding,
 } from '@/components/landing/animada/textos-licenciatura'
 import { CampoTexto } from './CampoTexto'
-import { Ayuda, TXT_SUAVE, type PropsPestana } from './Comunes'
+import { Aviso, Ayuda, TXT_SUAVE, type PropsPestana } from './Comunes'
 
 const CLAVE_CARRERAS = 'landing.licenciaturas_carreras'
 const CLAVE_PASOS = 'landing.licenciaturas_pasos'
@@ -59,6 +63,47 @@ export function autoLicenciaturas(overrides: SiteConfigOverrides = {}) {
     getDesglosesLicenciatura(licenciaturaDeBorrador(overrides) as Parameters<typeof getDesglosesLicenciatura>[0]),
     getEtiquetaLicenciatura(),
     (n) => formatearMoneda(n, CONFIG),
+  )
+}
+
+/**
+ * Arriba de la tarjeta «Licenciaturas»: los comodines de la sección (#195), con
+ * la cifra que darían hoy (el BORRADOR de precios), y un aviso si algún texto de
+ * la sección usa `{inscripcion}`, que aquí es la de Secundaria/Preparatoria.
+ */
+export function ComodinesLicenciatura({
+  defaults, overrides = {},
+}: Pick<PropsPestana, 'defaults'> & { overrides?: SiteConfigOverrides }) {
+  const planes = getDesglosesLicenciatura(licenciaturaDeBorrador(overrides) as Parameters<typeof getDesglosesLicenciatura>[0])
+  // El mismo formato que la página le da a {inscripcion} («sin costo» si no se cobra).
+  const hoy = varsLicenciatura(planes, (n) => textoInscripcion(n, { minusculas: true }))
+  // Los textos EFECTIVOS de la sección (config.ts con el borrador encima): el
+  // {inscripcion} puede venir del config.ts del clon, no solo de lo escrito aquí.
+  const efectivo = (k: string) => valorEfectivo(defaults, overrides, `landing.${k}`)
+  const landing = {
+    licenciaturas_kicker: efectivo('licenciaturas_kicker'),
+    licenciaturas_titulo: efectivo('licenciaturas_titulo'),
+    licenciaturas_subtitulo: efectivo('licenciaturas_subtitulo'),
+    licenciaturas_pasos: efectivo('licenciaturas_pasos'),
+    licenciaturas_carreras: efectivo('licenciaturas_carreras'),
+  } as OverridesLicenciaturasLanding
+  return (
+    <div className="space-y-2">
+      <Ayuda>
+        En esta sección también puedes usar <code style={{ color: TXT_SUAVE }}>{'{inscripcionLicenciatura}'}</code>
+        {hoy.inscripcionLicenciatura ? ` (hoy ${hoy.inscripcionLicenciatura})` : ''} y{' '}
+        <code style={{ color: TXT_SUAVE }}>{'{titulacion}'}</code>
+        {hoy.titulacion ? ` (hoy ${hoy.titulacion})` : ''}. Aquí <code>{'{inscripcion}'}</code> sigue siendo la
+        inscripción general de Secundaria y Preparatoria.
+      </Ayuda>
+      {usaInscripcionGeneral(landing) && (
+        <Aviso tono="alerta">
+          Uno de tus textos de licenciatura usa <code>{'{inscripcion}'}</code>: esa es la inscripción general
+          (Secundaria y Preparatoria), no la de licenciatura. Para la de licenciatura escribe{' '}
+          <code>{'{inscripcionLicenciatura}'}</code>.
+        </Aviso>
+      )}
+    </div>
   )
 }
 

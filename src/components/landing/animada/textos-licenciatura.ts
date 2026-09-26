@@ -234,3 +234,48 @@ export function resolverTextosLicenciaturas(
     ),
   }
 }
+
+// ─── Comodines DE SECCIÓN (#195) ─────────────────────────────────────────────
+
+/**
+ * Los comodines que SOLO valen en los textos de la sección de licenciaturas.
+ *
+ * En esta sección `{inscripcion}` es la inscripción GENERAL (la de Secundaria y
+ * Preparatoria): la escuela que escribía «Inscripción única de {inscripcion}» en
+ * un paso de licenciatura pintaba la cifra de Sec/Prepa (#195). Estos dos dan la
+ * de licenciatura y la titulación, con la tabla EFECTIVA (lo publicado en el
+ * panel encima de config.ts, vía el desglose).
+ *
+ * 🛑 No entran en `PLACEHOLDERS`: fuera de esta sección no significan nada y se
+ *    quedan literales, igual que cualquier `{x}` desconocido.
+ */
+export const COMODINES_LICENCIATURA = ['inscripcionLicenciatura', 'titulacion'] as const
+export type ComodinLicenciatura = (typeof COMODINES_LICENCIATURA)[number]
+
+/**
+ * Sus valores. `fmt` es el formato que el sitio le da a su `{inscripcion}` (en
+ * la landing, «sin costo» cuando no se cobra). Sin planes no hay valores y el
+ * comodín se queda literal, igual que la sección, que no se pinta.
+ */
+export function varsLicenciatura(
+  planes: readonly Pick<DesgloseLicenciatura, 'inscripcion' | 'titulacion'>[],
+  fmt: Dinero,
+): Partial<Record<ComodinLicenciatura, string>> {
+  const p = planes[0]
+  if (!p) return {}
+  return { inscripcionLicenciatura: fmt(p.inscripcion), titulacion: fmt(p.titulacion) }
+}
+
+/**
+ * ¿Algún texto propio de la sección usa `{inscripcion}`? Es casi siempre un
+ * error: ahí vale la de Secundaria/Preparatoria. El editor lo avisa.
+ */
+export function usaInscripcionGeneral(o: OverridesLicenciaturasLanding | null | undefined): boolean {
+  if (!o) return false
+  const textos: unknown[] = [
+    o.licenciaturas_kicker, o.licenciaturas_titulo, o.licenciaturas_subtitulo,
+    ...(Array.isArray(o.licenciaturas_pasos) ? o.licenciaturas_pasos.flatMap(p => [p?.titulo, p?.desc]) : []),
+    ...(Array.isArray(o.licenciaturas_carreras) ? o.licenciaturas_carreras.flatMap(c => [c?.nombre, c?.desc]) : []),
+  ]
+  return textos.some(t => typeof t === 'string' && t.includes('{inscripcion}'))
+}

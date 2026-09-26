@@ -28,7 +28,7 @@ import { CampoEntero, CampoTexto } from './CampoTexto'
 import { ListaObjetos, ListaTexto } from './ListaEditable'
 import { Aviso, TXT_SUAVE, TXT_TENUE, Tarjeta, type PropsPestana } from './Comunes'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
-import { ListasLicenciaturas, autoLicenciaturas } from './TextosLicenciaturas'
+import { ComodinesLicenciatura, ListasLicenciaturas, autoLicenciaturas } from './TextosLicenciaturas'
 
 type Elemento = Record<string, string | number>
 
@@ -225,7 +225,11 @@ export function PestanaTextos({
 
       {grupos.map((grupo) => (
         <Tarjeta key={grupo.id} titulo={grupo.titulo}>
-          <div className="space-y-5">{grupo.campos.map(pintar)}</div>
+          <div className="space-y-5">
+            {/* #195: los comodines de la sección de licenciaturas, solo en su tarjeta. */}
+            {grupo.id === 'licenciaturas' && <ComodinesLicenciatura defaults={defaults} overrides={overrides} />}
+            {grupo.campos.map(pintar)}
+          </div>
         </Tarjeta>
       ))}
     </div>

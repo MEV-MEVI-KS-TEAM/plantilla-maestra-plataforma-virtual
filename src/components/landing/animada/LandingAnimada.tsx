@@ -71,7 +71,7 @@ import {
 import { BOTON, CONTENEDOR, Encabezado, estiloBoton, sinFlecha } from './piezas'
 import { SeccionLicenciaturas } from './Licenciaturas'
 import {
-  pluralEtiqueta, preguntasLicenciatura, resolverTextosLicenciaturas, textosAutoLicenciaturas, unirConO,
+  pluralEtiqueta, preguntasLicenciatura, resolverTextosLicenciaturas, textosAutoLicenciaturas, unirConO, varsLicenciatura,
   type OverridesLicenciaturasLanding,
 } from './textos-licenciatura'
 import {
@@ -272,11 +272,14 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // Textos de la sección: los automáticos de siempre, con lo que la escuela
   // haya escrito en "Textos de mi página" encima, campo por campo
   // (TICKET-2026-09-22-08). Las cifras del panel del costo no se editan.
+  // En la sección valen además sus comodines propios (#195): {inscripcionLicenciatura}
+  // y {titulacion}, con la tabla efectiva y el formato del {inscripcion} de la página.
+  const varsLic = { ...vars, ...varsLicenciatura(planesLic, (monto) => textoInscripcion(monto, { minusculas: true })) }
   const textosLic = hayLicenciaturas
     ? resolverTextosLicenciaturas(
         textosAutoLicenciaturas(carrerasLic, planesLic, getEtiquetaLicenciatura(), dinero),
         config.landing as unknown as OverridesLicenciaturasLanding,
-        texto,
+        (s) => interpolar(s, varsLic),
       )
     : null
   // «Resolver una duda» de la sección: WhatsApp si la escuela tiene número real,
