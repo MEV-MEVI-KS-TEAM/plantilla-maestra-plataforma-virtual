@@ -206,6 +206,8 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   // El aviso de mes 1 sale de avisoMes1 en las dos puertas; en «Asignar curso»,
   // con el anuncio de HOY y solo si el catálogo llegó, y aunque otro curso falle.
   expect(alumnosPag).toContain('const aviso = avisoMes1(resultado, null)')
+  // …y el aviso SE MUESTRA en las dos (rojo y 10 s), sin condiciones extra.
+  expect(alumnosPag.match(/\n\s*if \(aviso\) showToast\(aviso, 'error', AVISO_MS\)\n/g)?.length).toBe(2)
   expect(alumnosPag).toContain('const anuncio = oferta && catalogoOk ? resolverPrecioOferta(oferta, preciosPublicados) : null')
   const activar = alumnosPag.slice(alumnosPag.indexOf('async function activarCurso'), alumnosPag.indexOf('async function handleMarcarContactado'))
   expect(activar.indexOf('const aviso = avisoMes1(nuevos, anuncio)')).toBeGreaterThan(activar.indexOf('if (fallos.length) {'))
