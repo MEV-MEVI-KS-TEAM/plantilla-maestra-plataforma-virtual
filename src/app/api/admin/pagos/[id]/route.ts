@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import {
+  avisoAlBorrarPago, faltaFkCurso, faltaTabla, idInvalido,
+  type AperturaDelPago, type InscripcionHoy,
+} from '@/lib/pagos/borrar-pago'
 
 /**
  * DELETE /api/admin/pagos/[id]
@@ -14,7 +18,10 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
  *  - El aviso de «este pago abrió acceso» sale de la BITÁCORA, no de
  *    `mes_desbloqueado` (que pasa a ser el mes que el pago CUBRE, D0 decisión 5):
  *    el evento de apertura que el cobro dejó en su misma transacción tiene su
- *    mismo `created_at` (now() es el inicio de la transacción).
+ *    mismo `created_at` (now() es el inicio de la transacción). Y solo se
+ *    avisa si eso SIGUE abierto hoy: si el admin ya cerró el mes, el consejo
+ *    «usa Cerrar mes» le quitaría al alumno un mes que sí pagó.
+ *  - Un id que no es UUID es «no encontrado» (404), no un 500.
  */
 
 type FilaPago = {
@@ -25,11 +32,6 @@ type FilaPago = {
   created_at: string | null
 }
 
-/** «Esa columna no existe» (PostgREST 42703) por `curso_inscripcion_id`: base sin B1. */
-function faltaFkCurso(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false
-  return error.code === '42703' || /curso_inscripcion_id/.test(error.message ?? '')
-}
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -57,6 +59,9 @@ export async function DELETE(
         .eq('id', params.id)
         .maybeSingle()
     }
+    if (idInvalido(lectura.error)) {
+      return NextResponse.json({ error: 'Pago no encontrado' }, { status: 404 })
+    }
     if (lectura.error) {
       console.error('[DELETE /api/admin/pagos/[id]] leer:', lectura.error.message)
       return NextResponse.json({ error: 'No se pudo leer el pago.' }, { status: 500 })
@@ -68,24 +73,32 @@ export async function DELETE(
     const p = lectura.data as FilaPago
     const inscripcionId = p.curso_inscripcion_id ?? null
 
-    // ⚠️ Borrar el pago NO cierra el mes ni quita el acceso total, y es
-    // deliberado: el acceso solo se mueve por «Abrir mes» / «Cerrar mes» /
-    // «Quitar acceso total», que aplican tope, estado y protección de doble clic.
-    //
-    // Pero el admin tiene que ENTERARSE: si no, borra el pago creyendo que
-    // deshace la operación completa y el alumno conserva el acceso que compró
-    // con un pago que ya no existe. Qué abrió ESTE pago lo dice la bitácora: el
-    // evento de apertura de su misma transacción (mismo created_at). Sin
-    // bitácora (sin B4) no se afirma nada.
-    let abrio: { tipo: string; meses_despues: number | null } | null = null
+    // ⚠️ Borrar el pago NO cierra el mes ni quita el acceso total (deliberado;
+    // ver lib/pagos/borrar-pago.ts). Pero el admin tiene que ENTERARSE si lo que
+    // ese pago abrió sigue abierto. Qué abrió lo dice la bitácora: el evento de
+    // apertura de su misma transacción (mismo created_at). Sin bitácora (sin B4)
+    // no se afirma nada. Cómo está hoy lo dice la inscripción: se LEE, no se toca
+    // (select * para no depender de que exista acceso_total, que llega con C3b).
+    let abrio: AperturaDelPago | null = null
+    let hoy: InscripcionHoy | null = null
     if (inscripcionId && p.created_at) {
-      const { data: eventos, error: errEv } = await admin
-        .from('curso_inscripcion_eventos')
-        .select('tipo, meses_despues')
-        .eq('inscripcion_id', inscripcionId)
-        .eq('created_at', p.created_at)
-        .in('tipo', ['abrir_mes', 'abrir_todo'])
-      if (!errEv) abrio = ((eventos ?? []) as { tipo: string; meses_despues: number | null }[])[0] ?? null
+      const [ev, ins] = await Promise.all([
+        admin
+          .from('curso_inscripcion_eventos')
+          .select('tipo, meses_despues')
+          .eq('inscripcion_id', inscripcionId)
+          .eq('created_at', p.created_at)
+          .in('tipo', ['abrir_mes', 'abrir_todo']),
+        admin
+          .from('curso_inscripciones')
+          .select('*')
+          .eq('id', inscripcionId)
+          .maybeSingle(),
+      ])
+      if (!ev.error) abrio = ((ev.data ?? []) as AperturaDelPago[])[0] ?? null
+      else if (!faltaTabla(ev.error)) console.error('[DELETE /api/admin/pagos/[id]] bitácora:', ev.error.message)
+      if (!ins.error) hoy = (ins.data ?? null) as InscripcionHoy | null
+      else console.error('[DELETE /api/admin/pagos/[id]] inscripción:', ins.error.message)
     }
 
     const { error } = await admin
@@ -101,11 +114,7 @@ export async function DELETE(
       curso_inscripcion_id: inscripcionId,
       mes_afectado: p.mes_desbloqueado,
       abrio: abrio?.tipo ?? null,
-      aviso: abrio?.tipo === 'abrir_todo'
-        ? 'Se borró el pago, pero ese pago ABRIÓ TODO EL CURSO y el alumno conserva el acceso total. Si querías revocarlo, usa «Quitar acceso total» en su inscripción (pestaña Alumnos del curso).'
-        : abrio?.tipo === 'abrir_mes'
-          ? `Se borró el pago, pero ese pago abrió el mes ${abrio.meses_despues ?? '?'} del curso, que SIGUE ABIERTO: el alumno conserva el acceso. Si querías revocarlo, usa «Cerrar mes» en su inscripción (pestaña Alumnos del curso).`
-          : null,
+      aviso: avisoAlBorrarPago(abrio, hoy),
     })
   } catch (err) {
     console.error('[DELETE /api/admin/pagos/[id]]', err)
