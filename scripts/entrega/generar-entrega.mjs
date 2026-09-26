@@ -80,8 +80,37 @@ const SOPORTE = {
 }
 const HOSTS_PROVISIONALES = ['vercel.app', 'netlify.app', 'localhost', '127.0.0.1', 'onrender.com', 'pages.dev']
 
-/* ── 1. Config del cliente ───────────────────────────────────────────────── */
-const { CONFIG } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/config.ts')).href)
+/* ── 1. Config del cliente: config.ts + lo publicado en el panel ──────────── */
+// config.ts tal cual está en el repo: solo para lo que se decide sobre él (si la
+// escuela PUEDE publicar precios de licenciatura, la tabla base de licenciatura,
+// el logo de respaldo). Todo lo demás sale de CONFIG, la fusión de abajo.
+const { CONFIG: CONFIG_TS } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/config.ts')).href)
+// D12 (#201; decisiones 17-19): el documento usa TODO lo publicado en «Personalizar
+// mi página», con la MISMA fusión que la app (getSiteConfig → mergeSiteConfig).
+// site-config-core importa con el alias '@/…': el hook lo resuelve a src/ sin
+// tocar el tsconfig de la app.
+await import('./alias-src.mjs')
+const { mergeSiteConfig } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/site-config-core.ts')).href)
+const { leerSiteConfig, politicaPublicado } = await import('./publicado.mjs')
+log('· Leyendo lo publicado en el panel…')
+const LECTURA_PUBLICADO = await leerSiteConfig({
+  soloConfig: flag('solo-config'),
+  vars: leerEnvLocal(),
+  // Con tope de tiempo: una base que no responde no debe colgar la entrega.
+  crearCliente: async (url, key) => (await import('@supabase/supabase-js')).createClient(url, key, {
+    auth: { persistSession: false },
+    global: { fetch: (u, o = {}) => fetch(u, { ...o, signal: o.signal ?? AbortSignal.timeout(20000) }) },
+  }),
+})
+{
+  const pol = politicaPublicado(LECTURA_PUBLICADO)
+  if (pol.abortar) abortar(pol.abortar.msg, pol.abortar.ayuda)
+  if (pol.log) log(pol.log)
+  if (pol.aviso) avisar(pol.aviso)
+}
+const PUBLICADO = LECTURA_PUBLICADO.data
+/** La config de la escuela como la ve su página: config.ts con lo publicado encima. */
+const CONFIG = mergeSiteConfig(CONFIG_TS, PUBLICADO)
 // El precio de cada NIVEL sale del mismo resolver que usa la plataforma
 // (landing, estado de cuenta, ficha). Es puro —solo un `import type`— y por eso
 // se importa igual que config.ts. Ver la Fase 2 en precios-nivel.ts.
@@ -186,30 +215,18 @@ const ALUMNOS_PRUEBA = Array.isArray(D.alumnosPrueba) && D.alumnosPrueba.length
   ? D.alumnosPrueba.filter(a => a?.email)
   : (D.alumnoEmail ? [{ email: D.alumnoEmail, password: D.alumnoPassword }] : [])
 
-/* ── 2b. Lo publicado en «Personalizar mi página» ────────────────────────── */
+/* ── 2b. Licenciatura con lo publicado ────────────────────────────────────── */
 /**
- * Los precios de LICENCIATURA que el admin publica en su panel (inscripción,
- * titulación y la mensualidad de cada plan) llegan al papel: se leen de
- * `site_config` y se aplican con `licenciaturaEfectiva`, la regla de la
- * plataforma. Sin fila, sin `.env.local` o con `--solo-config`, la tabla es
- * EXACTAMENTE la de config.ts (el mismo objeto).
- *
- * ⚠️ Los de Secundaria y Preparatoria todavía NO: el documento los toma de
- * config.ts (decisión 14 de la Fase 2). Si hay alguno publicado, se avisa.
- *
- * Si la lectura FALLA (base caída, pausada, llave inválida, `.env.local` sin
- * llaves) y la escuela PUEDE publicar precios de licenciatura, se aborta: un
- * documento oficial con precios que quizá ya no son los de la escuela es peor
- * que no tenerlo. `--solo-config` genera con los de config.ts a sabiendas. Si
- * la escuela no vende licenciatura o su tabla tiene forma propia, lo publicado
- * no puede cambiar el documento: se avisa y se sigue.
+ * Los precios de LICENCIATURA publicados se aplican con `licenciaturaEfectiva`,
+ * la regla de la plataforma, sobre la tabla de config.ts (la fusión de arriba no
+ * la toca dos veces). Si la escuela PUEDE publicarlos lo decide config.ts.
  */
-const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG.licenciaturas)
-const sinLoPublicado = (motivo, ayuda) => {
-  if (PUEDE_PUBLICAR_LIC) abortar(motivo, ayuda)
-  log(`  ⚠ ${motivo} — los precios salen de config.ts (esta escuela no publica precios de licenciatura)`)
-  return {}
-}
+const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG_TS.licenciaturas)
+/** La tabla de licenciatura con lo publicado encima (la de config.ts si no hay nada). */
+const LIC = licenciaturaEfectiva(CONFIG_TS.licenciaturas, PUBLICADO.licenciaturas)
+if (JSON.stringify(LIC) !== JSON.stringify(CONFIG_TS.licenciaturas)) log('  · licenciatura: con los precios publicados en el panel')
+
+/** .env.local del repo (lo publicado y el inventario). Aguanta CRLF y BOM. */
 function leerEnvLocal() {
   const env = path.join(RAIZ, '.env.local')
   if (!fs.existsSync(env)) return null
@@ -217,54 +234,6 @@ function leerEnvLocal() {
   return Object.fromEntries(fs.readFileSync(env, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)
     .map(l => l.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean)
     .map(m => [m[1], m[2].trim().replace(/^["']|["']$/g, '')]))
-}
-async function leerPublicado() {
-  if (flag('solo-config')) { log('  · --solo-config: los precios salen solo de config.ts'); return {} }
-  const vars = leerEnvLocal()
-  if (!vars) {
-    // Sin .env.local no se aborta (así se generaba siempre), pero en una escuela
-    // que puede publicar licenciatura se avisa: si el admin ya publicó, el
-    // documento no lo refleja.
-    log(PUEDE_PUBLICAR_LIC
-      ? '  ⚠ sin .env.local — los precios de licenciatura salen de config.ts; si el admin ya publicó otros en su panel, este documento no los refleja'
-      : '  · sin .env.local — los precios salen de config.ts')
-    return {}
-  }
-  // Basta la anon key: `site_config` se lee en abierto (la landing la lee así).
-  const url = vars.NEXT_PUBLIC_SUPABASE_URL, key = vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return sinLoPublicado('.env.local sin NEXT_PUBLIC_SUPABASE_URL o sin llave',
-    'Sin llaves no se puede leer lo publicado en el panel.\nCompleta .env.local (vercel env pull .env.local) o usa --solo-config para generar solo con config.ts.')
-  const { createClient } = await import('@supabase/supabase-js')
-  let sb
-  try {
-    sb = createClient(url, key, { auth: { persistSession: false } })
-  } catch (e) {
-    // Una URL mal escrita hace que supabase-js lance aquí («Invalid supabaseUrl»).
-    return sinLoPublicado(`.env.local con una URL de Supabase inválida (${e?.message ?? e})`,
-      'Corrige NEXT_PUBLIC_SUPABASE_URL en .env.local o usa --solo-config para generar solo con config.ts.')
-  }
-  const { data, error } = await sb.from('site_config').select('data').eq('id', 1).maybeSingle()
-  if (error) {
-    // Base sin la tabla: nadie ha publicado nada. Mismos códigos que site-config.ts.
-    if (error.code === 'PGRST205' || error.code === '42P01') { log('  · la base no tiene site_config — los precios salen de config.ts'); return {} }
-    return sinLoPublicado(`No se pudo leer lo publicado en el panel (site_config): ${error.message}`,
-      'El documento podría decir precios que ya no son los de la escuela.\nRevisa la base y vuelve a correr, o usa --solo-config para generar solo con config.ts.')
-  }
-  const pub = data?.data
-  return pub && typeof pub === 'object' && !Array.isArray(pub) ? pub : {}
-}
-log('· Leyendo lo publicado en el panel…')
-const PUBLICADO = await leerPublicado()
-/** La tabla de licenciatura con lo publicado encima (la de config.ts si no hay nada). */
-const LIC = licenciaturaEfectiva(CONFIG.licenciaturas, PUBLICADO.licenciaturas)
-if (JSON.stringify(LIC) !== JSON.stringify(CONFIG.licenciaturas)) log('  · licenciatura: con los precios publicados en el panel')
-{
-  const secPrepa = [
-    ...Object.keys(PUBLICADO.precios && typeof PUBLICADO.precios === 'object' ? PUBLICADO.precios : {}).map(k => `precios.${k}`),
-    ...Object.keys(PUBLICADO.modalidades && typeof PUBLICADO.modalidades === 'object' ? PUBLICADO.modalidades : {}).map(k => `plan ${k}`),
-  ]
-  if (secPrepa.length)
-    log(`  ⚠ precios de Secundaria/Preparatoria publicados en el panel (${secPrepa.join(', ')}): este documento todavía los toma de config.ts`)
 }
 
 /* ── 3. Conteo real de contenido ─────────────────────────────────────────── */
@@ -511,7 +480,7 @@ const DESGLOSES_LIC = LIC?.activas ? desglosesLicenciatura(LIC, CARRERAS) : []
 // el panel: bloque editable y plan con forma estándar); si no, es de soporte.
 if (LIC?.activas) {
   for (const m of planesLicSinMensualidad(LIC)) {
-    const deConfig = (CONFIG.licenciaturas?.modalidades || []).find((x) => x && x.id === m.id)
+    const deConfig = (CONFIG_TS.licenciaturas?.modalidades || []).find((x) => x && x.id === m.id)
     const enPanel = PUEDE_PUBLICAR_LIC && planLicEditable(deConfig)
     avisar(`Licenciaturas: el plan «${m.label || m.id}» no tiene mensualidad. El documento y la página no lo muestran, pero el registro aún lo ofrece. ${enPanel
       ? 'Si se vende, ponle precio en «Personalizar mi página»; si no, apágalo en config.ts (activa: false).'
@@ -672,12 +641,52 @@ const infra = D.infraestructura === false ? null : {
 
 /* ── 5. Datos del documento ──────────────────────────────────────────────── */
 const b64 = (rel) => {
+  if (typeof rel !== 'string' || !rel || /^https?:\/\//i.test(rel)) return null
   const p = path.join(RAIZ, 'public', rel.replace(/^\//, ''))
   if (!fs.existsSync(p)) return null
   const buf = fs.readFileSync(p)
   if (buf.length < 200) return null   // placeholder 1x1
   return `data:image/png;base64,${buf.toString('base64')}`
 }
+/**
+ * Una imagen para incrustar en el documento. D12: el logo publicado en el panel
+ * es una URL (el bucket `branding`): se descarga. Lo del repo, de public/ como
+ * siempre. null si no se pudo (y quien llama cae al de config.ts y avisa).
+ */
+async function imagenData(ref) {
+  if (typeof ref !== 'string' || !ref) return null
+  if (!/^https?:\/\//i.test(ref)) return b64(ref)
+  try {
+    const res = await fetch(ref, { signal: AbortSignal.timeout(20000) })
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length < 200) return null
+    const tipo = (res.headers.get('content-type') || 'image/png').split(';')[0].trim()
+    return /^image\//.test(tipo) ? `data:${tipo};base64,${buf.toString('base64')}` : null
+  } catch {
+    return null
+  }
+}
+/**
+ * El logo del banner (fondo oscuro), como la página: el que la fusión deja para
+ * fondo oscuro (`resolverLogos`: solo el claro publicado vale para los dos).
+ *  - Sin nada publicado: el de siempre, de public/ (el oscuro o, si falta, el claro).
+ *  - Publicado: se descarga; si no baja, el de config.ts y un aviso en REVISA
+ *    (nunca otro logo en silencio, ni el claro sobre el fondo oscuro).
+ * `logoListo: false` en config.ts apaga solo el logo del REPO: uno publicado se usa.
+ */
+async function logoDelDocumento() {
+  const ref = CONFIG.logoOscuro || CONFIG.logo
+  const refRepo = CONFIG_TS.logoOscuro || CONFIG_TS.logo
+  const publicado = typeof ref === 'string' && ref !== refRepo && /^https?:\/\//i.test(ref)
+  if (!publicado) return CONFIG_TS.logoListo === false ? null : (b64(refRepo) || b64(CONFIG_TS.logo))
+  const bajado = await imagenData(ref)
+  if (bajado) return bajado
+  const deRepo = CONFIG_TS.logoListo === false ? null : (b64(refRepo) || b64(CONFIG_TS.logo))
+  avisar(`El logo publicado en el panel no se pudo descargar (${ref}): el documento lleva ${deRepo ? 'el de config.ts' : 'ningún logo'}. Revisa que el archivo exista y vuelve a generar.`)
+  return deRepo
+}
+const LOGO_DATA = await logoDelDocumento()
 const [tag1, tag2] = String(CONFIG.tagline || '').split(' / ')
 const taglineCierre = CONFIG.taglineSecundario || tag2 || tag1 || CONFIG.tagline
 
@@ -737,7 +746,7 @@ const datos = {
   infra,
   cuentas: CUENTAS_CLIENTE,
   registrador: REGISTRADOR,
-  logoData: CONFIG.logoListo === false ? null : (b64(CONFIG.logoOscuro || CONFIG.logo) || b64(CONFIG.logo)),
+  logoData: LOGO_DATA,
   isotipoData: CONFIG.isotipo ? b64(CONFIG.isotipo) : null,
   // Usa la palabra que el cliente eligió para su institución —academia,
   // instituto, centro— en lugar de "instituto" en duro, y nombra también los

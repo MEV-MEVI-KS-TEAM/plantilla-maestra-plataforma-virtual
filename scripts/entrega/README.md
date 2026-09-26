@@ -20,7 +20,7 @@ primera corrida en un repo:
 | `pnpm install` | Trae `@supabase/supabase-js` (inventario) y `@playwright/test` (impresión a PDF). |
 | `npx playwright install chromium` | Descarga el Chromium con el que Playwright imprime el PDF. Una vez por máquina; si falta, el error es `Executable doesn't exist`. |
 | `entrega.local.json` en la raíz | Credenciales del admin, del alumno de prueba y de las cuentas del cliente (correo, Supabase y GoDaddy). Parte de `scripts/entrega/entrega.local.ejemplo.json`. Git lo ignora. |
-| `.env.local` en la raíz | Lo mismo que usa la app (`vercel env pull .env.local`). De aquí salen el inventario de contenido y la URL del proyecto de Supabase. Sin él, el documento sale sin inventario y sin proyecto de Supabase, salvo con `CONFIG.cursosIngreso` encendido o en modo `solo_cursos`: ahí el script aborta (ver «Cursos de ingreso» abajo). |
+| `.env.local` en la raíz | Lo mismo que usa la app (`vercel env pull .env.local`, del ambiente de PRODUCCIÓN de la escuela). De aquí salen lo publicado en «Personalizar mi página», el inventario de contenido y la URL del proyecto de Supabase. **Sin él el script aborta** (D12): el documento tiene que decir lo mismo que la página. Solo si sabes que la escuela no ha publicado nada, `--solo-config` genera con `config.ts` y lo deja escrito en «REVISA ANTES DE ENVIAR». |
 
 Verificación rápida: `node --version` da 23.6 o más, y
 `ls entrega.local.json .env.local` encuentra los dos archivos.
@@ -47,12 +47,23 @@ Casi todo se lee solo. **No hay que capturar dos veces lo que ya está en el
 config**, porque un documento de entrega que contradice a la plataforma es peor
 que no tenerlo.
 
+**Lo publicado en «Personalizar mi página» manda** (D12): el script lee
+`site_config` y fusiona con la MISMA función que la app (`mergeSiteConfig` de
+`src/lib/site-config-core.ts`, cargada con el hook `scripts/entrega/alias-src.mjs`
+que resuelve `@/…` a `src/`). Así el documento dice lo mismo que la página de la
+escuela: precios, planes, WhatsApp, textos, colores y logo. Sin `.env.local`, sin
+llaves o si la lectura falla, **aborta**; `--solo-config` genera solo con
+`config.ts` a sabiendas y lo deja en «⚠ REVISA ANTES DE ENVIAR». Sin fila o con una
+base sin `site_config`, sale de `config.ts` (no hay nada publicado). La lectura y
+la política viven en `scripts/entrega/publicado.mjs`.
+
 | Dato | Origen |
 |---|---|
-| Nombre, dominio, colores, logo | `src/lib/config.ts` |
-| Niveles, modalidades, precios | `src/lib/config.ts` |
-| Inscripción y mensualidad **por nivel** | El MISMO resolver de la plataforma (`src/lib/precios-nivel.ts`), con las mismas claves que leen la landing, el estado de cuenta y la ficha del alumno: `precios.inscripcionSecundaria` / `precios.inscripcionPreparatoria` y `precios.mensualidadSecundaria3Meses`, `…6Meses`, `precios.mensualidadPreparatoria3Meses`, `…6Meses`. Vacías (`null`) = la general. Sin mensualidad propia, Secundaria usa su alias `precios.secundaria_<n>meses_normal` si es mayor que 0 y Preparatoria, la del plan. Solo refleja `config.ts`: lo que el admin publica después en «Personalizar mi página» no llega al papel |
-| Licenciaturas | `src/lib/config.ts` con lo publicado en «Personalizar mi página» encima: inscripción, titulación y la mensualidad de cada plan (`site_config` → `licenciaturas`, con la MISMA regla de la plataforma, `src/lib/precios-licenciatura.ts`). Sin `.env.local`, sin fila o con `--solo-config`, solo `config.ts`. Si la lectura falla, el script aborta |
+| Nombre, colores, logo | `src/lib/config.ts` con lo publicado encima. El logo publicado (una URL) se descarga e incrusta; si no se puede, va el de `config.ts` y se avisa en REVISA |
+| Dominio, niveles | `src/lib/config.ts` (no se editan en el panel) |
+| Modalidades, precios, WhatsApp | `src/lib/config.ts` con lo publicado encima |
+| Inscripción y mensualidad **por nivel** | El MISMO resolver de la plataforma (`src/lib/precios-nivel.ts`), con las mismas claves que leen la landing, el estado de cuenta y la ficha del alumno: `precios.inscripcionSecundaria` / `precios.inscripcionPreparatoria` y `precios.mensualidadSecundaria3Meses`, `…6Meses`, `precios.mensualidadPreparatoria3Meses`, `…6Meses`. Vacías (`null`) = la general. Sin mensualidad propia, Secundaria usa su alias `precios.secundaria_<n>meses_normal` si es mayor que 0 y Preparatoria, la del plan. Con lo publicado en «Personalizar mi página» encima (D12) |
+| Licenciaturas | `src/lib/config.ts` con lo publicado en «Personalizar mi página» encima: inscripción, titulación y la mensualidad de cada plan (`site_config` → `licenciaturas`, con la MISMA regla de la plataforma, `src/lib/precios-licenciatura.ts`). Sin fila o con `--solo-config`, solo `config.ts` |
 | Cursos de ingreso | La tabla `cursos` (los **publicados**, con su precio) vía `.env.local` con la service role, y con la MISMA regla de la página (`src/lib/cursos/precio-regla.ts`): sin precio dice «Pide informes». Lo hace `scripts/entrega/cursos-entrega.mjs`. Si la consulta falla (proyecto pausado, llave de otro proyecto, red: antes salía como «0 cursos»), **aborta** en una escuela que vende cursos (`CONFIG.cursosIngreso` encendido, o modo `solo_cursos`) y en las demás avisa. **Aborta** también si la base no tiene las columnas de precio (B1), o si `CONFIG.cursosIngreso` está encendido y no hay inventario o no hay cursos publicados. `CONFIG.cursosIngreso` se revisa con la MISMA regla del registro (`normalizarOfertas` y `resolverPrecioOferta`): el registro anuncia el precio de la ficha y, si la ficha está en 0/0, el de `config.ts` como pago único. Por eso **aborta** si una oferta de un curso tiene la ficha en 0/0 y precio en `config.ts` (el documento diría «Pide informes» y «Asignar» abriría solo el mes 1) o si apunta a un curso que no está publicado. Con la ficha con precio distinto al de `config.ts`, con paquete o con una oferta de varios cursos (el registro anuncia la oferta, no cada curso), solo avisa, y dice qué cursos abren solo el mes 1 o salen «Pide informes». Los avisos se repiten al final, en «⚠ REVISA ANTES DE ENVIAR» |
 | Materias, semanas, preguntas, matrícula | consulta real a Supabase vía `.env.local` |
 | Nombre del admin y contraseñas | `entrega.local.json` (ignorado por git) |
@@ -61,9 +72,11 @@ que no tenerlo.
 | Registrador del dominio (Infraestructura) | `entrega.local.json` → `registrador`; si falta, **GoDaddy** |
 | Proyecto de Supabase: ref, URL y panel (Infraestructura) | `NEXT_PUBLIC_SUPABASE_URL` de `.env.local` (o `supabaseUrl` en `entrega.local.json` si no hay `.env.local`). El ref es el subdominio; el panel es `https://supabase.com/dashboard/project/<ref>`. |
 
-Si no hay `.env.local` o le faltan credenciales, el inventario se omite y el
-resto del documento se genera igual, salvo con `CONFIG.cursosIngreso` encendido
-o en modo `solo_cursos` (el documento negaría los cursos vendidos: aborta). La página de Infraestructura avisa en
+Sin `.env.local`, o sin su URL o su llave, el script **aborta** antes de todo
+esto (D12: no puede leer lo publicado). Con `--solo-config` sigue sin lo
+publicado; entonces el inventario se omite y el resto del documento se genera
+igual, salvo con `CONFIG.cursosIngreso` encendido o en modo `solo_cursos` (el
+documento negaría los cursos vendidos: aborta). La página de Infraestructura avisa en
 consola si no encontró la URL de Supabase o si faltan las `cuentas`. Se puede
 omitir con `"infraestructura": false` en `entrega.local.json`; si hay `cuentas`,
 la página sale igual, con ellas solas.
@@ -163,7 +176,7 @@ Solo van en el PDF: el mensaje de WhatsApp dice que están ahí, sin repetirlas.
 
 Fuera de las cuentas, todo lo que imprime es una dirección o un identificador público. De
 `.env.local` solo se usa `NEXT_PUBLIC_SUPABASE_URL`; la anon key (o, si falta, la
-service_role) se usa para leer los precios de licenciatura publicados, y la
+service_role) se usa para leer lo publicado en el panel (`site_config`), y la
 service_role para contar filas del inventario y leer el nombre y el precio de
 los cursos publicados. Ninguna llega al documento.
 
