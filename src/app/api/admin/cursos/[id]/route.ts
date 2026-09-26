@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserRol, verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
 import { porActivar, ultimosMovimientos } from '@/lib/cursos/bitacora'
+import { cobroPorInscripcion } from '@/lib/cursos/cobro-servidor'
 import { removeFolder, signedUrl } from '@/lib/cursos/storage'
 import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
@@ -139,6 +140,19 @@ export async function GET(
           // Sin la función de D8 (o si falla) nadie se ofrece «por activar».
           por_activar: porActivarIds.has(row.id),
         }
+      })
+      // D18 (#207-7): lo pagado y «Pagado · falta abrir» de cada uno, con las
+      // reglas de lib/cursos/cobro.ts (sin B1 o si falla: sin insignia).
+      const cobros = await cobroPorInscripcion(admin, {
+        precio_inscripcion: (curso as { precio_inscripcion?: number | null }).precio_inscripcion ?? 0,
+        precio_mensualidad: (curso as { precio_mensualidad?: number | null }).precio_mensualidad ?? 0,
+      }, inscritos.map(x => ({
+        id: x.inscripcion_id, estado: x.estado, meses_desbloqueados: x.meses_desbloqueados,
+        acceso_total: x.acceso_total === true, por_activar: x.por_activar === true,
+      })))
+      inscritos = inscritos.map(x => {
+        const c = cobros.get(x.inscripcion_id)
+        return c ? { ...x, pagado: c.pagado, pagado_falta_abrir: c.pagado_falta_abrir } : x
       })
     }
 

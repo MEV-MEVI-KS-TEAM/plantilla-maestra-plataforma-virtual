@@ -79,6 +79,9 @@ export interface CursoInscrito {
    * (típicamente, el registro público). Se ofrece «Activar según la ficha».
    */
   por_activar?: boolean
+  /** D18: lo pagado a esta inscripción y si pagó algo que no se le ha abierto. */
+  pagado?: number
+  pagado_falta_abrir?: boolean
 }
 
 export interface CursoDetalle {
