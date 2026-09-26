@@ -200,7 +200,7 @@ test('9. revisión: el tope y el mes 1 en la precarga, el reintento que compara,
 
   // SQL: el reintento compara los datos y dice lo que abrió; el mes dentro del tope;
   // pago único por activar solo con pago único (o inscripción); el trigger de borrado.
-  expect(SQL).toContain('OR v_prev.monto IS DISTINCT FROM p_monto')
+  expect(SQL).toContain('OR v_prev.monto IS DISTINCT FROM round(p_monto, 2)')
   expect(SQL).toContain("WHEN bool_or(e.tipo = 'abrir_todo') THEN 'todo' WHEN bool_or(e.tipo = 'abrir_mes') THEN 'mes' END")
   expect(SQL).toContain("IF p_concepto = 'curso_mensualidad' AND v_tope > 0 AND p_mes > v_tope THEN")
   expect(SQL).toContain("IF v_regla = 'total' AND p_concepto NOT IN ('curso_pago_unico', 'curso_inscripcion') THEN")
@@ -227,4 +227,18 @@ test('9. revisión: el tope y el mes 1 en la precarga, el reintento que compara,
   expect(c18).toContain('AS auth_ejecuta,')
   expect(c18).toContain('AS definer,')
   expect(c18).toContain("tgname = 'trg_curso_inscripcion_no_borrar_con_pagos'")
+})
+
+test('10. centavos: abonos que suman el precio lo cubren; el saldo sale en centavos; el tope apaga la insignia', () => {
+  const tercios = base({ referencia: { precios: { precio_inscripcion: 1000, precio_mensualidad: 0 }, origen: 'ficha' }, ficha: { precio_inscripcion: 1000, precio_mensualidad: 0 },
+    pagos: [{ monto: 333.33, concepto: 'curso_pago_unico', mes_desbloqueado: null }, { monto: 333.33, concepto: 'curso_pago_unico', mes_desbloqueado: null }] })
+  expect(resumenCobro(tercios).saldo).toBe(333.34)
+  expect(precargaCobro(tercios).monto).toBe(333.34)
+  const exacto = base({ referencia: { precios: { precio_inscripcion: 300.3, precio_mensualidad: 0 }, origen: 'ficha' }, ficha: { precio_inscripcion: 300.3, precio_mensualidad: 0 },
+    pagos: [{ monto: 100.1, concepto: 'curso_pago_unico', mes_desbloqueado: null }, { monto: 200.2, concepto: 'curso_pago_unico', mes_desbloqueado: null }] })
+  expect(resumenCobro(exacto)).toMatchObject({ pagado: 300.3, saldo: 0, pagadoFaltaAbrir: true })
+  // Un mes pagado más allá del tope del curso no deja «falta abrir» encendido.
+  const fuera = mensual({ meses: 3, tope: 3, pagos: [{ monto: 1500, concepto: 'curso_mensualidad', mes_desbloqueado: 9 }] })
+  expect(resumenCobro(fuera).pagadoFaltaAbrir).toBe(false)
+  expect(resumenCobro({ ...fuera, tope: null }).pagadoFaltaAbrir).toBe(true)
 })

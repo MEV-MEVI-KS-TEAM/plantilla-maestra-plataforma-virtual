@@ -73,8 +73,11 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0
 }
 
+/** A centavos: 100.10 + 200.20 no es 300.3 en coma flotante, y un pago único de 300.30 no se daba por cubierto. */
+const centavos = (n: number) => Math.round(n * 100) / 100
+
 const suma = (pagos: readonly PagoDeCurso[], filtro: (p: PagoDeCurso) => boolean = () => true) =>
-  pagos.filter(filtro).reduce((s, p) => s + num(p.monto), 0)
+  centavos(pagos.filter(filtro).reduce((s, p) => s + num(p.monto), 0))
 
 export const AVISO_SIN_PRECIO = 'La ficha de este curso no tiene precio: escribe el monto que cobraste.'
 export const AVISO_YA_PAGADO = 'Ya pagó el precio completo del curso. Si es un pago extra, escribe el monto.'
@@ -95,10 +98,13 @@ export function resumenCobro(e: EstadoCobro): ResumenCobro {
   let saldo: number | null = null
   let pagadoFaltaAbrir = false
   if (ref.tipo === 'unico') {
-    saldo = Math.max(0, ref.monto - pagado)
-    pagadoFaltaAbrir = activa && !e.acceso_total && pagado >= ref.monto
+    saldo = Math.max(0, centavos(ref.monto - pagado))
+    pagadoFaltaAbrir = activa && !e.acceso_total && pagado >= centavos(ref.monto)
   } else if (ref.tipo === 'mensual') {
-    pagadoFaltaAbrir = activa && !e.acceso_total && (mesesCubiertos.some(m => m > e.meses) || (e.por_activar && pagado > 0))
+    // Un mes pagado que el curso ya no tiene (tope conocido) no se puede abrir:
+    // no deja la insignia encendida para siempre.
+    const abrible = (m: number) => m > e.meses && (e.tope == null || e.tope <= 0 || m <= e.tope)
+    pagadoFaltaAbrir = activa && !e.acceso_total && (mesesCubiertos.some(abrible) || (e.por_activar && pagado > 0))
   } else {
     pagadoFaltaAbrir = activa && e.por_activar && pagado > 0
   }
@@ -121,7 +127,7 @@ export function precargaCobro(e: EstadoCobro): PrecargaCobro {
       monto,
       mes: null,
       puedeAbrir,
-      abrirPorDefecto: puedeAbrir && monto !== null && r.pagado + monto >= ref.monto,
+      abrirPorDefecto: puedeAbrir && monto !== null && centavos(r.pagado + monto) >= centavos(ref.monto),
       aviso: monto === null ? AVISO_YA_PAGADO : null,
     }
   }
@@ -163,7 +169,7 @@ export function precargaCobro(e: EstadoCobro): PrecargaCobro {
 export function cubreElCobro(e: EstadoCobro, concepto: ConceptoCobro, monto: number): boolean {
   const ref = precioCursoNumerico(e.referencia.precios)
   if (!Number.isFinite(monto) || monto <= 0) return false
-  if (concepto === 'curso_pago_unico') return ref.tipo === 'unico' && resumenCobro(e).pagado + monto >= ref.monto
+  if (concepto === 'curso_pago_unico') return ref.tipo === 'unico' && centavos(resumenCobro(e).pagado + monto) >= centavos(ref.monto)
   if (concepto === 'curso_mensualidad') return ref.tipo === 'mensual' && monto >= ref.mensualidad
   if (concepto === 'curso_inscripcion') return ref.tipo === 'mensual' && ref.inscripcion !== null && monto >= ref.inscripcion
   return false

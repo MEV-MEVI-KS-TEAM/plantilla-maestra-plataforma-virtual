@@ -179,7 +179,7 @@ BEGIN
     v_prev_ins := v_prev.curso_inscripcion_id;
     IF v_prev_ins IS DISTINCT FROM p_inscripcion_id
        OR v_prev.concepto IS DISTINCT FROM p_concepto
-       OR v_prev.monto IS DISTINCT FROM p_monto
+       OR v_prev.monto IS DISTINCT FROM round(p_monto, 2)  -- la columna guarda centavos
        OR v_prev.mes_desbloqueado IS DISTINCT FROM (CASE WHEN p_concepto = 'curso_mensualidad' THEN p_mes END) THEN
       RAISE EXCEPTION 'Ese identificador de cobro ya se usó en otro pago. Recarga la página y vuelve a intentarlo.'
         USING ERRCODE = '23505';
