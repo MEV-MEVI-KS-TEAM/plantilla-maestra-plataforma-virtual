@@ -37,6 +37,11 @@ test('el servidor usa la regla y el curso, si llega, se sigue validando contra l
   expect(src).toContain("if (exigeCursoEnRegistro(nivel, nivelForzado) && !(typeof body.diplomado_id === 'string' && body.diplomado_id))")
   // La guarda vieja, que no distinguía el nivel forzado, no vuelve.
   expect(src).not.toMatch(/if \(nivel === 'diplomado' && !\(typeof body\.diplomado_id/)
-  // Un diplomado_id que llegue (curl en solo_cursos incluido) solo inscribe si está publicado.
-  expect(src).toMatch(/\.eq\('id', body\.diplomado_id\)\s*\.eq\('estado', 'publicado'\)/)
+  // Un diplomado_id que llegue (curl en solo_cursos incluido) solo inscribe si
+  // está publicado: la consulta, el 400 si no lo está, y SOLO después se toma el id.
+  expect(src).toMatch(
+    /\.eq\('id', body\.diplomado_id\)\s*\.eq\('estado', 'publicado'\)[\s\S]*?if \(!publicado\) \{[\s\S]*?status: 400[\s\S]*?\}\s*diplomadoId = body\.diplomado_id/,
+  )
+  // Y el id no se toma en ningún otro lugar.
+  expect(src.match(/diplomadoId = body\.diplomado_id/g)).toHaveLength(1)
 })
