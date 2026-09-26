@@ -49,6 +49,24 @@ export async function DELETE(
       }, { status: 409 })
     }
 
+    // D11 (#207-2b): una inscripción CON PAGOS tampoco se borra. La FK de
+    // pagos.curso_inscripcion_id es ON DELETE SET NULL (B1): borrarla dejaba esos
+    // pagos sin curso, y Reportes, el Excel y el estado de cuenta los contaban
+    // como ingresos del PROGRAMA. Se cancela: conserva el historial y el vínculo.
+    // Sin la columna (base sin B1) no puede haber pagos de curso: se sigue.
+    const { count: nPagos, error: errPagos } = await admin
+      .from('pagos')
+      .select('id', { count: 'exact', head: true })
+      .eq('curso_inscripcion_id', (insc as { id: string }).id)
+    if (!errPagos && (nPagos ?? 0) > 0) {
+      return NextResponse.json({
+        error:
+          `Esta inscripción tiene ${nPagos} pago(s) registrado(s) y no se borra: los pagos perderían su curso y se contarían como del programa. ` +
+          'Usa «Cancelar inscripción» para darla de baja conservando el historial.',
+        tiene_pagos: true,
+      }, { status: 409 })
+    }
+
     const { error, count } = await admin
       .from('curso_inscripciones')
       .delete({ count: 'exact' })

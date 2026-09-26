@@ -325,6 +325,35 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
     }
   }
 
+  /**
+   * «Cancelar inscripción» (D11, solo admin): la baja que CONSERVA el historial
+   * (pagos, bitácora, meses pagados). Pasa por curso_cambiar_estado, que deja el
+   * evento con actor. Es lo que se usa cuando la inscripción tiene pagos o
+   * diploma y «Quitar» la rechaza.
+   */
+  async function cancelar(i: CursoInscrito) {
+    if (!window.confirm(`Cancelar la inscripción de ${i.nombre}.
+
+Deja de ver el curso. Se conservan sus pagos, su bitácora y los meses que ya tenía (reactivarla los recupera).
+
+¿Continuar?`)) return
+    setOcupadoId(i.inscripcion_id)
+    try {
+      const res = await fetch(`/api/admin/inscripciones/${i.inscripcion_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'cancelada', motivo: 'Cancelada desde la pestaña Alumnos' }),
+      })
+      const json = await res.json().catch(() => ({} as { error?: string }))
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo cancelar')
+      onChanged(`${i.nombre}: inscripción cancelada (se conservan sus pagos y su historial)`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'No se pudo cancelar')
+    } finally {
+      setOcupadoId(null)
+    }
+  }
+
   async function quitar(alumnoId: string, nombre: string) {
     // Borra la inscripción (y con ella su acceso y su bitácora): se confirma,
     // sobre todo ahora que «Quitar acceso total» vive en la misma fila.
@@ -338,7 +367,11 @@ Se borra su inscripción y deja de ver el curso.
       const res = await fetch(`/api/admin/cursos/${cursoId}/inscripciones/${alumnoId}`, { method: 'DELETE' })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Error al quitar')
+        // Con pagos o diploma no se borra (409): el mensaje ya dice «Cancelar
+        // inscripción», y se deja leer con calma.
+        const duracion = res.status === 409 ? AVISO_MS : undefined
+        onError((json as { error?: string }).error ?? 'Error al quitar', duracion)
+        return
       }
       onChanged(`${nombre} quitado del curso`)
     } catch (e) {
@@ -604,6 +637,19 @@ Se borra su inscripción y deja de ver el curso.
                     </button>
                   )}
                 </div>
+
+                {/* Solo admin (D11): cancelar conserva pagos e historial. */}
+                {esAdmin && i.estado !== 'cancelada' && (
+                  <button
+                    onClick={() => cancelar(i)}
+                    disabled={ocupadoId === i.inscripcion_id}
+                    title="Dar de baja conservando pagos, bitácora y meses pagados"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
+                    style={{ border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', background: 'var(--color-superficie)' }}
+                  >
+                    Cancelar inscripción
+                  </button>
+                )}
 
                 {/* Solo admin (D7b): quitar borra la inscripción. */}
                 {esAdmin && (
