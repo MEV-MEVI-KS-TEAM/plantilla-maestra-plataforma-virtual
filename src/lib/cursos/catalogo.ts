@@ -25,7 +25,7 @@ import { canalEscuela, type CanalEscuela } from '@/lib/contacto-ui'
 // que el registro y la landing clásica, que son 'use client', la importen sin
 // arrastrarlo. Se re-exporta para no mover los imports de siempre.
 export {
-  TEXTO_SIN_PRECIO, formatearPrecio, lineaPrecio, precioCatalogo, precioCursoNumerico, precioPublico,
+  TEXTO_SIN_PRECIO, AVISO_PAGO_UNICO, formatearPrecio, lineaPrecio, precioCatalogo, precioCursoNumerico, precioPublico,
   type PrecioCatalogo, type PrecioNumerico,
 } from './precio-curso'
 

@@ -51,6 +51,18 @@ export function precioCursoNumerico(c: PreciosCurso): PrecioNumerico {
 export const TEXTO_SIN_PRECIO = 'Pide informes'
 
 /**
+ * Aviso que acompaña a un curso de PAGO ÚNICO antes de pagar (#208, decisión de
+ * Kevin): asignarlo da el curso completo (C3b) y los Términos lo excluyen del
+ * reembolso una vez dado el acceso (sección 5).
+ *
+ * 🛑 Solo va donde el pago único sale de la FICHA del curso, es decir, donde
+ * `aperturaAlAsignar(ficha) === 'total'` (acceso.ts). Un «pago único» de
+ * config.ts con la ficha en 0/0, o el precio de un paquete, NO abre todo al
+ * asignar (abre el mes 1 de cada curso), y ahí el aviso sería falso.
+ */
+export const AVISO_PAGO_UNICO = 'Acceso completo inmediato · no reembolsable una vez activado'
+
+/**
  * Precio que anuncia el registro para una oferta de Cursos de Ingreso
  * (CONFIG.cursosIngreso). Hasta el Bloque C salía SOLO de config.ts: la escuela
  * cambiaba el precio en /admin/cursos/[id] y la portada lo mostraba, pero el

@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { TEXTO_SIN_PRECIO, canalDiplomado, detallePublico, precioCatalogo } from '@/lib/cursos/catalogo'
+import { AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, canalDiplomado, detallePublico, precioCatalogo } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
 
@@ -111,6 +111,8 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
                     {precio.monto}
                   </p>
                   <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>Pago único</p>
+                  {/* #208: el precio es el de la ficha, así que pago único aquí ⇔ acceso total al asignar. */}
+                  <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>{AVISO_PAGO_UNICO}</p>
                 </>
               )}
             </div>

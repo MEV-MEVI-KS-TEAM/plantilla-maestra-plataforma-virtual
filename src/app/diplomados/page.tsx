@@ -16,7 +16,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { TEXTO_SIN_PRECIO, listarCatalogoPublico, precioCatalogo, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
+import { AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, listarCatalogoPublico, precioCatalogo, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela } from '@/lib/contacto-ui'
 
 // Título, logo y WhatsApp son editables desde "Personalizar mi página": salen
@@ -41,8 +41,17 @@ function PrecioTarjeta({ curso }: { curso: CursoCatalogoPublico }) {
   if (p.tipo === 'mensual') {
     return <>{p.mensualidad}<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}> /mes</span></>
   }
+  // El precio ES la ficha: pago único aquí ⇔ «Asignar» abre todo (C3b), así
+  // que el aviso de #208 siempre es cierto en esta tarjeta.
   if (p.tipo === 'unico') {
-    return <>{p.monto}<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}> · pago único</span></>
+    return (
+      <>
+        {p.monto}<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}> · pago único</span>
+        <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#64748b', marginTop: 2 }}>
+          {AVISO_PAGO_UNICO}
+        </span>
+      </>
+    )
   }
   return <>{TEXTO_SIN_PRECIO}</>
 }

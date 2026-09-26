@@ -54,7 +54,7 @@ import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-con
 import { resolverLanding } from '@/lib/landing-textos'
 // Del módulo puro, no de catalogo.ts: este componente es 'use client' y
 // catalogo.ts trae el cliente admin.
-import { lineaPrecio, precioCatalogo } from '@/lib/cursos/precio-curso'
+import { AVISO_PAGO_UNICO, lineaPrecio, precioCatalogo } from '@/lib/cursos/precio-curso'
 import type { CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela, faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
@@ -1150,6 +1150,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                         {precioCurso(c)}
                         <ArrowRight size={15} aria-hidden />
                       </p>
+                      {/* #208: el precio es el de la ficha, así que pago único ⇔ acceso total al asignar. */}
+                      {precioCatalogo(c).tipo === 'unico' && (
+                        <p className="mt-1 text-xs" style={{ color: tCatalogo.textoSuave }}>{AVISO_PAGO_UNICO}</p>
+                      )}
                     </Link>
                   </div>
                 ))}
