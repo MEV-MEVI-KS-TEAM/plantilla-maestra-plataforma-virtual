@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
     // Nombre, correo, contraseña y teléfono: campo por campo (lib/alta-alumno).
     // El `rol` del cuerpo, o cualquier otra clave, no llega a Auth ni a usuarios.
     const datos = datosAltaDesdeCuerpo(body)
-    const { nombre, apellidos, password } = datos
+    const { nombre, password } = datos
     // Cursos a los que se inscribe al alumno en el mismo alta. Llega solo
     // cuando el nivel elegido es el del catálogo ('diplomado').
     const cursosIds: string[] = Array.isArray(body.cursos_ids)
