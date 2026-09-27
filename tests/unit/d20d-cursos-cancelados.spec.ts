@@ -43,7 +43,7 @@ test('2. la API: lee `estado` sin exigirla, reparte DESPUÉS de los pagos y resp
   const r = sinComentarios(leer('src/app/api/alumno/cursos/route.ts'))
   // `*` y no 'id, curso_id, estado': una base sin B1 no tiene la columna.
   expect(r).toMatch(/\.from\('curso_inscripciones'\)\s*\.select\('\*'\)\s*\.eq\('alumno_id', user\.id\)/)
-  const reparto = r.indexOf('repartirInscripciones(filas, pagosPorCurso)')
+  const reparto = r.indexOf('repartirInscripciones(filas, pagosPorCurso, conConstancia)')
   expect(reparto).toBeGreaterThan(0)
   expect(r.indexOf(".from('pagos')")).toBeGreaterThan(0)
   expect(r.indexOf(".from('pagos')")).toBeLessThan(reparto)
@@ -70,11 +70,14 @@ test('3. la página: «Cursos cancelados» sin enlace y con lo pagado; tolera la
   expect(bloque).toContain('cancelados.map(')
   expect(bloque).toContain('<TipoBadge tipo={c.tipo} />')
   expect(bloque).toContain('{resumenPagosCurso(c.pagos, fmtCurso)}')
-  expect(bloque).toContain('Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado; si tienes dudas, habla con tu escuela.')
-  // No se abre: ni navegación ni botón ni enlace.
+  expect(bloque).toContain('Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado y, si ya tenías tu constancia, la sigues viendo; si tienes dudas, habla con tu escuela.')
+  // No se abre: ni navegación ni botón; el ÚNICO enlace es a su constancia (D20f),
+  // y solo si ya la tiene emitida.
   expect(bloque).not.toContain('router.push')
   expect(bloque).not.toContain('<button')
-  expect(bloque).not.toContain('href=')
+  expect(bloque.match(/href=/g) ?? []).toHaveLength(1)
+  expect(bloque).toContain('{c.constancia && (')
+  expect(bloque).toContain('href={`/cursos/${c.id}/constancia`}')
   // Solo cancelados: el vacío no dice «aún no tienes cursos».
   expect(p).toContain("{cancelados.length > 0 ? 'No tienes cursos activos' : 'Aún no tienes cursos asignados'}")
 })
@@ -82,7 +85,7 @@ test('3. la página: «Cursos cancelados» sin enlace y con lo pagado; tolera la
 test('4. revisión: el menú (/tiene) sigue la MISMA regla que «Mis Diplomados»', () => {
   const t = leer('src/app/api/alumno/cursos/tiene/route.ts')
   expect(t).toContain(".from('curso_inscripciones')\n      .select('*')\n      .eq('alumno_id', user.id)")
-  expect(t).toContain('const { vigentes, canceladas } = repartirInscripciones(filas, pagos)')
+  expect(t).toContain('const { vigentes, canceladas } = repartirInscripciones(filas, pagos, conConstancia)')
   // Una cancelada con pagos lleva al bloque aunque su curso esté en borrador.
   expect(t.indexOf("if (canceladas.length > 0) return NextResponse.json({ tiene: true })"))
     .toBeLessThan(t.indexOf(".in('id', vigentes)"))

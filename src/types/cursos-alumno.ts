@@ -20,14 +20,17 @@ export interface CursoCatalogoItem {
 
 /**
  * D20d (remate f): un curso cuya inscripción se canceló y al que el alumno SÍ
- * pagó. Solo nombre, tipo y lo pagado: no se abre (el visor solo diría «no está
- * activa»), así que no lleva progreso ni portada.
+ * pagó, o (D20f) del que ya tiene su constancia emitida. Nombre, tipo, lo pagado
+ * y si hay constancia: el curso no se abre (el visor solo diría «no está
+ * activa»), así que no lleva progreso ni portada; la constancia sí se ve.
  */
 export interface CursoCanceladoAlumno {
   id: string
   nombre: string
   tipo: CursoTipo
-  pagos: NonNullable<CursoCatalogoItem['pagos']>
+  pagos: CursoCatalogoItem['pagos']
+  /** D20f: tiene constancia emitida → enlace a /cursos/[id]/constancia (solo verla; no se emite otra). */
+  constancia: boolean
 }
 
 /** Respuesta de GET /api/alumno/cursos (desde D20d; antes era el arreglo solo). */

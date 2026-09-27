@@ -45,20 +45,40 @@ export type InscripcionAlumno = { id: string; curso_id: string; estado?: string 
 /**
  * D20d (remate f): a dónde va cada inscripción en «Mis Diplomados». La cancelada
  * sale de la cuadrícula y pasa al bloque «Cursos cancelados» SOLO si pagó algo
- * (sin pagos no hay nada que enseñarle). Sin `estado` (base sin B1) todo es
- * vigente, como antes. suspendida y completada siguen en la cuadrícula: el visor
- * ya explica por qué no ve el contenido. Devuelve ids de CURSO, en el orden de
- * entrada (una inscripción por curso: UNIQUE (curso_id, alumno_id)).
+ * o (D20f) si ya tiene su constancia emitida: sin ninguna de las dos no hay nada
+ * que enseñarle. Sin `estado` (base sin B1) todo es vigente, como antes.
+ * suspendida y completada siguen en la cuadrícula: el visor ya explica por qué
+ * no ve el contenido. Devuelve ids de CURSO, en el orden de entrada (una
+ * inscripción por curso: UNIQUE (curso_id, alumno_id)).
  */
 export function repartirInscripciones(
   inscripciones: readonly InscripcionAlumno[],
   pagos: ReadonlyMap<string, ResumenPagosCurso>,
+  conConstancia: ReadonlySet<string> = new Set(),
 ): { vigentes: string[]; canceladas: string[] } {
   const vigentes: string[] = []
   const canceladas: string[] = []
   for (const i of inscripciones) {
     if (i.estado !== 'cancelada') vigentes.push(i.curso_id)
-    else if ((pagos.get(i.curso_id)?.pagado ?? 0) > 0) canceladas.push(i.curso_id)
+    else if ((pagos.get(i.curso_id)?.pagado ?? 0) > 0 || conConstancia.has(i.curso_id)) canceladas.push(i.curso_id)
   }
   return { vigentes, canceladas }
+}
+
+/**
+ * D20f: los CURSOS (ids) cuyas inscripciones canceladas del alumno ya tienen
+ * constancia emitida. Solo cuentan sus propias inscripciones canceladas: una fila
+ * de constancia de otra inscripción (o de una vigente) no entra.
+ */
+export function cursosConConstancia(
+  inscripciones: readonly InscripcionAlumno[],
+  constancias: ReadonlyArray<{ inscripcion_id: string | null }>,
+): Set<string> {
+  const cursoDeCancelada = new Map(inscripciones.filter(i => i.estado === 'cancelada').map(i => [i.id, i.curso_id]))
+  const out = new Set<string>()
+  for (const c of constancias) {
+    const curso = c.inscripcion_id ? cursoDeCancelada.get(c.inscripcion_id) : undefined
+    if (curso) out.add(curso)
+  }
+  return out
 }
