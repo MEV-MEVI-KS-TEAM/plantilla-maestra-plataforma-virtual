@@ -53,7 +53,9 @@ test('3. la API: lee las constancias con la SESIÓN y las pasa al reparto y al b
   // El menú, con la misma regla.
   const t = sinComentarios(leer('src/app/api/alumno/cursos/tiene/route.ts'))
   expect(t).toContain('repartirInscripciones(filas, pagos, conConstancia)')
-  expect(t).toContain(".from('curso_constancias')")
+  // También con la SESIÓN (la RLS da solo las suyas), nunca con el cliente admin.
+  expect(t).toContain("await supabase\n        .from('curso_constancias')\n        .select('inscripcion_id')\n        .in('inscripcion_id', idsCanceladas)")
+  for (const src of [r, t]) expect(src).not.toMatch(/(admin|createAdminClient\(\))\s*\.from\('curso_constancias'\)/)
 })
 
 test('4. la página: «Ver mi constancia» solo con constancia, y sin pagos no pinta «Pagado»', () => {

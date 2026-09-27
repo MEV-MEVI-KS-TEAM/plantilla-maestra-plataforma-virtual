@@ -51,8 +51,9 @@ export async function GET() {
       : resumirPagos(cursoDeInscripcion, (pagosCurso ?? []) as PagoCursoAlumno[])
 
     // D20d (remate f): la cancelada sale de la cuadrícula; con pagos va al bloque
-    // «Cursos cancelados». Si falló la lectura de pagos el mapa está vacío y la
-    // cancelada no sale en ninguno de los dos (falla hacia ocultar).
+    // «Cursos cancelados». Si falló la lectura de pagos el mapa está vacío: la
+    // cancelada sin constancia no sale en ninguno de los dos (falla hacia
+    // ocultar); con constancia sale sin «Pagado», igual que las vigentes.
     // D20f: las canceladas con constancia YA emitida también van al bloque (con
     // enlace para verla). Se lee con la SESIÓN: la RLS «select propias» da solo
     // las suyas. Sin la tabla, ninguna.
