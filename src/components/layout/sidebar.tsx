@@ -36,7 +36,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Usuarios',         href: '/admin/usuarios',      emoji: '🛡️', icon: Users           },
     { label: 'Personalizar mi página', href: '/admin/configuracion', emoji: '⚙️', icon: Settings  },
   ],
-  // Rol acotado: ve Alumnos (lectura + registrar pagos) y Estado de Cuenta.
+  // Rol acotado: Alumnos (altas, «Marcar contactado» y cobros; D21a), Estado de Cuenta.
   // Usuarios/Contenido/Documentos/Configuración/Reportes quedan ocultos.
   SECRETARIO: [
     { label: 'Alumnos',          href: '/admin/alumnos',       emoji: '👥', icon: Users      },
@@ -164,7 +164,8 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   }
 
   useEffect(() => {
-    if (role !== 'ADMIN') return
+    // D21a: el contador de «Pendientes de contactar» también para el secretario.
+    if (role !== 'ADMIN' && role !== 'SECRETARIO') return
     let cancelled = false
     async function fetchCount() {
       try {

@@ -145,12 +145,26 @@ test('7. rutas: lo de abrir es del staff; lo de solo admin sigue con verifyAdmin
   expect(insc.slice(0, insc.indexOf('export async function PATCH'))).toContain('await verifyStaff(supabase, user.id)')
   expect(insc.slice(insc.indexOf('export async function PATCH'))).toContain('await verifyAdmin(supabase, user.id)')
   // SOLO ADMIN: precios/fichas (PATCH del curso), borrar pagos, quitar a un alumno del curso,
-  // «Corregir plan», Personalizar y usuarios staff.
+  // «Corregir plan», Personalizar y usuarios staff. D21a suma lo que escribe sobre un alumno
+  // y NO pasó al secretario: editar datos, activar/desactivar, marcar inscripción, notas.
   for (const p of ['admin/pagos/[id]/route.ts', 'admin/cursos/[id]/inscripciones/[alumnoId]/route.ts',
-    'admin/alumnos/[id]/corregir-plan/route.ts', 'admin/usuarios/route.ts']) {
+    'admin/alumnos/[id]/corregir-plan/route.ts', 'admin/usuarios/route.ts',
+    'admin/alumnos/[id]/datos/route.ts', 'admin/alumnos/[id]/activar/route.ts',
+    'admin/alumnos/[id]/inscripcion/route.ts', 'admin/alumnos/[id]/notas/route.ts']) {
     expect(ruta(p), p).toContain('verifyAdmin(')
     expect(ruta(p), p).not.toContain('verifyStaff(')
   }
+  // Resetear contraseña lleva su guarda en línea: rol 'ADMIN' exacto.
+  expect(ruta('admin/alumnos/[id]/reset-password/route.ts')).toContain("?.toUpperCase() !== 'ADMIN'")
+  // D21a: en la ruta del alumno, PUT (activo) y DELETE (baja/borrado) siguen con verifyAdmin;
+  // el PATCH («Marcar contactado») pasa al personal con su lista blanca (d21a-permisos-secretario).
+  const ficha = ruta('admin/alumnos/[id]/route.ts')
+  const tramo = (a: string, b?: string) => ficha.slice(ficha.indexOf(a), b ? ficha.indexOf(b) : undefined)
+  expect(tramo('export async function PUT', 'export async function PATCH')).toContain('await verifyAdmin(supabase, user.id)')
+  expect(tramo('export async function DELETE')).toContain('await verifyAdmin(supabase, user.id)')
+  // D21a: el alta de alumnos (POST) es del personal.
+  const alta = ruta('admin/alumnos/route.ts')
+  expect(alta.slice(alta.indexOf('export async function POST'))).toContain('const denied = await verifyStaff(supabase, user.id)')
 })
 
 test('8. interfaz: el secretario ve los botones de abrir; los de solo admin no', () => {

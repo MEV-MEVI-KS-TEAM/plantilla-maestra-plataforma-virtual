@@ -16,17 +16,7 @@ import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import { porActivar } from '@/lib/cursos/bitacora'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
-
-// ─── Verificar rol ADMIN (normaliza mayúsculas) ───────────────────────────────
-async function checkAdmin(userId: string): Promise<boolean> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('usuarios')
-    .select('rol')
-    .eq('id', userId)
-    .single()
-  return (data?.rol as string | undefined)?.toUpperCase() === 'ADMIN'
-}
+import { ROL_ALTA, datosAltaDesdeCuerpo, filaUsuarioAlta, opcionesAuthAlta, revertirAltaSinCursos } from '@/lib/alta-alumno'
 
 /**
  * Un alumno de CURSO (`nivel = 'diplomado'`) o sin nivel no cursa el programa
@@ -355,24 +345,34 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const isAdmin = await checkAdmin(user.id)
-    if (!isAdmin) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+    // D21a (decisión de Kevin, 27-sep-2026): el alta la da el PERSONAL, admin o
+    // secretario. Va ANTES de leer el cuerpo y de crear nada. Lo que sale de
+    // aquí es siempre un alumno (ROL_ALTA): el personal se crea solo en
+    // /api/admin/usuarios, que sigue siendo del admin.
+    const denied = await verifyStaff(supabase, user.id)
+    if (denied) return denied
 
     const body = await request.json()
-    const { nombre_completo, email, password, nivel, modalidad, telefono, carrera } = body
-    // Cursos a los que el admin inscribe al alumno en el mismo alta. Llega solo
+    const { nivel, modalidad, carrera } = body
+    // Nombre, correo, contraseña y teléfono: campo por campo (lib/alta-alumno).
+    // El `rol` del cuerpo, o cualquier otra clave, no llega a Auth ni a usuarios.
+    const datos = datosAltaDesdeCuerpo(body)
+    const { nombre, apellidos, password } = datos
+    // Cursos a los que se inscribe al alumno en el mismo alta. Llega solo
     // cuando el nivel elegido es el del catálogo ('diplomado').
     const cursosIds: string[] = Array.isArray(body.cursos_ids)
       ? (body.cursos_ids as unknown[]).filter((x): x is string => typeof x === 'string' && x.length > 0)
       : []
 
-    // Aceptar "nombre_completo" del form y dividirlo en nombre / apellidos
-    const partes     = (nombre_completo as string | undefined)?.trim().split(/\s+/) ?? []
-    const nombre     = partes[0] ?? ''
-    const apellidos  = partes.slice(1).join(' ')
-
-    if (!nombre || !email || !password) {
+    const correoCapturado = typeof body.email === 'string' ? body.email.trim() : ''
+    if (!nombre || !correoCapturado || !password) {
       return NextResponse.json({ error: 'nombre, email y password son requeridos' }, { status: 400 })
+    }
+    // Se crea una cuenta YA CONFIRMADA: con un correo sin forma de correo nadie
+    // podría entrar, y ese correo quedaría ocupado.
+    const email = datos.email
+    if (!email) {
+      return NextResponse.json({ error: 'El correo no tiene un formato válido.' }, { status: 400 })
     }
     // ── B7: en solo_cursos el nivel lo decide el SERVIDOR ─────────────────────
     // Esta es la SEGUNDA puerta que escribe alumnos.nivel (la otra es el
@@ -461,12 +461,9 @@ export async function POST(request: NextRequest) {
       if (motivo) return NextResponse.json({ error: MENSAJES_PLAN_ADMIN[motivo] }, { status: 400 })
     }
 
-    // Crear usuario en Supabase Auth
-    const { data: authData, error: authError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    })
+    // Crear usuario en Supabase Auth: exactamente correo, contraseña y
+    // confirmación, sin metadata (lib/alta-alumno).
+    const { data: authData, error: authError } = await admin.auth.admin.createUser(opcionesAuthAlta(email, password))
 
     if (authError) {
       if (authError.message.includes('already')) {
@@ -484,17 +481,23 @@ export async function POST(request: NextRequest) {
     // (alta por registro), y el azar podía chocar con una existente.
     await sincronizarPrefijoMatricula(admin)
 
-    // Upsert en usuarios — upsert porque un trigger de Auth puede haberla creado ya sin nombre
-    const { error: usuarioError } = await admin
+    // Upsert en usuarios — upsert porque un trigger de Auth puede haberla creado ya
+    // sin nombre. El rol es ROL_ALTA y se RELEE: si la fila no quedó como alumno
+    // (un trigger raro, una política cambiada), se deshace el alta completa.
+    const { data: filaUsuario, error: usuarioError } = await admin
       .from('usuarios')
-      .upsert(
-        { id: newUserId, nombre, apellidos, email, telefono: telefono ?? null, rol: 'alumno' },
-        { onConflict: 'id' }
-      )
+      .upsert(filaUsuarioAlta(newUserId, { ...datos, email }), { onConflict: 'id' })
+      .select('rol')
+      .single()
 
     if (usuarioError) {
       await admin.auth.admin.deleteUser(newUserId)
       return NextResponse.json({ error: usuarioError.message }, { status: 500 })
+    }
+    if ((filaUsuario as { rol?: string } | null)?.rol !== ROL_ALTA) {
+      await admin.auth.admin.deleteUser(newUserId)
+      console.error('[POST /api/admin/alumnos] la fila de usuarios no quedó como alumno; alta deshecha')
+      return NextResponse.json({ error: 'No se pudo dar de alta: la cuenta no quedó como alumno. Avisa a soporte.' }, { status: 500 })
     }
 
     // Insertar en alumnos. En solo_cursos el nivel lo pone el servidor y la
@@ -559,28 +562,30 @@ export async function POST(request: NextRequest) {
     // y en la MISMA llamada para que el alumno no quede a medias si el admin
     // cierra la pestaña.
     //
-    // Con la MISMA regla que «Asignar» (C3b): curso_inscribir, con la SESIÓN del
-    // admin (es_admin() usa auth.uid()), abre todo en un curso de pago único y
-    // el mes 1 en uno mensual o sin precio, y deja el evento con actor. Es el
-    // admin dando de alta a alguien que ya pagó; el registro público, en
-    // cambio, sigue creando la inscripción con 0 meses (register-complete).
+    // Con la MISMA regla que «Asignar» (C3b): curso_inscribir, con la SESIÓN de
+    // quien da el alta (es_staff() usa auth.uid(); D7b), abre todo en un curso de
+    // pago único y el mes 1 en uno mensual o sin precio, y deja el evento con
+    // actor. Es el personal dando de alta a alguien que ya pagó; el registro
+    // público, en cambio, sigue creando la inscripción con 0 meses (register-complete).
     //
     // La respuesta dice qué abrió cada curso y si su ficha está sin precio (0/0:
     // se abrió el mes 1 aunque la escuela haya cobrado un pago único), igual que
     // «Asignar». Y si alguno falló, el porqué (p. ej. la migración que falta).
     let cursosAsignados = 0
     let cursosError: string | null = null
+    let cursosErrorStatus: number | null = null
     const cursosResultado: { curso_id: string; nombre: string; acceso_total: boolean; sin_precio: boolean }[] = []
     for (const curso of cursosValidados) {
       const { data: insData, error: insError } = await supabase.rpc('curso_inscribir', {
         p_curso_id: curso.id, p_alumno_id: newUserId,
       })
       if (insError && insError.code !== '23505') {
-        // No es fatal: el alumno ya existe y es válido. Tumbar el alta por esto
-        // dejaría una cuenta de Auth huérfana; el admin puede inscribirlo desde
-        // la ficha. Se registra para que quede rastro.
+        // Para un alumno del programa no es fatal: su alta vale y se le inscribe
+        // después desde la ficha. Un alumno DE CURSO sin ningún curso sí se
+        // deshace abajo (revertirAltaSinCursos). Se registra para que quede rastro.
         console.error('[POST /api/admin/alumnos] curso_inscribir:', insError.message)
         cursosError ??= errorDeRpcCurso(insError).mensaje
+        cursosErrorStatus ??= errorDeRpcCurso(insError).status
         continue
       }
       cursosAsignados++
@@ -591,6 +596,18 @@ export async function POST(request: NextRequest) {
         acceso_total: fila?.acceso_total === true,
         sin_precio: precioCursoNumerico(curso).tipo === 'informes',
       })
+    }
+
+    // D21a: un alumno DE CURSO al que no se le pudo inscribir NINGÚN curso (p. ej.
+    // una base sin la migración D7b, donde el secretario no puede inscribir) no se
+    // queda «de curso sin curso» con `nivel` write-once: se deshace el alta
+    // completa (la cuenta de Auth arrastra a usuarios y alumnos en cascada), para
+    // los dos roles, y se dice por qué.
+    if (revertirAltaSinCursos(nivelElegido, cursosAsignados)) {
+      await admin.auth.admin.deleteUser(newUserId)
+      return NextResponse.json({
+        error: `No se dio de alta: no se pudo inscribir a ningún curso. ${cursosError ?? 'Intenta de nuevo.'}`,
+      }, { status: cursosErrorStatus ?? 500 })
     }
 
     return NextResponse.json({

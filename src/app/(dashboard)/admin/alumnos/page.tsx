@@ -978,6 +978,13 @@ export default function AlumnosPage() {
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
+                {/* D21a: el alta ya la da también el secretario, y el plan solo lo
+                    corrige el administrador (Corregir plan), y no si ya hay pagos o
+                    meses abiertos. Texto neutro: vale para los dos roles. */}
+                <p className="text-xs" style={{ color: '#94A3B8' }}>
+                  Revisa el nivel y la modalidad antes de crear: después solo el administrador
+                  puede corregirlos, y no si ya se le cobró o se le abrió algún mes.
+                </p>
               </div>
               )}
 
