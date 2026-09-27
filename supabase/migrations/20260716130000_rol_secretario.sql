@@ -11,19 +11,34 @@ ALTER TABLE public.usuarios
   ADD CONSTRAINT usuarios_rol_check
   CHECK (rol = ANY (ARRAY['alumno'::text, 'admin'::text, 'secretario'::text]));
 
--- 2. es_staff(): admin O secretario. Mismo patrón que es_admin()
---    (SECURITY DEFINER + STABLE + plpgsql con validación lazy — Bug 21).
---    es_admin() se mantiene EXACTAMENTE igual.
-CREATE OR REPLACE FUNCTION public.es_staff() RETURNS boolean
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    AS $$
+-- 2. es_staff(): admin O secretario. La MISMA definición que el fix S2
+--    (20260729121000_fix_s2_es_admin.sql): plpgsql + STABLE + SECURITY DEFINER
+--    + SET search_path = public + LOWER(rol) (validación lazy — Bug 21).
+--    D20g: antes esta migración la creaba SIN LOWER y SIN search_path, y
+--    SETUP.md la corre DESPUÉS del paso 7 (fila 2 de la tabla 7bis): revertía
+--    S2 en silencio y la D7b (fila 15) abortaba con «public.es_staff() falta o
+--    no normaliza el rol (LOWER)». Ahora correrla o re-correrla, antes o
+--    después de S2, deja es_staff() igual que S2. Lo vigila el CHECK 22 de
+--    scripts/post-setup-check.sql.
+--    es_admin() no se toca aquí (la endurece S2).
+CREATE OR REPLACE FUNCTION public.es_staff()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.usuarios
-     WHERE id = auth.uid() AND rol IN ('admin', 'secretario')
+     WHERE id = auth.uid()
+       AND LOWER(rol) IN ('admin', 'secretario')
   );
 END;
 $$;
+
+-- Los mismos GRANT que S2 (idempotente).
+GRANT EXECUTE ON FUNCTION public.es_staff() TO anon, authenticated;
 
 -- 3. Lectura básica de usuarios pasa a es_staff() (sin columnas sensibles:
 --    nombre/apellidos/email/telefono/rol — el secretario las necesita).

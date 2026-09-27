@@ -568,3 +568,41 @@ SELECT
     ELSE '❌ ' || con_40001 || ' todavía lanza 40001: PostgREST reintenta sin fin y la petición se cuelga → corre supabase/migrations/20260928140000_d20e_conflicto_pt409.sql'
   END AS resultado
 FROM d20e;
+
+-- ─── CHECK 22: es_admin() y es_staff() normalizan el rol (S2) ───────────────
+-- Aplica a toda base. Las dos tienen que comparar con LOWER(rol), ser SECURITY
+-- DEFINER y fijar search_path = public (fix S2, 20260729121000). Sin LOWER, un
+-- admin o secretario con el rol en mayúsculas pierde el panel en silencio, y
+-- D7b, D8, D16, D20a y D20b abortan en su preflight. Una copia de
+-- 20260716130000_rol_secretario.sql anterior a D20g, corrida después del paso 7
+-- (la fila 2 de 7bis), revertía es_staff() sin que ningún otro CHECK lo viera:
+-- por eso se revisa el cuerpo, no solo el nombre.
+WITH s2 AS (
+  SELECT f,
+         to_regprocedure('public.' || f) IS NOT NULL AS existe,
+         COALESCE((SELECT p.prosrc ~* 'lower\s*\(\s*rol\s*\)'
+                     FROM pg_proc p WHERE p.oid = to_regprocedure('public.' || f)), false) AS con_lower,
+         COALESCE((SELECT EXISTS (SELECT 1 FROM unnest(p.proconfig) AS c WHERE c LIKE 'search_path=public%')
+                     FROM pg_proc p WHERE p.oid = to_regprocedure('public.' || f)), false) AS con_search_path,
+         COALESCE((SELECT p.prosecdef
+                     FROM pg_proc p WHERE p.oid = to_regprocedure('public.' || f)), false) AS definer
+    FROM unnest(ARRAY['es_admin()', 'es_staff()']) AS f
+), resumen AS (
+  SELECT string_agg(f, ', ' ORDER BY f) FILTER (WHERE NOT existe) AS faltan,
+         string_agg(f || CASE WHEN NOT con_lower THEN ' sin LOWER' ELSE '' END
+                       || CASE WHEN NOT con_search_path THEN ' sin search_path' ELSE '' END
+                       || CASE WHEN NOT definer THEN ' sin SECURITY DEFINER' ELSE '' END, ', ' ORDER BY f)
+           FILTER (WHERE existe AND NOT (con_lower AND con_search_path AND definer)) AS revertidas
+    FROM s2
+)
+SELECT
+  'es_admin() / es_staff() con LOWER (S2)' AS check_name,
+  'faltan: ' || COALESCE(faltan, 'ninguna') || ' / sin S2: ' || COALESCE(revertidas, 'ninguna') AS valor,
+  CASE
+    WHEN faltan IS NOT NULL
+      THEN '❌ FALTA ' || faltan || ' → corre supabase/migrations/20260716130000_rol_secretario.sql y después supabase/migrations/20260729121000_fix_s2_es_admin.sql'
+    WHEN revertidas IS NOT NULL
+      THEN '❌ S2 REVERTIDO (' || revertidas || '): un admin o secretario con el rol en mayúsculas pierde el panel → vuelve a correr supabase/migrations/20260729121000_fix_s2_es_admin.sql (cliente ya desplegado: scripts/fix-s1-s2-roles.sql)'
+    ELSE '✅ OK (las dos con LOWER(rol), SECURITY DEFINER y search_path = public)'
+  END AS resultado
+FROM resumen;

@@ -97,6 +97,7 @@ Editar SOLO este archivo: src/lib/config.ts
    - `supabase/migrations/20260729121000_fix_s2_es_admin.sql`
      `es_admin()` / `es_staff()` en plpgsql con `LOWER(rol)` y `search_path` (S2).
      Sin esto, un admin con `rol='ADMIN'` en mayúsculas no puede administrar cursos.
+     Lo vigila el CHECK 22 de `scripts/post-setup-check.sql`.
    - `supabase/migrations/20260729122000_fix_portadas_storage_policy.sql`
      Corrige la política del bucket para que el alumno vea las portadas.
      Corre DESPUÉS del paso 5.
@@ -110,7 +111,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | Orden | Migración | Qué trae |
    |---|---|---|
    | 1 | `20260716120000_pagos.sql` | tabla `pagos` |
-   | 2 | `20260716130000_rol_secretario.sql` | rol acotado |
+   | 2 | `20260716130000_rol_secretario.sql` | rol acotado. Su `es_staff()` es la misma de S2 (`LOWER(rol)` + `search_path`): correrla después del paso 7 ya no revierte S2 (**D20g**, CHECK 22) |
    | 3 | `20260716140000_bucket_recibos.sql` | bucket de recibos |
    | 4 | `20260716150000_reporte_ingresos.sql` | ingresos por semana/mes |
    | 5 | `20260716160000_estado_cuenta.sql` | estado de cuenta |
