@@ -16,7 +16,7 @@ import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import { porActivar } from '@/lib/cursos/bitacora'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
-import { ROL_ALTA, datosAltaDesdeCuerpo, filaUsuarioAlta, opcionesAuthAlta, revertirAltaSinCursos } from '@/lib/alta-alumno'
+import { ROL_ALTA, datosAltaDesdeCuerpo, deshacerAlta, filaUsuarioAlta, mensajeAltaAMedias, opcionesAuthAlta, revertirAltaSinCursos } from '@/lib/alta-alumno'
 
 /**
  * Un alumno de CURSO (`nivel = 'diplomado'`) o sin nivel no cursa el programa
@@ -491,13 +491,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (usuarioError) {
-      await admin.auth.admin.deleteUser(newUserId)
-      return NextResponse.json({ error: usuarioError.message }, { status: 500 })
+      const deshecha = await deshacerAlta(admin, newUserId)
+      return NextResponse.json({ error: deshecha ? usuarioError.message : mensajeAltaAMedias(newUserId) }, { status: 500 })
     }
     if ((filaUsuario as { rol?: string } | null)?.rol !== ROL_ALTA) {
-      await admin.auth.admin.deleteUser(newUserId)
-      console.error('[POST /api/admin/alumnos] la fila de usuarios no quedó como alumno; alta deshecha')
-      return NextResponse.json({ error: 'No se pudo dar de alta: la cuenta no quedó como alumno. Avisa a soporte.' }, { status: 500 })
+      console.error('[POST /api/admin/alumnos] la fila de usuarios no quedó como alumno; se deshace el alta')
+      const deshecha = await deshacerAlta(admin, newUserId)
+      return NextResponse.json({
+        error: deshecha ? 'No se pudo dar de alta: la cuenta no quedó como alumno. Avisa a soporte.' : mensajeAltaAMedias(newUserId),
+      }, { status: 500 })
     }
 
     // Insertar en alumnos. En solo_cursos el nivel lo pone el servidor y la
@@ -525,8 +527,8 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (alumnoError) {
-      await admin.auth.admin.deleteUser(newUserId)
-      return NextResponse.json({ error: alumnoError.message }, { status: 500 })
+      const deshecha = await deshacerAlta(admin, newUserId)
+      return NextResponse.json({ error: deshecha ? alumnoError.message : mensajeAltaAMedias(newUserId) }, { status: 500 })
     }
 
     // `alumnoData` ya trae la matrícula que puso el trigger — no hay que
@@ -604,7 +606,8 @@ export async function POST(request: NextRequest) {
     // completa (la cuenta de Auth arrastra a usuarios y alumnos en cascada), para
     // los dos roles, y se dice por qué.
     if (revertirAltaSinCursos(nivelElegido, cursosAsignados)) {
-      await admin.auth.admin.deleteUser(newUserId)
+      const deshecha = await deshacerAlta(admin, newUserId)
+      if (!deshecha) return NextResponse.json({ error: mensajeAltaAMedias(newUserId) }, { status: 500 })
       return NextResponse.json({
         error: `No se dio de alta: no se pudo inscribir a ningún curso. ${cursosError ?? 'Intenta de nuevo.'}`,
       }, { status: cursosErrorStatus ?? 500 })

@@ -15,6 +15,7 @@
  * Las funciones leen el cuerpo campo por campo y nunca lo esparcen (`...body`):
  * una clave nueva en el formulario no llega a la base sin pasar por aquí.
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /** El único rol que puede salir de un alta de alumno, la dé quien la dé. */
 export const ROL_ALTA = 'alumno' as const
@@ -78,4 +79,26 @@ export function filaUsuarioAlta(id: string, d: Pick<DatosAlta, 'nombre' | 'apell
  */
 export function revertirAltaSinCursos(nivelFinal: string | null | undefined, cursosAsignados: number): boolean {
   return nivelFinal === 'diplomado' && cursosAsignados === 0
+}
+
+/**
+ * Deshace un alta: borra la cuenta de Auth (arrastra `usuarios` y `alumnos` en
+ * cascada). `deleteUser` NO lanza si GoTrue falla: devuelve `{ error }`. Si falla,
+ * se borran al menos las filas de `alumnos` y `usuarios` (como el borrado
+ * definitivo) y se devuelve false: la ruta tiene que decir que el alta quedó A
+ * MEDIAS, no «no se dio de alta», porque la cuenta de acceso sigue viva y el
+ * mismo correo daría 409 al reintentar.
+ */
+export async function deshacerAlta(admin: SupabaseClient, id: string): Promise<boolean> {
+  const { error } = await admin.auth.admin.deleteUser(id)
+  if (!error) return true
+  console.error('[alta de alumno] no se pudo borrar la cuenta de Auth al deshacer el alta:', id, error.message)
+  await admin.from('alumnos').delete().eq('id', id)
+  await admin.from('usuarios').delete().eq('id', id)
+  return false
+}
+
+/** Lo que se responde cuando `deshacerAlta` no pudo borrar la cuenta de acceso. */
+export function mensajeAltaAMedias(id: string): string {
+  return `El alta quedó a medias: no se pudo borrar la cuenta de acceso (id ${id}). Avisa a soporte antes de volver a intentarlo con el mismo correo.`
 }

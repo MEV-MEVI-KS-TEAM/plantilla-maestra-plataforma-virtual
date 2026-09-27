@@ -272,6 +272,8 @@ export async function PATCH(
       .eq('id', params.id)
       .select('id')
 
+    // 22P02: el id no es un UUID → tampoco es un alumno.
+    if (error?.code === '22P02') return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!tocadas || tocadas.length === 0) {
       return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })

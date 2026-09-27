@@ -887,6 +887,18 @@ export default function AlumnosPage() {
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
+                {/* D21a: el alta ya la da también el secretario. Visible siempre (también
+                    con «Curso o diplomado») y exacto sobre lo que se puede corregir:
+                    «Corregir plan» (solo admin) cambia nivel, modalidad y carrera DENTRO
+                    del programa escolar y se bloquea en cuanto hay pagos, meses abiertos
+                    o avance; pasar entre programa y curso no se corrige nunca. Texto
+                    neutro: vale para los dos roles. */}
+                <p className="text-xs" style={{ color: '#94A3B8' }}>
+                  Revisa bien el nivel antes de crear. Pasar entre el programa escolar y un
+                  curso o diplomado no se puede corregir después (habría que borrar al alumno y
+                  darlo de alta de nuevo). Dentro del programa, nivel, modalidad y carrera los
+                  corrige solo el administrador, y no si ya se le cobró o se le abrió algún mes.
+                </p>
               </div>
 
               {/* Selector de cursos. Sustituye a carrera y modalidad: un alumno de
@@ -978,13 +990,6 @@ export default function AlumnosPage() {
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
-                {/* D21a: el alta ya la da también el secretario, y el plan solo lo
-                    corrige el administrador (Corregir plan), y no si ya hay pagos o
-                    meses abiertos. Texto neutro: vale para los dos roles. */}
-                <p className="text-xs" style={{ color: '#94A3B8' }}>
-                  Revisa el nivel y la modalidad antes de crear: después solo el administrador
-                  puede corregirlos, y no si ya se le cobró o se le abrió algún mes.
-                </p>
               </div>
               )}
 

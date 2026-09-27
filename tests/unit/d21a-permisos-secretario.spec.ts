@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  ROL_ALTA, datosAltaDesdeCuerpo, filaUsuarioAlta, normalizarCorreoAlta, opcionesAuthAlta, revertirAltaSinCursos,
+  ROL_ALTA, datosAltaDesdeCuerpo, deshacerAlta, filaUsuarioAlta, mensajeAltaAMedias, normalizarCorreoAlta, opcionesAuthAlta, revertirAltaSinCursos,
 } from '@/lib/alta-alumno'
 import { CAMPOS_PATCH_SECRETARIO, MENSAJE_SOLO_CONTACTADO, esPersonal, reglaPatchAlumno } from '@/lib/alumno-patch'
 
@@ -41,7 +41,10 @@ test('1b. el cuerpo NUNCA se esparce ni aporta el rol: Auth y usuarios salen de 
   expect(POST).toMatch(/\.select\('rol'\)\s*\.single\(\)/)
   const relee = POST.indexOf('!== ROL_ALTA')
   expect(relee).toBeGreaterThan(0)
-  expect(POST.slice(relee, relee + 200)).toContain('await admin.auth.admin.deleteUser(newUserId)')
+  expect(POST.slice(relee, relee + 300)).toContain('await deshacerAlta(admin, newUserId)')
+  // TODAS las reversiones del alta pasan por deshacerAlta (que revisa si Auth borró).
+  expect(POST).not.toContain('admin.auth.admin.deleteUser(')
+  expect(POST.match(/await deshacerAlta\(admin, newUserId\)/g)?.length).toBe(4)
 })
 
 test('1c. datosAltaDesdeCuerpo: solo nombre, apellidos, correo, contraseña y teléfono, pase lo que pase', () => {
@@ -94,9 +97,24 @@ test('1f. alta de curso sin NINGÚN curso inscrito: se deshace, para los dos rol
   const i = POST.indexOf('if (revertirAltaSinCursos(nivelElegido, cursosAsignados)) {')
   expect(i).toBeGreaterThan(POST.indexOf("supabase.rpc('curso_inscribir',"))
   expect(i).toBeLessThan(POST.indexOf('}, { status: 201 })'))
-  expect(POST.slice(i, i + 200)).toContain('await admin.auth.admin.deleteUser(newUserId)')
+  expect(POST.slice(i, i + 300)).toContain('await deshacerAlta(admin, newUserId)')
+  expect(POST.slice(i, i + 400)).toContain('if (!deshecha) return NextResponse.json({ error: mensajeAltaAMedias(newUserId) }, { status: 500 })')
   // No depende del rol: la condición no mira quién da el alta.
   expect(POST.slice(i - 400, i)).not.toMatch(/SECRETARIO|esAdmin|isAdmin/)
+})
+
+test('1h. deshacerAlta: si Auth no borra la cuenta, borra las filas y avisa que quedó a medias', async () => {
+  const llamadas: string[] = []
+  const doble = (errorAuth: { message: string } | null) => ({
+    auth: { admin: { deleteUser: async (id: string) => { llamadas.push(`auth:${id}`); return { data: { user: null }, error: errorAuth } } } },
+    from: (tabla: string) => ({ delete: () => ({ eq: async (_c: string, id: string) => { llamadas.push(`${tabla}:${id}`); return { error: null } } }) }),
+  }) as unknown as Parameters<typeof deshacerAlta>[0]
+  expect(await deshacerAlta(doble(null), 'n1')).toBe(true)
+  expect(llamadas).toEqual(['auth:n1'])
+  llamadas.length = 0
+  expect(await deshacerAlta(doble({ message: '504' }), 'n2')).toBe(false)
+  expect(llamadas).toEqual(['auth:n2', 'alumnos:n2', 'usuarios:n2'])
+  expect(mensajeAltaAMedias('n2')).toMatch(/quedó a medias[\s\S]*n2/)
 })
 
 test('1g. el personal se sigue creando SOLO por /api/admin/usuarios, que es del admin', () => {
@@ -164,6 +182,10 @@ test('2e. la ruta: regla ANTES de escribir, 404 si no es alumno; PUT y DELETE si
   expect(patch).toContain('.update(regla.updates)')
   expect(patch).toMatch(/\.select\('id'\)/)
   expect(patch).toContain("{ error: 'Alumno no encontrado' }, { status: 404 }")
+  // Un id que no es UUID (22P02) tampoco es un alumno: 404, antes del 500 genérico.
+  const i22 = patch.indexOf("if (error?.code === '22P02') return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })")
+  expect(i22).toBeGreaterThan(0)
+  expect(i22).toBeLessThan(patch.indexOf('if (error) return NextResponse.json({ error: error.message }, { status: 500 })'))
   expect(tramo(API_ALUMNO, 'export async function PUT', 'export async function PATCH')).toContain('await verifyAdmin(supabase, user.id)')
   expect(tramo(API_ALUMNO, 'export async function DELETE')).toContain('await verifyAdmin(supabase, user.id)')
 })
@@ -199,6 +221,11 @@ test('4. el contador de «Pendientes de contactar» es del personal; el modal av
   const menu = sinComentarios(leer('src/components/layout/sidebar.tsx'))
   expect(menu).toContain("if (role !== 'ADMIN' && role !== 'SECRETARIO') return")
   expect(menu).toContain("fetch('/api/admin/alumnos/pendientes-count')")
-  const lista = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
-  expect(lista.replace(/\s+/g, ' ')).toContain('Revisa el nivel y la modalidad antes de crear: después solo el administrador puede corregirlos')
+  const lista = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx')).replace(/\s+/g, ' ')
+  const aviso = lista.indexOf('Revisa bien el nivel antes de crear. Pasar entre el programa escolar y un curso o diplomado no se puede corregir después')
+  expect(aviso).toBeGreaterThan(0)
+  expect(lista).toContain('nivel, modalidad y carrera los corrige solo el administrador, y no si ya se le cobró o se le abrió algún mes')
+  // Bajo el select de Nivel, antes de cualquier bloque que se oculte con «Curso o diplomado».
+  expect(aviso).toBeGreaterThan(lista.indexOf('>Nivel</label>'))
+  expect(aviso).toBeLessThan(lista.indexOf('{!soloCurso && ('))
 })
