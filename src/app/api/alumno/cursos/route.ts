@@ -6,6 +6,7 @@ import { leccionesDeCurso, completadasDe, portadaFirmada, totalLeccionesDelCurso
 import type { CatalogoAlumno, CursoCanceladoAlumno, CursoCatalogoItem } from '@/types/cursos-alumno'
 import type { CursoTipo } from '@/types/cursos'
 import {
+  cursosConConstancia,
   pagosPorCurso as resumirPagos,
   repartirInscripciones,
   type InscripcionAlumno,
@@ -52,7 +53,21 @@ export async function GET() {
     // D20d (remate f): la cancelada sale de la cuadrícula; con pagos va al bloque
     // «Cursos cancelados». Si falló la lectura de pagos el mapa está vacío y la
     // cancelada no sale en ninguno de los dos (falla hacia ocultar).
-    const { vigentes, canceladas } = repartirInscripciones(filas, pagosPorCurso)
+    // D20f: las canceladas con constancia YA emitida también van al bloque (con
+    // enlace para verla). Se lee con la SESIÓN: la RLS «select propias» da solo
+    // las suyas. Sin la tabla, ninguna.
+    let conConstancia = new Set<string>()
+    const idsCanceladas = filas.filter(f => f.estado === 'cancelada').map(f => f.id)
+    if (idsCanceladas.length > 0) {
+      const { data: consts, error: errConst } = await supabase
+        .from('curso_constancias')
+        .select('inscripcion_id')
+        .in('inscripcion_id', idsCanceladas)
+      if (!errConst) conConstancia = cursosConConstancia(filas, (consts ?? []) as Array<{ inscripcion_id: string | null }>)
+      else if (errConst.code !== '42P01' && errConst.code !== 'PGRST205') console.error('[GET /api/alumno/cursos] constancias:', errConst.message)
+    }
+
+    const { vigentes, canceladas } = repartirInscripciones(filas, pagosPorCurso, conConstancia)
 
     // De las vigentes, la RLS "cursos: select inscritos o admin" devuelve solo los publicados
     const { data: cursos } = vigentes.length === 0
@@ -78,9 +93,10 @@ export async function GET() {
         .order('created_at', { ascending: true })
       if (errCanceladas) console.error('[GET /api/alumno/cursos] cancelados:', errCanceladas.message)
       for (const c of filasCanceladas ?? []) {
-        const pagos = pagosPorCurso.get(c.id as string)
-        if (!pagos) continue
-        cancelados.push({ id: c.id as string, nombre: c.nombre as string, tipo: c.tipo as CursoTipo, pagos })
+        const pagos = pagosPorCurso.get(c.id as string) ?? null
+        const constancia = conConstancia.has(c.id as string)
+        if (!pagos && !constancia) continue
+        cancelados.push({ id: c.id as string, nombre: c.nombre as string, tipo: c.tipo as CursoTipo, pagos, constancia })
       }
     }
 

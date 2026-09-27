@@ -178,7 +178,7 @@ export default function MisCursosPage() {
             Cursos cancelados
           </h3>
           <p className="text-xs" style={{ color: '#94A3B8' }}>
-            Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado; si tienes dudas, habla con tu escuela.
+            Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado y, si ya tenías tu constancia, la sigues viendo; si tienes dudas, habla con tu escuela.
           </p>
           <ul className="space-y-2">
             {cancelados.map(c => (
@@ -191,9 +191,23 @@ export default function MisCursosPage() {
                   <TipoBadge tipo={c.tipo} />
                   <p className="text-sm font-semibold truncate" style={{ color: '#475569' }}>{c.nombre}</p>
                 </div>
-                <p className="text-[11px] font-medium" style={{ color: '#047857' }}>
-                  {resumenPagosCurso(c.pagos, fmtCurso)}
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  {resumenPagosCurso(c.pagos, fmtCurso) && (
+                    <p className="text-[11px] font-medium" style={{ color: '#047857' }}>
+                      {resumenPagosCurso(c.pagos, fmtCurso)}
+                    </p>
+                  )}
+                  {/* D20f: su constancia YA emitida se sigue viendo (no se emite otra). */}
+                  {c.constancia && (
+                    <a
+                      href={`/cursos/${c.id}/constancia`}
+                      className="text-xs font-semibold underline"
+                      style={{ color: 'var(--color-primario)' }}
+                    >
+                      Ver mi constancia
+                    </a>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

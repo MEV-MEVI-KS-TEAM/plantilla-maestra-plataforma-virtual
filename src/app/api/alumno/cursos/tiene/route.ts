@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
+  cursosConConstancia,
   pagosPorCurso,
   repartirInscripciones,
   type InscripcionAlumno,
@@ -52,7 +53,18 @@ export async function GET() {
       }
     }
 
-    const { vigentes, canceladas } = repartirInscripciones(filas, pagos)
+    // D20f: una cancelada con constancia emitida también lleva al bloque (a verla).
+    let conConstancia = new Set<string>()
+    const idsCanceladas = filas.filter(f => f.estado === 'cancelada').map(f => f.id)
+    if (idsCanceladas.length > 0) {
+      const { data: consts, error: errConst } = await supabase
+        .from('curso_constancias')
+        .select('inscripcion_id')
+        .in('inscripcion_id', idsCanceladas)
+      if (!errConst) conConstancia = cursosConConstancia(filas, (consts ?? []) as Array<{ inscripcion_id: string | null }>)
+    }
+
+    const { vigentes, canceladas } = repartirInscripciones(filas, pagos, conConstancia)
     if (canceladas.length > 0) return NextResponse.json({ tiene: true })
     if (vigentes.length === 0) return NextResponse.json({ tiene: false })
 
