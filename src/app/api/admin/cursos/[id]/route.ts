@@ -101,6 +101,14 @@ export async function GET(
         .order('created_at', { ascending: false }))
 
     const alumnoIds = (inscripciones ?? []).map(i => i.alumno_id)
+    // Tope de meses del curso (espejo de curso_tope_meses). D21b (OS9): se calcula
+    // SIEMPRE y viaja en la respuesta, para que «+ Abrir mes» se apague en el tope
+    // (el secretario no recibe los módulos y no podría contarlo). null si falla.
+    const cursoTope = curso as { duracion_meses?: number | null; modulos_por_mes?: number | null }
+    const { count: nModulos, error: errMods } = await admin
+      .from('curso_modulos').select('id', { count: 'exact', head: true }).eq('curso_id', params.id)
+    const topeCurso = errMods ? null : topeMeses(cursoTope.duracion_meses ?? null, nModulos ?? 0, cursoTope.modulos_por_mes ?? 0)
+
     let inscritos: CursoInscrito[] = []
     if (alumnoIds.length > 0) {
       const inscIds = (inscripciones ?? []).map(i => i.id)
@@ -146,10 +154,8 @@ export async function GET(
       // reglas de lib/cursos/cobro.ts (sin B1 o si falla: sin insignia). Con el
       // tope del curso (espejo de curso_tope_meses): un mes pagado que el curso
       // ya no tiene no deja la insignia encendida para siempre.
-      const c = curso as { precio_inscripcion?: number | null; precio_mensualidad?: number | null; duracion_meses?: number | null; modulos_por_mes?: number | null }
-      const { count: nModulos, error: errMods } = await admin
-        .from('curso_modulos').select('id', { count: 'exact', head: true }).eq('curso_id', params.id)
-      const tope = errMods ? null : topeMeses(c.duracion_meses ?? null, nModulos ?? 0, c.modulos_por_mes ?? 0)
+      const c = curso as { precio_inscripcion?: number | null; precio_mensualidad?: number | null }
+      const tope = topeCurso
       const cobros = await cobroPorInscripcion(admin, {
         precio_inscripcion: c.precio_inscripcion ?? 0,
         precio_mensualidad: c.precio_mensualidad ?? 0,
@@ -168,6 +174,7 @@ export async function GET(
       modulos,
       inscritos,
       viewer_rol: viewerRol,
+      tope_meses: topeCurso,
     }
     return NextResponse.json(detalle)
   } catch (err) {

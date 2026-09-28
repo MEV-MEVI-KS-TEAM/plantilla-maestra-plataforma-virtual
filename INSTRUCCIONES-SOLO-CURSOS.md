@@ -153,14 +153,15 @@ ningún curso en `publicado`.
 No hay autoinscripción ni pasarela de pago: **la conversión es por WhatsApp**.
 
 ```
-Prospecto → landing → /diplomados/[id] → WhatsApp → el admin lo inscribe
+Prospecto → landing → /diplomados/[id] → WhatsApp → el admin o el secretario lo inscribe
 ```
 
-1. El alumno se registra en `/register`, o el admin lo da de alta desde
-   `/admin/alumnos`. **Las dos puertas producen la misma fila**: el servidor
+1. El alumno se registra en `/register`, o el admin o el secretario lo da de
+   alta desde `/admin/alumnos` (D21a). **Las dos puertas producen la misma fila**: el servidor
    pone `nivel = 'diplomado'` y `modalidad = NULL`, ignorando lo que venga en la
    petición. No se pide nivel ni modalidad en ninguna de las dos.
-2. El admin lo inscribe al diplomado desde `/admin/cursos/[id]` → Alumnos.
+2. El admin o el secretario lo inscribe al diplomado desde `/admin/cursos/[id]`
+   → Alumnos (D7b).
 3. Registra el pago. Si es mensualidad, **Abrir mes** libera el siguiente bloque
    de módulos.
 4. Al aprobar el examen, **el admin o el secretario emite la constancia** con
@@ -182,7 +183,11 @@ Para que nadie lo reporte como un error:
   programa. Solo Mis Diplomados y Mis Documentos. Aterriza en `/alumno/cursos`.
 - **Admin**: sin Contenido (materias y meses) ni Estado de Cuenta. Quedan
   Dashboard, Alumnos, Diplomados, Reportes, Documentos, Usuarios y Configuración.
-- **Secretario**: solo Alumnos, desde donde registra los pagos del diplomado.
+- **Secretario**: Alumnos y Diplomados. Da de alta alumnos y los marca como
+  contactados (D21a); los inscribe («Asignar», «Activar según la ficha»), cobra,
+  abre meses y emite la constancia (D7b, D20b). Precios y fichas de los cursos,
+  cancelar, reactivar o quitar una inscripción, borrar pagos o alumnos, el
+  personal (Usuarios) y «Personalizar mi página» son solo del admin.
 
 Las URLs del programa siguen existiendo pero redirigen: un enlace viejo a
 `/alumno/materias` lleva a `/alumno/cursos`, no a una pantalla rota.

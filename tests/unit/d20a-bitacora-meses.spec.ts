@@ -34,7 +34,7 @@ test('1. el texto de la ficha: «Último: abrió el mes 3 (2 → 3) · fecha · 
   const fmt = () => '26 sep 2026, 10:42'
   expect(textoUltimoMes(EV, fmt)).toBe('Último: abrió el mes 3 (2 → 3) · 26 sep 2026, 10:42 · María López (Secretario)')
   expect(textoUltimoMes({ ...EV, accion: 'cerrar', mes: 3, antes: 3, despues: 2, actor_rol: 'admin' }, fmt))
-    .toBe('Último: quitó el mes 3 (3 → 2) · 26 sep 2026, 10:42 · María López (Administrador)')
+    .toBe('Último: cerró el mes 3 (3 → 2) · 26 sep 2026, 10:42 · María López (Administrador)')
   // Sin nombre (usuario borrado): queda el rol; sin fecha legible, no se inventa.
   expect(textoUltimoMes({ ...EV, actor_nombre: null }, () => '')).toBe('Último: abrió el mes 3 (2 → 3) · Secretario')
   expect(etiquetaRol('SECRETARIO')).toBe('Secretario')

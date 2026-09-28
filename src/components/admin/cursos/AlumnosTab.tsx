@@ -6,7 +6,10 @@ import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
 import type { AperturaAlAsignar } from '@/lib/cursos/acceso'
 import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
-import { describirMovimiento, quienHizo } from '@/lib/cursos/bitacora'
+import {
+  AVISO_NO_REEMBOLSABLE, comoReabrir, cuandoSePublique, cuandoVeraTodo, efectoCerrarMes, finalFichaSinPrecio, llevaAvisoNoReembolsable, precioAntesDeAsignar, textoAbrirTodoSinPagoUnico, tituloCerrarMes, tituloNoActiva, tituloTopeAlcanzado, type TipoPrecioCurso,
+} from '@/lib/cursos/textos-alumnos'
+import { textoUltimoMovimiento } from '@/lib/cursos/bitacora'
 import { CobrarCursoModal } from '@/components/admin/alumnos/CobrarCursoModal'
 import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
 import { CONFIG } from '@/lib/config'
@@ -24,6 +27,19 @@ interface AlumnosTabProps {
    * en SQL y el toast dice lo que de verdad abrió.
    */
   apertura: AperturaAlAsignar
+  /**
+   * D21b: cómo cobra la ficha HOY (precioCursoNumerico(curso).tipo). Separa lo
+   * que `apertura` junta en 'mes1': mensual y sin precio. Decide el texto de la
+   * 2ª confirmación de «Abrir todo» (OS1) y la ayuda bajo el buscador (OS7).
+   */
+  tipoPrecio: TipoPrecioCurso
+  /**
+   * D21b (OS9): meses que se le pueden abrir como máximo en este curso (espejo de
+   * curso_tope_meses). null = no se pudo calcular: decide el servidor.
+   */
+  tope: number | null
+  /** D21b (OS8): aviso neutro (azul), p. ej. «no se aplicó dos veces». */
+  onAviso?: (mensaje: string) => void
   /** El candado exige curso publicado: en borrador nadie ve nada todavía. */
   publicado: boolean
   onChanged: (mensaje?: string) => void | Promise<void>
@@ -60,7 +76,7 @@ function accesoVigente(i: CursoInscrito, publicado: boolean): boolean {
   return true
 }
 
-export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged, onError, esAdmin }: AlumnosTabProps) {
+export function AlumnosTab({ cursoId, inscritos, apertura, tipoPrecio, tope, onAviso, publicado, onChanged, onError, esAdmin }: AlumnosTabProps) {
   const [alumnos, setAlumnos] = useState<AlumnoAdminRow[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
@@ -68,9 +84,19 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
   const [cobrando, setCobrando] = useState<{ fila: FilaCursoAlumno; nombre: string } | null>(null)
   // La última «Cobrar» pedida: una respuesta vieja (otra fila, más lenta) no abre el modal.
   const ultimoCobro = useRef(0)
+  // D21b (OS8): guarda SÍNCRONA de «+ Abrir mes» / «−», POR FILA. `ocupadoId` es
+  // estado de React y no alcanza a frenar el segundo clic de un doble clic; una
+  // guarda única para toda la lista descartaría en silencio el clic en otra fila.
+  const moviendoMes = useRef<Set<string>>(new Set())
+  // Su espejo en estado: la fila sigue «ocupada» aunque otra fila tome `ocupadoId`.
+  const [moviendo, setMoviendo] = useState<ReadonlySet<string>>(new Set())
+  const ocupada = (id: string) => ocupadoId === id || moviendo.has(id)
+  // Reactivar es del admin: al secretario no se le pide «reactívala».
+  const canceladaTitulo = esAdmin ? CANCELADA_TITULO : tituloNoActiva('cancelada', false)
   const [confirmTodos, setConfirmTodos] = useState<0 | 1 | 2>(0) // doble confirmación
-  // «Abrir todo» abre el curso completo y, con #208, deja de ser reembolsable:
-  // doble confirmación con el aviso del pago único (D7b), para admin y secretario.
+  // «Abrir todo» abre el curso completo: doble confirmación para admin y
+  // secretario (D7b). Con ficha de pago único lleva el aviso «no reembolsable»
+  // (#208); con otra ficha, el texto neutro (D21b · OS1).
   const [confirmAbrirTodo, setConfirmAbrirTodo] = useState<{ i: CursoInscrito; paso: 1 | 2 } | null>(null)
   // «Activar según la ficha» (D8) cuando la ficha es de pago único (abre TODO):
   // la misma doble confirmación con el aviso. Con mes 1 no se confirma (decisión 12).
@@ -104,13 +130,14 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
   const inscritosIds = useMemo(() => new Set(inscritos.map(i => i.alumno_id)), [inscritos])
 
   /**
-   * Abre o cierra un mes de la inscripcion.
+   * Abre o cierra un mes de la inscripción.
    *
    * `meses_esperados` viaja con el valor que esta pantalla tiene a la vista: es
-   * el candado contra el doble clic. Si otro admin (u otra pestaña) ya lo movio,
-   * el servidor responde 409 y se pide recargar, en vez de incrementar dos veces.
-   * El boton tambien se deshabilita, pero eso es cortesia: el candado esta en el
-   * servidor.
+   * el candado contra el doble clic. Si alguien más del personal (u otra pestaña)
+   * ya lo movió, el servidor responde 409 y no se mueve dos veces.
+   * D21b (OS8): el segundo clic de un doble clic ni pregunta ni envía (guarda
+   * síncrona); si aun así llega un 409, se recarga la lista y se avisa en neutro:
+   * lo más probable es que el cambio ya esté hecho.
    */
   const moverMes = async (
     inscripcionId: string,
@@ -118,17 +145,22 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
     mesesActuales: number,
     nombre: string
   ) => {
+    if (moviendoMes.current.has(inscripcionId)) return
     if (accion === 'cerrar-mes') {
+      const fila = inscritos.find(x => x.inscripcion_id === inscripcionId)
       const ok = window.confirm(
-        `Cerrar un mes de ${nombre}.
+        `Cerrar el mes ${mesesActuales} de ${nombre}.
 
-Esto REVOCA acceso que el alumno ya tenia: ` +
-        `los modulos de ese mes dejaran de verse.
+${efectoCerrarMes(fila ? accesoVigente(fila, publicado) : true)} ` +
+        `${comoReabrir(fila?.estado ?? 'activa', mesesActuales - 1, tope)}
 
 ¿Continuar?`
       )
       if (!ok) return
     }
+    // Sin await entre el confirm y aquí: el 2º clic de un doble clic ya encuentra la guarda.
+    moviendoMes.current.add(inscripcionId)
+    setMoviendo(new Set(moviendoMes.current))
     setOcupadoId(inscripcionId)
     try {
       const res = await fetch(`/api/admin/inscripciones/${inscripcionId}/${accion}`, {
@@ -137,12 +169,21 @@ Esto REVOCA acceso que el alumno ya tenia: ` +
         body: JSON.stringify({ meses_esperados: mesesActuales }),
       })
       const json = await res.json().catch(() => ({}))
+      if (res.status === 409) {
+        await onChanged()
+        const aviso = `${nombre}: no se aplicó dos veces. Ya tenía ese cambio o alguien más lo movió; la lista ya muestra lo actual.`
+        if (onAviso) onAviso(aviso)
+        else onError(aviso)
+        return
+      }
       if (!res.ok) throw new Error(json.error ?? 'No se pudo actualizar')
       onChanged()
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo actualizar')
     } finally {
-      setOcupadoId(null)
+      moviendoMes.current.delete(inscripcionId)
+      setMoviendo(new Set(moviendoMes.current))
+      setOcupadoId(prev => (prev === inscripcionId ? null : prev))
     }
   }
 
@@ -213,7 +254,7 @@ Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró 
       // El mismo aviso de «Asignar»: la ficha sin precio abre el mes 1, aunque el
       // registro le haya anunciado un pago único con el precio de config.ts.
       if (json.sin_precio && !json.acceso_total) {
-        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila y ponle precio al curso.`, AVISO_MS)
+        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila ${finalFichaSinPrecio(esAdmin)}`, AVISO_MS)
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo activar')
@@ -284,9 +325,14 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
   const nuevosActivos = simulacion?.nuevos ?? 0
   const esPagoUnico = simulacion?.regla === 'total'
 
+  // La 2ª confirmación de pago único: «Acceso completo inmediato» y «desde ya»
+  // solo si hoy lo vería; si no, cuándo, y el aviso sin «inmediato».
+  const cuandoActivar = confirmActivar ? cuandoVeraTodo(publicado, accesoVigente(confirmActivar.i, publicado), esAdmin) : 'desde ya'
+  const cuandoAbrirTodo = confirmAbrirTodo ? cuandoVeraTodo(publicado, accesoVigente(confirmAbrirTodo.i, publicado), esAdmin) : 'desde ya'
+
   /** Lo que se abrió no se ve hoy si el curso está en borrador o la inscripción no está vigente. */
   function sinEfectoHoy(i?: CursoInscrito): string {
-    if (!publicado) return ' (lo verá cuando publiques el curso)'
+    if (!publicado) return ` (lo verá ${cuandoSePublique(esAdmin)})`
     if (i && !accesoVigente(i, publicado)) return ' (sin efecto hasta que su inscripción esté activa y vigente)'
     return ''
   }
@@ -338,7 +384,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       // único con el precio de config.ts. Es un aviso, no un éxito: en rojo y
       // con tiempo para leerlo.
       if (json.sin_precio && !json.acceso_total) {
-        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila y ponle precio al curso.`, AVISO_MS)
+        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila ${finalFichaSinPrecio(esAdmin)}`, AVISO_MS)
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Error al asignar')
@@ -506,8 +552,10 @@ Se borra su inscripción y deja de ver el curso.
         <p className="text-xs px-1" style={{ color: 'var(--color-texto-secundario)' }}>
           {apertura === 'total'
             ? <>Este curso es de <strong>pago único</strong>: «Asignar» le abre <strong>todo el curso</strong> (acceso total).</>
-            : <>«Asignar» le abre el <strong>mes 1</strong>. Si cobraste un pago único, usa «Abrir todo» en su fila.</>}
-          {!publicado && <> El curso está en <strong>borrador</strong>: nadie lo ve hasta que lo publiques.</>}
+            : tipoPrecio === 'mensual'
+              ? <>«Asignar» le abre el <strong>mes 1</strong>. Los meses siguientes se abren con «+ Abrir mes» o al registrar su mensualidad con «Cobrar». Si te pagó el curso completo de una vez, usa «Abrir todo» en su fila.</>
+              : <>Este curso no tiene precio en su ficha: «Asignar» le abre el <strong>mes 1</strong>. Si cobraste un pago único, usa «Abrir todo» en su fila {finalFichaSinPrecio(esAdmin)}</>}
+          {!publicado && <> El curso está en <strong>borrador</strong>: nadie lo ve hasta {esAdmin ? 'que lo publiques' : 'que el administrador lo publique'}.</>}
         </p>
 
         <div className="relative">
@@ -591,9 +639,9 @@ Se borra su inscripción y deja de ver el curso.
                   </p>
                   {/* Bitácora (D7b): el último movimiento y QUIÉN lo hizo, con su rol. */}
                   {i.ultimo_movimiento && (
-                    <p className="text-[11px] truncate" style={{ color: '#64748B' }}
-                      title={new Date(i.ultimo_movimiento.created_at).toLocaleString('es-MX')}>
-                      Último: {describirMovimiento(i.ultimo_movimiento)} · {quienHizo(i.ultimo_movimiento)}
+                    <p className="text-[11px] line-clamp-2 break-words" style={{ color: '#64748B' }}
+                      title={textoUltimoMovimiento(i.ultimo_movimiento)}>
+                      {textoUltimoMovimiento(i.ultimo_movimiento)}
                     </p>
                   )}
                 </div>
@@ -619,7 +667,7 @@ Se borra su inscripción y deja de ver el curso.
                   accesoVigente(i, publicado) ? (
                     <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
                       style={{ background: 'rgba(16,185,129,0.12)', color: '#047857' }}
-                      title="Pago único: ve el curso completo, también los módulos que se agreguen">
+                      title="Acceso total: ve el curso completo, también los módulos que se agreguen">
                       Acceso total
                     </span>
                   ) : (
@@ -627,7 +675,7 @@ Se borra su inscripción y deja de ver el curso.
                       style={{ background: 'rgba(148,163,184,0.15)', color: '#475569' }}
                       title={publicado
                         ? 'Tiene acceso total, pero su inscripción no está vigente: hoy no ve nada'
-                        : 'Tiene acceso total, pero el curso está en borrador: lo verá cuando lo publiques'}>
+                        : `Tiene acceso total, pero el curso está en borrador: lo verá ${cuandoSePublique(esAdmin)}`}>
                       Acceso total (sin efecto)
                     </span>
                   )
@@ -654,8 +702,8 @@ Se borra su inscripción y deja de ver el curso.
                   {/* D18: el atajo «Cobrar» (admin y secretario). */}
                   <button
                     onClick={() => cobrarDe(i)}
-                    disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                    title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Registrar un cobro de este curso (y, si corresponde, abrir)'}
+                    disabled={ocupada(i.inscripcion_id) || i.estado === 'cancelada'}
+                    title={i.estado === 'cancelada' ? canceladaTitulo : 'Registrar un cobro de este curso (y, si corresponde, abrir)'}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
                     style={{ border: '1px solid rgba(16,185,129,0.35)', color: '#047857', background: 'var(--color-superficie)' }}
                   >
@@ -664,8 +712,8 @@ Se borra su inscripción y deja de ver el curso.
                   {i.acceso_total ? (
                     <button
                       onClick={() => cambiarAccesoTotal(i, 'quitar-acceso-total')}
-                      disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                      title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Quitar el acceso total (revoca acceso)'}
+                      disabled={ocupada(i.inscripcion_id) || i.estado === 'cancelada'}
+                      title={i.estado === 'cancelada' ? canceladaTitulo : 'Quitar el acceso total (revoca acceso)'}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                       style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                     >
@@ -678,8 +726,8 @@ Se borra su inscripción y deja de ver el curso.
                       {i.por_activar && (
                         <button
                           onClick={() => pedirActivar(i)}
-                          disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                          title={i.estado === 'cancelada' ? CANCELADA_TITULO : apertura === 'total'
+                          disabled={ocupada(i.inscripcion_id) || i.estado === 'cancelada'}
+                          title={i.estado === 'cancelada' ? canceladaTitulo : apertura === 'total'
                             ? 'Según su ficha (pago único): abre TODO el curso'
                             : 'Según su ficha: abre el mes 1'}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
@@ -690,8 +738,9 @@ Se borra su inscripción y deja de ver el curso.
                       )}
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'cerrar-mes', i.meses_desbloqueados, i.nombre)}
-                        disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0 || i.estado === 'cancelada'}
-                        title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Cerrar un mes (revoca acceso)'}
+                        disabled={ocupada(i.inscripcion_id) || i.meses_desbloqueados <= 0 || i.estado === 'cancelada'}
+                        title={i.estado === 'cancelada' ? canceladaTitulo : tituloCerrarMes(i.meses_desbloqueados)}
+                        aria-label="Cerrar mes"
                         className="px-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                       >
@@ -699,8 +748,11 @@ Se borra su inscripción y deja de ver el curso.
                       </button>
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'abrir-mes', i.meses_desbloqueados, i.nombre)}
-                        disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
-                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala para abrir meses` : 'Abrir el siguiente mes'}
+                        disabled={ocupada(i.inscripcion_id) || i.estado !== 'activa' || (tope !== null && i.meses_desbloqueados >= tope)}
+                        title={i.estado !== 'activa' ? tituloNoActiva(i.estado, esAdmin, true)
+                          : tope !== null && tope <= 0 ? 'El curso todavía no tiene meses que abrir (sin módulos o sin ritmo en su ficha)'
+                          : tope !== null && i.meses_desbloqueados >= tope ? tituloTopeAlcanzado(tope, i.meses_desbloqueados)
+                          : 'Abrir el siguiente mes'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={i.por_activar
                           ? { border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }
@@ -710,8 +762,9 @@ Se borra su inscripción y deja de ver el curso.
                       </button>
                       <button
                         onClick={() => setConfirmAbrirTodo({ i, paso: 1 })}
-                        disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
-                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala primero` : 'Acceso total: todo el curso (pago único)'}
+                        disabled={ocupada(i.inscripcion_id) || i.estado !== 'activa'}
+                        title={i.estado !== 'activa' ? tituloNoActiva(i.estado, esAdmin)
+                          : tipoPrecio === 'unico' ? 'Acceso total: todo el curso (pago único)' : 'Acceso total: todo el curso, sin depender de los meses'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                       >
@@ -722,8 +775,8 @@ Se borra su inscripción y deja de ver el curso.
                   {/* D20b: admin y secretario. El folio es permanente; una cancelada no recibe folio. */}
                   <button
                       onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}
-                      disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                      title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Emitir la constancia (requiere examen aprobado; el folio es permanente)'}
+                      disabled={ocupada(i.inscripcion_id) || i.estado === 'cancelada'}
+                      title={i.estado === 'cancelada' ? canceladaTitulo : 'Emitir la constancia (requiere examen aprobado; el folio es permanente)'}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                       style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                     >
@@ -735,7 +788,7 @@ Se borra su inscripción y deja de ver el curso.
                 {esAdmin && i.estado === 'cancelada' && (
                   <button
                     onClick={() => reactivar(i)}
-                    disabled={ocupadoId === i.inscripcion_id}
+                    disabled={ocupada(i.inscripcion_id)}
                     title="Deshacer la cancelación: vuelve a ver el curso con los meses que ya tenía"
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
                     style={{ border: '1px solid rgba(16,185,129,0.35)', color: '#047857', background: 'var(--color-superficie)' }}
@@ -748,7 +801,7 @@ Se borra su inscripción y deja de ver el curso.
                 {esAdmin && i.estado !== 'cancelada' && (
                   <button
                     onClick={() => cancelar(i)}
-                    disabled={ocupadoId === i.inscripcion_id}
+                    disabled={ocupada(i.inscripcion_id)}
                     title="Dar de baja conservando pagos, bitácora y meses pagados"
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
                     style={{ border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', background: 'var(--color-superficie)' }}
@@ -761,7 +814,7 @@ Se borra su inscripción y deja de ver el curso.
                 {esAdmin && (
                   <button
                     onClick={() => quitar(i)}
-                    disabled={ocupadoId === i.inscripcion_id}
+                    disabled={ocupada(i.inscripcion_id)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 disabled:opacity-50"
                     style={{ border: '1px solid rgba(220,38,38,0.3)', color: '#EF4444', background: 'var(--color-superficie)' }}
                   >
@@ -787,8 +840,8 @@ Se borra su inscripción y deja de ver el curso.
             {esPagoUnico
               ? <>Como el curso es de <strong>pago único</strong>, cada uno tendrá <strong>ACCESO TOTAL</strong> al curso completo.</>
               : <>A cada uno se le abre el <strong>mes 1</strong>.</>}
-            {simulacion?.sinPrecio && !esPagoUnico && <> El curso <strong>no tiene precio</strong> en su ficha: si cobraste un pago único, ponle precio antes de asignar.</>}
-            {!publicado && <> El curso está en <strong>borrador</strong>: lo verán cuando lo publiques.</>}
+            {simulacion?.sinPrecio && !esPagoUnico && <> El curso <strong>no tiene precio</strong> en su ficha: si cobraste un pago único, {precioAntesDeAsignar(esAdmin)}</>}
+            {!publicado && <> El curso está en <strong>borrador</strong>: lo verán {cuandoSePublique(esAdmin)}.</>}
             {' '}¿Continuar?
           </>
         }
@@ -804,8 +857,8 @@ Se borra su inscripción y deja de ver el curso.
           <>
             Esta es una asignación masiva a <strong>{nuevosActivos}</strong> alumno(s) activo(s).{' '}
             {esPagoUnico
-              ? <><strong>Los {nuevosActivos} verán TODO el curso (acceso total){publicado ? '' : ' cuando lo publiques'}.</strong> </>
-              : <>Los {nuevosActivos} verán el mes 1{publicado ? '' : ' cuando publiques el curso'}. </>}
+              ? <><strong>Los {nuevosActivos} verán TODO el curso (acceso total){publicado ? '' : ` ${cuandoSePublique(esAdmin)}`}.</strong> </>
+              : <>Los {nuevosActivos} verán el mes 1{publicado ? '' : ` ${cuandoSePublique(esAdmin)}`}. </>}
             Confirma una vez más para ejecutarla.
           </>
         }
@@ -836,7 +889,7 @@ Se borra su inscripción y deja de ver el curso.
             La ficha de este curso es de <strong>pago único</strong>: a{' '}
             <strong>{confirmActivar?.i.nombre}</strong> se le abrirá <strong>TODO el curso</strong> (acceso
             total).{' '}
-            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá cuando lo publiques. </>}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoSePublique(esAdmin)}. </>}
             ¿Continuar?
           </>
         }
@@ -850,8 +903,9 @@ Se borra su inscripción y deja de ver el curso.
         title="¿Seguro? Segunda confirmación"
         message={
           <>
-            <strong>{AVISO_PAGO_UNICO}.</strong> Una vez activado, el pago único de{' '}
-            <strong>{confirmActivar?.i.nombre}</strong> ya no se reembolsa. Confirma una vez más para activarlo.
+            {cuandoActivar === 'desde ya' ? <strong>{AVISO_PAGO_UNICO}.</strong> : <strong>{AVISO_NO_REEMBOLSABLE}.</strong>}{' '}
+            <strong>{confirmActivar?.i.nombre}</strong> verá todo el curso {cuandoActivar}. Confirma una vez más
+            para activarlo.
           </>
         }
         confirmLabel="Activar todo el curso"
@@ -860,7 +914,8 @@ Se borra su inscripción y deja de ver el curso.
         onCancel={() => setConfirmActivar(null)}
       />
 
-      {/* «Abrir todo»: doble confirmación con el aviso del pago único (D7b). */}
+      {/* «Abrir todo»: doble confirmación (D7b). El aviso «no reembolsable» solo con
+          ficha de pago único con precio (D21b · OS1); si no, el texto neutro. */}
       <ConfirmDialog
         open={confirmAbrirTodo?.paso === 1}
         title="Abrir todo el curso"
@@ -868,7 +923,7 @@ Se borra su inscripción y deja de ver el curso.
           <>
             Se le abrirá <strong>TODO el curso</strong> a <strong>{confirmAbrirTodo?.i.nombre}</strong> (acceso
             total): todos los módulos, también los que se agreguen después.{' '}
-            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá cuando lo publiques. </>}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoSePublique(esAdmin)}. </>}
             ¿Continuar?
           </>
         }
@@ -882,8 +937,11 @@ Se borra su inscripción y deja de ver el curso.
         title="¿Seguro? Segunda confirmación"
         message={
           <>
-            <strong>{AVISO_PAGO_UNICO}.</strong> Una vez abierto, el pago único de{' '}
-            <strong>{confirmAbrirTodo?.i.nombre}</strong> ya no se reembolsa. Confirma una vez más para abrirlo.
+            {llevaAvisoNoReembolsable(tipoPrecio)
+              ? <>{cuandoAbrirTodo === 'desde ya' ? <strong>{AVISO_PAGO_UNICO}.</strong> : <strong>{AVISO_NO_REEMBOLSABLE}.</strong>}{' '}
+                <strong>{confirmAbrirTodo?.i.nombre}</strong> verá todo el curso {cuandoAbrirTodo}.</>
+              : <><strong>{confirmAbrirTodo?.i.nombre}</strong>: {textoAbrirTodoSinPagoUnico(tipoPrecio === 'mensual' ? 'mensual' : 'informes')}</>}
+            {' '}Confirma una vez más para abrirlo.
           </>
         }
         confirmLabel="Abrir todo"

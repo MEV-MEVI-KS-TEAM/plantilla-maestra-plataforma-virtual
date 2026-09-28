@@ -3,6 +3,7 @@
 import { GraduationCap, DollarSign } from 'lucide-react'
 import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
 import { quienHizo } from '@/lib/cursos/bitacora'
+import { fechaCorta } from '@/lib/etiqueta-rol'
 
 /**
  * Tarjeta «Cursos» de la ficha del alumno (Bloque D · D17, #207-6; decisión 4).
@@ -26,6 +27,20 @@ export function accesoDeCurso(f: Pick<FilaCursoAlumno, 'estado' | 'acceso_total'
   return `${n} ${n === 1 ? 'mes abierto' : 'meses abiertos'}`
 }
 
+/**
+ * D21b (OS10): lo que falta cobrar del pago único a quien YA tiene acceso (se le
+ * activó o abrió antes de pagar completo). null si no aplica: sin saldo, sin
+ * acceso todavía, una inscripción cancelada o suspendida, o un curso mensual
+ * (sus mensualidades no tienen «saldo»). No cambia ninguna regla: solo lo marca.
+ */
+export function saldoPendiente(f: Pick<FilaCursoAlumno, 'estado' | 'acceso_total' | 'meses_desbloqueados' | 'resumen'>): number | null {
+  const saldo = f.resumen.saldo
+  if (saldo === null || !(saldo > 0)) return null
+  if (f.estado && f.estado !== 'activa' && f.estado !== 'completada') return null
+  if (!f.acceso_total && !(f.meses_desbloqueados > 0)) return null
+  return saldo
+}
+
 export function precioDeReferencia(f: Pick<FilaCursoAlumno, 'precio_referencia' | 'resumen'>, fmt: (n: number) => string): string {
   const { inscripcion, mensualidad, origen } = f.precio_referencia
   const de = origen === 'inscripcion' ? 'precio al asignar' : 'ficha de hoy'
@@ -35,8 +50,8 @@ export function precioDeReferencia(f: Pick<FilaCursoAlumno, 'precio_referencia' 
 }
 
 /**
- * D20b (remate a): «Constancia DIP-00012 · 26/09/2026 · emitida por Ana López
- * (secretaría)». null si no hay constancia. Sin autor (emitida antes de D20b
+ * D20b (remate a): «Constancia DIP-00012 · 26 sep 2026 · emitida por Ana López
+ * (Secretario)». null si no hay constancia. Sin autor (emitida antes de D20b
  * sin evento), solo folio y fecha.
  */
 export function textoConstancia(f: Pick<FilaCursoAlumno, 'constancia'>): string | null {
@@ -44,8 +59,9 @@ export function textoConstancia(f: Pick<FilaCursoAlumno, 'constancia'>): string 
   if (!c) return null
   const partes = [`Constancia ${c.folio}`]
   if (c.emitido_en) {
-    const d = new Date(c.emitido_en)
-    if (!Number.isNaN(d.getTime())) partes.push(d.toLocaleDateString('es-MX'))
+    // D21b (OS4): la misma forma de fecha del resto de la bitácora («26 sep 2026»).
+    const f = fechaCorta(c.emitido_en)
+    if (f) partes.push(f)
   }
   if (c.emitida_por_nombre || c.emitida_por_rol) {
     partes.push(`emitida por ${quienHizo({ actor_nombre: c.emitida_por_nombre, actor_rol: c.emitida_por_rol })}`)
@@ -86,6 +102,13 @@ export function CursosDelAlumno({
               </p>
               {textoConstancia(f) && (
                 <p className="text-xs" style={{ color: '#A78BFA' }}>{textoConstancia(f)}</p>
+              )}
+              {saldoPendiente(f) !== null && (
+                <span className="inline-block text-xs px-2 py-0.5 rounded-full font-semibold mr-2"
+                  title={`Ya tiene acceso y le faltan ${fmt(saldoPendiente(f) ?? 0)} del pago único. Regístralo con «Cobrar» cuando pague.`}
+                  style={{ background: 'rgba(239,68,68,0.12)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+                  Saldo pendiente
+                </span>
               )}
               {f.resumen.pagadoFaltaAbrir && (
                 <span className="inline-block text-xs px-2 py-0.5 rounded-full font-semibold"

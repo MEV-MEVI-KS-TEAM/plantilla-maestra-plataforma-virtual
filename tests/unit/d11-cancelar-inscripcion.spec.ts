@@ -78,7 +78,9 @@ test('3. AlumnosTab: «Cancelar inscripción» y «Reactivar» (solo admin) por 
 
 test('4. una sola llave de «ocupado» por fila: «Cancelar», «Reactivar» y «Quitar» no se cruzan', () => {
   const tab = sinComentarios(leer('src/components/admin/cursos/AlumnosTab.tsx'))
-  expect(tab).toMatch(/onClick=\{\(\) => quitar\(i\)\}\s*disabled=\{ocupadoId === i\.inscripcion_id\}/)
+  // D21b: `ocupada(id)` = ocupadoId === id, o la fila con un mes en vuelo.
+  expect(tab).toMatch(/onClick=\{\(\) => quitar\(i\)\}\s*disabled=\{ocupada\(i\.inscripcion_id\)\}/)
+  expect(tab).toContain('const ocupada = (id: string) => ocupadoId === id || moviendo.has(id)')
   expect(tab).not.toContain('disabled={ocupadoId === i.alumno_id}')
   const quitar = tab.slice(tab.indexOf('async function quitar('))
   expect(quitar.slice(0, 600)).toContain('setOcupadoId(i.inscripcion_id)')

@@ -4,11 +4,11 @@ import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 
 // ─── POST /api/admin/inscripciones/[id]/abrir-todo ───────────────────────────
 // Da ACCESO TOTAL a una inscripción (C3b): el alumno ve el curso completo,
-// incluidos los módulos que se agreguen después. Es la corrección del admin para
+// incluidos los módulos que se agreguen después. Es la corrección del personal para
 // un pago único cobrado a alguien que entró por meses (o que se registró solo).
 //
 // ⚠️ CON LA SESIÓN DEL USUARIO, como abrir-mes: curso_abrir_todo() comprueba
-// es_admin() adentro y es_admin() usa auth.uid(). Idempotente: si ya lo tenía,
+// es_staff() adentro (D7b) y es_staff() usa auth.uid(). Idempotente: si ya lo tenía,
 // responde igual y no deja evento.
 export async function POST(
   _request: Request,

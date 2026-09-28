@@ -40,11 +40,17 @@ export default function AdminCursosPage() {
   const { toasts, showToast, removeToast } = useToast()
   const [cursos, setCursos] = useState<CursoListItem[] | null>(null)
   // D7b: el secretario entra a asignar y abrir; crear y eliminar cursos es del admin.
-  const [esAdmin, setEsAdmin] = useState(true)
+  // D21b: null mientras no llega el rol (y si la carga falla): lo que es solo del
+  // admin NO se pinta «por si acaso»; antes el secretario veía un instante «Nuevo curso».
+  const [esAdmin, setEsAdmin] = useState<boolean | null>(null)
+  // Si la carga falla no se sabe el rol ni si hay cursos: se dice eso y se ofrece
+  // reintentar, en vez de «Aún no hay cursos» con el texto de uno de los dos roles.
+  const [falloCarga, setFalloCarga] = useState(false)
   const [aEliminar, setAEliminar] = useState<CursoListItem | null>(null)
   const [borrando, setBorrando] = useState(false)
 
   const cargar = useCallback(async () => {
+    setFalloCarga(false)
     try {
       const res = await fetch('/api/admin/cursos')
       if (!res.ok) throw new Error()
@@ -52,6 +58,7 @@ export default function AdminCursosPage() {
       setCursos(await res.json())
     } catch {
       setCursos([])
+      setFalloCarga(true)
       showToast('No se pudieron cargar los cursos', 'error')
     }
   }, [showToast])
@@ -88,7 +95,9 @@ export default function AdminCursosPage() {
             Cursos y Diplomados
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario, #525252)' }}>
-            Crea cursos con módulos y lecciones, y asígnalos a tus alumnos.
+            {esAdmin === null ? ' '
+              : esAdmin ? 'Crea cursos con módulos y lecciones, y asígnalos a tus alumnos.'
+              : 'Asigna cursos a tus alumnos, abre sus meses y registra sus cobros.'}
           </p>
         </div>
         {esAdmin && (
@@ -110,15 +119,31 @@ export default function AdminCursosPage() {
         </div>
       )}
 
+      {falloCarga && (
+        <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
+          <p className="text-sm mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
+            No se pudieron cargar los cursos.
+          </p>
+          <button
+            onClick={() => { setCursos(null); void cargar() }}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
       {/* Vacío */}
-      {cursos !== null && cursos.length === 0 && (
+      {cursos !== null && cursos.length === 0 && !falloCarga && (
         <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
           <GraduationCap className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--color-primario)', opacity: 0.4 }} />
           <p className="text-base font-semibold mb-1" style={{ color: 'var(--color-primario)' }}>
             Aún no hay cursos
           </p>
           <p className="text-sm mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
-            Crea tu primer curso o diplomado para empezar.
+            {esAdmin ? 'Crea tu primer curso o diplomado para empezar.'
+              : 'Cuando el administrador cree un curso, aparecerá aquí para que asignes alumnos.'}
           </p>
           {esAdmin && (
             <Link
@@ -172,9 +197,9 @@ export default function AdminCursosPage() {
                 </div>
 
                 <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
-                  <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" />{curso.numModulos} módulos</span>
-                  <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{curso.numLecciones} lecciones</span>
-                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{curso.numAlumnos} alumnos</span>
+                  <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" />{curso.numModulos} {curso.numModulos === 1 ? 'módulo' : 'módulos'}</span>
+                  <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{curso.numLecciones} {curso.numLecciones === 1 ? 'lección' : 'lecciones'}</span>
+                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{curso.numAlumnos} {curso.numAlumnos === 1 ? 'alumno' : 'alumnos'}</span>
                 </div>
 
                 <div className="flex gap-2 mt-auto pt-2">

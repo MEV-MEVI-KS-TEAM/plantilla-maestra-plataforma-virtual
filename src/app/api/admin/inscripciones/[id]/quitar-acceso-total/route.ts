@@ -9,7 +9,7 @@ import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 //
 // body { motivo?: string } — queda en la bitácora junto con el actor.
 //
-// ⚠️ CON LA SESIÓN DEL USUARIO: curso_quitar_acceso_total() comprueba es_admin().
+// ⚠️ CON LA SESIÓN DEL USUARIO: curso_quitar_acceso_total() comprueba es_staff() (D7b).
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }

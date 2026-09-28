@@ -163,7 +163,7 @@ test('7. el autor del folio en la bitácora y en la ficha', () => {
 
   expect(textoConstancia({ constancia: null })).toBeNull()
   const t = textoConstancia({ constancia: { folio: 'DIP-00012', emitido_en: null, emitida_por_nombre: 'Ana López', emitida_por_rol: 'secretario' } })
-  expect(t).toBe('Constancia DIP-00012 · emitida por Ana López (secretaría)')
+  expect(t).toBe('Constancia DIP-00012 · emitida por Ana López (Secretario)')
   // Emitida antes de D20b sin evento: sin autor, sin inventarlo.
   expect(textoConstancia({ constancia: { folio: 'DIP-00001', emitido_en: null, emitida_por_nombre: null, emitida_por_rol: null } })).toBe('Constancia DIP-00001')
 

@@ -8,6 +8,7 @@ import { CursoDatosForm } from '@/components/admin/cursos/CursoDatosForm'
 import { ModulosEditor } from '@/components/admin/cursos/ModulosEditor'
 import { AlumnosTab } from '@/components/admin/cursos/AlumnosTab'
 import { aperturaAlAsignar } from '@/lib/cursos/acceso'
+import { precioCursoNumerico } from '@/lib/cursos/precio-regla'
 import { ExamenTab } from '@/components/admin/cursos/ExamenTab'
 import { PublicacionTab } from '@/components/admin/cursos/PublicacionTab'
 import { ToastContainer, useToast } from '@/components/ui/toast'
@@ -71,6 +72,11 @@ export default function EditorCursoPage() {
 
   const onError = useCallback((mensaje: string, duracion?: number) => {
     showToast(mensaje, 'error', duracion)
+  }, [showToast])
+
+  // D21b (OS8): un aviso que no es error ni éxito (p. ej. el 409 de un doble clic).
+  const onAviso = useCallback((mensaje: string) => {
+    showToast(mensaje, 'info', 8000)
   }, [showToast])
 
   // El examen no forma parte de CursoDetalle: avisa sin refetchear el curso.
@@ -204,7 +210,8 @@ export default function EditorCursoPage() {
 
       {tabActiva === 'alumnos' && (
         <AlumnosTab cursoId={curso.id} inscritos={inscritos} apertura={aperturaAlAsignar(curso)}
-          publicado={publicado} onChanged={onChanged} onError={onError} esAdmin={esAdmin} />
+          tipoPrecio={precioCursoNumerico(curso).tipo} tope={detalle.tope_meses ?? null}
+          publicado={publicado} onChanged={onChanged} onError={onError} onAviso={onAviso} esAdmin={esAdmin} />
       )}
 
       {tabActiva === 'publicacion' && (

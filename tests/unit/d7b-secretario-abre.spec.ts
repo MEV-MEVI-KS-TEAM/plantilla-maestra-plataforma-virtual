@@ -182,8 +182,13 @@ test('8. interfaz: el secretario ve los botones de abrir; los de solo admin no',
   expect(tab).toContain("import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'")
   expect(tab).toMatch(/open=\{confirmAbrirTodo\?\.paso === 1\}/)
   expect(tab).toMatch(/open=\{confirmAbrirTodo\?\.paso === 2\}[\s\S]{0,200}?danger[\s\S]{0,300}?\{AVISO_PAGO_UNICO\}/)
-  // La bitácora dice quién (nombre y rol).
-  expect(tab).toContain('{describirMovimiento(i.ultimo_movimiento)} · {quienHizo(i.ultimo_movimiento)}')
+  // D21b (OS1): el aviso «no reembolsable» SOLO en la rama de pago único; la otra no lo menciona.
+  const segunda = tab.slice(tab.indexOf('open={confirmAbrirTodo?.paso === 2}'), tab.indexOf('confirmLabel="Abrir todo"'))
+  expect(segunda).toMatch(/\{llevaAvisoNoReembolsable\(tipoPrecio\)\s*\?\s*<>\{cuandoAbrirTodo === 'desde ya' \? <strong>\{AVISO_PAGO_UNICO\}\.<\/strong> : <strong>\{AVISO_NO_REEMBOLSABLE\}\.<\/strong>\}/)
+  expect(segunda.slice(segunda.indexOf(': <>'))).not.toMatch(/reembols|AVISO_PAGO_UNICO/)
+  // La bitácora dice quién (nombre y rol) — D21b (OS5): la línea completa, también en el title.
+  expect(tab).toContain('title={textoUltimoMovimiento(i.ultimo_movimiento)}>')
+  expect(tab).toContain('{textoUltimoMovimiento(i.ultimo_movimiento)}')
 
   const curso = sinComentarios(leer('src/app/(dashboard)/admin/cursos/[id]/page.tsx'))
   expect(curso).toContain("const esAdmin = detalle.viewer_rol !== 'SECRETARIO'")
@@ -206,11 +211,12 @@ test('8. interfaz: el secretario ve los botones de abrir; los de solo admin no',
 })
 
 test('9. la bitácora dice quién, con su rol', () => {
-  expect(etiquetaRolActor('admin')).toBe('administración')
-  expect(etiquetaRolActor('SECRETARIO')).toBe('secretaría')
+  // D21b (OS4): una sola etiqueta por rol en todo el panel (la de la barra lateral).
+  expect(etiquetaRolActor('admin')).toBe('Administrador')
+  expect(etiquetaRolActor('SECRETARIO')).toBe('Secretario')
   expect(etiquetaRolActor(null)).toBe('')
-  expect(quienHizo({ actor_nombre: 'Ana López', actor_rol: 'secretario' })).toBe('Ana López (secretaría)')
-  expect(quienHizo({ actor_nombre: 'Luis', actor_rol: 'admin' })).toBe('Luis (administración)')
+  expect(quienHizo({ actor_nombre: 'Ana López', actor_rol: 'secretario' })).toBe('Ana López (Secretario)')
+  expect(quienHizo({ actor_nombre: 'Luis', actor_rol: 'admin' })).toBe('Luis (Administrador)')
   expect(quienHizo({ actor_nombre: null, actor_rol: null })).toBe('el sistema')
   expect(describirMovimiento({ tipo: 'abrir_mes', meses_antes: 1, meses_despues: 2 })).toBe('abrió el mes 2')
   expect(describirMovimiento({ tipo: 'cerrar_mes', meses_antes: 3, meses_despues: 2 })).toBe('cerró el mes 3')
