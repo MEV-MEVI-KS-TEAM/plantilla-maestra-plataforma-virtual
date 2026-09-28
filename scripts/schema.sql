@@ -114,8 +114,9 @@ $$;
 
 --
 -- Name: es_staff(); Type: FUNCTION; Schema: public; Owner: -
--- Staff = admin O secretario. Solo para lectura básica de alumnos/usuarios
--- y registro de pagos; es_admin() se mantiene intacto para todo lo demás.
+-- Staff = admin O secretario. Lo usan las funciones del personal (cursos,
+-- constancias, cobranza por la API). Desde D22c ya no abre por PostgREST la
+-- lectura de usuarios ni de pagos ajenos. es_admin() para todo lo demás.
 --
 
 -- Cuerpo post-S2: mismo LOWER que es_admin().
@@ -1594,7 +1595,7 @@ END $$;
 -- RLS base: admin gestiona todo vía es_admin(); alumno solo SELECT de
 -- sus propios pagos (alumnos.id = usuarios.id = auth.uid()). El bloque
 -- ROL SECRETARIO (más abajo) reemplaza estas policies por la versión
--- separada por operación con es_staff() para SELECT/INSERT.
+-- separada por operación (SELECT propio o admin con techo, D22c).
 -- =============================================================
 
 CREATE TABLE IF NOT EXISTS public.pagos (

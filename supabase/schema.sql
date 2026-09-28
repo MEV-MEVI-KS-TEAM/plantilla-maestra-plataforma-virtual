@@ -519,8 +519,9 @@ AS $$
 $$;
 
 -- Helper: detectar si el usuario autenticado es staff (admin O secretario).
--- Para lectura básica de alumnos/usuarios y registro de pagos.
--- es_admin() se mantiene intacto para todo lo demás.
+-- Lo usan las funciones del personal (cursos, constancias, cobranza por la API).
+-- Desde D22c ya no abre por PostgREST la lectura de usuarios ni de pagos ajenos
+-- (propio o es_admin(), con techo RESTRICTIVE). es_admin() para todo lo demás.
 CREATE OR REPLACE FUNCTION public.es_staff()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -1023,8 +1024,9 @@ GRANT INSERT ON public.keep_alive_log TO anon;
 -- =============================================================
 -- Si el módulo de pagos (feature/panel-admin-pagos) está aplicado
 -- en esta BD, separa la policy ALL de admin en policies por operación:
---   SELECT/INSERT → es_staff()   (secretario consulta y registra)
---   UPDATE/DELETE → es_admin()   (el secretario NO edita ni borra)
+--   SELECT        → propio o es_admin() (D22c, K2) + techo RESTRICTIVE
+--   INSERT        → es_staff()   (inerte para PostgREST desde D22c: sin GRANT)
+--   UPDATE/DELETE → es_admin()   (ídem)
 -- Idempotente y seguro en cualquier orden de merge.
 -- =============================================================
 DO $$

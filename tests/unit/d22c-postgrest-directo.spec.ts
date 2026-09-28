@@ -215,6 +215,10 @@ test('9. CHECK 26 y 27 después del 25; SETUP: fila 22 y la nota del paso 7', ()
   expect(c27).toContain("IN ('id=auth.uidores_admin', 'id=auth.uid')")
   expect(c27).toContain("permissive = 'RESTRICTIVE' AND cmd = 'SELECT'")
   expect(c27).toContain(`supabase/migrations/${MIG} (idempotente)`)
+  // CHECK 11 y 13: un techo RESTRICTIVE no cuenta como política que concede filas.
+  const c11 = check.slice(check.indexOf('─── CHECK 11'), check.indexOf('─── CHECK 12'))
+  expect(c11).toMatch(/AND cmd = 'SELECT'\s+AND permissive = 'PERMISSIVE';/)
+  expect(check).toContain("LEFT JOIN pg_policy p ON p.polrelid = c.oid AND p.polcmd IN ('r', '*') AND p.polpermissive")
   // Los techos: el USING normalizado del CHECK es el de las fuentes.
   expect(plano('(id = auth.uid()) OR es_admin()')).toBe('id=auth.uidores_admin')
   const setup = leer('SETUP.md')

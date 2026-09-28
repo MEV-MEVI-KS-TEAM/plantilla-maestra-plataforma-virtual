@@ -66,7 +66,9 @@ CREATE POLICY "usuarios: techo propio o admin (D22c)"
 -- 4. Policies de pagos (condicional: la tabla pagos llega con el PR del
 --    módulo de pagos y puede no existir aún en esta BD; seguro en
 --    cualquier orden de aplicación).
---    SELECT/INSERT → es_staff() ; UPDATE/DELETE → es_admin().
+--    SELECT → propio o es_admin() + techo RESTRICTIVE (D22c, K2);
+--    INSERT → es_staff() y UPDATE/DELETE → es_admin(), inertes para PostgREST
+--    desde D22c (la tabla no da INSERT/UPDATE/DELETE a authenticated).
 DO $$
 BEGIN
   IF to_regclass('public.pagos') IS NOT NULL THEN

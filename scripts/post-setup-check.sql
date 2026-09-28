@@ -134,6 +134,8 @@ FROM semanas;
 -- Sin esta policy el frontend recibe null silenciosamente al
 -- consultar rol → fallback ALUMNO → admin entra como alumno.
 -- Bug detectado en cliente Santa Barbara (28-abr-2026).
+-- Solo cuentan las PERMISIVAS: un techo RESTRICTIVE (D22c) no concede filas por
+-- sí solo; con solo el techo, el admin volvería a leer su rol como NULL.
 SELECT
   'RLS SELECT policy en usuarios' AS check_name,
   COUNT(*)::text AS valor,
@@ -144,7 +146,8 @@ SELECT
 FROM pg_policies
 WHERE schemaname = 'public'
   AND tablename = 'usuarios'
-  AND cmd = 'SELECT';
+  AND cmd = 'SELECT'
+  AND permissive = 'PERMISSIVE';
 
 -- ─── CHECK 12: Función is_admin() existe (evita recursión RLS) ──
 -- La política "admin lee todos" en usuarios necesita is_admin() con
@@ -187,7 +190,8 @@ WHERE n.nspname = 'public' AND p.proname = 'is_admin';
 WITH tablas_sin_policy AS (
   SELECT c.relname AS tabla
   FROM pg_class c
-  LEFT JOIN pg_policy p ON p.polrelid = c.oid AND p.polcmd IN ('r', '*')
+  -- Solo permisivas: un techo RESTRICTIVE (D22c) no concede filas y taparía una tabla sin lectura.
+  LEFT JOIN pg_policy p ON p.polrelid = c.oid AND p.polcmd IN ('r', '*') AND p.polpermissive
   WHERE c.relnamespace = 'public'::regnamespace
     AND c.relkind = 'r'
     AND c.relrowsecurity = true
