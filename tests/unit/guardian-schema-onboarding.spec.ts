@@ -234,3 +234,33 @@ test('los cuerpos-trampa conocidos no regresan a scripts/schema.sql (S1/S2)', ()
   expect(cuerpoEsStaff).toContain('LOWER(rol)')
 })
 
+test('S1 en TODO archivo que define handle_new_user: rol «alumno» fijo, nunca del metadata', () => {
+  // supabase/schema.sql (instalador de Solo-Cursos y de `supabase db reset`) y
+  // schema-02-funciones.sql conservaron el cuerpo viejo hasta el 28-sep-2026:
+  // el guardián de arriba solo leía scripts/schema.sql. Una base instalada con
+  // ellos y sin el paso 7 dejaba registrarse como admin con la anon key.
+  // Se DESCUBREN (todo .sql del repo que la define, también con el nombre
+  // entrecomillado de un `supabase db dump` o sin esquema), no se listan: una
+  // copia nueva con el cuerpo viejo no se escapa por no estar en la lista.
+  const FUERA = new Set(['node_modules', '.next', '.git', 'test-results', 'test-results-unit', 'playwright-report', '_wt'])
+  const todos = (dir: string): string[] => readdirSync(join(raiz, dir), { withFileTypes: true })
+    .flatMap(e => e.isDirectory() ? (FUERA.has(e.name) ? [] : todos(join(dir, e.name)))
+      : e.name.endsWith('.sql') ? [join(dir, e.name)] : [])
+  const DEFINE = /FUNCTION\s+(?:"?public"?\s*\.\s*)?"?handle_new_user"?\s*\(/i
+  const archivos = todos('.').filter(f => DEFINE.test(sinComentarios(readFileSync(join(raiz, f), 'utf8'))))
+  // Hoy son 5: scripts/schema.sql, supabase/schema.sql, schema-02, la migración S1 y fix-s1-s2-roles.sql.
+  expect(archivos.length).toBeGreaterThanOrEqual(5)
+  for (const f of ['scripts/schema.sql', 'supabase/schema.sql', 'supabase/schema-02-funciones.sql']) {
+    expect(archivos.map(a => a.replace(/\\/g, '/').replace(/^\.\//, '')), f).toContain(f)
+  }
+  for (const nombre of archivos) {
+    const sql = sinComentarios(readFileSync(join(raiz, nombre), 'utf8'))
+    // Ninguna forma de leer el rol del metadata: ->>, ->, #>> '{rol}' (con cast
+    // ::jsonb o entre paréntesis) ni jsonb_extract_path(_text) — las del CHECK 23.
+    expect(sql, nombre).not.toMatch(/raw_user_meta_data\s*\)?\s*(::\s*jsonb\s*\)?\s*)?(->>?|#>>?)\s*'\{?rol\}?'/i)
+    expect(sql, nombre).not.toMatch(/jsonb_extract_path(_text)?\s*\(\s*(new\s*\.\s*)?raw_user_meta_data\s*(::\s*jsonb\s*)?,\s*'rol'/i)
+    // Y el valor que SÍ se inserta es 'alumno', justo después del nombre.
+    expect(sql, nombre).toMatch(/COALESCE\(NEW\.raw_user_meta_data->>'nombre', ''\),\s*'alumno'\s*\)/)
+  }
+})
+

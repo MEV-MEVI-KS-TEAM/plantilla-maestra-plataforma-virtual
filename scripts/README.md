@@ -12,6 +12,9 @@ Asume que ya tienes:
 ```bash
 # 1. Exportar connection string del cliente nuevo
 export CLIENT_DB_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres"
+#    La directa (db.<ref>) es solo IPv6. Sin IPv6, el pooler en MODO SESIÓN:
+#    postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+#    Nunca el 6543 (modo transacción): regla del Bug 228.
 
 # 2. Ejecutar schema canónico (estructura de BD)
 #    ⚠️ setup.sql (paso 3) usa `\i` con rutas relativas: hay que correr psql

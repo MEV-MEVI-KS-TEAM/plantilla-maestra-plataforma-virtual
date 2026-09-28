@@ -29,7 +29,8 @@
 -- CALENDARIO vive en su propia tabla y se enlaza al pago real cuando la semana
 -- se cobra.
 --
--- Idempotente. Correr por conexión DIRECTA (5432), nunca el pooler.
+-- Idempotente. Correr por conexión directa o pooler en MODO SESIÓN (5432), o
+-- el SQL Editor; nunca el 6543 (Bug 228).
 -- ============================================================================
 
 -- ── 1. pagos: la semana que cubre este pago ─────────────────────────────────

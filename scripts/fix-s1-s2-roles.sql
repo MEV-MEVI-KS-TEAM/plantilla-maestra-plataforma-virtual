@@ -22,8 +22,10 @@
 -- Solo reemplaza objetos que YA EXISTEN: nunca crea una función que el cliente
 -- no tuviera (un cliente sin es_staff() no la gana por correr esto).
 --
--- Aplicar por conexión DIRECTA (puerto 5432) como rol postgres. NUNCA el pooler:
---   psql "postgresql://postgres:<PWD>@db.<REF>.supabase.co:5432/postgres" \
+-- Aplicar como rol postgres por conexión directa (5432) o por el pooler en MODO
+-- SESIÓN (también 5432, usuario postgres.<REF>; la directa es solo IPv6), o el
+-- SQL Editor. NUNCA el 6543 (modo transacción): regla del Bug 228.
+--   psql "postgresql://postgres.<REF>:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres" \
 --        -v ON_ERROR_STOP=1 -f scripts/fix-s1-s2-roles.sql
 --
 -- ⚠️ Este script NO degrada a nadie. Si un cliente ya tiene cuentas con rol
@@ -119,11 +121,19 @@ BEGIN
 END $outer$;
 
 -- ── Detección en OTROS clientes (una sola query; hit = VULNERABLE a S1) ──────
--- Devuelve una fila si handle_new_user() todavía lee el rol del metadata.
+-- Devuelve una fila si handle_new_user() todavía lee el rol del metadata. Se
+-- quitan los comentarios del cuerpo ANTES de buscar: el cuerpo S1 dice
+-- «No se lee raw_user_meta_data->>'rol'» en un comentario, y el ILIKE
+-- '%raw_user_meta_data%rol%' sobre prosrc crudo marcaba como vulnerable a un
+-- cliente YA corregido (verificado el 28-sep-2026). Es la misma regla del CHECK 23.
 -- SELECT current_database() AS cliente, 'S1: rol desde metadata' AS hallazgo
 --   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--  CROSS JOIN LATERAL (SELECT regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g') AS cuerpo) c
 --  WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
---    AND p.prosrc ILIKE '%raw_user_meta_data%rol%';
+--    AND (c.cuerpo ~* 'raw_user_meta_data\s*\)?\s*(::\s*jsonb\s*\)?\s*)?(->>?|#>>?)\s*''\{?rol\}?'''
+--      OR c.cuerpo ~* 'jsonb_extract_path(_text)?\s*\(\s*(new\s*\.\s*)?raw_user_meta_data\s*(::\s*jsonb\s*)?,\s*''rol''');
+-- (Las dos regex del CHECK 23: ->>, ->, #>> '{rol}', con cast ::jsonb o entre
+--  paréntesis, y jsonb_extract_path(_text).)
 --
 -- ── Detección S2 (hit = el panel muere con roles en mayúsculas) ──────────────
 -- SELECT current_database() AS cliente, p.proname, 'S2: sin LOWER' AS hallazgo

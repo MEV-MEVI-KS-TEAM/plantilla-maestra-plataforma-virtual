@@ -14,8 +14,11 @@
 --   sus columnas son gestionadas por el admin vía service_role).
 --
 -- Idempotente y reutilizable en cualquier cliente de la plantilla MEV.
--- Aplicar por conexión DIRECTA (puerto 5432) como rol postgres. NUNCA el pooler.
---   psql "postgresql://postgres:<PWD>@db.<REF>.supabase.co:5432/postgres" -f scripts/fix-escalada-rol.sql
+-- Aplicar como rol postgres por conexión directa (5432) o por el pooler en MODO
+-- SESIÓN (también 5432, usuario postgres.<REF>; la directa es solo IPv6), o el
+-- SQL Editor. NUNCA el 6543 (modo transacción): regla del Bug 228.
+--   psql "postgresql://postgres.<REF>:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres" \
+--        -f scripts/fix-escalada-rol.sql
 --
 -- ⚠️ REVISAR POR CLIENTE: si algún cliente permite que el alumno auto-edite
 --   alguna columna de `alumnos` con su sesión (no es el caso en la plantilla),

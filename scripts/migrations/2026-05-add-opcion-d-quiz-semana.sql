@@ -13,8 +13,8 @@
 -- Las preguntas viejas con solo 3 opciones siguen funcionando
 -- (opcion_d queda NULL, route.ts ignora opciones nulas).
 --
--- USO EN CLIENTE EXISTENTE:
--- psql "postgresql://postgres.REF:PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres" \
+-- USO EN CLIENTE EXISTENTE (pooler en MODO SESIÓN, 5432; nunca el 6543, Bug 228):
+-- psql "postgresql://postgres.REF:PASSWORD@aws-0-us-east-1.pooler.supabase.com:5432/postgres" \
 --   -f scripts/migrations/2026-05-add-opcion-d-quiz-semana.sql
 --
 -- USO EN CLIENTE NUEVO:

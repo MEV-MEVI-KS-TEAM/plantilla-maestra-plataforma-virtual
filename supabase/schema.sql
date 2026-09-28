@@ -447,6 +447,11 @@ CREATE TRIGGER trg_actualizar_racha
 --  4. FUNCIÓN: CREAR PERFIL AL REGISTRARSE
 -- ============================================================
 
+-- Cuerpo post-S1 (20260729120000_fix_s1_rol_alta.sql, Bug 66): el rol del alta
+-- es SIEMPRE 'alumno', literal. raw_user_meta_data lo escribe quien llama a
+-- signUp con la anon key; leer de ahí el rol era registrarse como admin. Este
+-- archivo conservó el cuerpo viejo hasta el 28-sep-2026 (lo vigilan el
+-- guardián de tests/unit/guardian-schema-onboarding.spec.ts y el CHECK 23).
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -454,12 +459,14 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- rol FIJO. No se lee raw_user_meta_data->>'rol' bajo ninguna circunstancia:
+  -- ese campo lo controla quien llama a signUp.
   INSERT INTO public.usuarios (id, email, nombre, rol)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'nombre', ''),
-    COALESCE(NEW.raw_user_meta_data->>'rol', 'alumno')
+    'alumno'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

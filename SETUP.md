@@ -18,7 +18,9 @@ Editar SOLO este archivo: src/lib/config.ts
 ## Paso 3 — Supabase nuevo proyecto (30 min)
 
 > El orden respeta dependencias de FK y de funciones. No lo alteres.
-> Correr por conexión **directa** (puerto 5432), nunca el pooler (6543).
+> Correr por conexión **directa** (puerto 5432) o por el pooler en **modo sesión**
+> (también 5432, usuario `postgres.<ref>`; la directa es solo IPv6), o el SQL
+> Editor. **Nunca el 6543** (modo transacción): regla del Bug 228 de mev-tools.
 >
 > ✅ **LA CADENA COMPLETA ES RE-EJECUTABLE** (desde B8.1): la prueba original se
 > hizo con 19 migraciones y las 19 pasaron el replay — dos pasadas limpias
@@ -90,10 +92,11 @@ Editar SOLO este archivo: src/lib/config.ts
    con RLS solo-admin + resultados). **Obligatorio si se va a usar el examen:** el
    código de `/api/alumno/cursos/[id]/examen/**` ya está en la plantilla y sin estas
    tablas responde error. Tiene preflight y aborta solo si falta el paso 5.
-7. **Parches de seguridad (obligatorios)** — correr los tres, en este orden:
+7. **Parches de seguridad (obligatorios)** — correr los cuatro, en este orden:
    - `supabase/migrations/20260729120000_fix_s1_rol_alta.sql`
      Cierra la escalada de rol en el alta (S1). Sin esto, cualquiera puede
      registrarse como `admin` con solo la anon key.
+     Lo vigila el CHECK 23 de `scripts/post-setup-check.sql`.
    - `supabase/migrations/20260729121000_fix_s2_es_admin.sql`
      `es_admin()` / `es_staff()` en plpgsql con `LOWER(rol)` y `search_path` (S2).
      Sin esto, un admin con `rol='ADMIN'` en mayúsculas no puede administrar cursos.
@@ -101,6 +104,12 @@ Editar SOLO este archivo: src/lib/config.ts
    - `supabase/migrations/20260729122000_fix_portadas_storage_policy.sql`
      Corrige la política del bucket para que el alumno vea las portadas.
      Corre DESPUÉS del paso 5.
+   - `supabase/migrations/20260924120000_usuarios_sin_insert_propio.sql`
+     Nadie inserta con su sesión en `usuarios` ni en `documentos_alumno` (Bug 220,
+     #185): sin esto, un alumno sube un documento ya «verificado» y, donde falte
+     el trigger de alta, una cuenta nueva se crea su fila con rol `admin`. Una
+     instalación nueva ya lo trae en `schema.sql`; en un cliente ya desplegado es
+     el retrofit (idempotente). Lo vigila el CHECK 24.
    > Para clientes **ya desplegados**, el retrofit equivalente de S1+S2 es
    > `scripts/fix-s1-s2-roles.sql`, y sigue haciendo falta `scripts/fix-escalada-rol.sql`
    > (Bug 47/52): son vectores distintos, hay que correr los dos.
