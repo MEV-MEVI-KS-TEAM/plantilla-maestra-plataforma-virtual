@@ -1527,7 +1527,16 @@ CREATE POLICY "usuarios: admin puede insertar" ON public.usuarios FOR INSERT WIT
 -- Name: usuarios usuarios: ver propio perfil; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "usuarios: ver propio perfil" ON public.usuarios FOR SELECT USING (((id = auth.uid()) OR public.es_staff()));
+CREATE POLICY "usuarios: ver propio perfil" ON public.usuarios FOR SELECT USING (((id = auth.uid()) OR public.es_admin()));
+
+-- D22c (K7): techo RESTRICTIVE. Se combina con AND con toda política permisiva
+-- de SELECT: ni una copia vieja de 20260716130000_rol_secretario.sql re-corrida
+-- después (la fila 2 de 7bis) ni una política de drift (p. ej. `usuarios_select`
+-- de EDVEX) vuelven a abrir el directorio del personal a una sesión.
+DROP POLICY IF EXISTS "usuarios: techo propio o admin (D22c)" ON public.usuarios;
+CREATE POLICY "usuarios: techo propio o admin (D22c)"
+  ON public.usuarios AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (id = auth.uid() OR public.es_admin());
 
 --
 --
@@ -1618,6 +1627,18 @@ CREATE INDEX IF NOT EXISTS idx_pagos_fecha_pago ON public.pagos (fecha_pago DESC
 
 ALTER TABLE public.pagos ENABLE ROW LEVEL SECURITY;
 
+-- D22c: `pagos` solo se ESCRIBE desde el servidor (service_role) y desde las
+-- funciones SECURITY DEFINER (curso_cobrar, registrar_cuota_semanal). Supabase le
+-- da ALL a anon y authenticated sobre toda tabla nueva: sin este REVOKE, una
+-- sesión de personal insertaba pagos por /rest/v1/pagos sin las validaciones de
+-- la API y a nombre de otro, y el admin borraba sin pasar por D10. SELECT se queda
+-- (la RLS decide qué filas). Va DESPUÉS del CREATE TABLE: los GRANT de fábrica solo
+-- se aplican al crear la tabla, así que re-correr el CREATE no los devuelve.
+REVOKE ALL ON public.pagos FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.pagos FROM authenticated;
+GRANT  SELECT ON public.pagos TO authenticated;
+GRANT  ALL    ON public.pagos TO service_role;
+
 DROP POLICY IF EXISTS "pagos: ver propios" ON public.pagos;
 CREATE POLICY "pagos: ver propios" ON public.pagos FOR SELECT USING (((alumno_id = auth.uid()) OR public.es_admin()));
 
@@ -1629,8 +1650,9 @@ CREATE POLICY "pagos: admin gestiona" ON public.pagos USING (public.es_admin()) 
 -- =============================================================
 -- Con la tabla pagos ya creada arriba, separa la policy ALL de admin
 -- en policies por operación:
---   SELECT/INSERT → es_staff()   (secretario consulta y registra)
---   UPDATE/DELETE → es_admin()   (el secretario NO edita ni borra)
+--   SELECT        → propio o es_admin() (D22c, K2) + techo RESTRICTIVE
+--   INSERT        → es_staff()   (inerte para PostgREST desde D22c: sin GRANT)
+--   UPDATE/DELETE → es_admin()   (ídem)
 -- Idempotente; el to_regclass() lo mantiene seguro también en BDs
 -- donde el módulo de pagos aún no se aplica.
 -- =============================================================
@@ -1643,8 +1665,18 @@ BEGIN
     DROP POLICY IF EXISTS "pagos: admin actualiza" ON public.pagos;
     DROP POLICY IF EXISTS "pagos: admin elimina"   ON public.pagos;
 
+    -- D22c (K2): el SECRETARIO ya no lee todos los pagos por PostgREST; el
+    -- historial que le toca le llega por /api/admin/pagos (service role).
     CREATE POLICY "pagos: ver propios" ON public.pagos
-      FOR SELECT USING (((alumno_id = auth.uid()) OR public.es_staff()));
+      FOR SELECT USING (((alumno_id = auth.uid()) OR public.es_admin()));
+
+    -- D22c: techo RESTRICTIVE. Se combina con AND con toda política permisiva:
+    -- una copia vieja de esta migración o una política de drift no reabre el
+    -- SELECT de pagos ajenos para una sesión que no sea del admin.
+    DROP POLICY IF EXISTS "pagos: techo propio o admin (D22c)" ON public.pagos;
+    CREATE POLICY "pagos: techo propio o admin (D22c)" ON public.pagos
+      AS RESTRICTIVE FOR SELECT TO anon, authenticated
+      USING (alumno_id = auth.uid() OR public.es_admin());
 
     CREATE POLICY "pagos: staff registra" ON public.pagos
       FOR INSERT WITH CHECK (public.es_staff());
@@ -2404,6 +2436,15 @@ DECLARE
   v_cal   public.calendario_pagos%ROWTYPE;
   v_pago  UUID;
 BEGIN
+  -- D22c (K4): quien llama fija p_registrado_por, p_monto y p_fecha_pago, así que
+  -- solo el servidor la invoca (service_role, después de verifyStaff en
+  -- /api/admin/cobranza) o una conexión directa. Con sesión de usuario, 42501
+  -- aunque un GRANT viejo le devuelva EXECUTE a authenticated.
+  IF COALESCE(current_setting('request.jwt.claims', true), '') <> ''
+     AND (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'permiso denegado: registrar_cuota_semanal solo la llama el servidor'
+      USING ERRCODE = '42501';
+  END IF;
   IF NOT public.calendario_pagos_autorizado() THEN
     RAISE EXCEPTION 'permiso denegado: solo el personal administrativo registra cuotas'
       USING ERRCODE = '42501';
@@ -2501,6 +2542,9 @@ GRANT EXECUTE ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOL
 -- ── 7. Borrar un pago de cuota devuelve la semana a 'pendiente' ─────────────
 -- El FK pago_id ya está en NULL cuando corre este trigger (ON DELETE SET NULL
 -- actúa antes), así que se localiza por alumno + semana, no por pago_id.
+-- D22c (K6): y SOLO si la semana no está ligada a OTRO pago que sigue vivo
+-- (pago_id IS NULL tras el SET NULL, o el propio OLD.id). Sin esto, borrar un
+-- pago suelto de la misma semana devolvía a 'pendiente' una semana pagada.
 CREATE OR REPLACE FUNCTION public.calendario_pagos_revertir_al_borrar()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -2513,7 +2557,8 @@ BEGIN
        SET estado = 'pendiente', pago_id = NULL, updated_at = NOW()
      WHERE alumno_id = OLD.alumno_id
        AND numero_semana = OLD.numero_semana
-       AND estado = 'pagado';
+       AND estado = 'pagado'
+       AND (pago_id IS NULL OR pago_id = OLD.id);   -- D22c (K6)
   END IF;
   RETURN OLD;
 END;

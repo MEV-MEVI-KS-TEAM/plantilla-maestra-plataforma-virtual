@@ -307,6 +307,15 @@ DECLARE
   v_cal   public.calendario_pagos%ROWTYPE;
   v_pago  UUID;
 BEGIN
+  -- D22c (K4): quien llama fija p_registrado_por, p_monto y p_fecha_pago, así que
+  -- solo el servidor la invoca (service_role, después de verifyStaff en
+  -- /api/admin/cobranza) o una conexión directa. Con sesión de usuario, 42501
+  -- aunque un GRANT viejo le devuelva EXECUTE a authenticated.
+  IF COALESCE(current_setting('request.jwt.claims', true), '') <> ''
+     AND (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'permiso denegado: registrar_cuota_semanal solo la llama el servidor'
+      USING ERRCODE = '42501';
+  END IF;
   IF NOT public.calendario_pagos_autorizado() THEN
     RAISE EXCEPTION 'permiso denegado: solo el personal administrativo registra cuotas'
       USING ERRCODE = '42501';
@@ -404,6 +413,9 @@ GRANT EXECUTE ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOL
 -- ── 7. Borrar un pago de cuota devuelve la semana a 'pendiente' ─────────────
 -- El FK pago_id ya está en NULL cuando corre este trigger (ON DELETE SET NULL
 -- actúa antes), así que se localiza por alumno + semana, no por pago_id.
+-- D22c (K6): y SOLO si la semana no está ligada a OTRO pago que sigue vivo
+-- (pago_id IS NULL tras el SET NULL, o el propio OLD.id). Sin esto, borrar un
+-- pago suelto de la misma semana devolvía a 'pendiente' una semana pagada.
 CREATE OR REPLACE FUNCTION public.calendario_pagos_revertir_al_borrar()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -416,7 +428,8 @@ BEGIN
        SET estado = 'pendiente', pago_id = NULL, updated_at = NOW()
      WHERE alumno_id = OLD.alumno_id
        AND numero_semana = OLD.numero_semana
-       AND estado = 'pagado';
+       AND estado = 'pagado'
+       AND (pago_id IS NULL OR pago_id = OLD.id);   -- D22c (K6)
   END IF;
   RETURN OLD;
 END;

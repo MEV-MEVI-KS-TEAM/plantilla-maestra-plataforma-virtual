@@ -747,3 +747,119 @@ SELECT
     ELSE '✅ OK (las cuatro funciones solo por el servidor; con sesión, la guardia pide es_admin())'
   END AS resultado
 FROM r;
+
+-- ─── CHECK 26: pagos solo por el servidor (D22c) ────────────────────────────
+-- Aplica a toda base. Nadie con sesión (anon, authenticated) INSERTA, ACTUALIZA
+-- ni BORRA `pagos` por /rest/v1 (ni por privilegio de tabla ni de columna): sin
+-- esto, una sesión de personal registraba pagos sin las validaciones de la API y
+-- a nombre de otro. curso_registrar_pago (legado de B3) y registrar_cuota_semanal
+-- solo con service_role, y esta última con su guarda interna (K4). La lectura:
+-- propio o admin, con un techo RESTRICTIVE (K2). El trigger de reversión solo
+-- toca la semana del pago borrado (K6). Una copia vieja de B3, rol_secretario o
+-- periodicidad corrida después devuelve parte de esto: por eso se miran los
+-- privilegios reales y los cuerpos, no solo los nombres.
+WITH t AS (
+  SELECT to_regclass('public.pagos') AS oid
+), priv AS (
+  SELECT string_agg(ro.rol || ' ' || lower(pv.p), ', ' ORDER BY ro.rol, pv.p) AS abiertos
+    FROM unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) AS pv(p)
+   WHERE (SELECT oid FROM t) IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     AND (has_table_privilege(ro.rol, 'public.pagos', pv.p)
+          OR (pv.p <> 'DELETE' AND has_any_column_privilege(ro.rol, 'public.pagos', pv.p)))
+), fn AS (
+  SELECT string_agg(DISTINCT p.proname || ' → ' || ro.rol, ', ') AS abiertas
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   WHERE n.nspname = 'public' AND p.proname IN ('curso_registrar_pago', 'registrar_cuota_semanal')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     AND has_function_privilege(ro.rol, p.oid, 'EXECUTE')
+), k4 AS (
+  SELECT count(*) FILTER (WHERE regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g')
+                                  !~ 'request\.jwt\.claims.*IS DISTINCT FROM ''service_role''') AS sin_guarda
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname = 'registrar_cuota_semanal'
+), techo AS (
+  SELECT count(*) AS n
+    FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'pagos' AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+     AND roles @> ARRAY['anon', 'authenticated']::name[]
+     AND lower(regexp_replace(coalesce(qual, ''), '[\s()]|public\.', '', 'g')) IN ('alumno_id=auth.uidores_admin', 'alumno_id=auth.uid')
+), perm AS (
+  SELECT string_agg(policyname, ', ' ORDER BY policyname) AS con_staff
+    FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'pagos' AND permissive = 'PERMISSIVE' AND cmd IN ('SELECT', 'ALL')
+     AND coalesce(qual, '') ~* '(es_staff|is_staff)\s*\('
+), k6 AS (
+  SELECT to_regprocedure('public.calendario_pagos_revertir_al_borrar()') IS NULL
+         OR COALESCE((SELECT p.prosrc ~ 'pago_id\s+IS\s+NULL\s+OR\s+pago_id\s*=\s*OLD\.id'
+                        FROM pg_proc p WHERE p.oid = to_regprocedure('public.calendario_pagos_revertir_al_borrar()')), false) AS ok
+), r AS (
+  SELECT (SELECT oid FROM t) IS NOT NULL AS existe,
+         COALESCE((SELECT relforcerowsecurity FROM pg_class WHERE oid = (SELECT oid FROM t)), false) AS forzada,
+         (SELECT abiertos FROM priv) AS abiertos, (SELECT abiertas FROM fn) AS abiertas,
+         (SELECT sin_guarda FROM k4) AS sin_guarda, (SELECT n FROM techo) AS techo,
+         (SELECT con_staff FROM perm) AS con_staff, (SELECT ok FROM k6) AS k6
+)
+SELECT
+  'Pagos solo por el servidor (D22c)' AS check_name,
+  CASE WHEN NOT existe THEN 'no existe la tabla pagos'
+       ELSE 'escritura con sesión: ' || COALESCE(abiertos, 'nadie')
+         || ' / RPC con sesión: ' || COALESCE(abiertas, 'nadie')
+         || ' / guarda K4: ' || CASE WHEN sin_guarda = 0 THEN 'sí' ELSE 'NO' END
+         || ' / techo SELECT: ' || CASE WHEN techo > 0 THEN 'sí' ELSE 'NO' END
+         || ' / trigger K6: ' || CASE WHEN k6 THEN 'sí' ELSE 'NO' END
+         || CASE WHEN con_staff IS NOT NULL THEN ' / permisivas con es_staff (las frena el techo): ' || con_staff ELSE '' END
+  END AS valor,
+  CASE
+    WHEN NOT existe
+      THEN '❌ FALTA la tabla pagos → corre supabase/schema.sql (o scripts/schema.sql) antes de este check'
+    WHEN forzada
+      THEN '❌ pagos con FORCE ROW LEVEL SECURITY: las funciones SECURITY DEFINER (curso_cobrar) dejarían de escribir → quítalo y corre supabase/migrations/20260928160000_d22c_postgrest_directo.sql'
+    WHEN abiertos IS NOT NULL OR abiertas IS NOT NULL OR sin_guarda > 0 OR techo = 0 OR NOT k6
+      THEN '❌ ESCRITURA DIRECTA ABIERTA (' || COALESCE(abiertos, abiertas, CASE WHEN sin_guarda > 0 THEN 'registrar_cuota_semanal sin guarda interna' WHEN techo = 0 THEN 'sin techo de SELECT' ELSE 'trigger de reversión viejo' END)
+           || ') → corre supabase/migrations/20260928160000_d22c_postgrest_directo.sql (idempotente); si reapareció tras re-correr B3, rol_secretario o periodicidad, esas copias son viejas'
+    ELSE '✅ OK (pagos solo por el servidor y las funciones SECURITY DEFINER; se lee lo propio o, el admin, todo)'
+  END AS resultado
+FROM r;
+
+-- ─── CHECK 27: sin directorio del personal (D22c) ───────────────────────────
+-- Aplica a toda base. Una sesión solo lee SU fila de usuarios (el admin, todas):
+-- nombre, correo, teléfono y rol del resto no salen por /rest/v1/usuarios. Lo
+-- garantiza un techo RESTRICTIVE, que ninguna política permisiva ensancha: ni una
+-- copia vieja de 20260716130000_rol_secretario.sql re-corrida después (su
+-- «ver propio perfil» con es_staff()) ni una de drift. En el valor se listan las
+-- permisivas que todavía mencionan es_staff (informativo: las frena el techo).
+WITH techo AS (
+  SELECT count(*) AS n
+    FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'usuarios' AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+     AND roles @> ARRAY['anon', 'authenticated']::name[]
+     AND lower(regexp_replace(coalesce(qual, ''), '[\s()]|public\.', '', 'g')) IN ('id=auth.uidores_admin', 'id=auth.uid')
+), perm AS (
+  SELECT string_agg(policyname, ', ' ORDER BY policyname) AS con_staff
+    FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'usuarios' AND permissive = 'PERMISSIVE' AND cmd IN ('SELECT', 'ALL')
+     AND coalesce(qual, '') ~* '(es_staff|is_staff)\s*\(|\mtrue\M'
+), r AS (
+  SELECT (SELECT n FROM techo) AS techo, (SELECT con_staff FROM perm) AS con_staff,
+         COALESCE((SELECT relforcerowsecurity FROM pg_class WHERE oid = to_regclass('public.usuarios')), false) AS forzada,
+         to_regclass('public.usuarios') IS NOT NULL AS existe
+)
+SELECT
+  'Sin directorio del personal (D22c)' AS check_name,
+  CASE WHEN NOT existe THEN 'no existe la tabla usuarios'
+       ELSE 'techo propio o admin: ' || CASE WHEN techo > 0 THEN 'sí' ELSE 'NO' END
+         || ' / permisivas con es_staff: ' || COALESCE(con_staff, 'ninguna')
+  END AS valor,
+  CASE
+    WHEN NOT existe
+      THEN '❌ FALTA la tabla usuarios → corre supabase/schema.sql (o scripts/schema.sql) antes de este check'
+    WHEN forzada
+      THEN '❌ usuarios con FORCE ROW LEVEL SECURITY: es_admin()/es_staff() y la constancia dejarían de leer → quítalo y corre supabase/migrations/20260928160000_d22c_postgrest_directo.sql'
+    WHEN techo = 0
+      THEN '❌ DIRECTORIO ABIERTO: una sesión puede leer nombre, correo, teléfono y rol de todo el personal y los alumnos → corre supabase/migrations/20260928160000_d22c_postgrest_directo.sql (idempotente)'
+    ELSE '✅ OK (cada sesión lee su fila; el admin, todas)'
+  END AS resultado
+FROM r;
