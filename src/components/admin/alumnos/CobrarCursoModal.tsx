@@ -131,7 +131,9 @@ export function CobrarCursoModal({
         setConfirmar(0)
         return
       }
-      const abrio = json.abrio === 'todo' ? ' y se le abrió TODO el curso' : json.abrio === 'mes' ? ` y se le abrió el mes ${json.meses_desbloqueados}` : ''
+      const abrio = (json.abrio === 'todo' ? ' y se le abrió TODO el curso' : json.abrio === 'mes' ? ` y se le abrió el mes ${json.meses_desbloqueados}` : '')
+        // Lo mismo que dicen las confirmaciones (y los avisos de la pestaña Alumnos): si hoy no lo ve, cuándo.
+        + (json.abrio && cuando !== 'desde ya' ? ` (lo verá ${cuando})` : '')
       onCobrado(json.repetido
         ? `Ese cobro ya estaba registrado (no se cobró dos veces).`
         : `💵 ${alumnoNombre}: cobro de ${fmt(montoNum)} al ${titulo.toLowerCase().startsWith('diplomado') ? 'diplomado' : 'curso'}${abrio}`)

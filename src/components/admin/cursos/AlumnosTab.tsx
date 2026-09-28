@@ -6,6 +6,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
 import type { AperturaAlAsignar } from '@/lib/cursos/acceso'
 import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
+import { inscripcionVigente } from '@/lib/cursos/acceso'
 import {
   AVISO_NO_REEMBOLSABLE, comoReabrir, cuandoSePublique, cuandoVeraTodo, efectoCerrarMes, finalFichaSinPrecio, llevaAvisoNoReembolsable, precioAntesDeAsignar, textoAbrirTodoSinPagoUnico, tituloCerrarMes, tituloNoActiva, tituloTopeAlcanzado, type TipoPrecioCurso,
 } from '@/lib/cursos/textos-alumnos'
@@ -327,12 +328,14 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
 
   // La 2ª confirmación de pago único: «Acceso completo inmediato» y «desde ya»
   // solo si hoy lo vería; si no, cuándo, y el aviso sin «inmediato».
-  const cuandoActivar = confirmActivar ? cuandoVeraTodo(publicado, accesoVigente(confirmActivar.i, publicado), esAdmin) : 'desde ya'
-  const cuandoAbrirTodo = confirmAbrirTodo ? cuandoVeraTodo(publicado, accesoVigente(confirmAbrirTodo.i, publicado), esAdmin) : 'desde ya'
+  // `inscripcionVigente` y no `accesoVigente`: esta ya da false con el curso en
+  // borrador, y cuandoVeraTodo diría que además falta la vigencia.
+  const cuandoActivar = confirmActivar ? cuandoVeraTodo(publicado, inscripcionVigente(confirmActivar.i), esAdmin) : 'desde ya'
+  const cuandoAbrirTodo = confirmAbrirTodo ? cuandoVeraTodo(publicado, inscripcionVigente(confirmAbrirTodo.i), esAdmin) : 'desde ya'
 
   /** Lo que se abrió no se ve hoy si el curso está en borrador o la inscripción no está vigente. */
   function sinEfectoHoy(i?: CursoInscrito): string {
-    if (!publicado) return ` (lo verá ${cuandoSePublique(esAdmin)})`
+    if (!publicado) return ` (lo verá ${cuandoVeraTodo(false, i ? inscripcionVigente(i) : true, esAdmin)})`
     if (i && !accesoVigente(i, publicado)) return ' (sin efecto hasta que su inscripción esté activa y vigente)'
     return ''
   }
@@ -675,7 +678,7 @@ Se borra su inscripción y deja de ver el curso.
                       style={{ background: 'rgba(148,163,184,0.15)', color: '#475569' }}
                       title={publicado
                         ? 'Tiene acceso total, pero su inscripción no está vigente: hoy no ve nada'
-                        : `Tiene acceso total, pero el curso está en borrador: lo verá ${cuandoSePublique(esAdmin)}`}>
+                        : `Tiene acceso total, pero el curso está en borrador: lo verá ${cuandoVeraTodo(false, inscripcionVigente(i), esAdmin)}`}>
                       Acceso total (sin efecto)
                     </span>
                   )
@@ -890,7 +893,7 @@ Se borra su inscripción y deja de ver el curso.
             La ficha de este curso es de <strong>pago único</strong>: a{' '}
             <strong>{confirmActivar?.i.nombre}</strong> se le abrirá <strong>TODO el curso</strong> (acceso
             total).{' '}
-            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoSePublique(esAdmin)}. </>}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoActivar}. </>}
             ¿Continuar?
           </>
         }
@@ -924,7 +927,7 @@ Se borra su inscripción y deja de ver el curso.
           <>
             Se le abrirá <strong>TODO el curso</strong> a <strong>{confirmAbrirTodo?.i.nombre}</strong> (acceso
             total): todos los módulos, también los que se agreguen después.{' '}
-            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoSePublique(esAdmin)}. </>}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoAbrirTodo}. </>}
             ¿Continuar?
           </>
         }

@@ -67,9 +67,12 @@ export const AVISO_NO_REEMBOLSABLE = 'No reembolsable una vez activado'
 /**
  * «… verá todo el curso ___» en la 2ª confirmación de pago único: «desde ya»
  * solo si hoy lo vería (curso publicado e inscripción vigente, los filtros del
- * candado); si no, cuándo.
+ * candado); si no, cuándo. `vigente` es SOLO la inscripción (inscripcionVigente
+ * de lib/cursos/acceso.ts), no «lo ve hoy»: en borrador y además vencida,
+ * publicar no basta y se dicen las dos cosas.
  */
 export function cuandoVeraTodo(publicado: boolean, vigente: boolean, esAdmin: boolean): string {
+  if (!publicado && !vigente) return `${cuandoSePublique(esAdmin)} y su inscripción esté activa y vigente`
   if (!publicado) return cuandoSePublique(esAdmin)
   if (!vigente) return 'cuando su inscripción esté activa y vigente'
   return 'desde ya'

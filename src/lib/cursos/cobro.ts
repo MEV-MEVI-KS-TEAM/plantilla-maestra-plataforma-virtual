@@ -212,7 +212,8 @@ export type ConstanciaDeCurso = {
  * Qué abre la casilla, dicho para quien cobra (D17). `null` si con ese
  * concepto y ese mes no hay nada que abrir (la casilla no aparece).
  * `todo` = abre el curso completo: pide la doble confirmación con
- * AVISO_PAGO_UNICO (decisión 6).
+ * AVISO_PAGO_UNICO (decisión 6), o con AVISO_NO_REEMBOLSABLE y cuándo lo verá
+ * si hoy no lo vería (curso en borrador o inscripción no vigente; D21b · OS1).
  */
 export function queAbre(
   f: Pick<FilaCursoAlumno, 'por_activar' | 'precarga'>,

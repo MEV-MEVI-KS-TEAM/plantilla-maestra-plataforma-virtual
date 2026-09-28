@@ -50,6 +50,25 @@ test('3. el modal: «inmediato» solo con «desde ya»; si no, el aviso sin «in
   expect(cuandoVeraTodo(false, true, true)).toBe('cuando lo publiques')
   expect(cuandoVeraTodo(false, true, false)).toBe('cuando el administrador lo publique')
   expect(cuandoVeraTodo(true, false, true)).toBe('cuando su inscripción esté activa y vigente')
+  // En borrador Y sin vigencia, publicar no basta: se dicen las dos cosas.
+  expect(cuandoVeraTodo(false, false, true)).toBe('cuando lo publiques y su inscripción esté activa y vigente')
+  expect(cuandoVeraTodo(false, false, false)).toBe('cuando el administrador lo publique y su inscripción esté activa y vigente')
+  // El aviso de éxito dice lo mismo que las confirmaciones.
+  expect(MODAL).toContain("+ (json.abrio && cuando !== 'desde ya' ? ` (lo verá ${cuando})` : '')")
+})
+
+test('5. AlumnosTab le pasa a cuandoVeraTodo la vigencia de la INSCRIPCIÓN, no «lo ve hoy»', () => {
+  const tab = sinComentarios(leer('src/components/admin/cursos/AlumnosTab.tsx'))
+  // accesoVigente(i, publicado) ya es false en borrador: con él, un curso en borrador y una
+  // inscripción vigente dirían «… y su inscripción esté activa y vigente», que es falso.
+  expect(tab).not.toMatch(/cuandoVeraTodo\([^)]*accesoVigente\(/)
+  expect(tab.match(/cuandoVeraTodo\(/g)?.length).toBe(4)
+  expect(tab.match(/inscripcionVigente\(/g)?.length).toBe(4)
+  // Los textos «en borrador» de la fila y del paso 1 usan la misma regla.
+  expect(tab).toContain('lo verá ${cuandoVeraTodo(false, inscripcionVigente(i), esAdmin)}')
+  expect(tab).toContain(' (lo verá ${cuandoVeraTodo(false, i ? inscripcionVigente(i) : true, esAdmin)})')
+  expect(tab).toContain('<strong>borrador</strong>: lo verá {cuandoActivar}. </>')
+  expect(tab).toContain('<strong>borrador</strong>: lo verá {cuandoAbrirTodo}. </>')
 })
 
 test('4. los dos lugares que abren el modal le dicen quién cobra', () => {
