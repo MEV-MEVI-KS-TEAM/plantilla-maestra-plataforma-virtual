@@ -216,7 +216,7 @@ $t$;
   END IF;
   IF (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND permissive = 'RESTRICTIVE'
          AND policyname IN ('usuarios: techo propio o admin (D22c)', 'pagos: techo propio o admin (D22c)'))
-     <> CASE WHEN to_regclass('public.pagos') IS NULL THEN 1 ELSE 2 END THEN
+     <> (CASE WHEN to_regclass('public.pagos') IS NULL THEN 1 ELSE 2 END) THEN
     RAISE EXCEPTION 'D22c: falta un techo RESTRICTIVE.';
   END IF;
   RAISE NOTICE 'D22c: listo — pagos solo por el servidor; usuarios y pagos, propio o admin.';
