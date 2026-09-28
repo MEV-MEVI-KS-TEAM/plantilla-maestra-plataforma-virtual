@@ -81,7 +81,7 @@ export async function POST(
 
     if (actual <= 0 && cuerpo.operacionId === null) {
       return NextResponse.json(
-        { error: 'No hay meses que quitar' },
+        { error: 'No hay meses que cerrar' },
         { status: 400 }
       )
     }
@@ -134,7 +134,7 @@ export async function POST(
       // Base sin la migración D20a: se cierra como antes, pero SOLO si el
       // alumno sigue con lo que la ficha vio (un doble clic no quita dos meses).
       if (actual <= 0) {
-        return NextResponse.json({ error: 'No hay meses que quitar' }, { status: 400 })
+        return NextResponse.json({ error: 'No hay meses que cerrar' }, { status: 400 })
       }
       if (antes !== actual) {
         return NextResponse.json({ error: AVISO_CAMBIO_EN_MEDIO }, { status: 409 })
@@ -175,7 +175,7 @@ export async function POST(
     }
 
     const fila = (Array.isArray(data) ? data[0] : data) as FilaMoverMes | null
-    if (!fila) return NextResponse.json({ error: 'No se pudo quitar el mes. Intenta de nuevo.' }, { status: 500 })
+    if (!fila) return NextResponse.json({ error: 'No se pudo cerrar el mes. Intenta de nuevo.' }, { status: 500 })
 
     return NextResponse.json({
       success:                    true,

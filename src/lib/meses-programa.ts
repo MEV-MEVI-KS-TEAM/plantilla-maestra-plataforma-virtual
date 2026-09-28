@@ -71,7 +71,8 @@ export function errorRpcMes(error: ErrorPg): { status: number; mensaje: string }
     // PT409: el alumno cambió en medio (la función NO usa 40001: PostgREST lo reintenta sin fin).
     case 'PT409':
     case '40001': return { status: 409, mensaje: pluralMeses(msg) || 'El alumno cambió mientras tanto. Recarga la ficha y vuelve a intentarlo.' }
-    case '22023': return { status: 400, mensaje: msg || 'No se pudo mover el mes.' }
+    // D21b (OS4): la función SQL dice «No hay meses que quitar.»; el panel dice «cerrar».
+    case '22023': return { status: 400, mensaje: msg.replace('meses que quitar', 'meses que cerrar') || 'No se pudo mover el mes.' }
     case 'P0002': return { status: 404, mensaje: 'Alumno no encontrado' }
     default:      return { status: 500, mensaje: 'No se pudo mover el mes. Intenta de nuevo.' }
   }

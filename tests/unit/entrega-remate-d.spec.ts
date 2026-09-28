@@ -316,7 +316,7 @@ test('e1. «Cómo empezar» con cursos: Activar según la ficha, Cobrar con su c
   expect(t).toContain('Registra cada pago con Cobrar , en su fila o en la tarjeta Cursos de la ficha del alumno')
   expect(t).toContain('si aparece la casilla para abrir y la dejas marcada, ese mismo cobro le abre lo que pagó; sin marcar, solo queda registrado')
   // La doble confirmación es de Abrir todo, Activar (pago único) y Cobrar que abre todo; «Asignar» no la pide.
-  expect(t).toContain('Abrir todo , Activar según la ficha (pago único) y Cobrar con la casilla que abre todo piden doble confirmación, porque desde ese momento el pago único ya no se reembolsa; Asignar en un curso de pago único lo abre completo sin pedir confirmación: asigna solo a quien ya te pagó.')
+  expect(t).toContain('Abrir todo , Activar según la ficha (pago único) y Cobrar con la casilla que abre todo piden doble confirmación; en un curso de pago único, desde ese momento ya no se reembolsa. Asignar en un curso de pago único lo abre completo sin pedir confirmación: asigna solo a quien ya te pagó.')
   expect(t).not.toContain('Abrir todo el curso pide doble confirmación')
   expect(t).toContain('Quien tenga el rol de secretario también da de alta alumnos y los marca como contactados, asigna, activa, cobra, abre y emite constancias (en su menú, Cursos )')
   expect(t).toContain('; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción, borrar pagos y borrar alumnos quedan solo en tu cuenta.')

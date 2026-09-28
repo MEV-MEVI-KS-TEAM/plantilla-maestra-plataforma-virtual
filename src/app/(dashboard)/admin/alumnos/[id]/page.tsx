@@ -1460,7 +1460,7 @@ export default function AlumnoDetallePage() {
                 onMouseLeave={e => { if (!cerrandoMes) e.currentTarget.style.background = '#64748B' }}
               >
                 {cerrandoMes
-                  ? <><Loader2 className="w-4 h-4 animate-spin" />Quitando...</>
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />Cerrando...</>
                   : <><Undo2 className="w-4 h-4" />Sí, cerrar el mes</>
                 }
               </button>

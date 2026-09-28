@@ -153,7 +153,7 @@ ningún curso en `publicado`.
 No hay autoinscripción ni pasarela de pago: **la conversión es por WhatsApp**.
 
 ```
-Prospecto → landing → /diplomados/[id] → WhatsApp → el admin lo inscribe
+Prospecto → landing → /diplomados/[id] → WhatsApp → el admin o el secretario lo inscribe
 ```
 
 1. El alumno se registra en `/register`, o el admin o el secretario lo da de

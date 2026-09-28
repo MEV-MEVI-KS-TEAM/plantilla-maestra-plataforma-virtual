@@ -6,7 +6,9 @@ import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
 import type { AperturaAlAsignar } from '@/lib/cursos/acceso'
 import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
-import { cuandoSePublique, finalFichaSinPrecio, llevaAvisoNoReembolsable, precioAntesDeAsignar, textoAbrirTodoSinPagoUnico, type TipoPrecioCurso } from '@/lib/cursos/textos-alumnos'
+import {
+  comoReabrir, cuandoSePublique, cuandoVeraTodo, finalFichaSinPrecio, llevaAvisoNoReembolsable, precioAntesDeAsignar, textoAbrirTodoSinPagoUnico, tituloCerrarMes, tituloNoActiva, tituloTopeAlcanzado, type TipoPrecioCurso,
+} from '@/lib/cursos/textos-alumnos'
 import { textoUltimoMovimiento } from '@/lib/cursos/bitacora'
 import { CobrarCursoModal } from '@/components/admin/alumnos/CobrarCursoModal'
 import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
@@ -82,12 +84,16 @@ export function AlumnosTab({ cursoId, inscritos, apertura, tipoPrecio, tope, onA
   const [cobrando, setCobrando] = useState<{ fila: FilaCursoAlumno; nombre: string } | null>(null)
   // La última «Cobrar» pedida: una respuesta vieja (otra fila, más lenta) no abre el modal.
   const ultimoCobro = useRef(0)
-  // D21b (OS8): guarda SÍNCRONA de «+ Abrir mes» / «−». `ocupadoId` es estado de
-  // React y no alcanza a frenar el segundo clic de un doble clic.
-  const moviendoMes = useRef(false)
+  // D21b (OS8): guarda SÍNCRONA de «+ Abrir mes» / «−», POR FILA. `ocupadoId` es
+  // estado de React y no alcanza a frenar el segundo clic de un doble clic; una
+  // guarda única para toda la lista descartaría en silencio el clic en otra fila.
+  const moviendoMes = useRef<Set<string>>(new Set())
+  // Reactivar es del admin: al secretario no se le pide «reactívala».
+  const canceladaTitulo = esAdmin ? CANCELADA_TITULO : tituloNoActiva('cancelada', false)
   const [confirmTodos, setConfirmTodos] = useState<0 | 1 | 2>(0) // doble confirmación
-  // «Abrir todo» abre el curso completo y, con #208, deja de ser reembolsable:
-  // doble confirmación con el aviso del pago único (D7b), para admin y secretario.
+  // «Abrir todo» abre el curso completo: doble confirmación para admin y
+  // secretario (D7b). Con ficha de pago único lleva el aviso «no reembolsable»
+  // (#208); con otra ficha, el texto neutro (D21b · OS1).
   const [confirmAbrirTodo, setConfirmAbrirTodo] = useState<{ i: CursoInscrito; paso: 1 | 2 } | null>(null)
   // «Activar según la ficha» (D8) cuando la ficha es de pago único (abre TODO):
   // la misma doble confirmación con el aviso. Con mes 1 no se confirma (decisión 12).
@@ -136,21 +142,23 @@ export function AlumnosTab({ cursoId, inscritos, apertura, tipoPrecio, tope, onA
     mesesActuales: number,
     nombre: string
   ) => {
-    if (moviendoMes.current) return
-    moviendoMes.current = true
-    try {
-      if (accion === 'cerrar-mes') {
-        const ok = window.confirm(
-          `Cerrar el mes ${mesesActuales} de ${nombre}.
+    if (moviendoMes.current.has(inscripcionId)) return
+    if (accion === 'cerrar-mes') {
+      const fila = inscritos.find(x => x.inscripcion_id === inscripcionId)
+      const ok = window.confirm(
+        `Cerrar el mes ${mesesActuales} de ${nombre}.
 
 Esto le quita acceso que ya tenía: los módulos de ese mes dejarán de verse. ` +
-          `Su avance no se borra y puedes volver a abrirlo con «+ Abrir mes».
+        `${comoReabrir(fila?.estado ?? 'activa', mesesActuales - 1, tope)}
 
 ¿Continuar?`
-        )
-        if (!ok) return
-      }
-      setOcupadoId(inscripcionId)
+      )
+      if (!ok) return
+    }
+    // Sin await entre el confirm y aquí: el 2º clic de un doble clic ya encuentra la guarda.
+    moviendoMes.current.add(inscripcionId)
+    setOcupadoId(inscripcionId)
+    try {
       const res = await fetch(`/api/admin/inscripciones/${inscripcionId}/${accion}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -169,8 +177,8 @@ Esto le quita acceso que ya tenía: los módulos de ese mes dejarán de verse. `
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo actualizar')
     } finally {
-      moviendoMes.current = false
-      setOcupadoId(null)
+      moviendoMes.current.delete(inscripcionId)
+      setOcupadoId(prev => (prev === inscripcionId ? null : prev))
     }
   }
 
@@ -649,7 +657,7 @@ Se borra su inscripción y deja de ver el curso.
                   accesoVigente(i, publicado) ? (
                     <span className="text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full"
                       style={{ background: 'rgba(16,185,129,0.12)', color: '#047857' }}
-                      title="Pago único: ve el curso completo, también los módulos que se agreguen">
+                      title="Acceso total: ve el curso completo, también los módulos que se agreguen">
                       Acceso total
                     </span>
                   ) : (
@@ -685,7 +693,7 @@ Se borra su inscripción y deja de ver el curso.
                   <button
                     onClick={() => cobrarDe(i)}
                     disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                    title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Registrar un cobro de este curso (y, si corresponde, abrir)'}
+                    title={i.estado === 'cancelada' ? canceladaTitulo : 'Registrar un cobro de este curso (y, si corresponde, abrir)'}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
                     style={{ border: '1px solid rgba(16,185,129,0.35)', color: '#047857', background: 'var(--color-superficie)' }}
                   >
@@ -695,7 +703,7 @@ Se borra su inscripción y deja de ver el curso.
                     <button
                       onClick={() => cambiarAccesoTotal(i, 'quitar-acceso-total')}
                       disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                      title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Quitar el acceso total (revoca acceso)'}
+                      title={i.estado === 'cancelada' ? canceladaTitulo : 'Quitar el acceso total (revoca acceso)'}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                       style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                     >
@@ -709,7 +717,7 @@ Se borra su inscripción y deja de ver el curso.
                         <button
                           onClick={() => pedirActivar(i)}
                           disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                          title={i.estado === 'cancelada' ? CANCELADA_TITULO : apertura === 'total'
+                          title={i.estado === 'cancelada' ? canceladaTitulo : apertura === 'total'
                             ? 'Según su ficha (pago único): abre TODO el curso'
                             : 'Según su ficha: abre el mes 1'}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
@@ -721,7 +729,7 @@ Se borra su inscripción y deja de ver el curso.
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'cerrar-mes', i.meses_desbloqueados, i.nombre)}
                         disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0 || i.estado === 'cancelada'}
-                        title={i.estado === 'cancelada' ? CANCELADA_TITULO : `Cerrar el mes ${i.meses_desbloqueados} (quita acceso)`}
+                        title={i.estado === 'cancelada' ? canceladaTitulo : tituloCerrarMes(i.meses_desbloqueados)}
                         aria-label="Cerrar mes"
                         className="px-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
@@ -731,9 +739,9 @@ Se borra su inscripción y deja de ver el curso.
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'abrir-mes', i.meses_desbloqueados, i.nombre)}
                         disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa' || (tope !== null && i.meses_desbloqueados >= tope)}
-                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala para abrir meses`
+                        title={i.estado !== 'activa' ? tituloNoActiva(i.estado, esAdmin, true)
                           : tope !== null && tope <= 0 ? 'El curso todavía no tiene meses que abrir (sin módulos o sin ritmo en su ficha)'
-                          : tope !== null && i.meses_desbloqueados >= tope ? `Ya tiene abiertos los ${tope} meses del curso: no hay más que abrir`
+                          : tope !== null && i.meses_desbloqueados >= tope ? tituloTopeAlcanzado(tope)
                           : 'Abrir el siguiente mes'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={i.por_activar
@@ -745,7 +753,7 @@ Se borra su inscripción y deja de ver el curso.
                       <button
                         onClick={() => setConfirmAbrirTodo({ i, paso: 1 })}
                         disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
-                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala primero`
+                        title={i.estado !== 'activa' ? tituloNoActiva(i.estado, esAdmin)
                           : tipoPrecio === 'unico' ? 'Acceso total: todo el curso (pago único)' : 'Acceso total: todo el curso, sin depender de los meses'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
@@ -758,7 +766,7 @@ Se borra su inscripción y deja de ver el curso.
                   <button
                       onClick={() => emitirConstancia(i.inscripcion_id, i.nombre)}
                       disabled={ocupadoId === i.inscripcion_id || i.estado === 'cancelada'}
-                      title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Emitir la constancia (requiere examen aprobado; el folio es permanente)'}
+                      title={i.estado === 'cancelada' ? canceladaTitulo : 'Emitir la constancia (requiere examen aprobado; el folio es permanente)'}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                       style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                     >
@@ -885,8 +893,9 @@ Se borra su inscripción y deja de ver el curso.
         title="¿Seguro? Segunda confirmación"
         message={
           <>
-            <strong>{AVISO_PAGO_UNICO}.</strong> <strong>{confirmActivar?.i.nombre}</strong> verá todo el curso
-            desde ya. Confirma una vez más para activarlo.
+            <strong>{AVISO_PAGO_UNICO}.</strong> <strong>{confirmActivar?.i.nombre}</strong> verá todo el curso{' '}
+            {confirmActivar ? cuandoVeraTodo(publicado, accesoVigente(confirmActivar.i, publicado), esAdmin) : 'desde ya'}.
+            Confirma una vez más para activarlo.
           </>
         }
         confirmLabel="Activar todo el curso"
@@ -919,7 +928,8 @@ Se borra su inscripción y deja de ver el curso.
         message={
           <>
             {llevaAvisoNoReembolsable(tipoPrecio)
-              ? <><strong>{AVISO_PAGO_UNICO}.</strong> <strong>{confirmAbrirTodo?.i.nombre}</strong> verá todo el curso desde ya.</>
+              ? <><strong>{AVISO_PAGO_UNICO}.</strong> <strong>{confirmAbrirTodo?.i.nombre}</strong> verá todo el curso{' '}
+                {confirmAbrirTodo ? cuandoVeraTodo(publicado, accesoVigente(confirmAbrirTodo.i, publicado), esAdmin) : 'desde ya'}.</>
               : <><strong>{confirmAbrirTodo?.i.nombre}</strong>: {textoAbrirTodoSinPagoUnico(tipoPrecio === 'mensual' ? 'mensual' : 'informes')}</>}
             {' '}Confirma una vez más para abrirlo.
           </>

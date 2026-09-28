@@ -43,10 +43,14 @@ export default function AdminCursosPage() {
   // D21b: null mientras no llega el rol (y si la carga falla): lo que es solo del
   // admin NO se pinta «por si acaso»; antes el secretario veía un instante «Nuevo curso».
   const [esAdmin, setEsAdmin] = useState<boolean | null>(null)
+  // Si la carga falla no se sabe el rol ni si hay cursos: se dice eso y se ofrece
+  // reintentar, en vez de «Aún no hay cursos» con el texto de uno de los dos roles.
+  const [falloCarga, setFalloCarga] = useState(false)
   const [aEliminar, setAEliminar] = useState<CursoListItem | null>(null)
   const [borrando, setBorrando] = useState(false)
 
   const cargar = useCallback(async () => {
+    setFalloCarga(false)
     try {
       const res = await fetch('/api/admin/cursos')
       if (!res.ok) throw new Error()
@@ -54,6 +58,7 @@ export default function AdminCursosPage() {
       setCursos(await res.json())
     } catch {
       setCursos([])
+      setFalloCarga(true)
       showToast('No se pudieron cargar los cursos', 'error')
     }
   }, [showToast])
@@ -114,8 +119,23 @@ export default function AdminCursosPage() {
         </div>
       )}
 
+      {falloCarga && (
+        <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
+          <p className="text-sm mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
+            No se pudieron cargar los cursos.
+          </p>
+          <button
+            onClick={() => { setCursos(null); void cargar() }}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
       {/* Vacío */}
-      {cursos !== null && cursos.length === 0 && (
+      {cursos !== null && cursos.length === 0 && !falloCarga && (
         <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
           <GraduationCap className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--color-primario)', opacity: 0.4 }} />
           <p className="text-base font-semibold mb-1" style={{ color: 'var(--color-primario)' }}>

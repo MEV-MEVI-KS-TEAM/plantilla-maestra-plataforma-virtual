@@ -280,7 +280,7 @@ export default function AlumnosPage() {
           : totales > 0 ? 'acceso abierto según cada curso'
           : 'mes 1 abierto'
         showToast(`✓ Curso asignado a ${a.nombre_completo}: ${queSeAbrio}${
-          enBorrador ? ' (lo verá cuando publiques el curso)' : ''}${
+          enBorrador ? ' (lo verá cuando el curso se publique)' : ''}${
           yaEstaban ? ` · ${yaEstaban} ya estaba${yaEstaban === 1 ? '' : 'n'} asignado${yaEstaban === 1 ? '' : 's'}` : ''}.`, 'success')
       } else if (!fallos.length) {
         showToast(`${a.nombre_completo} ya estaba asignado a ${a.curso_solicitado_ids.length === 1 ? 'ese curso' : 'esos cursos'}.`, 'success')
@@ -949,8 +949,8 @@ export default function AlumnosPage() {
                   <p className="text-xs" style={{ color: '#64748B' }}>
                     Se inscribe al alumno al curso y se le abre el acceso con la regla
                     del curso: en uno de pago único, completo; en uno mensual o sin
-                    precio, el mes 1. Los meses siguientes se abren en Gestionar
-                    cursos → el curso → Alumnos.
+                    precio, el mes 1. Los meses siguientes se abren en la pestaña
+                    Alumnos del curso.
                   </p>
                 </div>
               )}

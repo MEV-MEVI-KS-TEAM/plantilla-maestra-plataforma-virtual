@@ -56,3 +56,45 @@ export function precioAntesDeAsignar(esAdmin: boolean): string {
 export function cuandoSePublique(esAdmin: boolean): string {
   return esAdmin ? 'cuando lo publiques' : 'cuando el administrador lo publique'
 }
+
+/**
+ * «… verá todo el curso ___» en la 2ª confirmación de pago único: «desde ya»
+ * solo si hoy lo vería (curso publicado e inscripción vigente, los filtros del
+ * candado); si no, cuándo.
+ */
+export function cuandoVeraTodo(publicado: boolean, vigente: boolean, esAdmin: boolean): string {
+  if (!publicado) return cuandoSePublique(esAdmin)
+  if (!vigente) return 'cuando su inscripción esté activa y vigente'
+  return 'desde ya'
+}
+
+/**
+ * El motivo de un botón apagado porque la inscripción no está activa. Reactivar
+ * una inscripción es solo del administrador: al secretario no se le pide.
+ */
+export function tituloNoActiva(estado: string, esAdmin: boolean, paraAbrirMeses = false): string {
+  if (!esAdmin) return `Inscripción ${estado}: solo el administrador puede reactivarla`
+  return paraAbrirMeses ? `Inscripción ${estado}: reactívala para abrir meses` : `Inscripción ${estado}: reactívala primero`
+}
+
+/** El title de «−»: sin meses abiertos no hay un «mes 0» que cerrar. */
+export function tituloCerrarMes(meses: number): string {
+  return meses <= 0 ? 'No tiene meses abiertos que cerrar' : `Cerrar el mes ${meses} (quita acceso)`
+}
+
+/** El title de «+ Abrir mes» en el tope (OS9), en singular si el curso dura un mes. */
+export function tituloTopeAlcanzado(tope: number): string {
+  return tope === 1
+    ? 'Ya tiene abierto el único mes del curso: no hay más que abrir'
+    : `Ya tiene abiertos los ${tope} meses del curso: no hay más que abrir`
+}
+
+/**
+ * OS3 · El final del confirm de «−»: promete «+ Abrir mes» solo si ese botón va
+ * a estar encendido después de cerrar (inscripción activa y por debajo del tope).
+ */
+export function comoReabrir(estado: string, mesesDespues: number, tope: number | null): string {
+  if (estado !== 'activa') return 'Su avance no se borra; para volver a abrirlo, la inscripción tiene que estar activa.'
+  if (tope !== null && mesesDespues >= tope) return 'Su avance no se borra.'
+  return 'Su avance no se borra y puedes volver a abrirlo con «+ Abrir mes».'
+}
