@@ -106,7 +106,7 @@ export function Header({ pageTitle, userName, avatarUrl, theme = 'dark', onMenuT
         ) : (
           <div
             className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold flex-shrink-0"
-            style={{ background: '#1565C0', color: '#fff' }}
+            style={{ background: 'var(--color-primario, #1565C0)', color: '#fff' }}
           >
             {initials}
           </div>

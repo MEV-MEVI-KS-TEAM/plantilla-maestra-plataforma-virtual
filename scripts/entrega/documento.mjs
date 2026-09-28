@@ -586,11 +586,13 @@ function soporte(d) {
 ${d.validez ? `<h2>Validez oficial y respaldo</h2>
 <div class="rule"></div>
 <p class="lead">Tu página pública incluye una sección dedicada a la validez del
-certificado, con ${d.folioVerificable ? 'tres bloques' : 'dos bloques'} que resuelven la objeción más común de cualquier
+certificado, con ${['un bloque', 'dos bloques', 'tres bloques'][[(d.documentosValidez ?? 2) > 0, d.folioVerificable].filter(Boolean).length]} que resuelven la objeción más común de cualquier
 prospecto: "¿esto es real?".</p>
 ${ul([
-      '<b>Un certificado, dos países</b> — reconocimiento en México y Estados Unidos',
-      '<b>Los dos documentos oficiales</b> que recibe el alumno al terminar, con imagen de cada uno',
+      // Mundo Estudio #234: solo lo que la sección publica (título y documentos).
+      d.validezDosPaises !== false && '<b>Un certificado, dos países</b> — reconocimiento en México y Estados Unidos',
+      d.validezDosPaises === false && '<b>Validez oficial ante la SEP</b> — el documento que recibe el alumno al concluir su nivel',
+      (d.documentosValidez ?? 2) > 0 && `<b>Los ${(d.documentosValidez ?? 2) === 2 ? 'dos ' : ''}documentos oficiales</b> que recibe el alumno al terminar, con imagen de cada uno`,
       // 🛑 SOLO si la escuela tiene folio propio publicado, y entonces va
       // completo. Sin folio la landing NO pinta ese bloque —ni el folio ni el
       // botón al portal— y no se promete nada: ni el folio, ni un enlace que
