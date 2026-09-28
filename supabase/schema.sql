@@ -643,9 +643,15 @@ CREATE POLICY "evaluaciones: admin gestiona"
   USING (public.es_admin());
 
 -- ── POLÍTICAS: PREGUNTAS ─────────────────────────────────────
-CREATE POLICY "preguntas: lectura autenticados"
-  ON public.preguntas FOR SELECT
-  USING (auth.role() = 'authenticated');
+-- D22d: techo RESTRICTIVE solo-admin, para toda operación. Una sesión que no
+-- es admin no lee ni escribe filas del banco del examen mensual; la app lo lee
+-- con el service role DESPUÉS del gate. Reemplaza a «preguntas: lectura
+-- autenticados» (cualquier sesión leía todas las claves por /rest/v1). Ninguna
+-- permisiva vieja o de drift lo ensancha.
+DROP POLICY IF EXISTS "preguntas: techo solo admin (D22d)" ON public.preguntas;
+CREATE POLICY "preguntas: techo solo admin (D22d)" ON public.preguntas
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (public.es_admin()) WITH CHECK (public.es_admin());
 
 CREATE POLICY "preguntas: admin gestiona"
   ON public.preguntas FOR ALL
@@ -656,9 +662,9 @@ CREATE POLICY "intentos: ver propios intentos"
   ON public.intentos_evaluacion FOR SELECT
   USING (alumno_id = auth.uid() OR public.es_admin());
 
-CREATE POLICY "intentos: registrar propio intento"
-  ON public.intentos_evaluacion FOR INSERT
-  WITH CHECK (alumno_id = auth.uid());
+-- D22d (K4): sin «intentos: registrar propio intento». El intento lo inserta el
+-- servidor (service role) al calificar; con la sesión, un alumno se fabricaba
+-- uno aprobado con 100.
 
 CREATE POLICY "intentos: admin gestiona"
   ON public.intentos_evaluacion FOR ALL
@@ -674,9 +680,14 @@ CREATE POLICY "calificaciones: admin gestiona"
   USING (public.es_admin());
 
 -- ── POLÍTICAS: QUIZ ──────────────────────────────────────────
-CREATE POLICY "quiz_semana: lectura autenticados"
-  ON public.quiz_semana FOR SELECT
-  USING (auth.role() = 'authenticated');
+-- D22d: techo RESTRICTIVE solo-admin, para toda operación (quiz semanal). La
+-- app lee el banco con el service role DESPUÉS del gate y califica en el
+-- servidor pregunta por pregunta. Reemplaza a «quiz_semana: lectura
+-- autenticados» (cualquier sesión leía la clave y la explicación que la delata).
+DROP POLICY IF EXISTS "quiz_semana: techo solo admin (D22d)" ON public.quiz_semana;
+CREATE POLICY "quiz_semana: techo solo admin (D22d)" ON public.quiz_semana
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (public.es_admin()) WITH CHECK (public.es_admin());
 
 CREATE POLICY "quiz_semana: admin gestiona"
   ON public.quiz_semana FOR ALL
@@ -686,9 +697,9 @@ CREATE POLICY "quiz_respuestas: ver propias"
   ON public.quiz_respuestas FOR SELECT
   USING (alumno_id = auth.uid() OR public.es_admin());
 
-CREATE POLICY "quiz_respuestas: registrar propia"
-  ON public.quiz_respuestas FOR INSERT
-  WITH CHECK (alumno_id = auth.uid());
+-- D22d (K4): sin «quiz_respuestas: registrar propia». La respuesta la guarda el
+-- servidor (service role) con `correcta` calculada por él; con la sesión, un
+-- alumno se fabricaba respuestas con correcta=true.
 
 -- ── POLÍTICAS: NOTAS_ALUMNO ──────────────────────────────────
 CREATE POLICY "notas: ver propias"
@@ -1716,17 +1727,37 @@ $gf$;
 --      Requerido por la vertical "Cursos de Ingreso" (banco-cursos-ingreso).
 -- =============================================================
 
--- Bug 221: sin lectura de la clave del examen para authenticated/anon
-DO $clave$
-DECLARE cols text;
-BEGIN
-  -- La clave del examen mensual no es legible por REST: se re-otorgan todas las
-  -- columnas de preguntas MENOS respuesta_correcta (el servidor califica con
-  -- service_role). Bug 221 (MEDERI, 24-sep-2026).
-  SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position) INTO cols
-    FROM information_schema.columns
-   WHERE table_schema = 'public' AND table_name = 'preguntas' AND column_name <> 'respuesta_correcta';
-  EXECUTE 'REVOKE SELECT ON public.preguntas FROM anon, authenticated';
-  EXECUTE format('GRANT SELECT (%s) ON public.preguntas TO authenticated', cols);
-END
-$clave$;
+-- ── D22d: la respuesta correcta solo la lee el servidor (privilegios) ───────
+-- Supabase da ALL a anon y authenticated sobre toda tabla nueva. Va DESPUÉS de
+-- todos los CREATE TABLE (los GRANT de fábrica llegan al crear) y sustituye al
+-- bloque de #186 (Bug 221): el REVOKE de tabla quita también cualquier GRANT por
+-- columna, y solo vuelve una LISTA BLANCA (K-d5). Ninguna sesión lee
+-- respuesta_correcta, explicacion ni una columna que se agregue después. El
+-- techo RESTRICTIVE (arriba) ya deja en 0 las filas de quien no es admin: son
+-- dos capas, como D22c. Lo vigila el CHECK 28.
+REVOKE ALL    ON public.preguntas FROM anon, PUBLIC;
+REVOKE SELECT ON public.preguntas FROM authenticated;
+GRANT  SELECT (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, orden, activa, created_at)
+  ON public.preguntas TO authenticated;
+GRANT  ALL    ON public.preguntas TO service_role;
+
+REVOKE ALL    ON public.quiz_semana FROM anon, PUBLIC;
+REVOKE SELECT ON public.quiz_semana FROM authenticated;
+GRANT  SELECT (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, orden, activa)
+  ON public.quiz_semana TO authenticated;
+GRANT  ALL    ON public.quiz_semana TO service_role;
+
+-- K4 (K-d6): los intentos del examen mensual y las respuestas del quiz solo los
+-- ESCRIBE el servidor (service role, después del gate y calificando él). Con
+-- INSERT propio, una sesión se fabricaba un intento aprobado con 100 o
+-- respuestas con correcta=true. El SELECT propio se queda (la RLS decide qué
+-- filas). Lo vigila el CHECK 30.
+REVOKE ALL ON public.intentos_evaluacion FROM anon, PUBLIC;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.intentos_evaluacion FROM authenticated;
+GRANT  SELECT ON public.intentos_evaluacion TO authenticated;
+GRANT  ALL    ON public.intentos_evaluacion TO service_role;
+
+REVOKE ALL ON public.quiz_respuestas FROM anon, PUBLIC;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.quiz_respuestas FROM authenticated;
+GRANT  SELECT ON public.quiz_respuestas TO authenticated;
+GRANT  ALL    ON public.quiz_respuestas TO service_role;
