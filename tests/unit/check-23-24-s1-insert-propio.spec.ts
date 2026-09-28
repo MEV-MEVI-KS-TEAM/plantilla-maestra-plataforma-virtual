@@ -28,8 +28,9 @@ test('1. CHECK 23 y 24 van después del 22, en orden, y no escriben nada', () =>
 test('2. CHECK 23 lee el cuerpo SIN comentarios (el de S1 menciona el metadata en uno) y pide el trigger', () => {
   expect(c23).toContain("to_regprocedure('public.handle_new_user()')")
   expect(c23).toContain("regexp_replace(regexp_replace(p.prosrc, '/\\*.*?\\*/', '', 'g'), '--[^\\n]*', '', 'g') AS cuerpo")
-  // ->>, -> y #>> '{rol}', con o sin espacios.
-  expect(c23).toContain("cuerpo ~* 'raw_user_meta_data\\s*(->>?|#>>?)\\s*''\\{?rol\\}?'''")
+  // ->>, -> y #>> '{rol}', con o sin espacios, con cast ::jsonb o entre paréntesis, y jsonb_extract_path(_text).
+  expect(c23).toContain("cuerpo ~* 'raw_user_meta_data\\s*\\)?\\s*(::\\s*jsonb\\s*\\)?\\s*)?(->>?|#>>?)\\s*''\\{?rol\\}?'''")
+  expect(c23).toContain("OR cuerpo ~* 'jsonb_extract_path(_text)?\\s*\\(\\s*(new\\s*\\.\\s*)?raw_user_meta_data\\s*(::\\s*jsonb\\s*)?,\\s*''rol'''")
   expect(c23).toContain("cuerpo ~ '''alumno'''")
   // Que se DISPARE en un signUp: modo origen ('O'/'A'; 'R' solo corre en réplica), de fila y en INSERT.
   expect(c23).toMatch(/t\.tgrelid = to_regclass\('auth\.users'\) AND NOT t\.tgisinternal\s+AND t\.tgfoid = f\.oid AND t\.tgenabled IN \('O', 'A'\)\s+AND \(t\.tgtype & 1\) = 1 AND \(t\.tgtype & 4\) = 4\)/)
@@ -92,5 +93,6 @@ test('5. regla de conexión (Bug 228): pooler en modo sesión sí; nunca el 6543
 test('6. la consulta de detección de fix-s1-s2-roles.sql quita los comentarios antes de buscar', () => {
   const fix = leer('scripts', 'fix-s1-s2-roles.sql')
   expect(fix).not.toContain("AND p.prosrc ILIKE '%raw_user_meta_data%rol%';")
-  expect(fix).toContain("--    AND regexp_replace(regexp_replace(p.prosrc, '/\\*.*?\\*/', '', 'g'), '--[^\\n]*', '', 'g')")
+  expect(fix).toContain("--  CROSS JOIN LATERAL (SELECT regexp_replace(regexp_replace(p.prosrc, '/\\*.*?\\*/', '', 'g'), '--[^\\n]*', '', 'g') AS cuerpo) c")
+  expect(fix).toContain("--      OR c.cuerpo ~* 'jsonb_extract_path(_text)?")
 })

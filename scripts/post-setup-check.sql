@@ -627,7 +627,9 @@ WITH f AS (
 ), r AS (
   SELECT
     (SELECT count(*) FROM f) AS existe,
-    COALESCE((SELECT cuerpo ~* 'raw_user_meta_data\s*(->>?|#>>?)\s*''\{?rol\}?''' FROM f), false) AS lee_rol,
+    -- ->>, ->, #>> '{rol}' (con cast ::jsonb o entre paréntesis) y jsonb_extract_path(_text).
+    COALESCE((SELECT cuerpo ~* 'raw_user_meta_data\s*\)?\s*(::\s*jsonb\s*\)?\s*)?(->>?|#>>?)\s*''\{?rol\}?'''
+                  OR cuerpo ~* 'jsonb_extract_path(_text)?\s*\(\s*(new\s*\.\s*)?raw_user_meta_data\s*(::\s*jsonb\s*)?,\s*''rol''' FROM f), false) AS lee_rol,
     COALESCE((SELECT cuerpo ~ '''alumno''' FROM f), false) AS con_alumno,
     COALESCE((SELECT EXISTS (
        SELECT 1 FROM pg_trigger t

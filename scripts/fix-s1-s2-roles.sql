@@ -128,9 +128,12 @@ END $outer$;
 -- cliente YA corregido (verificado el 28-sep-2026). Es la misma regla del CHECK 23.
 -- SELECT current_database() AS cliente, 'S1: rol desde metadata' AS hallazgo
 --   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--  CROSS JOIN LATERAL (SELECT regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g') AS cuerpo) c
 --  WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
---    AND regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g')
---        ~* 'raw_user_meta_data\s*(->>?|#>>?)\s*''\{?rol\}?''';
+--    AND (c.cuerpo ~* 'raw_user_meta_data\s*\)?\s*(::\s*jsonb\s*\)?\s*)?(->>?|#>>?)\s*''\{?rol\}?'''
+--      OR c.cuerpo ~* 'jsonb_extract_path(_text)?\s*\(\s*(new\s*\.\s*)?raw_user_meta_data\s*(::\s*jsonb\s*)?,\s*''rol''');
+-- (Las dos regex del CHECK 23: ->>, ->, #>> '{rol}', con cast ::jsonb o entre
+--  paréntesis, y jsonb_extract_path(_text).)
 --
 -- ── Detección S2 (hit = el panel muere con roles en mayúsculas) ──────────────
 -- SELECT current_database() AS cliente, p.proname, 'S2: sin LOWER' AS hallazgo
