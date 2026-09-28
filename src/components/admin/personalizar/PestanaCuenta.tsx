@@ -15,7 +15,7 @@
  * Desde D22a el editor es solo del admin (su layout manda al secretario a su
  * pantalla y el GET de la configuración es solo del admin), así que aquí solo
  * llega un admin. /api/admin/cambiar-password acepta a todo el personal, cada uno
- * su propia cuenta; el «Mi cuenta» del secretario va aparte. El formulario sigue
+ * su propia cuenta; el «Mi cuenta» del secretario va aparte (#261). El formulario sigue
  * atado a `puedeEditar` por si el editor volviera a abrirse en solo lectura.
  */
 import { useState } from 'react'
