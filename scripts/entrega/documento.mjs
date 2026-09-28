@@ -591,7 +591,7 @@ prospecto: "¿esto es real?".</p>
 ${ul([
       // Mundo Estudio #234: solo lo que la sección publica (título y documentos).
       d.validezDosPaises !== false && '<b>Un certificado, dos países</b> — reconocimiento en México y Estados Unidos',
-      d.validezDosPaises === false && '<b>Validez oficial ante la SEP</b> — el documento que recibe el alumno al concluir su nivel',
+      d.validezDosPaises === false && '<b>Validez oficial ante la SEP</b> — el respaldo oficial de los estudios del alumno en México',
       (d.documentosValidez ?? 2) > 0 && `<b>Los ${(d.documentosValidez ?? 2) === 2 ? 'dos ' : ''}documentos oficiales</b> que recibe el alumno al terminar, con imagen de cada uno`,
       // 🛑 SOLO si la escuela tiene folio propio publicado, y entonces va
       // completo. Sin folio la landing NO pinta ese bloque —ni el folio ni el
