@@ -606,3 +606,85 @@ SELECT
     ELSE '✅ OK (las dos con LOWER(rol), SECURITY DEFINER y search_path = public)'
   END AS resultado
 FROM resumen;
+
+
+-- ─── CHECK 23: el alta nunca toma el rol del metadata (S1) ──────────────────
+-- Aplica a toda base. handle_new_user() crea la fila de usuarios de cada cuenta
+-- nueva y es SECURITY DEFINER: si toma el rol de raw_user_meta_data (lo escribe
+-- quien llama a signUp con la anon key), cualquiera se registra como admin
+-- (Bug 66). El fix S1 (20260729120000) lo deja en 'alumno' literal; hasta el
+-- 28-sep-2026, supabase/schema.sql y schema-02-funciones.sql traían el cuerpo
+-- viejo. Se revisa el cuerpo SIN comentarios: el de S1 menciona
+-- raw_user_meta_data->>'rol' en un comentario, y un ILIKE sobre prosrc crudo lo
+-- marcaba como vulnerable. También se pide el trigger de auth.users encendido.
+WITH f AS (
+  SELECT p.oid,
+         regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g') AS cuerpo
+    FROM pg_proc p
+   WHERE p.oid = to_regprocedure('public.handle_new_user()')
+), r AS (
+  SELECT
+    (SELECT count(*) FROM f) AS existe,
+    COALESCE((SELECT cuerpo ~* 'raw_user_meta_data\s*(->>?|#>>?)\s*''\{?rol\}?''' FROM f), false) AS lee_rol,
+    COALESCE((SELECT cuerpo ~ '''alumno''' FROM f), false) AS con_alumno,
+    COALESCE((SELECT EXISTS (
+       SELECT 1 FROM pg_trigger t
+        WHERE t.tgrelid = to_regclass('auth.users') AND NOT t.tgisinternal
+          AND t.tgfoid = f.oid AND t.tgenabled <> 'D') FROM f), false) AS con_trigger
+)
+SELECT
+  'handle_new_user() sin rol del metadata (S1)' AS check_name,
+  CASE WHEN existe = 0 THEN 'no existe'
+       ELSE 'lee el rol del metadata: ' || CASE WHEN lee_rol THEN 'sí' ELSE 'no' END
+         || ' / rol ''alumno'' fijo: ' || CASE WHEN con_alumno THEN 'sí' ELSE 'no' END
+         || ' / trigger en auth.users: ' || CASE WHEN con_trigger THEN 'sí' ELSE 'no' END
+  END AS valor,
+  CASE
+    WHEN existe = 0 OR NOT con_trigger
+      THEN '❌ FALTA handle_new_user() o su trigger en auth.users → corre supabase/migrations/20260729120000_fix_s1_rol_alta.sql (los recrea con el cuerpo S1)'
+    WHEN lee_rol OR NOT con_alumno
+      THEN '❌ S1 ABIERTO: el alta toma el rol del metadata y cualquiera se registra como admin con la anon key → corre supabase/migrations/20260729120000_fix_s1_rol_alta.sql (cliente ya desplegado: scripts/fix-s1-s2-roles.sql)'
+    ELSE '✅ OK (rol ''alumno'' fijo; del metadata solo sale el nombre)'
+  END AS resultado
+FROM r;
+
+-- ─── CHECK 24: nadie inserta con su sesión en usuarios ni en documentos (#185) ─
+-- Aplica a toda base. Todo INSERT legítimo en usuarios y documentos_alumno va
+-- con service_role (register-complete, /api/admin/usuarios, /api/admin/alumnos,
+-- /api/alumno/documentos). Si anon o authenticated conservan INSERT (los GRANT
+-- de fábrica de Supabase se lo dan a toda tabla nueva), un alumno sube un
+-- documento ya «verificado» con su sesión, y donde falte el trigger de alta una
+-- cuenta nueva se crea su fila con rol 'admin' (Bug 220). Se mira el privilegio
+-- de tabla Y de columna, y que ninguna política de INSERT sobre usuarios acepte
+-- id = auth.uid().
+WITH p AS (
+  SELECT r.rol, t.tabla,
+         to_regclass('public.' || t.tabla) IS NOT NULL AS existe,
+         CASE WHEN to_regclass('public.' || t.tabla) IS NULL THEN false
+              ELSE has_any_column_privilege(r.rol, 'public.' || t.tabla, 'INSERT') END AS puede
+    FROM unnest(ARRAY['anon', 'authenticated']) AS r(rol)
+   CROSS JOIN unnest(ARRAY['usuarios', 'documentos_alumno']) AS t(tabla)
+   WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r.rol)
+), pol AS (
+  SELECT string_agg(policyname, ', ' ORDER BY policyname) AS con_uid
+    FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'usuarios' AND cmd IN ('INSERT', 'ALL')
+     AND COALESCE(with_check, qual, '') ~* 'auth\.uid\(\)'
+), r AS (
+  SELECT string_agg(rol || ' → ' || tabla, ', ' ORDER BY tabla, rol) FILTER (WHERE puede) AS abiertos,
+         string_agg(DISTINCT tabla, ', ') FILTER (WHERE NOT existe) AS faltan,
+         (SELECT con_uid FROM pol) AS con_uid
+    FROM p
+)
+SELECT
+  'Sin INSERT propio en usuarios ni documentos_alumno (#185)' AS check_name,
+  'con INSERT: ' || COALESCE(abiertos, 'nadie') || ' / política con auth.uid(): ' || COALESCE(con_uid, 'ninguna')
+    || CASE WHEN faltan IS NOT NULL THEN ' / faltan tablas: ' || faltan ELSE '' END AS valor,
+  CASE
+    WHEN faltan IS NOT NULL
+      THEN '❌ FALTA la tabla ' || faltan || ' → corre supabase/schema.sql (o scripts/schema.sql) antes de este check'
+    WHEN abiertos IS NOT NULL OR con_uid IS NOT NULL
+      THEN '❌ INSERT PROPIO ABIERTO (' || COALESCE(abiertos, con_uid) || '): un alumno sube documentos ya verificados y una cuenta sin fila se crea como admin → corre supabase/migrations/20260924120000_usuarios_sin_insert_propio.sql (idempotente)'
+    ELSE '✅ OK (anon y authenticated sin INSERT; la política de INSERT de usuarios solo acepta al admin)'
+  END AS resultado
+FROM r;

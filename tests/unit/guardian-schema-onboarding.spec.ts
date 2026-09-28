@@ -234,3 +234,26 @@ test('los cuerpos-trampa conocidos no regresan a scripts/schema.sql (S1/S2)', ()
   expect(cuerpoEsStaff).toContain('LOWER(rol)')
 })
 
+test('S1 en TODO archivo que define handle_new_user: rol «alumno» fijo, nunca del metadata', () => {
+  // supabase/schema.sql (instalador de Solo-Cursos y de `supabase db reset`) y
+  // schema-02-funciones.sql conservaron el cuerpo viejo hasta el 28-sep-2026:
+  // el guardián de arriba solo leía scripts/schema.sql. Una base instalada con
+  // ellos y sin el paso 7 dejaba registrarse como admin con la anon key.
+  const archivos = [
+    ['scripts', 'schema.sql'],
+    ['supabase', 'schema.sql'],
+    ['supabase', 'schema-02-funciones.sql'],
+    ['supabase', 'migrations', '20260729120000_fix_s1_rol_alta.sql'],
+    ['scripts', 'fix-s1-s2-roles.sql'],
+  ]
+  for (const partes of archivos) {
+    const nombre = partes.join('/')
+    const sql = sinComentarios(readFileSync(join(raiz, ...partes), 'utf8'))
+    expect(sql, nombre).toContain('FUNCTION public.handle_new_user()')
+    // Ninguna forma de leer el rol del metadata (->>, ->, #>> '{rol}'), con o sin espacios.
+    expect(sql, nombre).not.toMatch(/raw_user_meta_data\s*(->>?|#>>?)\s*'\{?rol\}?'/)
+    // Y el valor que SÍ se inserta es 'alumno', justo después del nombre.
+    expect(sql, nombre).toMatch(/COALESCE\(NEW\.raw_user_meta_data->>'nombre', ''\),\s*'alumno'\s*\)/)
+  }
+})
+

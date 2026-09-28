@@ -119,11 +119,16 @@ BEGIN
 END $outer$;
 
 -- ── Detección en OTROS clientes (una sola query; hit = VULNERABLE a S1) ──────
--- Devuelve una fila si handle_new_user() todavía lee el rol del metadata.
+-- Devuelve una fila si handle_new_user() todavía lee el rol del metadata. Se
+-- quitan los comentarios del cuerpo ANTES de buscar: el cuerpo S1 dice
+-- «No se lee raw_user_meta_data->>'rol'» en un comentario, y el ILIKE
+-- '%raw_user_meta_data%rol%' sobre prosrc crudo marcaba como vulnerable a un
+-- cliente YA corregido (verificado el 28-sep-2026). Es la misma regla del CHECK 23.
 -- SELECT current_database() AS cliente, 'S1: rol desde metadata' AS hallazgo
 --   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 --  WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
---    AND p.prosrc ILIKE '%raw_user_meta_data%rol%';
+--    AND regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g')
+--        ~* 'raw_user_meta_data\s*(->>?|#>>?)\s*''\{?rol\}?''';
 --
 -- ── Detección S2 (hit = el panel muere con roles en mayúsculas) ──────────────
 -- SELECT current_database() AS cliente, p.proname, 'S2: sin LOWER' AS hallazgo

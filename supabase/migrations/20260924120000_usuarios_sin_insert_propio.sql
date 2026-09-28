@@ -8,7 +8,8 @@
 -- (POST /rest/v1/usuarios). Verificado en MEDERI (24-sep-2026): ahí estaba
 -- abierto. Ningún flujo legítimo inserta usuarios ni documentos_alumno con la
 -- sesión del usuario: todo va con service_role.
--- Idempotente; un solo bloque; conexión directa (nunca el pooler).
+-- Idempotente; un solo bloque. Conexión directa o pooler en MODO SESIÓN
+-- (5432), o el SQL Editor; nunca el 6543 (Bug 228). Lo vigila el CHECK 24.
 -- ============================================================
 BEGIN;
 DROP POLICY IF EXISTS "usuarios: admin puede insertar" ON public.usuarios;
