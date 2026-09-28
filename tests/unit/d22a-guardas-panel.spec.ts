@@ -159,10 +159,13 @@ test('5. guardián de API: los 102 handlers están en la tabla, y cada uno revis
   for (const n of ['route.js', 'route.tsx', 'route.jsx']) expect(recorrer(base, n), n).toEqual([])
   for (const f of recorrer(base, 'route.ts')) {
     const s = sinComentarios(readFileSync(join(raiz, f), 'utf8'))
-    expect(s, f).not.toMatch(/export\s+(const|let|var)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/)
-    expect(s, f).not.toMatch(/export\s+function\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/)
-    expect(s, f).not.toMatch(/export\s*\{[^}]*\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b[^}]*\}/)
-    expect(s, f).not.toMatch(/export async function (HEAD|OPTIONS)\b/)
+    // Lista blanca: cualquier otra forma (export const { GET }, export *, export { GET },
+    // export function sin async, HEAD/OPTIONS, espacios raros) hace fallar la prueba.
+    // (Por línea: la palabra «export» también sale en cadenas, p. ej. '/api/admin/reportes/export'.)
+    for (const m of s.matchAll(/^[ \t]*export\b.*$/gm)) {
+      expect(m[0].trim(), `${f}: export que el guardián no sabe leer`).toMatch(
+        /^export async function (GET|POST|PUT|PATCH|DELETE)\b|^export const (dynamic|runtime|revalidate|maxDuration|fetchCache|preferredRegion)\b/)
+    }
   }
   const h = handlers()
   expect([...h.keys()].sort()).toEqual(Object.keys(API).sort())

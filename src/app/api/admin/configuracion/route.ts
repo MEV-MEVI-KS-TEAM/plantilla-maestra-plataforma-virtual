@@ -79,7 +79,9 @@ function esObjetoPlano(v: unknown): v is Record<string, unknown> {
 
 /**
  * Sesión + rol. Devuelve el 401/403 listo para responder, o el usuario y su
- * rol normalizado. `soloAdmin` decide si el SECRETARIO pasa (solo en GET).
+ * rol normalizado. Desde D22a los tres métodos llaman `autorizar(true)`: el
+ * SECRETARIO no pasa en ninguno. `soloAdmin = false` (staff) queda sin uso, por
+ * si el GET volviera a abrirse en solo lectura.
  */
 async function autorizar(soloAdmin: boolean) {
   const supabase = await createClient()

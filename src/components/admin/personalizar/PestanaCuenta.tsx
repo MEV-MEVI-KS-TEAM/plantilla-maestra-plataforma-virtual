@@ -23,7 +23,7 @@ import { Eye, EyeOff, Loader2, Lock } from 'lucide-react'
 import { BORDE, INPUT_STYLE, TXT, TXT_SUAVE, TXT_TENUE } from './Comunes'
 
 export interface PestanaCuentaProps {
-  /** `false` = la sesión no es ADMIN: el endpoint responde 403. */
+  /** `false` = modo de solo lectura (hoy inalcanzable: el editor es solo del admin desde D22a). */
   puedeEditar: boolean
   onMensaje: (texto: string, tipo: 'success' | 'error') => void
 }

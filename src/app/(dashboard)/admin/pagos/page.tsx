@@ -138,7 +138,9 @@ export default function PagosPage() {
         </p>
       </div>
 
-      {/* KPIs (se pintan cuando llega la primera respuesta) */}
+      {/* KPIs (se pintan cuando llega la primera respuesta; antes, un marcador de su
+          altura para que la búsqueda y los filtros no brinquen al aparecer) */}
+      {KPI.length === 0 && <div aria-hidden className="h-[140px]" />}
       {KPI.length > 0 && <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {KPI.map(k => (
           <div key={k.label} className="rounded-2xl p-5"
