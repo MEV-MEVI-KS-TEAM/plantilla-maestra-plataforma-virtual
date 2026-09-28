@@ -143,9 +143,11 @@ BEGIN
     END IF;
     -- El admin gestiona el banco con una permisiva; si falta (CEEVA), se crea. Un
     -- techo solo no concede filas (y el CHECK 13 no lo cuenta).
+    -- (Por nombre también: una política ya llamada así con otro texto haría abortar el CREATE.)
     IF NOT EXISTS (SELECT 1 FROM pg_policies
-                    WHERE schemaname = 'public' AND tablename = v_t AND permissive = 'PERMISSIVE'
-                      AND cmd = 'ALL' AND coalesce(qual, '') ~* '(es_admin|is_admin)\s*\(') THEN
+                    WHERE schemaname = 'public' AND tablename = v_t
+                      AND (policyname = v_t || ': admin gestiona'
+                           OR (permissive = 'PERMISSIVE' AND cmd = 'ALL' AND coalesce(qual, '') ~* '(es_admin|is_admin)\s*\('))) THEN
       EXECUTE format('CREATE POLICY %I ON public.%I USING (public.es_admin())', v_t || ': admin gestiona', v_t);
       RAISE NOTICE 'D22d: % — se creó «%: admin gestiona».', v_t, v_t;
     END IF;
@@ -233,9 +235,11 @@ BEGIN
       RAISE NOTICE 'D22d: % tenía la RLS APAGADA (serie CEEVA): se enciende.', v_t;
       EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_t);
     END IF;
+    -- (Por nombre también, y «uid()» sin esquema: pg_policies omite «auth.» si está en el search_path.)
     IF NOT EXISTS (SELECT 1 FROM pg_policies
-                    WHERE schemaname = 'public' AND tablename = v_t AND permissive = 'PERMISSIVE'
-                      AND cmd IN ('SELECT', 'ALL') AND coalesce(qual, '') ~* 'auth\.uid\s*\(') THEN
+                    WHERE schemaname = 'public' AND tablename = v_t
+                      AND (policyname = CASE v_t WHEN 'intentos_evaluacion' THEN 'intentos: ver propios intentos' ELSE 'quiz_respuestas: ver propias' END
+                           OR (permissive = 'PERMISSIVE' AND cmd IN ('SELECT', 'ALL') AND coalesce(qual, '') ~* '(\m|\.)uid\s*\('))) THEN
       EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT USING (alumno_id = auth.uid() OR public.es_admin())',
                      CASE v_t WHEN 'intentos_evaluacion' THEN 'intentos: ver propios intentos' ELSE 'quiz_respuestas: ver propias' END, v_t);
       RAISE NOTICE 'D22d: % — se creó la lectura propia (o admin).', v_t;

@@ -184,6 +184,19 @@ test('4. K4: sin escritura con sesión en intentos_evaluacion y quiz_respuestas;
     expect(plano(politica(t, 'quiz_respuestas: techo propio o admin (D22d)')), f).toBe(plano(TECHO_PROPIO('quiz_respuestas', 'quiz_respuestas')))
   }
   expect(migracion()).not.toContain('No delata claves')
+  // Epílogo (d): las dos mitades, RLS y techo.
+  expect(s).toContain("RAISE EXCEPTION 'D22d: sin RLS o sin techo de lectura propio o admin: %.', v_malas;")
+  const d = s.slice(s.indexOf("SELECT string_agg(x, ', ') INTO v_malas\n    FROM unnest(c_k4) AS x"))
+  expect(d).toMatch(/NOT \(SELECT c\.relrowsecurity FROM pg_class c WHERE c\.oid = to_regclass\('public\.' \|\| x\)\)\s+OR NOT EXISTS/)
+  expect(d).toContain("= 'alumno_id=auth.uidores_admin'")
+  // Las fuentes estáticas encienden la RLS de las dos.
+  for (const f of [SCHEMA, SB_SCHEMA]) {
+    const t = sinComentariosSql(leer(f))
+    for (const tabla of ['intentos_evaluacion', 'quiz_respuestas']) expect(t, `${f} ${tabla}`).toMatch(new RegExp(`ALTER TABLE public\\.${tabla}\\s+ENABLE ROW LEVEL SECURITY;`))
+  }
+  // No choca por nombre al crear la lectura propia ni «admin gestiona».
+  expect(s).toContain("AND (policyname = CASE v_t WHEN 'intentos_evaluacion' THEN 'intentos: ver propios intentos' ELSE 'quiz_respuestas: ver propias' END")
+  expect(s).toContain("AND (policyname = v_t || ': admin gestiona'")
   // Ninguna fuente vuelve a crear el INSERT propio.
   for (const f of [SCHEMA, SB_SCHEMA, ...readdirSync(join(raiz, DIR_MIG)).filter(f => f.endsWith('.sql')).map(f => join(DIR_MIG, f))]) {
     const t = sinComentariosSql(leer(f))
@@ -314,6 +327,7 @@ test('8. SETUP: fila 23 después de la 22, con «la app ANTES»; nota del paso 7
   expect(fila).toContain('⚠️ **Desplegar la app de D22d ANTES**')
   expect(fila).toContain('(CHECK 28, 29 y 30)')
   expect(fila).toContain('Incluye lo de #186 (Bug 221)')
+  expect(fila).toContain('cada quien lee solo los suyos')
   const paso7 = setup.slice(setup.indexOf('7. **Parches de seguridad (obligatorios)**'), setup.indexOf('7bis.'))
   expect(paso7).toContain('después de 7bis corre su **fila 22**')
   expect(paso7).toContain('**Y en toda base, después de desplegar la app de D22d:** su **fila 23**')
