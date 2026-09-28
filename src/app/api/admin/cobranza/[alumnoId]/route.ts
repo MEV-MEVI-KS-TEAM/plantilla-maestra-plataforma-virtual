@@ -1,6 +1,14 @@
 /**
- * Calendario semanal de UN alumno, y las acciones que el staff puede ejecutar
- * sobre él.
+ * Calendario semanal de UN alumno, y las acciones que el personal puede
+ * ejecutar sobre él.
+ *
+ * D22b (decisión 5 de Kevin): «pagar» es de todo el personal (el secretario es
+ * quien cobra). Condonar, quitar la condonación, regenerar y el plan a medida
+ * cambian lo que el alumno debe: son SOLO del admin. La condición es positiva:
+ * toda acción que no sea 'pagar' pide verifyAdmin, también una que no exista.
+ * Las funciones SQL tienen además EXECUTE solo para service_role y su guardia
+ * pide es_admin() con sesión (migración 20260928150000_d22b), así que el
+ * secretario tampoco las alcanza por /rest/v1/rpc/….
  *
  * Todas las escrituras van por las funciones SECURITY DEFINER de la migración
  * (`registrar_cuota_semanal`, `condonar_semana`, `generar_calendario_*`), nunca
@@ -23,7 +31,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyStaff } from '@/lib/supabase/verify-admin'
+import { verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig } from '@/lib/site-config'
 import { codigoMoneda, tipoCambioValido } from '@/lib/moneda'
@@ -64,6 +72,10 @@ export async function POST(req: Request, { params }: { params: { alumnoId: strin
 
   const body = await req.json().catch(() => ({}))
   const accion = String(body.accion ?? '')
+  if (accion !== 'pagar') {
+    const soloAdmin = await verifyAdmin(supabase, user.id)
+    if (soloAdmin) return soloAdmin
+  }
   const admin = createAdminClient()
 
   if (accion === 'pagar') {

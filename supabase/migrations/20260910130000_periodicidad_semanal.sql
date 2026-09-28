@@ -101,10 +101,15 @@ GRANT  ALL    ON public.calendario_pagos TO service_role;
 -- esta plantilla protege con RLS, no quitando privilegios.
 
 -- ── 3. Guardia común: ¿quién puede escribir el calendario? ──────────────────
--- Permitido: (a) el service_role del servidor, (b) un usuario con rol
--- admin/secretario, (c) una conexión directa a la BD (psql como postgres, sin
--- claims de PostgREST). Un ALUMNO autenticado recibe 42501: estas funciones son
--- SECURITY DEFINER y sin esta guardia podría reescribir los pagos de otro.
+-- Permitido: (a) el service_role del servidor, (b) un usuario con rol admin,
+-- (c) una conexión directa a la BD (psql como postgres, sin claims de
+-- PostgREST). El SECRETARIO y el ALUMNO reciben 42501: estas funciones son
+-- SECURITY DEFINER y sin esta guardia podrían reescribir los pagos de otro.
+-- D22b: antes pasaba es_staff(), y el secretario condonaba, regeneraba o fijaba
+-- un plan a medida llamando /rest/v1/rpc/… con su sesión. Ahora, además, las
+-- cuatro funciones de abajo tienen EXECUTE solo para service_role: la app las
+-- llama siempre con él (el secretario cobra por /api/admin/cobranza, que revisa
+-- su rol antes). Esta guardia es la segunda capa, por si vuelve un GRANT viejo.
 CREATE OR REPLACE FUNCTION public.calendario_pagos_autorizado()
 RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER
@@ -119,7 +124,7 @@ BEGIN
   END IF;
   v_role := (v_claims::jsonb ->> 'role');
   IF v_role = 'service_role' THEN RETURN TRUE; END IF;
-  RETURN public.es_staff();
+  RETURN public.es_admin();                   -- D22b: con sesión, solo el admin
 END;
 $$;
 REVOKE ALL ON FUNCTION public.calendario_pagos_autorizado() FROM PUBLIC, anon;
@@ -194,8 +199,9 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.generar_calendario_pagos(UUID, INTEGER, NUMERIC, DATE) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.generar_calendario_pagos(UUID, INTEGER, NUMERIC, DATE) TO authenticated, service_role;
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.generar_calendario_pagos(UUID, INTEGER, NUMERIC, DATE) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.generar_calendario_pagos(UUID, INTEGER, NUMERIC, DATE) TO service_role;
 
 -- ── 4b. generar_calendario_por_nivel(): el plan lo decide la BD ─────────────
 --
@@ -273,8 +279,9 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.generar_calendario_por_nivel(UUID, DATE) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.generar_calendario_por_nivel(UUID, DATE) TO authenticated, service_role;
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.generar_calendario_por_nivel(UUID, DATE) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.generar_calendario_por_nivel(UUID, DATE) TO service_role;
 
 -- ── 5. registrar_cuota_semanal(): cobra UNA semana (pago real + calendario) ─
 -- `p_moneda` y `p_tipo_cambio` los pasa el servidor SOLO si la escuela no cobra
@@ -340,8 +347,9 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.registrar_cuota_semanal(UUID, INTEGER, TEXT, UUID, TEXT, DATE, NUMERIC, TEXT, NUMERIC) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.registrar_cuota_semanal(UUID, INTEGER, TEXT, UUID, TEXT, DATE, NUMERIC, TEXT, NUMERIC) TO authenticated, service_role;
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.registrar_cuota_semanal(UUID, INTEGER, TEXT, UUID, TEXT, DATE, NUMERIC, TEXT, NUMERIC) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.registrar_cuota_semanal(UUID, INTEGER, TEXT, UUID, TEXT, DATE, NUMERIC, TEXT, NUMERIC) TO service_role;
 
 -- ── 6. condonar_semana(): perdona (o des-perdona) una semana ────────────────
 CREATE OR REPLACE FUNCTION public.condonar_semana(
@@ -389,8 +397,9 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOLEAN) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOLEAN) TO authenticated, service_role;
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOLEAN) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOLEAN) TO service_role;
 
 -- ── 7. Borrar un pago de cuota devuelve la semana a 'pendiente' ─────────────
 -- El FK pago_id ya está en NULL cuando corre este trigger (ON DELETE SET NULL

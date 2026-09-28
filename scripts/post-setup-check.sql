@@ -693,3 +693,57 @@ SELECT
     ELSE '✅ OK (anon y authenticated sin INSERT; la política de INSERT de usuarios solo acepta al admin)'
   END AS resultado
 FROM r;
+
+-- ─── CHECK 25: condonar, regenerar y el plan a medida son del admin (D22b) ─
+-- Aplica a toda base con cobro semanal instalado (calendario_pagos_autorizado);
+-- en una base sin él no aplica. Las cuatro funciones del calendario
+-- (registrar_cuota_semanal, condonar_semana, generar_calendario_pagos y
+-- generar_calendario_por_nivel) solo se ejecutan con service_role: la app las
+-- llama siempre así. Si anon o authenticated conservan EXECUTE, el secretario
+-- condona, regenera o fija semanas y cuota con /rest/v1/rpc/… y su sesión, y
+-- cualquiera con sesión de personal registra un pago a nombre de otro. La
+-- guardia común pide es_admin() con sesión (segunda capa; se lee su cuerpo SIN
+-- comentarios). Una copia vieja de 20260910130000_periodicidad_semanal.sql
+-- devuelve el GRANT y es_staff(): por eso se miran las dos cosas.
+WITH g AS (
+  SELECT to_regprocedure('public.calendario_pagos_autorizado()') AS oid
+), f AS (
+  SELECT fn,
+         (SELECT count(*)
+            FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+           WHERE n.nspname = 'public' AND p.proname = fn) AS firmas,
+         (SELECT string_agg(DISTINCT r.rol, '+' ORDER BY r.rol)
+            FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+           CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS r(rol)
+           WHERE n.nspname = 'public' AND p.proname = fn
+             AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r.rol)
+             AND has_function_privilege(r.rol, p.oid, 'EXECUTE')) AS abierta_a
+    FROM unnest(ARRAY['registrar_cuota_semanal', 'condonar_semana',
+                      'generar_calendario_pagos', 'generar_calendario_por_nivel']) AS fn
+), c AS (
+  SELECT regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g') AS cuerpo
+    FROM pg_proc p WHERE p.oid = (SELECT oid FROM g)
+), r AS (
+  SELECT (SELECT oid FROM g) IS NOT NULL AS semanal,
+         COALESCE((SELECT cuerpo ~ 'es_admin\s*\(' AND cuerpo !~ 'es_staff\s*\(' FROM c), false) AS guardia_admin,
+         string_agg(fn, ', ' ORDER BY fn) FILTER (WHERE firmas = 0) AS faltan,
+         string_agg(fn || ' → ' || abierta_a, ', ' ORDER BY fn) FILTER (WHERE abierta_a IS NOT NULL) AS abiertas
+    FROM f
+)
+SELECT
+  'Cobranza semanal: condonar/regenerar solo admin (D22b)' AS check_name,
+  CASE WHEN NOT semanal THEN 'sin cobro semanal instalado'
+       ELSE 'EXECUTE con sesión: ' || COALESCE(abiertas, 'nadie')
+         || ' / guardia: ' || CASE WHEN guardia_admin THEN 'es_admin()' ELSE 'NO pide es_admin()' END
+         || CASE WHEN faltan IS NOT NULL THEN ' / faltan: ' || faltan ELSE '' END
+  END AS valor,
+  CASE
+    WHEN NOT semanal
+      THEN '✅ OK (esta base no tiene el calendario semanal: no aplica)'
+    WHEN faltan IS NOT NULL
+      THEN '❌ COBRO SEMANAL A MEDIAS (falta ' || faltan || ') → vuelve a correr supabase/migrations/20260910130000_periodicidad_semanal.sql y después supabase/migrations/20260928150000_d22b_cobranza_solo_admin.sql'
+    WHEN abiertas IS NOT NULL OR NOT guardia_admin
+      THEN '❌ COBRANZA ABIERTA (' || COALESCE(abiertas, 'la guardia acepta al secretario') || '): el secretario condona, regenera o fija una cuota con /rest/v1/rpc/… y su sesión → corre supabase/migrations/20260928150000_d22b_cobranza_solo_admin.sql (idempotente); si reapareció tras re-correr la migración de periodicidad, esa copia es vieja'
+    ELSE '✅ OK (las cuatro funciones solo por el servidor; con sesión, la guardia pide es_admin())'
+  END AS resultado
+FROM r;

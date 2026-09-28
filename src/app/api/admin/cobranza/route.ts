@@ -6,12 +6,14 @@
  * (semanas pendientes con fecha ya pasada), nunca conclusiones financieras: el
  * sistema no distingue un pago sin capturar de una cortesía.
  *
- * Staff (admin y secretario): el secretario es quien cobra.
+ * Staff (admin y secretario): el secretario es quien cobra. `viewer_rol` le
+ * dice a la pantalla si pinta Condonar y Regenerar (solo ADMIN, D22b); si el
+ * rol no se puede leer vale SECRETARIO (cae cerrado).
  */
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyStaff } from '@/lib/supabase/verify-admin'
+import { getUserRol, verifyStaff } from '@/lib/supabase/verify-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +36,7 @@ export async function GET() {
 
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+    const viewerRol = (await getUserRol(supabase, user.id)) === 'ADMIN' ? 'ADMIN' : 'SECRETARIO'
 
     const admin = createAdminClient()
     const { data, error } = await admin.rpc('estado_cuenta_semanal')
@@ -68,6 +71,7 @@ export async function GET() {
     }))
 
     return NextResponse.json({
+      viewer_rol: viewerRol,
       alumnos,
       con_vencidas: alumnos.filter(a => a.semanas_vencidas > 0).length,
       monto_vencido_total: alumnos.reduce((s, a) => s + a.monto_vencido, 0),
