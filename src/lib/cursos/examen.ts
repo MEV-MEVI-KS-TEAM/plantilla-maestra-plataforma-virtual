@@ -229,7 +229,15 @@ export function calificar(
     if (correcta) aciertos++
     if (dada !== null) contestadas++
 
-    respuestas.push({ pregunta_id: p.id, respuesta: dada, es_correcta: correcta })
+    // D22d (K-d3): el ✓/✗ solo se GUARDA cuando el examen se cierra. La fila de
+    // curso_examen_resultados la lee el propio alumno (RLS + GRANT SELECT), así
+    // que guardarlo con reintento pendiente sería la misma eliminación a→b→c
+    // que la revisión diferida quita de la pantalla.
+    respuestas.push(
+      revelarClaves
+        ? { pregunta_id: p.id, respuesta: dada, es_correcta: correcta }
+        : { pregunta_id: p.id, respuesta: dada }
+    )
 
     // ⚠️ SEGURIDAD — dos candados sobre la clave y la explicación:
     //

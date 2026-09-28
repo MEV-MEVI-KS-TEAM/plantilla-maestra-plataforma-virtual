@@ -198,8 +198,15 @@ test('candado 2: mientras queden reintentos, NI UNA clave viaja aunque conteste 
   expect(crudo).not.toContain('explicacion')
   expect(crudo).not.toContain('es_correcta')
   expect(r.desglose.length).toBeGreaterThan(0)
-  // Lo que se GUARDA (curso_examen_resultados.respuestas) sí conserva el veredicto.
-  expect(r.respuestas.every(x => typeof x.es_correcta === 'boolean')).toBe(true)
+  // Lo que se GUARDA (curso_examen_resultados.respuestas) tampoco: el alumno
+  // puede leer su propia fila por REST, así que el ✓/✗ guardado sería el mismo
+  // oráculo por otra puerta.
+  expect(JSON.stringify(r.respuestas)).not.toContain('es_correcta')
+  expect(r.respuestas.map(x => x.respuesta)).toEqual(['a', 'a', 'a', 'a'])
+
+  // Al cerrar (revelarClaves = true) el veredicto sí se guarda.
+  const cierre = calificar(preguntas, enviadas, true)
+  expect(cierre.respuestas.every(x => typeof x.es_correcta === 'boolean')).toBe(true)
 })
 
 test('el denominador no cambia: no contestar sigue contando como incorrecta', () => {

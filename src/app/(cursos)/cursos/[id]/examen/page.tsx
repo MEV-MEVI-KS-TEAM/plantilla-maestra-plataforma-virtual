@@ -181,7 +181,7 @@ export default function ExamenCursoPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-sm sm:text-base font-bold truncate leading-tight">Examen final</h1>
           <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.7)' }}>
-            {resultado ? `${resultado.aciertos} de ${resultado.total} aciertos` : `${contestadas} de ${total} contestadas`}
+            {resultado ? `${resultado.aciertos} de ${resultado.total} aciertos` : aprobadoPrevio ? 'Aprobado' : `${contestadas} de ${total} contestadas`}
           </p>
         </div>
       </header>

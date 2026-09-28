@@ -31,7 +31,7 @@ export default function VisorCursoPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [marcando, setMarcando] = useState(false)
   // Examen final: null mientras carga, false si el curso no tiene examen.
-  const [examen, setExamen] = useState<{ total: number; mejor: number | null } | false | null>(null)
+  const [examen, setExamen] = useState<{ total: number; mejor: number | null; aprobado: boolean } | false | null>(null)
 
   // ── Carga inicial ──
   useEffect(() => {
@@ -70,9 +70,9 @@ export default function VisorCursoPage() {
     let cancelled = false
     fetch(`/api/alumno/cursos/${cursoId}/examen`)
       .then(async r => (r.ok ? r.json() : null))
-      .then((json: { total: number; mejor_porcentaje: number | null } | null) => {
+      .then((json: { total: number; mejor_porcentaje: number | null; aprobado?: boolean } | null) => {
         if (cancelled) return
-        setExamen(json ? { total: json.total, mejor: json.mejor_porcentaje } : false)
+        setExamen(json ? { total: json.total, mejor: json.mejor_porcentaje, aprobado: json.aprobado === true } : false)
       })
       .catch(() => { if (!cancelled) setExamen(false) })
     return () => { cancelled = true }
@@ -251,7 +251,8 @@ export default function VisorCursoPage() {
             className="inline-block mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
             style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}
           >
-            {examen.mejor !== null ? 'Volver a intentar' : 'Presentar examen'}
+            {/* D22d (K-d2): aprobar cierra el examen; ya no se ofrece reintento. */}
+            {examen.aprobado ? 'Ver resultado' : examen.mejor !== null ? 'Volver a intentar' : 'Presentar examen'}
           </span>
         </button>
       )}

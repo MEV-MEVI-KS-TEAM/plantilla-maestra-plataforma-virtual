@@ -169,6 +169,29 @@ test('11. quiz: gate antes del service role; una pregunta de ESTA semana; sin de
   expect(t).not.toMatch(/\?\?\s*'a'|Math\.min\(3|respuesta_correcta/)
   expect(t).not.toMatch(/supabase\s*\.from\(/)
   expect(t).toContain(".order('fecha', { ascending: true })")               // la PRIMERA respuesta cuenta
+
+  // El candado contesta con la respuesta GUARDADA, nunca con la nueva (si no, sería oráculo),
+  // y el veredicto de la nueva solo sale después de guardarla.
+  expect(post).toContain('return NextResponse.json({ ...veredictoQuiz(row, previas[row.id]), ya_respondida: true })')
+  expect(post.indexOf('veredictoQuiz(row, idx)')).toBeGreaterThan(
+    post.indexOf('guardarRespuestas(admin, alumnoId, semanaId, forma, previas, [{ fila: row, idx }])'))
+
+  // Compat (K-d12) todo o nada: el bucle rechaza sin escribir; se lee y guarda DESPUÉS del bucle.
+  const c = post.slice(post.indexOf("if (body && body.respuestas && typeof body.respuestas === 'object')"))
+  const iFor = c.indexOf('for (const id of ids)')
+  const iLeer = c.indexOf('leerRespuestasAlumno(admin, alumnoId, semanaId, ids)')
+  expect(iFor).toBeGreaterThan(0)
+  expect(iLeer).toBeGreaterThan(iFor)
+  const bucle = c.slice(iFor, iLeer)
+  expect(bucle).toMatch(/if \(!fila \|\| idx === null\) \{\s*return NextResponse\.json\(\{ error: 'Respuestas inválidas\.' \}, \{ status: 400 \}\)/)
+  expect(bucle).not.toMatch(/continue|guardarRespuestas|\.insert\(|\.update\(|\.upsert\(/)
+
+  // GET: veredicto (y explicación) solo de lo contestado; la respuesta lleva exactamente estas claves.
+  const get = t.slice(t.indexOf('export async function GET'), t.indexOf('export async function POST'))
+  expect(get).toContain('if (idx !== undefined) resultados[f.id] = veredictoQuiz(f, idx)')
+  expect(get).toMatch(/return NextResponse\.json\(\{\s*preguntas,\s*resultados,\s*completado: total > 0 && contestadas === total,\s*aciertos: Object\.values\(resultados\)\.filter\(r => r\.correcta\)\.length,\s*total,\s*\}\)/)
+  // La explicación solo sale del servidor por veredictoQuiz (lib), nunca armada en la ruta.
+  expect(t).not.toMatch(/explicacion/)
 })
 
 test('12. examen de curso: aprobar cierra (409) antes de calificar; GET no sirve el banco si ya aprobó', () => {
@@ -177,6 +200,17 @@ test('12. examen de curso: aprobar cierra (409) antes de calificar; GET no sirve
   expect(i409).toBeGreaterThan(t.indexOf('await puedeExamenFinal(admin, params.id, alumnoId)'))
   expect(t.indexOf('const previo = calificar(preguntas, enviadas)')).toBeGreaterThan(i409)
   expect(t).toContain('revision_completa: revelarClaves,')
+  // K-d3: la clave (y lo guardado con ✓/✗) solo cuando el examen se cierra con este envío.
+  expect(t).toContain('const revelarClaves = previo.porcentaje >= minima || usados + 1 >= permitidos')
+  expect(t).toContain('revelarClaves ? calificar(preguntas, enviadas, true) : previo')
+  // La respuesta de éxito lleva exactamente estas claves: ni `respuestas` (lo guardado) ni otra.
+  const exito = t.slice(t.indexOf('return NextResponse.json({\n      id: guardado.id'))
+  const cuerpo = exito.slice(0, exito.indexOf('revision_completa: revelarClaves,') + 'revision_completa: revelarClaves,'.length)
+  expect(cuerpo.length).toBeGreaterThan(40)
+  expect([...cuerpo.matchAll(/^\s*(\w+)[,:]/gm)].map(m => m[1]).sort()).toEqual([
+    'aciertos', 'aprobado', 'calificacion_minima', 'created_at', 'desglose_temas', 'id',
+    'intentos_permitidos', 'intentos_usados', 'porcentaje', 'revision', 'revision_completa', 'total',
+  ])
   const g = sinComentarios(leer(...RUTA_CURSO_GET))
   expect(g).toContain('preguntas: aprobado ? [] : preguntas.map(sanitizar),')
 })
@@ -192,10 +226,18 @@ test('13. UI: el quiz no conoce la clave y revisa r.ok; el mensual y el de curso
   expect(ev).toContain("data.estado === 'aprobada' || data.estado === 'sin_intentos'")
   expect(ev).toContain('const revisionCompleta = resultado.revision_completa !== false')
   expect(ev).toContain('!(d.contestada ?? d.respuesta_alumno >= 0)')
+  // Revisión diferida: sin veredicto no hay ✓ ni ✗ (ícono neutro), y la opción elegida no se pinta de rojo.
+  expect(ev).toMatch(/d\.es_correcta === undefined\s*\?\s*<AlertCircle/)
+  expect(ev).not.toMatch(/es_correcta\s*!==\s*false/)
+  expect(ev).toContain('if (esAlumno && d.es_correcta === false)')
   const curso = sinComentarios(leer('src', 'app', '(cursos)', 'cursos', '[id]', 'examen', 'page.tsx'))
   expect(curso).toContain('{!resultado.aprobado && <button')
   expect(curso).toContain('{!resultado && !aprobadoPrevio && preguntas && (')
   expect(curso).toContain("r.es_correcta === undefined")
+  // K-d2 también en la página del curso: aprobado ya no ofrece «Volver a intentar».
+  const pagCurso = sinComentarios(leer('src', 'app', '(cursos)', 'cursos', '[id]', 'page.tsx'))
+  expect(pagCurso).toContain('aprobado: json.aprobado === true')
+  expect(pagCurso).toContain("{examen.aprobado ? 'Ver resultado' : examen.mejor !== null ? 'Volver a intentar' : 'Presentar examen'}")
 })
 
 // ─── Guardianes sobre TODO src ────────────────────────────────────────────────────

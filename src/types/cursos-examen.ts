@@ -34,11 +34,14 @@ export interface RespuestaEnviada {
   respuesta: Letra | null
 }
 
-/** Una fila del arreglo que se guarda en curso_examen_resultados.respuestas. */
+/**
+ * Una fila del arreglo que se guarda en curso_examen_resultados.respuestas.
+ * `es_correcta` solo viene en el intento que cierra el examen (D22d, K-d3).
+ */
 export interface RespuestaGuardada {
   pregunta_id: string
   respuesta: Letra | null
-  es_correcta: boolean
+  es_correcta?: boolean
 }
 
 export interface DesgloseTema {
