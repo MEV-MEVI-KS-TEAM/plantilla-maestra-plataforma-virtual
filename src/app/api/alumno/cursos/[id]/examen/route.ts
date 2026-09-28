@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leerIntentosPermitidos, leerPreguntas, puedeExamenFinal, puedeVerCurso, sanitizar } from '@/lib/cursos/examen'
+import { leerCalificacionMinima } from '@/lib/cursos/constancia'
 
 // ─── GET /api/alumno/cursos/[id]/examen ──────────────────────────────────────
 // Devuelve el examen del curso SANITIZADO: sin respuesta_correcta y sin
@@ -52,11 +53,17 @@ export async function GET(
     // El candado de verdad lo aplica /examen/enviar en el servidor.
     const intentosPermitidos = await leerIntentosPermitidos(admin, params.id)
 
+    // D22d (K-d2): aprobar CIERRA el examen. Si ya aprobó, no se sirve el banco:
+    // /examen/enviar lo rechazaría con 409 de todos modos.
+    const mejor = previos?.[0]?.porcentaje ?? null
+    const aprobado = mejor !== null && Number(mejor) >= (await leerCalificacionMinima(admin, params.id))
+
     return NextResponse.json({
       total: preguntas.length,
-      mejor_porcentaje: previos?.[0]?.porcentaje ?? null,
+      mejor_porcentaje: mejor,
       intentos_permitidos: intentosPermitidos,
-      preguntas: preguntas.map(sanitizar),
+      aprobado,
+      preguntas: aprobado ? [] : preguntas.map(sanitizar),
     })
   } catch (err) {
     console.error('[GET /api/alumno/cursos/[id]/examen]', err)

@@ -11,8 +11,12 @@ test('el GET del examen no pide respuesta_correcta', () => {
 })
 
 test('el envío califica leyendo preguntas con service_role', () => {
+  // D22d-1: por lib/evaluaciones/examen-mensual, con el cliente admin de la ruta.
   const src = leer('src/app/api/alumno/evaluacion/[id]/enviar/route.ts')
-  expect(src).toMatch(/createAdminClient\(\)\s*\.from\('preguntas'\)/)
+  expect(src).toContain('const admin = createAdminClient()')
+  expect(src).toContain('leerPreguntasEvaluacion(admin, params.id, { soloActivas: false })')
+  expect(src).not.toMatch(/supabase\s*\.from\('preguntas'\)/)
+  expect(leer('src/lib/evaluaciones/examen-mensual.ts')).toMatch(/admin\s*\.from\('preguntas'\)/)
 })
 
 for (const archivo of ['supabase/migrations/20260924140000_preguntas_sin_clave_rest.sql', 'supabase/schema.sql', 'scripts/schema.sql']) {

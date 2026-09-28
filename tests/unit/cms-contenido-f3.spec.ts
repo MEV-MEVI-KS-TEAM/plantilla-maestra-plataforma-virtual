@@ -405,23 +405,30 @@ test('el alumno no ve las preguntas archivadas al abrir quiz y examen', () => {
   expect(iListar, 'no encontre el select por semana_id').toBeGreaterThan(-1)
   expect(quiz.slice(iListar - 300, iListar + 300), 'el listado del quiz no filtra activa').toContain('activa')
 
+  // D22d-1: el examen mensual lee por lib/evaluaciones/examen-mensual (service role).
   const ev = leer('src/app/api/alumno/evaluacion/[id]/route.ts')
-  const iEv = ev.indexOf("from('preguntas')")
-  expect(ev.slice(iEv, iEv + 400), 'el listado del examen no filtra activa').toContain("activa")
+  expect(ev, 'el listado del examen no pide solo las activas').toContain('leerPreguntasEvaluacion(admin, params.id, { soloActivas: true })')
+  const lib = leer('src/lib/evaluaciones/examen-mensual.ts')
+  expect(lib, 'soloActivas no filtra activa').toContain("if (soloActivas) q = q.eq('activa', true)")
 })
 
 test('CALIFICAR nunca filtra activa: archivar a mitad no puede cambiar la nota', () => {
+  // D22d-1: el examen mensual califica por lib/evaluaciones/examen-mensual sin activa.
   const enviar = leer('src/app/api/alumno/evaluacion/[id]/enviar/route.ts')
-  const i = enviar.indexOf("from('preguntas')")
-  expect(i, 'no encontre el select de preguntas en enviar').toBeGreaterThan(-1)
-  // Se mira solo la CADENA de la query, no los comentarios de alrededor
-  const query = enviar.slice(i, enviar.indexOf('\n\n', i))
-  expect(query, 'el calificador filtra activa y no debe').not.toContain(".eq('activa'")
+  expect(enviar, 'el calificador filtra activa y no debe').toContain('leerPreguntasEvaluacion(admin, params.id, { soloActivas: false })')
+  const lib = leer('src/lib/evaluaciones/examen-mensual.ts')
+  const i = lib.indexOf("from('preguntas')")
+  expect(lib.slice(i, lib.indexOf('if (soloActivas)', i)), 'la consulta base filtra activa').not.toContain(".eq('activa'")
 
+  // El quiz califica por pregunta (.eq('id', …)) y, por compatibilidad, en bloque (.in('id', ids)): ninguna filtra activa.
   const quiz = leer('src/app/api/alumno/quiz/[semanaId]/route.ts')
-  const j = quiz.indexOf(".in('id', ids)")
+  const post = quiz.slice(quiz.indexOf('export async function POST'))
+  const j = post.indexOf(".in('id', ids)")
   expect(j, 'no encontre el select por ids en quiz').toBeGreaterThan(-1)
-  expect(quiz.slice(j - 200, j + 100), 'el calificador del quiz filtra activa').not.toContain(".eq('activa'")
+  expect(post.slice(j - 200, j + 100), 'el calificador del quiz filtra activa').not.toContain(".eq('activa'")
+  const k = post.indexOf(".eq('id', body.pregunta_id)")
+  expect(k, 'no encontre el select de una pregunta en quiz').toBeGreaterThan(-1)
+  expect(post.slice(k - 200, k + 150), 'el calificador del quiz filtra activa').not.toContain(".eq('activa'")
 })
 
 test('cerrar-mes ya NO recoge ids de quiz: dejo de borrar (Bug 200)', () => {

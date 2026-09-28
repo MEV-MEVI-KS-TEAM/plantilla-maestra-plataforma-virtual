@@ -65,8 +65,13 @@ export interface RevisionPregunta {
   enunciado: string
   opciones: { a: string; b: string; c: string; d: string }
   tu_respuesta: Letra | null
-  es_correcta: boolean
-  /** Presente SOLO si `tu_respuesta !== null`. */
+  /**
+   * Presente SOLO cuando el examen se cerró con ese envío (aprobó o era su
+   * último intento). Mientras pueda volver a presentar, la revisión es
+   * DIFERIDA (D22d, K-d3): sin ✓/✗ por pregunta.
+   */
+  es_correcta?: boolean
+  /** Presente SOLO si el examen se cerró y `tu_respuesta !== null`. */
   respuesta_correcta?: Letra
   /** Presente SOLO si `tu_respuesta !== null`. */
   explicacion?: string | null

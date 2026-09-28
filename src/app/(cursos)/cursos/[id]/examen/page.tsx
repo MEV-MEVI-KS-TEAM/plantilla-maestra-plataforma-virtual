@@ -15,6 +15,10 @@
  * es solo cortesía visual para no dejar al alumno mandar un envío que el
  * servidor va a rechazar. La revisión, además, solo trae la respuesta correcta
  * de las preguntas que el alumno contestó.
+ *
+ * D22d: aprobar CIERRA el examen (K-d2): ya no hay «Volver a intentar» después de
+ * aprobar. Y mientras quede reintento, la revisión es DIFERIDA (K-d3): puntaje y
+ * desglose por tema, sin ✓/✗ por pregunta ni respuestas correctas.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -33,6 +37,9 @@ interface Calificado {
   porcentaje: number
   desglose_temas: DesgloseTema[]
   revision: RevisionPregunta[]
+  aprobado?: boolean
+  /** false = revisión diferida: todavía puede volver a presentar. */
+  revision_completa?: boolean
 }
 
 /** Listado de intentos previos. Se usa en la vista de resultados y, antes de
@@ -70,6 +77,8 @@ export default function ExamenCursoPage() {
   const [intentosPermitidos, setIntentosPermitidos] = useState(INTENTOS_PERMITIDOS_DEFAULT)
   const [verHistorial, setVerHistorial] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Ya aprobó en un envío anterior: el examen está cerrado (K-d2).
+  const [aprobadoPrevio, setAprobadoPrevio] = useState(false)
 
   const cargarHistorial = useCallback(() => {
     fetch(`/api/alumno/cursos/${cursoId}/examen/resultados`)
@@ -86,9 +95,10 @@ export default function ExamenCursoPage() {
         if (!r.ok) throw new Error()
         return r.json()
       })
-      .then((j: { preguntas: PreguntaSanitizada[]; intentos_permitidos?: number } | null) => {
+      .then((j: { preguntas: PreguntaSanitizada[]; intentos_permitidos?: number; aprobado?: boolean } | null) => {
         if (!j || cancelled) return
         setPreguntas(j.preguntas)
+        setAprobadoPrevio(j.aprobado === true)
         // Límite POR CURSO (cursos.intentos_permitidos). Si la API no lo manda
         // se conserva el fallback, nunca "sin límite".
         if (typeof j.intentos_permitidos === 'number' && j.intentos_permitidos > 0) {
@@ -217,8 +227,15 @@ export default function ExamenCursoPage() {
                 </div>
               )}
 
+              {resultado.aprobado && (
+                <div className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(16,185,129,0.1)', color: '#047857', border: '1px solid rgba(16,185,129,0.3)' }}>
+                  ¡Aprobaste el examen final! Tu constancia la emite la escuela; la verás en el curso cuando esté lista.
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-2">
-                <button
+                {/* Aprobar cierra el examen (K-d2): no hay reintento después de aprobar. */}
+                {!resultado.aprobado && <button
                   onClick={reintentar}
                   disabled={sinIntentos}
                   className="flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold flex-1"
@@ -232,7 +249,7 @@ export default function ExamenCursoPage() {
                   {sinIntentos
                     ? 'Sin intentos disponibles'
                     : `Volver a intentar (${intentosRestantes} ${intentosRestantes === 1 ? 'restante' : 'restantes'})`}
-                </button>
+                </button>}
                 <button
                   onClick={() => setVerHistorial(v => !v)}
                   className="rounded-xl px-5 py-3 text-sm font-semibold flex-1"
@@ -245,12 +262,20 @@ export default function ExamenCursoPage() {
               {verHistorial && <ListaHistorial items={historial} />}
 
               <h2 className="text-sm font-bold pt-2" style={{ color: 'var(--color-primario)' }}>Revisión</h2>
+              {resultado.revision_completa === false && (
+                <p className="text-xs" style={{ color: '#B45309' }}>
+                  Verás qué acertaste y las respuestas correctas cuando apruebes o uses tu último
+                  intento. Mientras tanto, guíate por tu desglose por tema.
+                </p>
+              )}
               {resultado.revision.map((r, i) => (
                 <div key={r.pregunta_id} className="rounded-2xl p-4 space-y-2" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
                   <div className="flex items-start gap-2">
-                    {r.es_correcta
-                      ? <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#10B981' }} />
-                      : <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#EF4444' }} />}
+                    {r.es_correcta === undefined
+                      ? <span className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden />
+                      : r.es_correcta
+                        ? <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#10B981' }} />
+                        : <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#EF4444' }} />}
                     <p className="text-sm font-medium whitespace-pre-wrap" style={{ color: '#1E293B' }}>
                       <span style={{ color: '#94A3B8' }}>{i + 1}. </span>{r.enunciado}
                     </p>
@@ -267,7 +292,9 @@ export default function ExamenCursoPage() {
                       // retroalimentación que sí corresponde darte.
                       const esCorrecta = r.respuesta_correcta !== undefined && L === r.respuesta_correcta
                       const esTuya = L === r.tu_respuesta
-                      const tuyaAcertada = esTuya && r.es_correcta
+                      const tuyaAcertada = esTuya && r.es_correcta === true
+                      // Revisión diferida: la tuya se marca sin decir si acertaste.
+                      const tuyaSinVeredicto = esTuya && r.es_correcta === undefined
                       return (
                         <p
                           key={L}
@@ -275,12 +302,13 @@ export default function ExamenCursoPage() {
                           style={
                             esCorrecta || tuyaAcertada
                               ? { background: 'rgba(16,185,129,0.12)', color: '#047857', fontWeight: 600 }
-                              : esTuya ? { background: 'rgba(239,68,68,0.1)', color: '#B91C1C' }
-                                : { color: '#64748B' }
+                              : tuyaSinVeredicto ? { background: 'rgba(27,48,104,0.08)', color: '#1E293B', fontWeight: 600 }
+                                : esTuya ? { background: 'rgba(239,68,68,0.1)', color: '#B91C1C' }
+                                  : { color: '#64748B' }
                           }
                         >
                           {L}) {r.opciones[L]}
-                          {esTuya && !r.es_correcta && ' — tu respuesta'}
+                          {esTuya && r.es_correcta !== true && ' — tu respuesta'}
                           {tuyaAcertada && ' — tu respuesta ✓'}
                           {esCorrecta && !esTuya && ' ✓'}
                         </p>
@@ -291,7 +319,7 @@ export default function ExamenCursoPage() {
                         No la contestaste, cuenta como incorrecta.
                       </p>
                     )}
-                    {r.tu_respuesta !== null && !r.es_correcta && r.respuesta_correcta === undefined && (
+                    {r.tu_respuesta !== null && r.es_correcta === false && r.respuesta_correcta === undefined && (
                       <p className="text-xs" style={{ color: '#B45309' }}>
                         Repasa este tema antes de tu siguiente intento.
                       </p>
@@ -305,8 +333,19 @@ export default function ExamenCursoPage() {
             </>
           )}
 
+          {/* ── YA APROBADO: el examen está cerrado (K-d2) ── */}
+          {!resultado && aprobadoPrevio && (
+            <div className="rounded-2xl p-5 space-y-3" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
+              <p className="text-sm font-bold" style={{ color: '#047857' }}>Ya aprobaste este examen.</p>
+              <p className="text-xs" style={{ color: '#64748B' }}>
+                Tu constancia la emite la escuela; la verás en el curso cuando esté lista.
+              </p>
+              {historial.length > 0 && <ListaHistorial items={historial} />}
+            </div>
+          )}
+
           {/* ── EXAMEN ── */}
-          {!resultado && preguntas && (
+          {!resultado && !aprobadoPrevio && preguntas && (
             <>
               {/* Intentos previos. El historial ya se cargaba al montar, pero su UI
                   vivía SOLO dentro del bloque de resultados: quien ya había
@@ -339,8 +378,8 @@ export default function ExamenCursoPage() {
                 {sinIntentos
                   ? 'Ya usaste todos tus intentos.'
                   : `Te ${intentosRestantes === 1 ? 'queda' : 'quedan'} ${intentosRestantes} de ${intentosPermitidos} ${intentosRestantes === 1 ? 'intento' : 'intentos'}.`}{' '}
-                Al terminar verás qué preguntas acertaste y tu desglose por tema.
-                Las respuestas correctas se muestran cuando acredites el examen o
+                Al terminar verás tu puntaje y tu desglose por tema. Qué acertaste y
+                las respuestas correctas se muestran cuando acredites el examen o
                 uses tu último intento.
               </p>
 

@@ -34,13 +34,16 @@ interface DetalleRespuesta {
   opciones: string[]
   opciones_en: string[]
   respuesta_alumno: number
+  /** Lo decide el servidor (una respuesta fuera de rango no cuenta). Falta en respuestas viejas. */
+  contestada?: boolean
   /**
    * Índice de la opción correcta. OPCIONAL a propósito: la API solo lo envía
-   * para las preguntas que el alumno contestó en ese envío. Si no contestó,
-   * la clave no viaja y aquí llega `undefined`.
+   * cuando el examen se CERRÓ con este envío (aprobó o era su último intento) y
+   * solo para las preguntas que el alumno contestó.
    */
   respuesta_correcta?: number
-  es_correcta: boolean
+  /** Solo si el examen se cerró con este envío (revisión completa). */
+  es_correcta?: boolean
   retroalimentacion: string
 }
 
@@ -50,15 +53,20 @@ interface Resultado {
   total_preguntas: number
   correctas: number
   intento_numero: number
+  intentos_restantes?: number
+  /**
+   * false = revisión DIFERIDA (K-d3): todavía puede volver a presentar, así que
+   * solo ve su puntaje; el ✓/✗ y las respuestas correctas llegan al cerrar.
+   */
+  revision_completa?: boolean
   detalle: DetalleRespuesta[]
 }
 
-type Estado = 'loading' | 'quiz' | 'enviando' | 'resultado' | 'error'
+type Estado = 'loading' | 'quiz' | 'enviando' | 'resultado' | 'cerrado' | 'error'
 
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
 
 export default function EvaluacionClient({ id }: { id: string }) {
-  console.log('EvaluacionClient renderizando con id:', id)
   const router = useRouter()
 
   const { toasts, showToast, removeToast } = useToast()
@@ -72,17 +80,23 @@ export default function EvaluacionClient({ id }: { id: string }) {
   const [resultado, setResultado] = useState<Resultado | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [confirmarEnvio, setConfirmarEnvio] = useState(false)
+  const [motivoCerrado, setMotivoCerrado] = useState<'aprobada' | 'sin_intentos' | null>(null)
 
   const cargar = useCallback(async () => {
     try {
-      console.log('[EvaluacionClient] fetch /api/alumno/evaluacion/', id)
       const res = await fetch(`/api/alumno/evaluacion/${id}`)
       const data = await res.json()
-      console.log('[EvaluacionClient] respuesta status:', res.status, 'preguntas:', data.preguntas?.length, 'data:', JSON.stringify(data).slice(0, 300))
       if (!res.ok) { setErrorMsg(data.error ?? 'Error al cargar el examen'); setEstado('error'); return }
       setEvaluacion(data.evaluacion)
-      setPreguntas(data.preguntas)
+      setPreguntas(data.preguntas ?? [])
       setIntentosUsados(data.intentos_usados)
+      // Aprobar cierra el examen (K-d2); sin intentos, también. El servidor ya no
+      // sirve las preguntas en esos casos.
+      if (data.estado === 'aprobada' || data.estado === 'sin_intentos') {
+        setMotivoCerrado(data.estado)
+        setEstado('cerrado')
+        return
+      }
       setEstado('quiz')
     } catch (err) {
       console.error('[EvaluacionClient] catch:', err)
@@ -140,10 +154,28 @@ export default function EvaluacionClient({ id }: { id: string }) {
     </div>
   )
 
+  // ── CERRADO: ya aprobó o ya no tiene intentos ──
+  if (estado === 'cerrado') return (
+    <div className="flex flex-col items-center justify-center min-h-[500px] gap-4 text-center px-4">
+      {motivoCerrado === 'aprobada'
+        ? <CheckCircle className="w-10 h-10" style={{ color: '#10B981' }} />
+        : <AlertCircle className="w-10 h-10" style={{ color: '#F59E0B' }} />}
+      <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>
+        {motivoCerrado === 'aprobada'
+          ? 'Ya aprobaste este examen.'
+          : `Ya usaste tus ${evaluacion?.intentos_max ?? ''} intentos de este examen.`}
+      </p>
+      <button onClick={() => router.back()} className="text-sm" style={{ color: 'var(--color-acento)' }}>Volver a la materia</button>
+    </div>
+  )
+
   // ── RESULTADO ──
   if (estado === 'resultado' && resultado) {
     const pct = Math.round((resultado.correctas / resultado.total_preguntas) * 100)
-    const intentosRestantes = evaluacion ? evaluacion.intentos_max - resultado.intento_numero : 0
+    const intentosRestantes = resultado.intentos_restantes
+      ?? (evaluacion ? evaluacion.intentos_max - resultado.intento_numero : 0)
+    // Respuestas de antes de D22d no traen el campo: su revisión era completa.
+    const revisionCompleta = resultado.revision_completa !== false
 
     return (
       <div className="space-y-4 max-w-3xl">
@@ -229,13 +261,21 @@ export default function EvaluacionClient({ id }: { id: string }) {
         {/* Detalle por pregunta */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold" style={{ color: '#94A3B8' }}>Revisión de respuestas</h3>
+          {!revisionCompleta && (
+            <p className="text-xs leading-relaxed px-1" style={{ color: '#F59E0B' }}>
+              Verás qué acertaste y las respuestas correctas cuando apruebes o uses tu último
+              intento. Por ahora, repasa los temas antes de volver a presentar.
+            </p>
+          )}
           {resultado.detalle.map((d, i) => (
             <div key={d.pregunta_id} className="rounded-xl overflow-hidden" style={CARD}>
               <div className="px-5 py-4" style={{ borderBottom: '1px solid #2A2F3E' }}>
                 <div className="flex items-start gap-3">
-                  {d.es_correcta
-                    ? <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#10B981' }} />
-                    : <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF4444' }} />
+                  {d.es_correcta === undefined
+                    ? <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#475569' }} />
+                    : d.es_correcta
+                      ? <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#10B981' }} />
+                      : <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF4444' }} />
                   }
                   <p className="text-sm font-medium" style={{ color: '#F1F5F9' }}>
                     <span style={{ color: '#94A3B8' }}>{i + 1}. </span>{d.texto}
@@ -245,12 +285,14 @@ export default function EvaluacionClient({ id }: { id: string }) {
               <div className="px-5 py-4 space-y-2">
                 {d.opciones.map((op, idx) => {
                   const esAlumno = idx === d.respuesta_alumno
-                  // undefined cuando el alumno no contestó esta pregunta: en ese
-                  // caso ninguna opción se marca como correcta.
+                  // undefined cuando la clave no viaja: revisión diferida, o el
+                  // alumno no contestó esta pregunta. Entonces ninguna opción se
+                  // marca como correcta.
                   const esCorrecta = d.respuesta_correcta !== undefined && idx === d.respuesta_correcta
                   let style = { background: 'transparent', border: '1px solid #2A2F3E', color: '#94A3B8' as string }
                   if (esCorrecta) style = { background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.4)', color: '#10B981' }
-                  if (esAlumno && !d.es_correcta) style = { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#EF4444' }
+                  if (esAlumno && d.es_correcta === false) style = { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#EF4444' }
+                  if (esAlumno && d.es_correcta === undefined) style = { background: 'rgba(255,255,255,0.05)', border: '1px solid #475569', color: '#F1F5F9' }
 
                   return (
                     <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm" style={style}>
@@ -260,12 +302,12 @@ export default function EvaluacionClient({ id }: { id: string }) {
                       </span>
                       <span className="flex-1">{op}</span>
                       {esCorrecta && <span className="text-xs font-semibold">Correcta</span>}
-                      {esAlumno && !d.es_correcta && <span className="text-xs font-semibold">Tu respuesta</span>}
+                      {esAlumno && d.es_correcta !== true && <span className="text-xs font-semibold">Tu respuesta</span>}
                     </div>
                   )
                 })}
 
-                {d.respuesta_correcta === undefined && (
+                {!(d.contestada ?? d.respuesta_alumno >= 0) && (
                   <p className="text-xs pt-1" style={{ color: '#F59E0B' }}>
                     No la contestaste, cuenta como incorrecta. La respuesta correcta se
                     muestra solo en las preguntas que sí contestaste.

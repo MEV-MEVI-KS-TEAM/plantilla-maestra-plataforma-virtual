@@ -191,8 +191,8 @@ export function calificar(
    * Si se adjuntan la clave y la explicación a la revisión.
    *
    * ⚠️ La ruta lo pone en `true` SOLO cuando el alumno ya no puede volver a
-   * presentar (aprobó, o gastó su último intento). Ver el comentario del
-   * cuerpo: con esto en `true` siempre, los reintentos no evaluaban nada.
+   * presentar (aprobó —y aprobar cierra, D22d K-d2— o gastó su último intento).
+   * Con `false` no viaja ni la clave ni el ✓/✗ por pregunta (K-d3).
    */
   revelarClaves = false
 ): {
@@ -246,9 +246,11 @@ export function calificar(
     //    examen idéntico al 1. Revelando la clave al fallar, reintentar no
     //    evaluaba nada: bastaba copiar las respuestas de la pantalla anterior.
     //    Lo reportó el cliente de Búfalo el 7-sep (TICKET-2026-09-07-51).
-    //    Sigue habiendo retroalimentación en todos los casos: el alumno ve
-    //    QUÉ falló y su desglose por tema; lo que no ve, mientras pueda volver
-    //    a presentar, es cuál era la buena.
+    //
+    // 3. D22d (K-d3, revisión diferida): mientras pueda volver a presentar,
+    //    tampoco viaja el ✓/✗ por pregunta. Con él, contestar «a», luego «b» en
+    //    lo fallado y luego «c» aprobaba sin estudiar (eliminación). Sigue
+    //    habiendo retroalimentación: su puntaje y su desglose por tema.
     const base: RevisionPregunta = {
       pregunta_id: p.id,
       orden: p.orden,
@@ -256,12 +258,13 @@ export function calificar(
       enunciado: p.enunciado,
       opciones: { a: p.opcion_a, b: p.opcion_b, c: p.opcion_c, d: p.opcion_d },
       tu_respuesta: dada,
-      es_correcta: correcta,
     }
     revision.push(
-      dada === null || !revelarClaves
+      !revelarClaves
         ? base
-        : { ...base, respuesta_correcta: p.respuesta_correcta, explicacion: p.explicacion }
+        : dada === null
+          ? { ...base, es_correcta: correcta }
+          : { ...base, es_correcta: correcta, respuesta_correcta: p.respuesta_correcta, explicacion: p.explicacion }
     )
 
     const tema = p.tema?.trim() || 'General'

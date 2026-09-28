@@ -8,18 +8,24 @@ import { withAlpha } from '@/lib/utils'
 
 gsap.registerPlugin(useGSAP)
 
+/**
+ * Quiz de refuerzo de la semana. D22d-1 (K-d1): la pregunta llega SIN la
+ * respuesta correcta ni la explicación; cada respuesta se manda al servidor, que
+ * califica, guarda y devuelve el veredicto de ESA pregunta. La primera respuesta
+ * es la que cuenta (el servidor la bloquea), así que el avance sobrevive a una
+ * recarga.
+ */
 interface Pregunta {
   id: string
   pregunta: string
   opciones: string[]
-  respuesta_correcta: number
-  explicacion?: string   // opcional — se muestra cuando la BD lo provee
   orden: number
 }
 
-interface RespuestaPrevia {
-  respuestas: Record<string, number>
-  completado_en: string
+interface Resultado {
+  tu_respuesta: number
+  correcta: boolean
+  explicacion?: string
 }
 
 interface SemanaQuizProps {
@@ -33,13 +39,13 @@ const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
 
 export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
   const [preguntas, setPreguntas] = useState<Pregunta[]>([])
-  const [respuestaPrevia, setRespuestaPrevia] = useState<RespuestaPrevia | null>(null)
+  const [resultados, setResultados] = useState<Record<string, Resultado>>({})
   const [loading, setLoading] = useState(true)
+  const [errorCarga, setErrorCarga] = useState(false)
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [seleccionadas, setSeleccionadas] = useState<Record<number, number>>({})
-  const [respondidas, setRespondidas] = useState<Record<number, boolean>>({})
-  const [completado, setCompletado] = useState(false)
-  const [guardando, setGuardando] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
+  const [verResumen, setVerResumen] = useState(false)
 
   const cardRef = useRef<HTMLDivElement>(null)
   const preguntaRef = useRef<HTMLDivElement>(null)
@@ -48,21 +54,29 @@ export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
 
   useEffect(() => {
     fetch(`/api/alumno/quiz/${semanaId}`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error()
+        return r.json()
+      })
       .then(data => {
-        setPreguntas(data.preguntas ?? [])
-        if (data.respuesta_previa) {
-          setRespuestaPrevia(data.respuesta_previa)
-          setCompletado(true)
+        const lista: Pregunta[] = data.preguntas ?? []
+        const res: Record<string, Resultado> = data.resultados ?? {}
+        setPreguntas(lista)
+        setResultados(res)
+        if (data.completado) setVerResumen(true)
+        else {
+          // Arranca en la primera pregunta sin contestar.
+          const i = lista.findIndex(p => !res[p.id])
+          if (i > 0) setCurrentIdx(i)
         }
       })
-      .catch(() => {})
+      .catch(() => setErrorCarga(true))
       .finally(() => setLoading(false))
   }, [semanaId])
 
   // Animar entrada de cada pregunta
   useGSAP(() => {
-    if (preguntaRef.current && !completado) {
+    if (preguntaRef.current && !verResumen) {
       gsap.fromTo(
         preguntaRef.current,
         { opacity: 0, x: 20 },
@@ -75,6 +89,17 @@ export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
     return (
       <div className="rounded-xl p-4 mt-2 flex items-center gap-2 text-xs" style={CARD}>
         <span style={{ color: '#94A3B8' }}>{loc('Cargando refuerzo…', 'Loading practice…')}</span>
+      </div>
+    )
+  }
+
+  if (errorCarga) {
+    return (
+      <div className="rounded-xl p-4 mt-2 text-xs leading-relaxed" style={CARD}>
+        <p style={{ color: '#94A3B8' }}>
+          {loc('No se pudo cargar el quiz de refuerzo. Recarga la página para intentarlo de nuevo.',
+            "The practice quiz couldn't load. Reload the page to try again.")}
+        </p>
       </div>
     )
   }
@@ -97,56 +122,48 @@ export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
 
   const pregunta = preguntas[currentIdx]
   const total = preguntas.length
-  const seleccionada = seleccionadas[currentIdx]
-  const yaRespondida = respondidas[currentIdx] === true
+  const resultado = resultados[pregunta.id]
+  const yaRespondida = resultado !== undefined
+  const todasContestadas = preguntas.every(p => resultados[p.id])
 
-  const handleOpcion = (idx: number) => {
-    if (yaRespondida) return
-    setSeleccionadas(prev => ({ ...prev, [currentIdx]: idx }))
-    setRespondidas(prev => ({ ...prev, [currentIdx]: true }))
+  const handleOpcion = async (idx: number) => {
+    if (yaRespondida || enviando) return
+    setEnviando(true)
+    setErrorEnvio(null)
+    try {
+      const r = await fetch(`/api/alumno/quiz/${semanaId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pregunta_id: pregunta.id, respuesta: idx }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        setErrorEnvio(data.error ?? loc('No se pudo guardar tu respuesta. Intenta de nuevo.', "Your answer couldn't be saved. Try again."))
+        return
+      }
+      setResultados(prev => ({
+        ...prev,
+        [pregunta.id]: { tu_respuesta: data.tu_respuesta, correcta: data.correcta === true, explicacion: data.explicacion },
+      }))
+    } catch {
+      setErrorEnvio(loc('No se pudo guardar tu respuesta. Revisa tu conexión.', "Your answer couldn't be saved. Check your connection."))
+    } finally {
+      setEnviando(false)
+    }
   }
 
-  const handleNext = async () => {
-    if (currentIdx < total - 1) {
-      setCurrentIdx(i => i + 1)
-    } else {
-      await handleSubmit()
-    }
+  const handleNext = () => {
+    if (currentIdx < total - 1) setCurrentIdx(i => i + 1)
+    else if (todasContestadas) setVerResumen(true)
   }
 
   const handlePrev = () => {
     if (currentIdx > 0) setCurrentIdx(i => i - 1)
   }
 
-  const handleSubmit = async () => {
-    setGuardando(true)
-    const respuestas: Record<string, number> = {}
-    preguntas.forEach((p, i) => {
-      if (seleccionadas[i] !== undefined) {
-        respuestas[p.id] = seleccionadas[i]
-      }
-    })
-    try {
-      await fetch(`/api/alumno/quiz/${semanaId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ respuestas }),
-      })
-      setRespuestaPrevia({ respuestas, completado_en: new Date().toISOString() })
-      setCompletado(true)
-    } catch {
-      // silencioso — no bloquear al alumno
-    } finally {
-      setGuardando(false)
-    }
-  }
-
-  // Vista de resultados (quiz completado)
-  if (completado) {
-    const correct = preguntas.reduce((acc, p) => {
-      const resp = respuestaPrevia?.respuestas[p.id] ?? seleccionadas[preguntas.indexOf(p)]
-      return acc + (resp === p.respuesta_correcta ? 1 : 0)
-    }, 0)
+  // Vista de resultados (quiz completado): el conteo sale de los veredictos del servidor.
+  if (verResumen) {
+    const correct = preguntas.filter(p => resultados[p.id]?.correcta).length
 
     return (
       <div className="rounded-xl p-5 space-y-3 mt-2" style={CARD}>
@@ -173,6 +190,15 @@ export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
               {loc(`¡${correct} de ${total} correctas!`, `${correct} out of ${total} correct!`)}
             </p>
           </div>
+        </div>
+        <div className="flex justify-center">
+          <button
+            onClick={() => { setVerResumen(false); setCurrentIdx(0) }}
+            className="px-3 py-1.5 text-xs rounded-lg"
+            style={{ border: '1px solid #2A2F3E', color: '#94A3B8', background: 'transparent' }}
+          >
+            {loc('Repasar respuestas', 'Review answers')}
+          </button>
         </div>
       </div>
     )
@@ -213,51 +239,46 @@ export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
         </p>
 
         <div className="space-y-2">
-          {(pregunta.opciones as string[]).map((opcion, i) => {
-            const esSeleccionada = seleccionada === i
-            const esCorrecta = pregunta.respuesta_correcta === i
+          {pregunta.opciones.map((opcion, i) => {
+            const esSeleccionada = resultado?.tu_respuesta === i
 
             let bg = 'rgba(255,255,255,0.03)'
             let borderColor = '#2A2F3E'
             let textColor = '#94A3B8'
 
-            // Solo estilizar la opción que eligió el alumno (no “revelar” la correcta sola).
-            if (yaRespondida) {
-              if (esSeleccionada) {
-                if (esCorrecta) {
-                  bg = 'rgba(16,185,129,0.1)'
-                  borderColor = '#10B981'
-                  textColor = '#86EFAC'
-                } else {
-                  bg = 'rgba(239,68,68,0.1)'
-                  borderColor = '#EF4444'
-                  textColor = '#FCA5A5'
-                }
+            // Solo se estiliza la opción que eligió el alumno: la correcta no se
+            // revela (el servidor ni siquiera la manda).
+            if (yaRespondida && esSeleccionada) {
+              if (resultado.correcta) {
+                bg = 'rgba(16,185,129,0.1)'
+                borderColor = '#10B981'
+                textColor = '#86EFAC'
+              } else {
+                bg = 'rgba(239,68,68,0.1)'
+                borderColor = '#EF4444'
+                textColor = '#FCA5A5'
               }
-            } else if (esSeleccionada) {
-              bg = withAlpha(CONFIG.colores.primario, 0.15)
-              borderColor = CONFIG.colores.primario
-              textColor = '#E2E8F0'
             }
 
             return (
               <button
                 key={i}
                 onClick={() => handleOpcion(i)}
-                disabled={yaRespondida}
-                className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all"
+                disabled={yaRespondida || enviando}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all disabled:cursor-default"
                 style={{
                   background: bg,
                   border: `1px solid ${borderColor}`,
                   color: textColor,
-                  cursor: yaRespondida ? 'default' : 'pointer',
+                  cursor: yaRespondida || enviando ? 'default' : 'pointer',
+                  opacity: enviando && !yaRespondida ? 0.6 : 1,
                 }}
               >
                 <span
                   className="font-semibold mr-2"
                   style={{
                     color:
-                      yaRespondida && esSeleccionada && esCorrecta
+                      yaRespondida && esSeleccionada && resultado.correcta
                         ? '#10B981'
                         : yaRespondida && esSeleccionada
                           ? '#EF4444'
@@ -272,28 +293,26 @@ export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
           })}
         </div>
 
-        {/* Retroalimentación inmediata */}
+        {errorEnvio && (
+          <p className="text-xs" style={{ color: '#FCA5A5' }}>{errorEnvio}</p>
+        )}
+
+        {/* Retroalimentación: el veredicto del servidor, solo de esta pregunta */}
         {yaRespondida && (
           <div
             className="px-4 py-3 rounded-lg text-sm leading-relaxed"
             style={{
-              background: seleccionada === pregunta.respuesta_correcta
-                ? 'rgba(16,185,129,0.08)'
-                : 'rgba(239,68,68,0.08)',
-              border: `1px solid ${seleccionada === pregunta.respuesta_correcta
-                ? 'rgba(16,185,129,0.25)'
-                : 'rgba(239,68,68,0.25)'}`,
+              background: resultado.correcta ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${resultado.correcta ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
               color: '#CBD5E1',
             }}
           >
-            <span className="font-semibold mr-1">
-              {seleccionada === pregunta.respuesta_correcta ? '✓' : '✗'}
-            </span>
-            {pregunta.explicacion
-              ? pregunta.explicacion
-              : seleccionada === pregunta.respuesta_correcta
-                ? '¡Correcto!'
-                : 'Incorrecto'}
+            <span className="font-semibold mr-1">{resultado.correcta ? '✓' : '✗'}</span>
+            {resultado.explicacion
+              ? resultado.explicacion
+              : resultado.correcta
+                ? loc('¡Correcto!', 'Correct!')
+                : loc('Incorrecto', 'Incorrect')}
           </div>
         )}
       </div>
@@ -309,18 +328,15 @@ export default function SemanaQuiz({ semanaId, lang }: SemanaQuizProps) {
           ← {loc('Anterior', 'Previous')}
         </button>
 
-        {yaRespondida && (
+        {yaRespondida && (currentIdx < total - 1 || todasContestadas) && (
           <button
             onClick={handleNext}
-            disabled={guardando}
-            className="px-4 py-1.5 text-xs rounded-lg font-semibold transition-all disabled:opacity-60"
+            className="px-4 py-1.5 text-xs rounded-lg font-semibold transition-all"
             style={{ background: CONFIG.colores.primario, color: '#fff', border: 'none' }}
           >
-            {guardando
-              ? '...'
-              : currentIdx === total - 1
-                ? loc('Ver resultado →', 'See results →')
-                : loc('Siguiente →', 'Next →')}
+            {currentIdx === total - 1
+              ? loc('Ver resultado →', 'See results →')
+              : loc('Siguiente →', 'Next →')}
           </button>
         )}
       </div>
