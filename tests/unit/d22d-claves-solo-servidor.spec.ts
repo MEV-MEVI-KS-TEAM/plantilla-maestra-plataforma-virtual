@@ -174,8 +174,10 @@ test('4. K4: sin escritura con sesión en intentos_evaluacion y quiz_respuestas;
   expect(s).toContain("EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.%I FROM authenticated', v_t);")
   expect(s).toContain("EXECUTE format('GRANT SELECT ON public.%I TO authenticated', v_t);")
   // H5: cada quien lee lo suyo — RLS encendida y techo RESTRICTIVE «propio o admin», igual en las fuentes.
-  expect(s).toContain("EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_t);")
-  expect(s).toContain("EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT USING (alumno_id = auth.uid() OR public.es_admin())',")
+  // (en la sección de K4: la de los bancos es otra)
+  const k4 = s.slice(s.indexOf('DROP POLICY IF EXISTS "intentos: registrar propio intento" ON public.intentos_evaluacion;'))
+  expect(k4).toContain("EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_t);")
+  expect(k4).toContain("EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT USING (alumno_id = auth.uid() OR public.es_admin())',")
   for (const f of [join(DIR_MIG, MIG), SCHEMA, SB_SCHEMA]) {
     const t = sinComentariosSql(leer(f))
     expect(plano(politica(t, 'intentos: techo propio o admin (D22d)')), f).toBe(plano(TECHO_PROPIO('intentos_evaluacion', 'intentos')))
@@ -296,7 +298,7 @@ test('7. CHECK 28, 29 y 30 después del 27: privilegio real columna por columna,
   expect(c30).toContain('❌ INTENTO FABRICABLE')
   expect(c30).toContain("IN ('alumno_id=auth.uidores_admin', 'alumno_id=auth.uid')) AS techo")
   expect(c30).toContain("(SELECT string_agg(tabla, ', ' ORDER BY tabla) FROM l WHERE NOT rls OR NOT techo) AS ajenas")
-  expect(c30).toContain('❌ RESPUESTAS AJENAS A LA VISTA')
+  expect(c30).toMatch(/WHEN ajenas IS NOT NULL\s+THEN '❌ RESPUESTAS AJENAS A LA VISTA/)
   // El techo del CHECK reconoce el de las fuentes (USING normalizado).
   expect(plano('(public.es_admin())')).toBe('es_admin')
 })
