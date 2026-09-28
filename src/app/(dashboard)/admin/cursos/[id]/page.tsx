@@ -113,7 +113,7 @@ export default function EditorCursoPage() {
   const publicado = curso.estado === 'publicado'
   // D7b (decisión 6): el secretario asigna, abre y cierra desde «Alumnos»; editar
   // el curso (contenido, examen, publicación) sigue siendo del admin.
-  const esAdmin = detalle.viewer_rol !== 'SECRETARIO'
+  const esAdmin = detalle.viewer_rol === 'ADMIN'
   const tabs = esAdmin ? TABS : TABS.filter(t => t.id === 'alumnos')
   const tabActiva: Tab = esAdmin ? tab : 'alumnos'
 

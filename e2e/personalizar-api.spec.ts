@@ -348,12 +348,8 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     expect((await secretario.delete(ruta)).status(), 'DELETE logo como SECRETARIO → 403').toBe(403)
     expect((await anonimo.delete(ruta)).status(), 'DELETE logo sin sesión → 401').toBe(401)
 
-    // ── GET: el secretario SÍ lee, en solo lectura ──
-    const getSecre = await secretario.get('/api/admin/configuracion')
-    expect(getSecre.status(), 'GET como SECRETARIO → 200').toBe(200)
-    const bodySecre = await json<RespuestaGet>(getSecre)
-    expect(bodySecre.puedeEditar, 'El SECRETARIO no debe poder editar').toBe(false)
-    expect(bodySecre.defaults.nombre, 'El GET del secretario trae los defaults').toBeTruthy()
+    // ── GET: solo el admin (D22a: «Personalizar mi página» es solo del admin) ──
+    expect((await secretario.get('/api/admin/configuracion')).status(), 'GET como SECRETARIO → 403').toBe(403)
 
     expect((await alumno.get('/api/admin/configuracion')).status(), 'GET como ALUMNO → 403').toBe(403)
     expect((await anonimo.get('/api/admin/configuracion')).status(), 'GET sin sesión → 401').toBe(401)

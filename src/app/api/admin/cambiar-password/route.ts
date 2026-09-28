@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 
-// El admin cambia SU PROPIA contraseña. Réplica de /api/alumno/cambiar-password
+// El PERSONAL (admin o secretario; D22a, decisión 6) cambia SU PROPIA
+// contraseña — nunca la de otro: usa la sesión, no el service role. Antes era
+// solo del admin, y el secretario únicamente podía cambiarla por
+// /api/alumno/cambiar-password, sin estos endurecimientos; esa ruta ahora es
+// solo de alumnos. Réplica de /api/alumno/cambiar-password
 // con dos endurecimientos, porque esta es la cuenta que controla toda la
 // escuela: mínimo 8 caracteres (el de alumno pide 6) y la nueva debe ser
 // distinta de la actual. Igual que allá, se exige la contraseña actual
@@ -15,7 +19,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user?.email) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const denied = await verifyAdmin(supabase, user.id)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
 
     const { currentPassword, newPassword } = await request.json()

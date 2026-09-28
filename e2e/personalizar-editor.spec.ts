@@ -721,9 +721,9 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
   })
 
   // ══════════════════════════════════════════════════════════════════════════
-  // e — El SECRETARIO ve el editor en solo lectura
+  // e — El SECRETARIO no entra al editor (D22a: solo del admin)
   // ══════════════════════════════════════════════════════════════════════════
-  test('e — el SECRETARIO entra al editor pero no puede editar ni publicar', async ({ browser }) => {
+  test('e — el SECRETARIO que abre /admin/configuracion va a su pantalla, sin ver el editor', async ({ browser }) => {
     const { data: secre } = await svc()
       .from('usuarios')
       .select('id, rol')
@@ -747,20 +747,13 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     })
     const secretario = await ctxSecre.newPage()
     try {
+      // El layout de /admin/configuracion (D22a) lo manda a /admin/alumnos en el
+      // servidor, antes de pintar el editor.
       await secretario.goto('/admin/configuracion')
-      await expect(secretario.getByRole('heading', { name: 'Personalizar mi página' })).toBeVisible()
-
-      // El aviso ámbar de arriba.
-      await expect(secretario.getByText('Solo lectura:')).toBeVisible()
-
-      // Los controles se pintan apagados (la seguridad la impone el servidor,
-      // esto solo evita que escriba media página para nada).
-      await secretario.getByRole('tab', { name: 'Textos de mi página' }).click()
-      await expect(secretario.getByLabel('Título del hero', { exact: true })).toBeDisabled()
-
-      // Y la barra de publicar ni se pinta.
+      await expect(secretario).toHaveURL(/\/admin\/alumnos$/)
+      await expect(secretario.getByRole('heading', { name: 'Personalizar mi página' })).toHaveCount(0)
+      await expect(secretario.getByText('Solo lectura:')).toHaveCount(0)
       await expect(secretario.getByRole('button', { name: 'Publicar cambios' })).toHaveCount(0)
-      await expect(secretario.getByRole('button', { name: 'Restaurar diseño original' })).toHaveCount(0)
     } finally {
       await ctxSecre.close()
     }

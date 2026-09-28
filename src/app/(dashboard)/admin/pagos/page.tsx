@@ -29,8 +29,10 @@ interface Pago {
 }
 
 type PorVertical = { programa: number; cursos: number }
+// D22a (decisión 4): los ingresos solo llegan si quien ve es admin; al
+// secretario la API le manda solo «Pagos registrados».
 interface Kpis {
-  ingresosMes: number; ingresosTotales: number; pagosRegistrados: number
+  ingresosMes?: number; ingresosTotales?: number; pagosRegistrados: number
   porVertical?: { mes: PorVertical; total: PorVertical }
 }
 
@@ -44,7 +46,8 @@ const fecha = (iso: string | null) =>
 
 export default function PagosPage() {
   const [pagos, setPagos]   = useState<Pago[]>([])
-  const [kpis, setKpis]     = useState<Kpis>({ ingresosMes: 0, ingresosTotales: 0, pagosRegistrados: 0 })
+  // Sin ingresos hasta que la API diga que los ve: así el secretario no ve «$0» un instante.
+  const [kpis, setKpis]     = useState<Kpis>({ pagosRegistrados: 0 })
   const [loading, setLoad]  = useState(true)
   const [error, setError]   = useState<string | null>(null)
 
@@ -71,7 +74,7 @@ export default function PagosPage() {
         if (d.error) { setError(d.error); return }
         setError(null)
         setPagos(d.pagos ?? [])
-        setKpis(d.kpis ?? { ingresosMes: 0, ingresosTotales: 0, pagosRegistrados: 0 })
+        setKpis(d.kpis ?? { pagosRegistrados: 0 })
       })
       .catch(() => setError('Error al cargar el historial de pagos'))
       .finally(() => setLoad(false))
@@ -115,8 +118,10 @@ export default function PagosPage() {
   // D14: el subtítulo «Programa · Cursos», solo cuando hay pagos de cursos.
   const partido = (v?: PorVertical) => (v && v.cursos > 0 ? `Programa ${mxn(v.programa)} · Cursos ${mxn(v.cursos)}` : null)
   const KPI = [
-    { label: 'Ingresos del mes',  valor: mxn(kpis.ingresosMes),     Icon: TrendingUp, sub: partido(kpis.porVertical?.mes) },
-    { label: 'Ingresos totales',  valor: mxn(kpis.ingresosTotales), Icon: CreditCard, sub: partido(kpis.porVertical?.total) },
+    ...(kpis.ingresosMes !== undefined && kpis.ingresosTotales !== undefined ? [
+      { label: 'Ingresos del mes',  valor: mxn(kpis.ingresosMes),     Icon: TrendingUp, sub: partido(kpis.porVertical?.mes) },
+      { label: 'Ingresos totales',  valor: mxn(kpis.ingresosTotales), Icon: CreditCard, sub: partido(kpis.porVertical?.total) },
+    ] : []),
     { label: 'Pagos registrados', valor: String(kpis.pagosRegistrados), Icon: Receipt, sub: null },
   ]
 

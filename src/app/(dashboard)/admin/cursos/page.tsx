@@ -54,7 +54,7 @@ export default function AdminCursosPage() {
     try {
       const res = await fetch('/api/admin/cursos')
       if (!res.ok) throw new Error()
-      setEsAdmin(res.headers.get('x-rol-visor') !== 'SECRETARIO')
+      setEsAdmin(res.headers.get('x-rol-visor') === 'ADMIN')
       setCursos(await res.json())
     } catch {
       setCursos([])

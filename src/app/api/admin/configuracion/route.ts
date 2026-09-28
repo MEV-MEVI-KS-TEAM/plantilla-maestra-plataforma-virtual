@@ -4,7 +4,8 @@
  *
  *   GET    → lo que el editor pinta: defaults, overrides guardados y el
  *            resultado fusionado, recortados a las claves editables.
- *            ADMIN y SECRETARIO (el secretario ve el editor en solo lectura).
+ *            Solo ADMIN (D22a: antes el secretario veía el editor en solo
+ *            lectura; «Personalizar mi página» es solo del admin).
  *   PUT    → valida el cuerpo COMPLETO de overrides (reemplazo, no merge),
  *            hace upsert de la fila id=1 y purga la caché. Solo ADMIN.
  *            IGNORA `logo` / `logoOscuro` del cuerpo y conserva los de la fila
@@ -145,7 +146,7 @@ function respuestaDeError(e: unknown): NextResponse {
 // ─── GET /api/admin/configuracion ────────────────────────────────────────────
 export async function GET() {
   try {
-    const auth = await autorizar(false)
+    const auth = await autorizar(true)
     if (auth.denied) return auth.denied
 
     const admin = createAdminClient()
