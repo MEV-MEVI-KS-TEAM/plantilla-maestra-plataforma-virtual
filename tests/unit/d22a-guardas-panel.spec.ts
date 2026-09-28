@@ -87,8 +87,11 @@ test('4. el Dashboard revisa el rol ANTES de leer con service role; los 5 layout
 })
 
 // ─── Guardián de API ───────────────────────────────────────────────────────────
-type Nivel = 'admin' | 'staff' | `rpc:${string}`
-const A = 'admin' as const, S = 'staff' as const
+// 'mixto': entra el personal y, en el MISMO handler, algunas acciones piden además
+// verifyAdmin (D22b: en cobranza solo «pagar» es de todo el personal). La regla
+// fina de qué acción pide qué la fija d22b-cobranza-solo-admin.spec.ts.
+type Nivel = 'admin' | 'staff' | 'mixto' | `rpc:${string}`
+const A = 'admin' as const, S = 'staff' as const, M = 'mixto' as const
 const API: Record<string, Nivel> = {
   'alumnos/[id]/activar PATCH': A, 'alumnos/[id]/avance GET': S, 'alumnos/[id]/cerrar-mes POST': S,
   'alumnos/[id]/corregir-plan POST': A, 'alumnos/[id]/cursos GET': S, 'alumnos/[id]/datos PATCH': A,
@@ -97,7 +100,7 @@ const API: Record<string, Nivel> = {
   'alumnos/[id] GET': S, 'alumnos/[id] PUT': A, 'alumnos/[id] PATCH': S, 'alumnos/[id] DELETE': A,
   'alumnos/pendientes-count GET': S, 'alumnos GET': S, 'alumnos POST': S,
   'cambiar-password POST': S,                       // D22a (decisión 6): cada quien la suya
-  'cobranza/[alumnoId] GET': S, 'cobranza/[alumnoId] POST': S, 'cobranza GET': S,
+  'cobranza/[alumnoId] GET': S, 'cobranza/[alumnoId] POST': M, 'cobranza GET': S,   // D22b
   'configuracion/logo POST': A, 'configuracion/logo DELETE': A,
   'configuracion GET': A,                            // D22a: antes staff (solo lectura)
   'configuracion PUT': A, 'configuracion DELETE': A,
@@ -175,6 +178,7 @@ test('5. guardián de API: los 102 handlers están en la tabla, y cada uno revis
     const adm = T_ADMIN.some(t => cuerpo.includes(t)), stf = T_STAFF.some(t => cuerpo.includes(t))
     if (nivel === 'admin') expect(adm && !stf, `${clave}: debería revisar ADMIN`).toBe(true)
     else if (nivel === 'staff') expect(stf && !adm, `${clave}: debería revisar staff`).toBe(true)
+    else if (nivel === 'mixto') expect(stf && adm, `${clave}: debería revisar staff Y, por acción, ADMIN`).toBe(true)
     else {
       // La función SQL decide, llamada con la SESIÓN (no con el service role).
       const fn = nivel.slice(4)

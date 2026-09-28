@@ -7,6 +7,11 @@
  * botón de WhatsApp a la mano. Al abrir un alumno se ve su calendario completo
  * y se puede cobrar una semana, condonarla o regenerar el calendario.
  *
+ * D22b: cobrar («Marcar pagada») es de todo el personal; Condonar / Quitar
+ * condonación y Regenerar calendario solo se pintan al ADMIN (condición
+ * positiva: si `viewer_rol` faltara, no se pintan). La API y la base lo
+ * imponen igual; esto solo evita ofrecerle al secretario un botón que da 403.
+ *
  * Se reportan HECHOS: "3 semanas vencidas" quiere decir tres cuotas cuya fecha
  * ya pasó y que no tienen pago registrado. Puede ser un pago sin capturar; por
  * eso nunca se escribe "debe" ni "moroso".
@@ -61,6 +66,7 @@ export default function CobranzaPage() {
   const [semanas, setSemanas] = useState<Semana[]>([])
   const [trabajando, setTrabajando] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [esAdmin, setEsAdmin] = useState(false)
 
   const cargar = useCallback(() => {
     setCargando(true)
@@ -70,7 +76,7 @@ export default function CobranzaPage() {
         if (!r.ok) throw new Error(d.error ?? 'No se pudo cargar')
         return d
       })
-      .then(d => { setAlumnos(d.alumnos ?? []); setError(null) })
+      .then(d => { setAlumnos(d.alumnos ?? []); setEsAdmin(d.viewer_rol === 'ADMIN'); setError(null) })
       .catch(e => setError(e.message))
       .finally(() => setCargando(false))
   }, [])
@@ -205,7 +211,7 @@ export default function CobranzaPage() {
                   <p style={{ margin: 0, fontSize: 13, color: C.textoSecundario }}>
                     Próxima: semana {a.proxima_semana ?? '—'} · {fechaCorta(a.proxima_fecha)}
                   </p>
-                  <button
+                  {esAdmin && <button
                     disabled={trabajando}
                     onClick={() => {
                       // Regenerar BORRA las semanas pendientes y vencidas y las recrea
@@ -224,7 +230,7 @@ export default function CobranzaPage() {
                       background: '#FFFFFF', color: C.primario, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                     }}>
                     Regenerar calendario
-                  </button>
+                  </button>}
                 </div>
 
                 <div style={{ overflowX: 'auto' }}>
@@ -264,7 +270,7 @@ export default function CobranzaPage() {
                                 Marcar pagada
                               </button>
                             )}
-                            {s.estado !== 'pagado' && (
+                            {esAdmin && s.estado !== 'pagado' && (
                               <button disabled={trabajando}
                                 onClick={() => {
                                   const condonar = s.estado !== 'condonado'
