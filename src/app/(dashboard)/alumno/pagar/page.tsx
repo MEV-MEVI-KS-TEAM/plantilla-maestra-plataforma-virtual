@@ -66,10 +66,18 @@ export default function PagarPage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-xl font-bold" style={{ color: 'var(--color-texto)' }}>Pagos</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
-          Paga en línea con tarjeta desde aquí. Después envía tu comprobante para que
-          registremos el pago en tu cuenta.
-        </p>
+        {/* D21b (OL1): la promesa de pagar aquí solo cuando HAY enlaces que le aplican
+            (mientras carga no se promete nada: podría no tener ninguno). */}
+        {!cargando && cfgPagos?.activo && enlaces.length > 0 ? (
+          <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
+            Paga en línea con tarjeta desde aquí. Después envía tu comprobante para que
+            registremos el pago en tu cuenta.
+          </p>
+        ) : (
+          <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
+            Aquí verás cómo pagar y a dónde enviar tu comprobante.
+          </p>
+        )}
       </div>
 
       {!cfgPagos?.activo || enlaces.length === 0 ? (

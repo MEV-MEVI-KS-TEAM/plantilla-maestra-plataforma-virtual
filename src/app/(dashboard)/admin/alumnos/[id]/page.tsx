@@ -427,7 +427,7 @@ export default function AlumnoDetallePage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setCerrarMesError(data.error ?? 'Error al quitar el mes')
+        setCerrarMesError(data.error ?? 'Error al cerrar el mes')
         if (res.status === 409) await cargar()
         return
       }
@@ -437,8 +437,8 @@ export default function AlumnoDetallePage() {
       await cargar()
       showToast(
         data.repetido
-          ? `El mes ${mes_quitado} ya se había quitado: no se quitó otro`
-          : `Mes ${mes_quitado} quitado${nombres ? ` (${nombres})` : ''} — el avance del alumno se conserva`,
+          ? `El mes ${mes_quitado} ya se había cerrado: no se cerró otro`
+          : `Mes ${mes_quitado} cerrado${nombres ? ` (${nombres})` : ''} — el avance del alumno se conserva`,
         'success'
       )
     } catch {
@@ -934,7 +934,7 @@ export default function AlumnoDetallePage() {
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
             >
               <Undo2 className="w-3.5 h-3.5" />
-              Quitar último mes (Mes {alumno.meses_desbloqueados})
+              Cerrar último mes (Mes {alumno.meses_desbloqueados})
             </button>
           </div>
         )}
@@ -1403,7 +1403,7 @@ export default function AlumnoDetallePage() {
           <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-100">
-                ¿Quitar el Mes {alumno.meses_desbloqueados}?
+                ¿Cerrar el Mes {alumno.meses_desbloqueados}?
               </h3>
               <button
                 onClick={() => { setModalCerrarMes(false); setCerrarMesError(null) }}
@@ -1461,7 +1461,7 @@ export default function AlumnoDetallePage() {
               >
                 {cerrandoMes
                   ? <><Loader2 className="w-4 h-4 animate-spin" />Quitando...</>
-                  : <><Undo2 className="w-4 h-4" />Sí, quitar el mes</>
+                  : <><Undo2 className="w-4 h-4" />Sí, cerrar el mes</>
                 }
               </button>
             </div>

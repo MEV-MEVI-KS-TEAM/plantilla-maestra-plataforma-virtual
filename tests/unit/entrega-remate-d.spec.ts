@@ -318,8 +318,8 @@ test('e1. «Cómo empezar» con cursos: Activar según la ficha, Cobrar con su c
   // La doble confirmación es de Abrir todo, Activar (pago único) y Cobrar que abre todo; «Asignar» no la pide.
   expect(t).toContain('Abrir todo , Activar según la ficha (pago único) y Cobrar con la casilla que abre todo piden doble confirmación, porque desde ese momento el pago único ya no se reembolsa; Asignar en un curso de pago único lo abre completo sin pedir confirmación: asigna solo a quien ya te pagó.')
   expect(t).not.toContain('Abrir todo el curso pide doble confirmación')
-  expect(t).toContain('Quien tenga el rol de secretario también asigna, activa, cobra, abre y emite constancias (en su menú, Cursos )')
-  expect(t).toContain('; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción y borrar pagos quedan solo en tu cuenta.')
+  expect(t).toContain('Quien tenga el rol de secretario también da de alta alumnos y los marca como contactados, asigna, activa, cobra, abre y emite constancias (en su menú, Cursos )')
+  expect(t).toContain('; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción, borrar pagos y borrar alumnos quedan solo en tu cuenta.')
   // El orden de siempre: el precio en la ficha, antes de asignar, y después el de preparación para examen.
   const ingreso = texto(cursos({ ...BASE_CURSOS, ...UNO, vendeIngreso: true }))
   expect(ingreso).toContain('antes de asignar. Si lo pidió como curso de preparación para examen, aparece en Alumnos con lo que solicitó: pulsa Asignar ahí')
@@ -329,7 +329,7 @@ test('e1. «Cómo empezar» con cursos: Activar según la ficha, Cobrar con su c
 test('e1. «(en su menú, Cursos)» solo con «Gestionar Cursos»; en solo_cursos nunca «Gestionar Cursos»', () => {
   const solo = texto(cursos({ ...BASE_CURSOS, ...UNO, menuCursos: 'Diplomados' }))
   expect(solo).toContain('asígnalo en Diplomados → el curso → Alumnos')
-  expect(solo).toContain('rol de secretario también asigna, activa, cobra, abre y emite constancias;')
+  expect(solo).toContain('rol de secretario también da de alta alumnos y los marca como contactados, asigna, activa, cobra, abre y emite constancias;')
   expect(solo).not.toContain('en su menú')
   expect(solo).not.toContain('Gestionar Cursos')
   // Sin menú explícito vale «Gestionar Cursos», y entonces sí se dice el del secretario.
@@ -351,14 +351,14 @@ test('e1b. «Qué te permite hacer»: Cobrar SIEMPRE, con o sin cursos, y sin co
 test('e2/e3. funcionalidad y WhatsApp: Activar según la ficha, Cobrar con su casilla y el secretario (que también emite constancias)', () => {
   // Funcionalidad entregada (PDF).
   expect(GEN).toContain('a quien se registró desde tu página eligiendo el curso, con «Activar según la ficha»; y «Cobrar» registra cada pago y, con su casilla marcada, le abre lo que pagó, también desde una cuenta de secretario')
-  expect(GEN).toContain("'Rol de secretario con accesos delimitados: registra pagos, abre meses del programa y de los cursos y emite constancias; precios, borrado de pagos, «Personalizar mi página» y alta de usuarios quedan solo en tu cuenta'")
+  expect(GEN).toContain("'Rol de secretario con accesos delimitados: da de alta alumnos y los marca como contactados, registra pagos, abre meses del programa y de los cursos y emite constancias; precios, borrado de pagos y de alumnos, «Personalizar mi página» y las cuentas del personal (Usuarios) quedan solo en tu cuenta'")
   expect(GEN).not.toContain("'Rol de secretario con accesos delimitados',")
   // «LO QUE PUEDES HACER DESDE TU PANEL» (WhatsApp), una línea por cosa.
   expect(GEN).toContain('→ el curso → Alumnos (en uno de pago único se les abre completo; en uno mensual o sin precio, el mes 1), seguir su avance y crear todos los que quieras')
   expect(GEN).toContain('• Abrir el curso a quien ya se registró desde tu página eligiendo el curso, con «Activar según la ficha» en su fila')
   expect(GEN).toContain("'• Registrar cada pago del curso con «Cobrar» (en su fila o en la tarjeta «Cursos» de la ficha del alumno): con la casilla marcada, ese mismo cobro le abre lo que pagó'")
   // El secretario, en positivo y con la misma lista que el PDF (crear cursos es solo del admin).
-  expect(GEN).toContain("`• Quien tenga el rol de secretario también asigna, activa y cobra los cursos, abre meses y emite constancias${CONFIG.modo === 'solo_cursos' ? '' : ' (en su menú, «Cursos»)'}; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción y borrar pagos quedan solo en tu cuenta`,")
+  expect(GEN).toContain("`• Quien tenga el rol de secretario también da de alta alumnos y los marca como contactados, asigna, activa y cobra los cursos, abre meses y emite constancias${CONFIG.modo === 'solo_cursos' ? '' : ' (en su menú, «Cursos»)'}; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción, borrar pagos y borrar alumnos quedan solo en tu cuenta`,")
   expect(GEN).not.toContain('Todo esto también lo puede hacer')
   expect(GEN).toContain("] : ['• Crear tus propios Cursos y Diplomados cuando quieras']),")
   // Los botones viejos ya no se mandan como el camino de quien se registró solo.

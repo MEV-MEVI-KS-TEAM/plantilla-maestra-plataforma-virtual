@@ -85,6 +85,11 @@ export interface CursoInscrito {
 }
 
 export interface CursoDetalle {
+  /**
+   * D21b (OS9): meses que se le pueden abrir como máximo (espejo de
+   * curso_tope_meses). null = no se pudo calcular.
+   */
+  tope_meses?: number | null
   curso: Curso & { portadaUrl: string | null }
   modulos: CursoModulo[]
   inscritos: CursoInscrito[]

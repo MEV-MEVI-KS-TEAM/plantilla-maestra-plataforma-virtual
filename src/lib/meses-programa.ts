@@ -6,6 +6,8 @@
 // Aquí vive lo puro: el cuerpo de la petición, el mapeo de errores y el texto
 // «Último: …» de la ficha. Sin `server-only`: lo importan la ficha y las pruebas.
 
+import { etiquetaRol, fechaHoraCorta, pluralMeses } from './etiqueta-rol'
+
 export type AccionMes = 'abrir' | 'cerrar'
 
 /** Un evento de la bitácora, como lo devuelve el GET de la ficha. */
@@ -68,7 +70,7 @@ export function errorRpcMes(error: ErrorPg): { status: number; mensaje: string }
     case '42501': return { status: 403, mensaje: msg || 'Solo el personal de la escuela puede abrir o cerrar meses.' }
     // PT409: el alumno cambió en medio (la función NO usa 40001: PostgREST lo reintenta sin fin).
     case 'PT409':
-    case '40001': return { status: 409, mensaje: msg || 'El alumno cambió mientras tanto. Recarga la ficha y vuelve a intentarlo.' }
+    case '40001': return { status: 409, mensaje: pluralMeses(msg) || 'El alumno cambió mientras tanto. Recarga la ficha y vuelve a intentarlo.' }
     case '22023': return { status: 400, mensaje: msg || 'No se pudo mover el mes.' }
     case 'P0002': return { status: 404, mensaje: 'Alumno no encontrado' }
     default:      return { status: 500, mensaje: 'No se pudo mover el mes. Intenta de nuevo.' }
@@ -78,27 +80,17 @@ export function errorRpcMes(error: ErrorPg): { status: number; mensaje: string }
 /** El mensaje de la ruta sin la RPC cuando el UPDATE condicionado no tocó nada. */
 export const AVISO_CAMBIO_EN_MEDIO = 'El alumno cambió mientras tanto. Recarga la ficha y vuelve a intentarlo.'
 
-/** Rol guardado (en minúsculas) → como se lee en la ficha. */
-export function etiquetaRol(rol: string | null | undefined): string {
-  const r = (rol ?? '').trim().toLowerCase()
-  if (r === 'admin') return 'Administrador'
-  if (r === 'secretario') return 'Secretario'
-  return r ? r.charAt(0).toUpperCase() + r.slice(1) : ''
-}
-
-/** Fecha y hora cortas en español de México (la zona es la del navegador). */
-export function fechaHoraCorta(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
+// D21b (OS4): la etiqueta del rol y las fechas son las de todo el panel.
+export { etiquetaRol, fechaHoraCorta }
 
 /**
- * «Último: abrió el mes 3 (2 → 3) · 26 sep 2026, 10:42 · María López (Secretario)».
+ * «Último: abrió el mes 3 (2 → 3) · 26 sep 2026, 10:42 · María López (Secretario)»
+ * o «Último: cerró el mes 3 (3 → 2) · …».
  * `fmt` se inyecta para que la prueba no dependa de la zona horaria.
  */
 export function textoUltimoMes(ev: EventoMes, fmt: (iso: string) => string = fechaHoraCorta): string {
-  const verbo = ev.accion === 'abrir' ? 'abrió' : 'quitó'
+  // D21b (OS4): «cerró», la pareja de «abrió» y el nombre del botón de la ficha.
+  const verbo = ev.accion === 'abrir' ? 'abrió' : 'cerró'
   const partes = [`Último: ${verbo} el mes ${ev.mes} (${ev.antes} → ${ev.despues})`]
   const cuando = fmt(ev.created_at)
   if (cuando) partes.push(cuando)

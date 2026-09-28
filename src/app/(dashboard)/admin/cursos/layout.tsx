@@ -7,10 +7,11 @@ import { createClient } from '@/lib/supabase/server'
  * Sin sesión o sin rol de staff (case-insensitive, consistente con LOWER(rol) de
  * es_admin()/es_staff() en producción) → dashboard del alumno.
  *
- * D7b (decisión 6): el SECRETARIO entra — asigna y abre desde la pestaña Alumnos,
- * que es lo único que la página del curso le muestra. Todo lo que edita (crear,
- * editar, publicar, contenido, examen, constancia, quitar) sigue con verifyAdmin
- * en su API, y /admin/cursos/nuevo tiene su propio guard de admin.
+ * D7b (decisión 6): el SECRETARIO entra — asigna, abre, cobra y (desde D20b) emite
+ * la constancia desde la pestaña Alumnos, que es lo único que la página del curso
+ * le muestra. Todo lo que edita el curso (crear, editar, publicar, contenido,
+ * examen) y cancelar, reactivar o quitar una inscripción sigue con verifyAdmin en
+ * su API, y /admin/cursos/nuevo tiene su propio guard de admin.
  */
 export default async function AdminCursosLayout({
   children,

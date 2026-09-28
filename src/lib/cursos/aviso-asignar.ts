@@ -33,12 +33,14 @@ export function avisoMes1(asignados: readonly CursoAsignado[], anuncio: PrecioOf
   if (anuncio?.tipo === 'unico') {
     return `Ojo: hoy esta oferta se anuncia como pago único, pero en ${mes1.map(c => c.nombre).join(', ')} `
       + 'se abrió solo el mes 1 (su ficha es mensual o no tiene precio). Si cobraste un pago único, '
-      + 'usa «Abrir todo» en Gestionar cursos → el curso → Alumnos.'
+      + 'usa «Abrir todo» en la pestaña Alumnos del curso.'
   }
   const sinPrecio = mes1.filter(c => c.sin_precio).map(c => c.nombre)
   if (sinPrecio.length) {
     return `Ojo: ${sinPrecio.join(', ')} no tiene precio en su ficha y se abrió solo el mes 1. `
-      + 'Si cobraste un pago único, usa «Abrir todo» en Gestionar cursos → el curso → Alumnos, y ponle precio al curso.'
+      // D21b (OS2): texto neutro. Lo lee también el secretario, que no pone precios ni
+      // tiene «Gestionar cursos» en su menú (el suyo dice «Cursos» o «Diplomados»).
+      + 'Si cobraste un pago único, usa «Abrir todo» en la pestaña Alumnos del curso, y que el administrador le ponga precio al curso.'
   }
   return null
 }

@@ -6,7 +6,8 @@ import { ConfirmDialog } from './ConfirmDialog'
 import type { AlumnoAdminRow, CursoInscrito } from '@/types/cursos'
 import type { AperturaAlAsignar } from '@/lib/cursos/acceso'
 import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
-import { describirMovimiento, quienHizo } from '@/lib/cursos/bitacora'
+import { cuandoSePublique, finalFichaSinPrecio, llevaAvisoNoReembolsable, precioAntesDeAsignar, textoAbrirTodoSinPagoUnico, type TipoPrecioCurso } from '@/lib/cursos/textos-alumnos'
+import { textoUltimoMovimiento } from '@/lib/cursos/bitacora'
 import { CobrarCursoModal } from '@/components/admin/alumnos/CobrarCursoModal'
 import type { FilaCursoAlumno } from '@/lib/cursos/cobro'
 import { CONFIG } from '@/lib/config'
@@ -24,6 +25,19 @@ interface AlumnosTabProps {
    * en SQL y el toast dice lo que de verdad abrió.
    */
   apertura: AperturaAlAsignar
+  /**
+   * D21b: cómo cobra la ficha HOY (precioCursoNumerico(curso).tipo). Separa lo
+   * que `apertura` junta en 'mes1': mensual y sin precio. Decide el texto de la
+   * 2ª confirmación de «Abrir todo» (OS1) y la ayuda bajo el buscador (OS7).
+   */
+  tipoPrecio: TipoPrecioCurso
+  /**
+   * D21b (OS9): meses que se le pueden abrir como máximo en este curso (espejo de
+   * curso_tope_meses). null = no se pudo calcular: decide el servidor.
+   */
+  tope: number | null
+  /** D21b (OS8): aviso neutro (azul), p. ej. «no se aplicó dos veces». */
+  onAviso?: (mensaje: string) => void
   /** El candado exige curso publicado: en borrador nadie ve nada todavía. */
   publicado: boolean
   onChanged: (mensaje?: string) => void | Promise<void>
@@ -60,7 +74,7 @@ function accesoVigente(i: CursoInscrito, publicado: boolean): boolean {
   return true
 }
 
-export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged, onError, esAdmin }: AlumnosTabProps) {
+export function AlumnosTab({ cursoId, inscritos, apertura, tipoPrecio, tope, onAviso, publicado, onChanged, onError, esAdmin }: AlumnosTabProps) {
   const [alumnos, setAlumnos] = useState<AlumnoAdminRow[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [ocupadoId, setOcupadoId] = useState<string | null>(null)
@@ -68,6 +82,9 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
   const [cobrando, setCobrando] = useState<{ fila: FilaCursoAlumno; nombre: string } | null>(null)
   // La última «Cobrar» pedida: una respuesta vieja (otra fila, más lenta) no abre el modal.
   const ultimoCobro = useRef(0)
+  // D21b (OS8): guarda SÍNCRONA de «+ Abrir mes» / «−». `ocupadoId` es estado de
+  // React y no alcanza a frenar el segundo clic de un doble clic.
+  const moviendoMes = useRef(false)
   const [confirmTodos, setConfirmTodos] = useState<0 | 1 | 2>(0) // doble confirmación
   // «Abrir todo» abre el curso completo y, con #208, deja de ser reembolsable:
   // doble confirmación con el aviso del pago único (D7b), para admin y secretario.
@@ -104,13 +121,14 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
   const inscritosIds = useMemo(() => new Set(inscritos.map(i => i.alumno_id)), [inscritos])
 
   /**
-   * Abre o cierra un mes de la inscripcion.
+   * Abre o cierra un mes de la inscripción.
    *
    * `meses_esperados` viaja con el valor que esta pantalla tiene a la vista: es
-   * el candado contra el doble clic. Si otro admin (u otra pestaña) ya lo movio,
-   * el servidor responde 409 y se pide recargar, en vez de incrementar dos veces.
-   * El boton tambien se deshabilita, pero eso es cortesia: el candado esta en el
-   * servidor.
+   * el candado contra el doble clic. Si alguien más del personal (u otra pestaña)
+   * ya lo movió, el servidor responde 409 y no se mueve dos veces.
+   * D21b (OS8): el segundo clic de un doble clic ni pregunta ni envía (guarda
+   * síncrona); si aun así llega un 409, se recarga la lista y se avisa en neutro:
+   * lo más probable es que el cambio ya esté hecho.
    */
   const moverMes = async (
     inscripcionId: string,
@@ -118,30 +136,40 @@ export function AlumnosTab({ cursoId, inscritos, apertura, publicado, onChanged,
     mesesActuales: number,
     nombre: string
   ) => {
-    if (accion === 'cerrar-mes') {
-      const ok = window.confirm(
-        `Cerrar un mes de ${nombre}.
+    if (moviendoMes.current) return
+    moviendoMes.current = true
+    try {
+      if (accion === 'cerrar-mes') {
+        const ok = window.confirm(
+          `Cerrar el mes ${mesesActuales} de ${nombre}.
 
-Esto REVOCA acceso que el alumno ya tenia: ` +
-        `los modulos de ese mes dejaran de verse.
+Esto le quita acceso que ya tenía: los módulos de ese mes dejarán de verse. ` +
+          `Su avance no se borra y puedes volver a abrirlo con «+ Abrir mes».
 
 ¿Continuar?`
-      )
-      if (!ok) return
-    }
-    setOcupadoId(inscripcionId)
-    try {
+        )
+        if (!ok) return
+      }
+      setOcupadoId(inscripcionId)
       const res = await fetch(`/api/admin/inscripciones/${inscripcionId}/${accion}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ meses_esperados: mesesActuales }),
       })
       const json = await res.json().catch(() => ({}))
+      if (res.status === 409) {
+        await onChanged()
+        const aviso = `${nombre}: no se aplicó dos veces. Ya tenía ese cambio o alguien más lo movió; la lista ya muestra lo actual.`
+        if (onAviso) onAviso(aviso)
+        else onError(aviso)
+        return
+      }
       if (!res.ok) throw new Error(json.error ?? 'No se pudo actualizar')
       onChanged()
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo actualizar')
     } finally {
+      moviendoMes.current = false
       setOcupadoId(null)
     }
   }
@@ -213,7 +241,7 @@ Esto REVOCA acceso: vuelve a ver solo los meses que tenga abiertos (0 si entró 
       // El mismo aviso de «Asignar»: la ficha sin precio abre el mes 1, aunque el
       // registro le haya anunciado un pago único con el precio de config.ts.
       if (json.sin_precio && !json.acceso_total) {
-        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila y ponle precio al curso.`, AVISO_MS)
+        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila ${finalFichaSinPrecio(esAdmin)}`, AVISO_MS)
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'No se pudo activar')
@@ -286,7 +314,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
 
   /** Lo que se abrió no se ve hoy si el curso está en borrador o la inscripción no está vigente. */
   function sinEfectoHoy(i?: CursoInscrito): string {
-    if (!publicado) return ' (lo verá cuando publiques el curso)'
+    if (!publicado) return ` (lo verá ${cuandoSePublique(esAdmin)})`
     if (i && !accesoVigente(i, publicado)) return ' (sin efecto hasta que su inscripción esté activa y vigente)'
     return ''
   }
@@ -338,7 +366,7 @@ El folio es PERMANENTE e irrepetible, y congela nombre, curso, horas y ` +
       // único con el precio de config.ts. Es un aviso, no un éxito: en rojo y
       // con tiempo para leerlo.
       if (json.sin_precio && !json.acceso_total) {
-        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila y ponle precio al curso.`, AVISO_MS)
+        onError(`Ojo: este curso no tiene precio en su ficha y a ${nombre} se le abrió solo el mes 1. Si cobraste un pago único, usa «Abrir todo» en su fila ${finalFichaSinPrecio(esAdmin)}`, AVISO_MS)
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Error al asignar')
@@ -506,8 +534,10 @@ Se borra su inscripción y deja de ver el curso.
         <p className="text-xs px-1" style={{ color: 'var(--color-texto-secundario)' }}>
           {apertura === 'total'
             ? <>Este curso es de <strong>pago único</strong>: «Asignar» le abre <strong>todo el curso</strong> (acceso total).</>
-            : <>«Asignar» le abre el <strong>mes 1</strong>. Si cobraste un pago único, usa «Abrir todo» en su fila.</>}
-          {!publicado && <> El curso está en <strong>borrador</strong>: nadie lo ve hasta que lo publiques.</>}
+            : tipoPrecio === 'mensual'
+              ? <>«Asignar» le abre el <strong>mes 1</strong>. Los meses siguientes se abren con «+ Abrir mes» o al registrar su mensualidad con «Cobrar». Si te pagó el curso completo de una vez, usa «Abrir todo» en su fila.</>
+              : <>Este curso no tiene precio en su ficha: «Asignar» le abre el <strong>mes 1</strong>. Si cobraste un pago único, usa «Abrir todo» en su fila {finalFichaSinPrecio(esAdmin)}</>}
+          {!publicado && <> El curso está en <strong>borrador</strong>: nadie lo ve hasta {esAdmin ? 'que lo publiques' : 'que el administrador lo publique'}.</>}
         </p>
 
         <div className="relative">
@@ -591,9 +621,9 @@ Se borra su inscripción y deja de ver el curso.
                   </p>
                   {/* Bitácora (D7b): el último movimiento y QUIÉN lo hizo, con su rol. */}
                   {i.ultimo_movimiento && (
-                    <p className="text-[11px] truncate" style={{ color: '#64748B' }}
-                      title={new Date(i.ultimo_movimiento.created_at).toLocaleString('es-MX')}>
-                      Último: {describirMovimiento(i.ultimo_movimiento)} · {quienHizo(i.ultimo_movimiento)}
+                    <p className="text-[11px] line-clamp-2 break-words" style={{ color: '#64748B' }}
+                      title={textoUltimoMovimiento(i.ultimo_movimiento)}>
+                      {textoUltimoMovimiento(i.ultimo_movimiento)}
                     </p>
                   )}
                 </div>
@@ -627,7 +657,7 @@ Se borra su inscripción y deja de ver el curso.
                       style={{ background: 'rgba(148,163,184,0.15)', color: '#475569' }}
                       title={publicado
                         ? 'Tiene acceso total, pero su inscripción no está vigente: hoy no ve nada'
-                        : 'Tiene acceso total, pero el curso está en borrador: lo verá cuando lo publiques'}>
+                        : `Tiene acceso total, pero el curso está en borrador: lo verá ${cuandoSePublique(esAdmin)}`}>
                       Acceso total (sin efecto)
                     </span>
                   )
@@ -691,7 +721,8 @@ Se borra su inscripción y deja de ver el curso.
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'cerrar-mes', i.meses_desbloqueados, i.nombre)}
                         disabled={ocupadoId === i.inscripcion_id || i.meses_desbloqueados <= 0 || i.estado === 'cancelada'}
-                        title={i.estado === 'cancelada' ? CANCELADA_TITULO : 'Cerrar un mes (revoca acceso)'}
+                        title={i.estado === 'cancelada' ? CANCELADA_TITULO : `Cerrar el mes ${i.meses_desbloqueados} (quita acceso)`}
+                        aria-label="Cerrar mes"
                         className="px-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={{ border: '1px solid rgba(27,48,104,0.2)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                       >
@@ -699,8 +730,11 @@ Se borra su inscripción y deja de ver el curso.
                       </button>
                       <button
                         onClick={() => moverMes(i.inscripcion_id, 'abrir-mes', i.meses_desbloqueados, i.nombre)}
-                        disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
-                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala para abrir meses` : 'Abrir el siguiente mes'}
+                        disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa' || (tope !== null && i.meses_desbloqueados >= tope)}
+                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala para abrir meses`
+                          : tope !== null && tope <= 0 ? 'El curso todavía no tiene meses que abrir (sin módulos o sin ritmo en su ficha)'
+                          : tope !== null && i.meses_desbloqueados >= tope ? `Ya tiene abiertos los ${tope} meses del curso: no hay más que abrir`
+                          : 'Abrir el siguiente mes'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={i.por_activar
                           ? { border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }
@@ -711,7 +745,8 @@ Se borra su inscripción y deja de ver el curso.
                       <button
                         onClick={() => setConfirmAbrirTodo({ i, paso: 1 })}
                         disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa'}
-                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala primero` : 'Acceso total: todo el curso (pago único)'}
+                        title={i.estado !== 'activa' ? `Inscripción ${i.estado}: reactívala primero`
+                          : tipoPrecio === 'unico' ? 'Acceso total: todo el curso (pago único)' : 'Acceso total: todo el curso, sin depender de los meses'}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
                         style={{ border: '1px solid rgba(27,48,104,0.3)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }}
                       >
@@ -787,8 +822,8 @@ Se borra su inscripción y deja de ver el curso.
             {esPagoUnico
               ? <>Como el curso es de <strong>pago único</strong>, cada uno tendrá <strong>ACCESO TOTAL</strong> al curso completo.</>
               : <>A cada uno se le abre el <strong>mes 1</strong>.</>}
-            {simulacion?.sinPrecio && !esPagoUnico && <> El curso <strong>no tiene precio</strong> en su ficha: si cobraste un pago único, ponle precio antes de asignar.</>}
-            {!publicado && <> El curso está en <strong>borrador</strong>: lo verán cuando lo publiques.</>}
+            {simulacion?.sinPrecio && !esPagoUnico && <> El curso <strong>no tiene precio</strong> en su ficha: si cobraste un pago único, {precioAntesDeAsignar(esAdmin)}</>}
+            {!publicado && <> El curso está en <strong>borrador</strong>: lo verán {cuandoSePublique(esAdmin)}.</>}
             {' '}¿Continuar?
           </>
         }
@@ -804,8 +839,8 @@ Se borra su inscripción y deja de ver el curso.
           <>
             Esta es una asignación masiva a <strong>{nuevosActivos}</strong> alumno(s) activo(s).{' '}
             {esPagoUnico
-              ? <><strong>Los {nuevosActivos} verán TODO el curso (acceso total){publicado ? '' : ' cuando lo publiques'}.</strong> </>
-              : <>Los {nuevosActivos} verán el mes 1{publicado ? '' : ' cuando publiques el curso'}. </>}
+              ? <><strong>Los {nuevosActivos} verán TODO el curso (acceso total){publicado ? '' : ` ${cuandoSePublique(esAdmin)}`}.</strong> </>
+              : <>Los {nuevosActivos} verán el mes 1{publicado ? '' : ` ${cuandoSePublique(esAdmin)}`}. </>}
             Confirma una vez más para ejecutarla.
           </>
         }
@@ -836,7 +871,7 @@ Se borra su inscripción y deja de ver el curso.
             La ficha de este curso es de <strong>pago único</strong>: a{' '}
             <strong>{confirmActivar?.i.nombre}</strong> se le abrirá <strong>TODO el curso</strong> (acceso
             total).{' '}
-            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá cuando lo publiques. </>}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoSePublique(esAdmin)}. </>}
             ¿Continuar?
           </>
         }
@@ -850,8 +885,8 @@ Se borra su inscripción y deja de ver el curso.
         title="¿Seguro? Segunda confirmación"
         message={
           <>
-            <strong>{AVISO_PAGO_UNICO}.</strong> Una vez activado, el pago único de{' '}
-            <strong>{confirmActivar?.i.nombre}</strong> ya no se reembolsa. Confirma una vez más para activarlo.
+            <strong>{AVISO_PAGO_UNICO}.</strong> <strong>{confirmActivar?.i.nombre}</strong> verá todo el curso
+            desde ya. Confirma una vez más para activarlo.
           </>
         }
         confirmLabel="Activar todo el curso"
@@ -860,7 +895,8 @@ Se borra su inscripción y deja de ver el curso.
         onCancel={() => setConfirmActivar(null)}
       />
 
-      {/* «Abrir todo»: doble confirmación con el aviso del pago único (D7b). */}
+      {/* «Abrir todo»: doble confirmación (D7b). El aviso «no reembolsable» solo con
+          ficha de pago único con precio (D21b · OS1); si no, el texto neutro. */}
       <ConfirmDialog
         open={confirmAbrirTodo?.paso === 1}
         title="Abrir todo el curso"
@@ -868,7 +904,7 @@ Se borra su inscripción y deja de ver el curso.
           <>
             Se le abrirá <strong>TODO el curso</strong> a <strong>{confirmAbrirTodo?.i.nombre}</strong> (acceso
             total): todos los módulos, también los que se agreguen después.{' '}
-            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá cuando lo publiques. </>}
+            {!publicado && <>El curso está en <strong>borrador</strong>: lo verá {cuandoSePublique(esAdmin)}. </>}
             ¿Continuar?
           </>
         }
@@ -882,8 +918,10 @@ Se borra su inscripción y deja de ver el curso.
         title="¿Seguro? Segunda confirmación"
         message={
           <>
-            <strong>{AVISO_PAGO_UNICO}.</strong> Una vez abierto, el pago único de{' '}
-            <strong>{confirmAbrirTodo?.i.nombre}</strong> ya no se reembolsa. Confirma una vez más para abrirlo.
+            {llevaAvisoNoReembolsable(tipoPrecio)
+              ? <><strong>{AVISO_PAGO_UNICO}.</strong> <strong>{confirmAbrirTodo?.i.nombre}</strong> verá todo el curso desde ya.</>
+              : <><strong>{confirmAbrirTodo?.i.nombre}</strong>: {textoAbrirTodoSinPagoUnico(tipoPrecio === 'mensual' ? 'mensual' : 'informes')}</>}
+            {' '}Confirma una vez más para abrirlo.
           </>
         }
         confirmLabel="Abrir todo"

@@ -40,7 +40,9 @@ export default function AdminCursosPage() {
   const { toasts, showToast, removeToast } = useToast()
   const [cursos, setCursos] = useState<CursoListItem[] | null>(null)
   // D7b: el secretario entra a asignar y abrir; crear y eliminar cursos es del admin.
-  const [esAdmin, setEsAdmin] = useState(true)
+  // D21b: null mientras no llega el rol (y si la carga falla): lo que es solo del
+  // admin NO se pinta «por si acaso»; antes el secretario veía un instante «Nuevo curso».
+  const [esAdmin, setEsAdmin] = useState<boolean | null>(null)
   const [aEliminar, setAEliminar] = useState<CursoListItem | null>(null)
   const [borrando, setBorrando] = useState(false)
 
@@ -88,7 +90,9 @@ export default function AdminCursosPage() {
             Cursos y Diplomados
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario, #525252)' }}>
-            Crea cursos con módulos y lecciones, y asígnalos a tus alumnos.
+            {esAdmin === null ? ' '
+              : esAdmin ? 'Crea cursos con módulos y lecciones, y asígnalos a tus alumnos.'
+              : 'Asigna cursos a tus alumnos, abre sus meses y registra sus cobros.'}
           </p>
         </div>
         {esAdmin && (
@@ -118,7 +122,8 @@ export default function AdminCursosPage() {
             Aún no hay cursos
           </p>
           <p className="text-sm mb-4" style={{ color: 'var(--color-texto-secundario)' }}>
-            Crea tu primer curso o diplomado para empezar.
+            {esAdmin ? 'Crea tu primer curso o diplomado para empezar.'
+              : 'Cuando el administrador cree un curso, aparecerá aquí para que asignes alumnos.'}
           </p>
           {esAdmin && (
             <Link
@@ -172,9 +177,9 @@ export default function AdminCursosPage() {
                 </div>
 
                 <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
-                  <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" />{curso.numModulos} módulos</span>
-                  <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{curso.numLecciones} lecciones</span>
-                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{curso.numAlumnos} alumnos</span>
+                  <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" />{curso.numModulos} {curso.numModulos === 1 ? 'módulo' : 'módulos'}</span>
+                  <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{curso.numLecciones} {curso.numLecciones === 1 ? 'lección' : 'lecciones'}</span>
+                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{curso.numAlumnos} {curso.numAlumnos === 1 ? 'alumno' : 'alumnos'}</span>
                 </div>
 
                 <div className="flex gap-2 mt-auto pt-2">

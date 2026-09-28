@@ -7,12 +7,12 @@ import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 // El gate de B2 reacciona solo — aquí no se toca ninguna regla de acceso.
 //
 // ⚠️ SE LLAMA CON LA SESIÓN DEL USUARIO, NO con el cliente admin. La función
-// curso_abrir_mes() es SECURITY DEFINER y comprueba es_admin() adentro, y
-// es_admin() se apoya en auth.uid(): con service_role ese uid es NULL y la
-// función rechazaría al propio administrador. La escritura la puede hacer igual
+// curso_abrir_mes() es SECURITY DEFINER y comprueba es_staff() adentro (admin o
+// secretario, D7b), y es_staff() se apoya en auth.uid(): con service_role ese uid
+// es NULL y la función rechazaría a todo el personal. La escritura la puede hacer igual
 // porque, al ser DEFINER, corre como el dueño y la RLS no la frena.
 //
-// body { meses_esperados?: number } — el valor que el admin tenía a la vista.
+// body { meses_esperados?: number } — el valor que tenía a la vista quien pulsó.
 // Es el candado contra el doble clic: si alguien ya lo movió, la función
 // devuelve PT409 (409) en vez de incrementar dos veces.
 export async function POST(

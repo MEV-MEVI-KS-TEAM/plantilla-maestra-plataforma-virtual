@@ -61,9 +61,9 @@ export async function GET(
 // (curso_inscribir / curso_inscribir_todos) para que sea atómica, deje el evento
 // con actor y sea UNA regla para todas las puertas del admin.
 //
-// ⚠️ SE LLAMA CON LA SESIÓN DEL ADMIN, NO con el cliente admin: las funciones
-// comprueban es_admin(), que usa auth.uid() (con service_role sería NULL y
-// rechazaría al propio administrador). El registro público no pasa por aquí.
+// ⚠️ SE LLAMA CON LA SESIÓN DE QUIEN ASIGNA (admin o secretario), NO con el
+// cliente admin: las funciones comprueban es_staff() (D7b), que usa auth.uid()
+// (con service_role sería NULL y rechazaría a todo el personal). El registro público no pasa por aquí.
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }

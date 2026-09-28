@@ -9,6 +9,7 @@
  * y el estado real.
  */
 import type { PostgrestError } from '@supabase/supabase-js'
+import { pluralMeses } from '@/lib/etiqueta-rol'
 
 /** SQLSTATE → HTTP, con el mensaje que ya trae la función. */
 export function errorDeRpcCurso(error: PostgrestError): { status: number; mensaje: string } {
@@ -23,7 +24,8 @@ export function errorDeRpcCurso(error: PostgrestError): { status: number; mensaj
     // transacción sin fin y la petición se cuelga. 40001 queda por compatibilidad.
     case 'PT409':
     case '40001':
-      return { status: 409, mensaje }
+      // D21b (OS11): «tiene 2 mes(es) abiertos» → «tiene 2 meses abiertos».
+      return { status: 409, mensaje: pluralMeses(mensaje) }
     case '23505': // unique_violation — curso_inscribir: el alumno ya estaba asignado
       return { status: 409, mensaje }
     case '22P02': // invalid_text_representation — un id que no es UUID

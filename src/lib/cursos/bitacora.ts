@@ -3,13 +3,14 @@
  * para el panel: qué pasó y QUIÉN lo hizo, con nombre y rol (Bloque D · D7b).
  *
  * Desde D7b el secretario también asigna, abre y cierra: la bitácora tiene que
- * decir si fue la administración o la secretaría. Cada evento ya guarda su actor
+ * decir si fue el administrador o el secretario. Cada evento ya guarda su actor
  * (auth.uid() de quien llamó la función SQL); aquí solo se le pone nombre.
  *
  * Sin la migración B4 no hay bitácora: `ultimosMovimientos` devuelve un mapa
  * vacío y la lista de alumnos sale igual.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { etiquetaRol, fechaHoraCorta } from '@/lib/etiqueta-rol'
 
 export interface MovimientoInscripcion {
   tipo: string
@@ -34,15 +35,14 @@ type EventoFila = {
   detalle?: { folio?: unknown; actor_nombre?: unknown; actor_rol?: unknown } | null
 }
 
-/** «administración», «secretaría»; otro rol tal cual; vacío sin rol. */
-export function etiquetaRolActor(rol: string | null | undefined): string {
-  const r = (rol ?? '').trim().toLowerCase()
-  if (r === 'admin') return 'administración'
-  if (r === 'secretario') return 'secretaría'
-  return r
-}
+/**
+ * «Administrador», «Secretario»: la etiqueta de TODO el panel (D21b · OS4; antes
+ * «administración»/«secretaría» aquí y «Administrador»/«Secretario» en el
+ * programa). Se conserva el nombre para los que ya la importan.
+ */
+export const etiquetaRolActor = etiquetaRol
 
-/** «Ana López (secretaría)» · «Ana López» · «el sistema». */
+/** «Ana López (Secretario)» · «Ana López» · «el sistema». */
 export function quienHizo(m: Pick<MovimientoInscripcion, 'actor_nombre' | 'actor_rol'>): string {
   const nombre = (m.actor_nombre ?? '').trim()
   const rol = etiquetaRolActor(m.actor_rol)
@@ -65,6 +65,23 @@ export function describirMovimiento(m: Pick<MovimientoInscripcion, 'tipo' | 'mes
     case 'constancia_emitida': return m.folio ? `emitió la constancia ${m.folio}` : 'emitió la constancia'
     default: return m.tipo
   }
+}
+
+/**
+ * D21b (OS5): la línea completa de la fila del alumno, en el mismo orden que la
+ * del programa (textoUltimoMes): «Último: abrió el mes 2 · 26 sep 2026, 10:42 ·
+ * Ana López (Secretario)». Va como texto y como `title`, para que el folio y el
+ * rol se lean aunque la fila sea angosta. `fmt` se inyecta en las pruebas.
+ */
+export function textoUltimoMovimiento(
+  m: Pick<MovimientoInscripcion, 'tipo' | 'meses_antes' | 'meses_despues' | 'created_at' | 'actor_nombre' | 'actor_rol'> & { folio?: string | null },
+  fmt: (iso: string) => string = fechaHoraCorta,
+): string {
+  const partes = [`Último: ${describirMovimiento(m)}`]
+  const cuando = fmt(m.created_at)
+  if (cuando) partes.push(cuando)
+  partes.push(quienHizo(m))
+  return partes.join(' · ')
 }
 
 /** Pone nombre y rol a los actores de una lista de eventos. */

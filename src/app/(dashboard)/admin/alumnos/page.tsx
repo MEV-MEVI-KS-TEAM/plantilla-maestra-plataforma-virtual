@@ -214,7 +214,7 @@ export default function AlumnosPage() {
       const asignados = typeof data.cursos_asignados === 'number' ? data.cursos_asignados : pedidos
       if (pedidos > 0 && asignados < pedidos) {
         showToast(`No se pudo asignar ${pedidos - asignados} de ${pedidos} curso(s)${
-          data.cursos_error ? `: ${data.cursos_error}` : ': asígnalo desde Gestionar cursos → el curso → Alumnos'}`, 'error', AVISO_MS)
+          data.cursos_error ? `: ${data.cursos_error}` : ': asígnalo desde la pestaña Alumnos del curso'}`, 'error', AVISO_MS)
       }
     } catch {
       setFormError('Error inesperado. Intenta de nuevo.')

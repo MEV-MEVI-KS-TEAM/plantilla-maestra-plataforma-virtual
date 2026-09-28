@@ -873,7 +873,7 @@ const datos = {
     CURSOS_PUBLICADOS.length
       ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso publicado' : 'cursos publicados'}: al asignar a un alumno, un curso de pago único se le abre completo; a quien se registró desde tu página eligiendo el curso, con «Activar según la ficha»; y «Cobrar» registra cada pago y, con su casilla marcada, le abre lo que pagó, también desde una cuenta de secretario`
       : 'Módulo de Cursos y Diplomados, listo para cargar tu propio contenido',
-    'Rol de secretario con accesos delimitados: registra pagos, abre meses del programa y de los cursos y emite constancias; precios, borrado de pagos, «Personalizar mi página» y alta de usuarios quedan solo en tu cuenta',
+    'Rol de secretario con accesos delimitados: da de alta alumnos y los marca como contactados, registra pagos, abre meses del programa y de los cursos y emite constancias; precios, borrado de pagos y de alumnos, «Personalizar mi página» y las cuentas del personal (Usuarios) quedan solo en tu cuenta',
 
     // ── Lo que se construyó a medida para este cliente ────────────────
     // El documento listaba solo lo que trae la plantilla, así que todo lo
@@ -1082,7 +1082,7 @@ if (!flag('solo-pdf')) {
       '• Registrar cada pago del curso con «Cobrar» (en su fila o en la tarjeta «Cursos» de la ficha del alumno): con la casilla marcada, ese mismo cobro le abre lo que pagó',
       // En positivo y con la misma lista que el PDF: «todo esto» incluía crear cursos,
       // que el secretario no puede.
-      `• Quien tenga el rol de secretario también asigna, activa y cobra los cursos, abre meses y emite constancias${CONFIG.modo === 'solo_cursos' ? '' : ' (en su menú, «Cursos»)'}; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción y borrar pagos quedan solo en tu cuenta`,
+      `• Quien tenga el rol de secretario también da de alta alumnos y los marca como contactados, asigna, activa y cobra los cursos, abre meses y emite constancias${CONFIG.modo === 'solo_cursos' ? '' : ' (en su menú, «Cursos»)'}; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción, borrar pagos y borrar alumnos quedan solo en tu cuenta`,
     ] : ['• Crear tus propios Cursos y Diplomados cuando quieras']),
     ...(CARRERAS.length
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
