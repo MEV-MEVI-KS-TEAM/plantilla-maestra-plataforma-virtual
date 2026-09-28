@@ -429,7 +429,10 @@ test('el gate de la semana NO filtra activa: lo comparte el ENVÍO del quiz', ()
   expect(fn, 'el gate compartido filtra activa').not.toContain(".eq('activa'")
   const quiz = leer('src/app/api/alumno/quiz/[semanaId]/route.ts')
   const post = quiz.slice(quiz.indexOf('export async function POST'))
-  expect(post, 'el envío del quiz ya no usa el gate común').toContain('tieneAccesoSemana')
+  // D22d-1: GET y POST comparten autorizar(), que es el que llama al gate común.
+  expect(post, 'el envío del quiz ya no usa el gate común').toContain('await autorizar(params?.semanaId)')
+  const autorizar = quiz.slice(quiz.indexOf('async function autorizar('), quiz.indexOf('export async function GET'))
+  expect(autorizar, 'autorizar() ya no usa el gate común').toContain('tieneAccesoSemana(supabase, alumno, semanaId)')
 })
 
 test('cerrar-mes ya NO recoge meses ni semanas: dejó de borrar (Bug 200)', () => {

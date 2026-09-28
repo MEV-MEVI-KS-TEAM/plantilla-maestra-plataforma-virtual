@@ -27,6 +27,8 @@ import type { RespuestaEnviada } from '@/types/cursos-examen'
 //      curso_examen_resultados. Sin esto, el punto 1 se podía sortear
 //      contestando una pregunta al azar y repitiendo hasta reconstruir el banco.
 //      Los dos candados juntos son los que cierran el agujero; por separado, no.
+//   3. D22d (K-d2): aprobar CIERRA el examen (409). Y mientras quede reintento,
+//      la revisión es DIFERIDA (K-d3): sin ✓/✗ por pregunta ni claves.
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -77,17 +79,36 @@ export async function POST(
     // Se cuenta con el cliente admin, filtrando por alumno_id: la RLS de
     // resultados deja al alumno leer los suyos, pero el conteo no puede
     // depender de eso porque el INSERT también va con admin.
-    const { count: intentosUsados } = await admin
+    const { data: previos, error: prevErr } = await admin
       .from('curso_examen_resultados')
-      .select('id', { count: 'exact', head: true })
+      .select('porcentaje')
       .eq('curso_id', params.id)
       .eq('alumno_id', alumnoId)
+    if (prevErr) {
+      console.error('[POST /api/alumno/cursos/[id]/examen/enviar] previos', prevErr)
+      return NextResponse.json({ error: 'No se pudieron leer tus intentos' }, { status: 500 })
+    }
 
     // El límite es POR CURSO (cursos.intentos_permitidos, B1). Si la columna
     // viniera nula se cae al default: un error de lectura no abre el candado.
     const permitidos = await leerIntentosPermitidos(admin, params.id)
 
-    const usados = intentosUsados ?? 0
+    // La calificación mínima hace falta ANTES de calificar: decide si ya aprobó
+    // (y aprobar cierra) y si este envío admite reintento, o sea, si se pueden
+    // revelar las claves sin regalar el examen siguiente (TICKET-2026-09-07-51).
+    const minima = await leerCalificacionMinima(admin, params.id)
+
+    // ── Candado 3 (D22d, K-d2): aprobar CIERRA el examen ─────────────────────
+    // Al aprobar se revelan las claves; si quedaran intentos, el alumno volvía a
+    // presentar CON la clave vista y subía el MAX(porcentaje) que congela la
+    // constancia. Sin revisión en el cuerpo, como el candado de intentos.
+    const usados = (previos ?? []).length
+    if ((previos ?? []).some(r => Number((r as { porcentaje: number }).porcentaje) >= minima)) {
+      return NextResponse.json(
+        { error: 'Ya aprobaste este examen: no se puede volver a presentar.', aprobado: true },
+        { status: 409 }
+      )
+    }
     if (usados >= permitidos) {
       // Sin revisión en el cuerpo: un envío rechazado no puede ser una vía
       // alterna para leer claves.
@@ -100,11 +121,6 @@ export async function POST(
         { status: 409 }
       )
     }
-
-    // La calificación mínima hace falta ANTES de calificar: decide si este
-    // envío ya no admite reintento y, por tanto, si se pueden revelar las
-    // claves sin regalar el examen siguiente (TICKET-2026-09-07-51).
-    const minima = await leerCalificacionMinima(admin, params.id)
 
     // Primera pasada sin claves, solo para conocer el porcentaje.
     const previo = calificar(preguntas, enviadas)
@@ -171,6 +187,10 @@ export async function POST(
       // dictaminaba aprobado/no aprobado.
       calificacion_minima: minima,
       aprobado: porcentaje >= minima,
+      // true = el examen se cerró con este envío (aprobó o era su último
+      // intento): la revisión trae el ✓/✗ y las claves de lo contestado.
+      // false = revisión diferida (K-d3): puntaje y desglose por tema.
+      revision_completa: revelarClaves,
     })
   } catch (err) {
     console.error('[POST /api/alumno/cursos/[id]/examen/enviar]', err)

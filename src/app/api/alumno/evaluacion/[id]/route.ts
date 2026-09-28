@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoAcceso, tieneAccesoEvaluacion } from '@/lib/acceso-materias'
+import { leerPreguntasEvaluacion, sanitizarPreguntaEvaluacion } from '@/lib/evaluaciones/examen-mensual'
 
 export async function GET(
   _request: NextRequest,
@@ -45,49 +47,33 @@ export async function GET(
       return NextResponse.json({ error: 'No tienes acceso a esta evaluación' }, { status: 403 })
     }
 
-    const { count: intentosUsados } = await supabase
+    // D22d-1: intentos y preguntas con el service role, DESPUÉS del gate. La
+    // clave nunca sale de aquí (lista blanca de lib/evaluaciones/examen-mensual) y
+    // D22d-2 deja al alumno sin lectura directa de `preguntas`.
+    const admin = createAdminClient()
+    const { data: previos, error: prevErr } = await admin
       .from('intentos_evaluacion')
-      .select('id', { count: 'exact', head: true })
+      .select('acreditado')
       .eq('alumno_id', alumno.id)
       .eq('evaluacion_id', params.id)
+    if (prevErr) return NextResponse.json({ error: 'Error al leer tus intentos' }, { status: 500 })
 
-    const { data: rawPreguntas, error: pregError } = await supabase
-      .from('preguntas')
-      .select('id, orden, pregunta, opcion_a, opcion_b, opcion_c, opcion_d')
-      .eq('evaluacion_id', params.id)
+    const usados = (previos ?? []).length
+    // Aprobar CIERRA el examen (K-d2); sin intentos, también. Cerrado no se
+    // sirve el banco: no hay nada que contestar.
+    const estado: 'abierta' | 'aprobada' | 'sin_intentos' =
+      (previos ?? []).some(r => (r as { acreditado: boolean }).acreditado) ? 'aprobada'
+        : usados >= ev.intentos_permitidos ? 'sin_intentos'
+          : 'abierta'
+
+    let preguntas: ReturnType<typeof sanitizarPreguntaEvaluacion>[] = []
+    if (estado === 'abierta') {
       // Solo las activas: una pregunta archivada deja de servirse, aunque lo
       // que el alumno ya respondió de ella se siga calificando igual.
-      .eq('activa', true)
-      .order('orden')
-
-    if (pregError) return NextResponse.json({ error: pregError.message }, { status: 500 })
-
-    type PregRow = {
-      id: string
-      orden: number | null
-      pregunta: string
-      opcion_a: string
-      opcion_b: string
-      opcion_c: string
-      opcion_d: string | null
-      respuesta_correcta: string
+      const leidas = await leerPreguntasEvaluacion(admin, params.id, { soloActivas: true })
+      if (leidas.error) return NextResponse.json({ error: 'Error al cargar el examen' }, { status: 500 })
+      preguntas = leidas.preguntas.map(sanitizarPreguntaEvaluacion)
     }
-
-    const pregs = (rawPreguntas ?? []) as unknown as PregRow[]
-    const preguntas = pregs.map((p, i) => {
-      const opciones = [p.opcion_a, p.opcion_b, p.opcion_c, p.opcion_d].filter(Boolean) as string[]
-      return {
-        id:          p.id,
-        numero:      p.orden ?? i + 1,
-        pregunta:    p.pregunta,
-        texto:       p.pregunta,
-        texto_en:    p.pregunta,
-        tipo:        'OPCION_MULTIPLE' as const,
-        opciones,
-        opciones_en: opciones,
-        puntos:      1,
-      }
-    })
 
     return NextResponse.json({
       evaluacion: {
@@ -97,7 +83,8 @@ export async function GET(
         tipo:          'final',
         intentos_max:  ev.intentos_permitidos,
       },
-      intentos_usados: intentosUsados ?? 0,
+      intentos_usados: usados,
+      estado,
       preguntas,
     })
   } catch {

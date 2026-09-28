@@ -183,16 +183,30 @@ test('candado 2: mientras queden reintentos, NI UNA clave viaja aunque conteste 
   const r = calificar(preguntas, enviadas)
 
   expect(r.contestadas).toBe(4)
-  // Sigue habiendo retroalimentación: el alumno ve QUÉ falló y su desglose.
+  // D22d (K-d3, revisión diferida): tampoco viaja el ✓/✗ por pregunta —con él,
+  // contestar «a», luego «b» en lo fallado y luego «c» aprobaba sin estudiar—.
+  // La retroalimentación que queda es el puntaje y el desglose por tema.
   const revision = porElCable(r.revision)
   for (const item of revision) {
     expect(item).not.toHaveProperty('respuesta_correcta')
     expect(item).not.toHaveProperty('explicacion')
-    expect(item).toHaveProperty('es_correcta')
+    expect(item).not.toHaveProperty('es_correcta')
+    expect(item).toHaveProperty('tu_respuesta')
   }
   const crudo = JSON.stringify(revision)
   expect(crudo).not.toContain('respuesta_correcta')
   expect(crudo).not.toContain('explicacion')
+  expect(crudo).not.toContain('es_correcta')
+  expect(r.desglose.length).toBeGreaterThan(0)
+  // Lo que se GUARDA (curso_examen_resultados.respuestas) tampoco: el alumno
+  // puede leer su propia fila por REST, así que el ✓/✗ guardado sería el mismo
+  // oráculo por otra puerta.
+  expect(JSON.stringify(r.respuestas)).not.toContain('es_correcta')
+  expect(r.respuestas.map(x => x.respuesta)).toEqual(['a', 'a', 'a', 'a'])
+
+  // Al cerrar (revelarClaves = true) el veredicto sí se guarda.
+  const cierre = calificar(preguntas, enviadas, true)
+  expect(cierre.respuestas.every(x => typeof x.es_correcta === 'boolean')).toBe(true)
 })
 
 test('el denominador no cambia: no contestar sigue contando como incorrecta', () => {

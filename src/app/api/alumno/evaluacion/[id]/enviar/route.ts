@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoAcceso, tieneAccesoEvaluacion } from '@/lib/acceso-materias'
-
-const IDX_TO_LETTER = ['a', 'b', 'c', 'd'] as const
+import { calificarEvaluacion, leerPreguntasEvaluacion } from '@/lib/evaluaciones/examen-mensual'
 
 export async function POST(
   request: NextRequest,
@@ -47,100 +46,66 @@ export async function POST(
       return NextResponse.json({ error: 'No tienes acceso a esta evaluación' }, { status: 403 })
     }
 
-    // Verificar intentos disponibles
-    const { count: intentosUsados } = await supabase
+    // D22d-1: intentos, preguntas (con la clave) y el INSERT del intento con el
+    // service role, DESPUÉS del gate. D22d-2 le quita al alumno la escritura de
+    // intentos_evaluacion por /rest/v1: con su sesión se fabricaba un «100».
+    const admin = createAdminClient()
+    const { data: previos, error: prevErr } = await admin
       .from('intentos_evaluacion')
-      .select('id', { count: 'exact', head: true })
+      .select('acreditado')
       .eq('alumno_id', alumno.id)
       .eq('evaluacion_id', params.id)
+    if (prevErr) return NextResponse.json({ error: 'Error al leer tus intentos' }, { status: 500 })
 
-    const usados = intentosUsados ?? 0
+    // Aprobar CIERRA el examen (K-d2): un envío más no se califica ni trae revisión.
+    if ((previos ?? []).some(r => (r as { acreditado: boolean }).acreditado)) {
+      return NextResponse.json(
+        { error: 'Ya aprobaste este examen: no se puede volver a presentar.' },
+        { status: 409 }
+      )
+    }
+    const usados = (previos ?? []).length
     if (usados >= ev.intentos_permitidos) {
       return NextResponse.json({ error: 'No tienes más intentos disponibles' }, { status: 400 })
     }
 
-    // Obtener respuestas del alumno (índice numérico por pregunta_id)
-    const body = await request.json()
-    const respuestasAlumno: Record<string, number> = body.respuestas ?? {}
+    // Respuestas del alumno: índice numérico por pregunta_id. Lo que no sea un
+    // índice válido para ESA pregunta cuenta como no contestado.
+    const body = await request.json().catch(() => ({}))
+    const respuestasAlumno: Record<string, unknown> =
+      body && typeof body.respuestas === 'object' && body.respuestas !== null ? body.respuestas : {}
 
-    // FIX #4: preguntas con schema IVS — opcion_a/b/c/d + respuesta_correcta ('a'/'b'/'c'/'d')
     // SIN filtro de `activa` a propósito: esto CALIFICA lo que el alumno ya
     // respondió. Si el admin archiva una pregunta con el examen abierto,
     // filtrar aquí le cambiaría la nota.
-    // La clave se lee con service_role: authenticated no puede leer
-    // respuesta_correcta (Bug 221).
-    const { data: rawPreguntas, error: pregError } = await createAdminClient()
-      .from('preguntas')
-      .select('id, orden, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta')
-      .eq('evaluacion_id', params.id)
-      .order('orden')
-
-    if (pregError || !rawPreguntas) {
+    const leidas = await leerPreguntasEvaluacion(admin, params.id, { soloActivas: false })
+    if (leidas.error) {
       return NextResponse.json({ error: 'Error al obtener preguntas' }, { status: 500 })
     }
+    const pregs = leidas.preguntas
+    const numeroIntento = usados + 1
 
-    type PregRow = {
-      id: string; orden: number | null; pregunta: string
-      opcion_a: string; opcion_b: string; opcion_c: string; opcion_d: string | null
-      respuesta_correcta: string // 'a' | 'b' | 'c' | 'd'
-    }
-
-    const pregs = rawPreguntas as unknown as PregRow[]
-
-    // Calificar en el servidor
-    let correctas = 0
-    let contestadas = 0
-
-    const detalle = pregs.map(p => {
-      const selectedIdx    = respuestasAlumno[p.id] ?? -1
-      const selectedLetra  = selectedIdx >= 0 ? (IDX_TO_LETTER[selectedIdx] ?? null) : null
-      const esCorrecta     = selectedLetra === p.respuesta_correcta
-
-      if (esCorrecta) correctas++
-      if (selectedLetra !== null) contestadas++
-
-      const opciones = [p.opcion_a, p.opcion_b, p.opcion_c, p.opcion_d].filter(Boolean) as string[]
-      const correctaIdx = ['a', 'b', 'c', 'd'].indexOf(p.respuesta_correcta)
-
-      const base = {
-        pregunta_id:       p.id,
-        numero:            p.orden ?? 0,
-        texto:             p.pregunta,
-        texto_en:          p.pregunta,
-        tipo:              'opcion_multiple',
-        opciones,
-        opciones_en:       opciones,
-        respuesta_alumno:  selectedIdx,
-        es_correcta:       esCorrecta,
-        retroalimentacion: '',
-      }
-
-      // ⚠️ SEGURIDAD — la clave SOLO viaja para las preguntas que el alumno
-      // contestó en ESTE envío. Antes se adjuntaba siempre, así que un POST con
-      // `respuestas: {}` devolvía el índice correcto de TODAS las preguntas:
-      // enviar en blanco, leer las claves y reenviar bien daba 100%. La clave se
-      // OMITE (no va como -1 ni null) para no revelar su existencia posicional.
-      return selectedLetra === null
-        ? base
-        : { ...base, respuesta_correcta: correctaIdx }
-    })
+    // Primera pasada SIN revelar, solo para saber si aprobó. Se revela (✓/✗ y la
+    // clave de lo contestado) solo si este envío CIERRA el examen: aprobó o era
+    // su último intento (K-d2 + K-d3). Mientras pueda volver a presentar, ve su
+    // puntaje y nada más.
+    const previo = calificarEvaluacion(pregs, respuestasAlumno, { revelar: false })
 
     // Un envío sin una sola respuesta válida no se califica ni consume intento:
     // era el oráculo. Se valida ANTES de insertar el intento.
-    if (contestadas === 0) {
+    if (previo.contestadas === 0) {
       return NextResponse.json(
         { error: 'Contesta al menos una pregunta antes de enviar la evaluación.' },
         { status: 400 }
       )
     }
 
-    const totalPregs  = pregs.length
-    const puntaje     = totalPregs > 0 ? Math.round((correctas / totalPregs) * 100) : 0
-    const acreditado  = puntaje >= 60
-    const numeroIntento = usados + 1
+    const revelar = previo.acreditado || numeroIntento >= ev.intentos_permitidos
+    const { correctas, total: totalPregs, puntaje, acreditado, detalle } =
+      revelar ? calificarEvaluacion(pregs, respuestasAlumno, { revelar: true }) : previo
 
     // FIX #4: insertar con columnas IVS — acreditado + puntaje + numero_intento
-    const { error: intentoError } = await supabase
+    const { error: intentoError } = await admin
       .from('intentos_evaluacion')
       .insert({
         alumno_id:     alumno.id,
@@ -155,7 +120,6 @@ export async function POST(
     }
 
     if (ev.materia_id) {
-      const admin = createAdminClient()
       console.log('[evaluacion/enviar] actualizando calificacion materia:', ev.materia_id, 'acreditado:', acreditado)
 
       const { data: existingCalif, error: califCheckErr } = await admin
@@ -302,6 +266,10 @@ export async function POST(
       total_preguntas: totalPregs,
       correctas,
       intento_numero:  numeroIntento,
+      intentos_restantes: Math.max(0, ev.intentos_permitidos - numeroIntento),
+      // true = el examen se cerró con este envío: el detalle trae el ✓/✗ y la
+      // clave de lo contestado. false = revisión diferida (solo el puntaje).
+      revision_completa: revelar,
       detalle,
     })
   } catch {
