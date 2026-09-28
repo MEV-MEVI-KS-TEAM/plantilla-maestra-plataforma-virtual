@@ -58,6 +58,13 @@ export function cuandoSePublique(esAdmin: boolean): string {
 }
 
 /**
+ * La 2ª confirmación de pago único cuando HOY no lo vería (borrador o inscripción
+ * no vigente): AVISO_PAGO_UNICO dice «Acceso completo inmediato», y eso sería
+ * falso; lo que sigue siendo cierto es que ya no se reembolsa.
+ */
+export const AVISO_NO_REEMBOLSABLE = 'No reembolsable una vez activado'
+
+/**
  * «… verá todo el curso ___» en la 2ª confirmación de pago único: «desde ya»
  * solo si hoy lo vería (curso publicado e inscripción vigente, los filtros del
  * candado); si no, cuándo.
@@ -82,11 +89,25 @@ export function tituloCerrarMes(meses: number): string {
   return meses <= 0 ? 'No tiene meses abiertos que cerrar' : `Cerrar el mes ${meses} (quita acceso)`
 }
 
-/** El title de «+ Abrir mes» en el tope (OS9), en singular si el curso dura un mes. */
-export function tituloTopeAlcanzado(tope: number): string {
+/**
+ * El title de «+ Abrir mes» en el tope (OS9): en singular si el curso dura un mes,
+ * y sin «los N meses» si el curso se acortó y ya tiene abiertos más de N.
+ */
+export function tituloTopeAlcanzado(tope: number, meses: number): string {
+  if (meses > tope) return `El curso ahora dura ${tope} ${tope === 1 ? 'mes' : 'meses'} y ya tiene abiertos ${meses}: no hay más que abrir`
   return tope === 1
     ? 'Ya tiene abierto el único mes del curso: no hay más que abrir'
     : `Ya tiene abiertos los ${tope} meses del curso: no hay más que abrir`
+}
+
+/**
+ * OS3 · Lo que hace «−» HOY: si ve el curso, le quita acceso; si no lo ve
+ * (borrador, inscripción suspendida o vencida), no le quita nada hoy.
+ */
+export function efectoCerrarMes(conAccesoHoy: boolean): string {
+  return conAccesoHoy
+    ? 'Esto le quita acceso que ya tenía: los módulos de ese mes dejarán de verse.'
+    : 'Hoy no ve el curso (en borrador o con la inscripción no vigente); cuando vuelva a verlo, ese mes ya no estará abierto.'
 }
 
 /**

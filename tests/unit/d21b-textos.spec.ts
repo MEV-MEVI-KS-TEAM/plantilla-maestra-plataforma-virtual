@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  comoReabrir, cuandoSePublique, cuandoVeraTodo, finalFichaSinPrecio, llevaAvisoNoReembolsable, precioAntesDeAsignar,
+  AVISO_NO_REEMBOLSABLE, comoReabrir, cuandoSePublique, cuandoVeraTodo, efectoCerrarMes, finalFichaSinPrecio, llevaAvisoNoReembolsable, precioAntesDeAsignar,
   textoAbrirTodoSinPagoUnico, tituloCerrarMes, tituloNoActiva, tituloTopeAlcanzado,
 } from '@/lib/cursos/textos-alumnos'
 import { etiquetaRol, pluralMeses } from '@/lib/etiqueta-rol'
@@ -50,8 +50,15 @@ test('OS1. «no reembolsable» SOLO con ficha de pago único; mensual y sin prec
   expect(cuandoVeraTodo(false, true, false)).toBe('cuando el administrador lo publique')
   expect(cuandoVeraTodo(true, false, false)).toBe('cuando su inscripción esté activa y vigente')
   expect(plano(TAB)).not.toContain('verá todo el curso desde ya')
-  expect(TAB).toContain('cuandoVeraTodo(publicado, accesoVigente(confirmActivar.i, publicado), esAdmin)')
-  expect(TAB).toContain('cuandoVeraTodo(publicado, accesoVigente(confirmAbrirTodo.i, publicado), esAdmin)')
+  expect(TAB).toContain("const cuandoActivar = confirmActivar ? cuandoVeraTodo(publicado, accesoVigente(confirmActivar.i, publicado), esAdmin) : 'desde ya'")
+  expect(TAB).toContain("const cuandoAbrirTodo = confirmAbrirTodo ? cuandoVeraTodo(publicado, accesoVigente(confirmAbrirTodo.i, publicado), esAdmin) : 'desde ya'")
+  // «Acceso completo inmediato» solo con «desde ya»; si no, el aviso sin «inmediato».
+  expect(AVISO_NO_REEMBOLSABLE).not.toMatch(/inmediato/i)
+  expect(TAB.match(/\{AVISO_PAGO_UNICO\}/g)?.length).toBe(2)
+  for (const c of ['cuandoActivar', 'cuandoAbrirTodo']) {
+    expect(TAB).toContain(`{${c} === 'desde ya' ? <strong>{AVISO_PAGO_UNICO}.</strong> : <strong>{AVISO_NO_REEMBOLSABLE}.</strong>}`)
+    expect(TAB).toContain(`verá todo el curso {${c}}.`)
+  }
   // La insignia «Acceso total» también sale en cursos mensuales o sin precio.
   expect(TAB).not.toContain('title="Pago único: ve el curso completo')
   expect(TAB).toContain('title="Acceso total: ve el curso completo, también los módulos que se agreguen"')
@@ -75,7 +82,9 @@ test('OS2. al secretario no se le pide «ponle precio»; en /admin/alumnos el te
 
 test('OS3. cerrar un mes de curso: con acentos, dice que el avance no se borra, y «−» tiene nombre accesible', () => {
   expect(TAB).toContain('Cerrar el mes ${mesesActuales} de ${nombre}.')
-  expect(TAB).toContain('Esto le quita acceso que ya tenía: los módulos de ese mes dejarán de verse.')
+  expect(TAB).toContain('${efectoCerrarMes(fila ? accesoVigente(fila, publicado) : true)} ')
+  expect(efectoCerrarMes(true)).toBe('Esto le quita acceso que ya tenía: los módulos de ese mes dejarán de verse.')
+  expect(efectoCerrarMes(false)).not.toContain('le quita acceso que ya tenía')
   expect(TAB).toContain("${comoReabrir(fila?.estado ?? 'activa', mesesActuales - 1, tope)}")
   expect(comoReabrir('activa', 1, 3)).toBe('Su avance no se borra y puedes volver a abrirlo con «+ Abrir mes».')
   expect(comoReabrir('activa', 1, null)).toContain('«+ Abrir mes»')
@@ -156,16 +165,24 @@ test('OS8. doble clic en «+ Abrir mes» / «−»: guarda síncrona antes del c
   expect(mover).toContain('if (onAviso) onAviso(aviso)')
   expect(mover).toContain('moviendoMes.current.delete(inscripcionId)')
   expect(mover).toContain('setOcupadoId(prev => (prev === inscripcionId ? null : prev))')
+  // La fila con un mes en vuelo sigue apagada aunque otra fila tome `ocupadoId`.
+  expect(mover.match(/setMoviendo\(new Set\(moviendoMes\.current\)\)/g)?.length).toBe(2)
+  expect(TAB).toContain('const ocupada = (id: string) => ocupadoId === id || moviendo.has(id)')
+  expect(TAB).not.toContain('disabled={ocupadoId === i.inscripcion_id')
+  expect(TAB.match(/disabled=\{ocupada\(i\.inscripcion_id\)/g)?.length).toBe(10)
   const curso = sinComentarios(leer('src/app/(dashboard)/admin/cursos/[id]/page.tsx'))
   expect(curso).toContain("showToast(mensaje, 'info', 8000)")
   expect(curso).toContain('onAviso={onAviso}')
 })
 
 test('OS9. «+ Abrir mes» se apaga en el tope, que ahora viaja en la respuesta del curso', () => {
-  expect(TAB).toContain("disabled={ocupadoId === i.inscripcion_id || i.estado !== 'activa' || (tope !== null && i.meses_desbloqueados >= tope)}")
-  expect(TAB).toContain(': tope !== null && i.meses_desbloqueados >= tope ? tituloTopeAlcanzado(tope)')
-  expect(tituloTopeAlcanzado(1)).toBe('Ya tiene abierto el único mes del curso: no hay más que abrir')
-  expect(tituloTopeAlcanzado(4)).toBe('Ya tiene abiertos los 4 meses del curso: no hay más que abrir')
+  expect(TAB).toContain("disabled={ocupada(i.inscripcion_id) || i.estado !== 'activa' || (tope !== null && i.meses_desbloqueados >= tope)}")
+  expect(TAB).toContain(': tope !== null && i.meses_desbloqueados >= tope ? tituloTopeAlcanzado(tope, i.meses_desbloqueados)')
+  expect(tituloTopeAlcanzado(1, 1)).toBe('Ya tiene abierto el único mes del curso: no hay más que abrir')
+  expect(tituloTopeAlcanzado(4, 4)).toBe('Ya tiene abiertos los 4 meses del curso: no hay más que abrir')
+  // El curso se acortó: no «el único mes» junto a «3 meses».
+  expect(tituloTopeAlcanzado(1, 3)).toBe('El curso ahora dura 1 mes y ya tiene abiertos 3: no hay más que abrir')
+  expect(tituloTopeAlcanzado(2, 4)).toBe('El curso ahora dura 2 meses y ya tiene abiertos 4: no hay más que abrir')
   const ruta = sinComentarios(leer('src/app/api/admin/cursos/[id]/route.ts'))
   expect(ruta).toContain('tope_meses: topeCurso,')
   expect(ruta.indexOf('const topeCurso =')).toBeLessThan(ruta.indexOf('if (alumnoIds.length > 0) {'))

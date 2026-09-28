@@ -184,7 +184,7 @@ test('8. interfaz: el secretario ve los botones de abrir; los de solo admin no',
   expect(tab).toMatch(/open=\{confirmAbrirTodo\?\.paso === 2\}[\s\S]{0,200}?danger[\s\S]{0,300}?\{AVISO_PAGO_UNICO\}/)
   // D21b (OS1): el aviso «no reembolsable» SOLO en la rama de pago único; la otra no lo menciona.
   const segunda = tab.slice(tab.indexOf('open={confirmAbrirTodo?.paso === 2}'), tab.indexOf('confirmLabel="Abrir todo"'))
-  expect(segunda).toMatch(/\{llevaAvisoNoReembolsable\(tipoPrecio\)\s*\?\s*<><strong>\{AVISO_PAGO_UNICO\}/)
+  expect(segunda).toMatch(/\{llevaAvisoNoReembolsable\(tipoPrecio\)\s*\?\s*<>\{cuandoAbrirTodo === 'desde ya' \? <strong>\{AVISO_PAGO_UNICO\}\.<\/strong> : <strong>\{AVISO_NO_REEMBOLSABLE\}\.<\/strong>\}/)
   expect(segunda.slice(segunda.indexOf(': <>'))).not.toMatch(/reembols|AVISO_PAGO_UNICO/)
   // La bitácora dice quién (nombre y rol) — D21b (OS5): la línea completa, también en el title.
   expect(tab).toContain('title={textoUltimoMovimiento(i.ultimo_movimiento)}>')
