@@ -1003,7 +1003,10 @@ FROM r;
 -- columna): el intento y la respuesta los escribe la app con el service role,
 -- calificando ella. Con escritura propia, una sesión se fabricaba un intento
 -- aprobado con 100 (la tarjeta y la ficha) o respuestas con correcta=true (el
--- candado del quiz). El SELECT propio se queda.
+-- candado del quiz). La lectura: cada quien la suya (RLS encendida y techo
+-- RESTRICTIVE «propio o admin»): sin RLS (serie CEEVA) o con una permisiva de
+-- drift, una sesión leía las respuestas AJENAS del quiz, y las marcadas
+-- correcta=true dan la clave.
 WITH p AS (
   SELECT string_agg(ro.rol || ' ' || lower(pv.p) || ' ' || x.tabla, ', ' ORDER BY x.tabla, ro.rol, pv.p) AS abiertos,
          string_agg(DISTINCT x.tabla, ', ') FILTER (WHERE to_regclass('public.' || x.tabla) IS NULL) AS faltan
@@ -1014,19 +1017,34 @@ WITH p AS (
      AND CASE WHEN to_regclass('public.' || x.tabla) IS NULL THEN true
               ELSE has_table_privilege(ro.rol, to_regclass('public.' || x.tabla), pv.p)
                    OR (pv.p <> 'DELETE' AND has_any_column_privilege(ro.rol, to_regclass('public.' || x.tabla), pv.p)) END
+), l AS (
+  SELECT x.tabla, COALESCE(c.relrowsecurity, false) AS rls,
+         EXISTS (SELECT 1 FROM pg_policies pp
+                  WHERE pp.schemaname = 'public' AND pp.tablename = x.tabla AND pp.permissive = 'RESTRICTIVE'
+                    AND pp.cmd IN ('ALL', 'SELECT')
+                    AND (pp.roles @> ARRAY['anon', 'authenticated']::name[] OR pp.roles @> ARRAY['public']::name[])
+                    AND lower(regexp_replace(coalesce(pp.qual, ''), '[\s()]|public\.', '', 'g')) IN ('alumno_id=auth.uidores_admin', 'alumno_id=auth.uid')) AS techo
+    FROM unnest(ARRAY['intentos_evaluacion', 'quiz_respuestas']) AS x(tabla)
+    LEFT JOIN pg_class c ON c.oid = to_regclass('public.' || x.tabla)
 ), r AS (
   SELECT (SELECT faltan FROM p) AS faltan,
-         (SELECT abiertos FROM p WHERE (SELECT faltan FROM p) IS NULL) AS abiertos
+         (SELECT abiertos FROM p WHERE (SELECT faltan FROM p) IS NULL) AS abiertos,
+         (SELECT string_agg(tabla, ', ' ORDER BY tabla) FROM l WHERE NOT rls OR NOT techo) AS ajenas,
+         (SELECT string_agg(CASE WHEN rls THEN 'sí' ELSE 'NO' END, ',' ORDER BY tabla) FROM l) AS rls_txt,
+         (SELECT string_agg(CASE WHEN techo THEN 'sí' ELSE 'NO' END, ',' ORDER BY tabla) FROM l) AS techo_txt
 )
 SELECT
   'Intentos y respuestas del quiz solo los escribe el servidor (D22d)' AS check_name,
   CASE WHEN faltan IS NOT NULL THEN 'faltan tablas: ' || faltan
-       ELSE 'escritura con sesión: ' || COALESCE(abiertos, 'nadie') END AS valor,
+       ELSE 'escritura con sesión: ' || COALESCE(abiertos, 'nadie')
+         || ' / RLS: ' || rls_txt || ' / techo de lectura propio o admin: ' || techo_txt END AS valor,
   CASE
     WHEN faltan IS NOT NULL
       THEN '❌ FALTA la tabla ' || faltan || ' → corre scripts/schema.sql (o supabase/schema.sql) antes de este check'
     WHEN abiertos IS NOT NULL
       THEN '❌ INTENTO FABRICABLE (' || abiertos || '): un alumno se inserta un intento aprobado o respuestas del quiz correctas con /rest/v1/… → primero despliega el código de D22d y después corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql (idempotente)'
+    WHEN ajenas IS NOT NULL
+      THEN '❌ RESPUESTAS AJENAS A LA VISTA (' || ajenas || '): sin RLS o sin techo, una sesión lee las respuestas del quiz de otros alumnos, y las marcadas correctas dan la clave → primero despliega el código de D22d y después corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql (idempotente)'
     ELSE '✅ OK (intentos y respuestas del quiz solo por el servidor; cada quien lee los suyos)'
   END AS resultado
 FROM r;

@@ -2928,6 +2928,18 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.quiz_respuestas FROM authentic
 GRANT  SELECT ON public.quiz_respuestas TO authenticated;
 GRANT  ALL    ON public.quiz_respuestas TO service_role;
 
+-- D22d (H5): techo RESTRICTIVE de lectura «propio o admin». Una permisiva de drift
+-- que abriera las respuestas AJENAS del quiz delataría la clave (las marcadas
+-- correcta=true); los intentos ajenos, la nota de otros. Lo vigila el CHECK 30.
+DROP POLICY IF EXISTS "intentos: techo propio o admin (D22d)" ON public.intentos_evaluacion;
+CREATE POLICY "intentos: techo propio o admin (D22d)" ON public.intentos_evaluacion
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "quiz_respuestas: techo propio o admin (D22d)" ON public.quiz_respuestas;
+CREATE POLICY "quiz_respuestas: techo propio o admin (D22d)" ON public.quiz_respuestas
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+
 -- ── 9. PostgREST: recargar el schema cache ──────────────────────────────────
 -- Sin esto, las RPC nuevas responden PGRST202 ("function not found") hasta que
 -- alguien reinicia el proyecto desde el panel de Supabase.

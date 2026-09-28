@@ -49,16 +49,19 @@ const grantColumnas = (t: string, tabla: string) => {
 }
 // La política CREATE POLICY "<nombre>" … ; de un texto (la primera).
 const politica = (sql: string, nombre: string) => sql.match(new RegExp(`CREATE POLICY "${nombre.replace(/[()]/g, '\\$&')}"[^;]*;`))?.[0] ?? ''
+const TECHO_PROPIO = (tabla: string, prefijo: string) => `CREATE POLICY "${prefijo}: techo propio o admin (D22d)" ON public.${tabla} AS RESTRICTIVE FOR SELECT TO anon, authenticated USING (alumno_id = auth.uid() OR public.es_admin());`
 const TECHO = (tabla: string) => `CREATE POLICY "${tabla}: techo solo admin (D22d)" ON public.${tabla} AS RESTRICTIVE FOR ALL TO anon, authenticated USING (public.es_admin()) WITH CHECK (public.es_admin());`
 
 // ¿Este SQL le da a una sesión SELECT de TABLA (o ALL) sobre una de estas tablas? El SELECT
 // por columnas (GRANT SELECT (a, b) ON …) es la lista blanca y no cuenta.
 const SESION = String.raw`\bto\s+[^;]*\b(anon|authenticated|public)\b`
+// «on [table] a, b, c to …»: la tabla en CUALQUIER lugar de la lista de objetos.
+const OBJETOS = (tablas: string) => String.raw`\bon\s+(table\s+)?[^;]*?\b(public\.)?(${tablas})\b[^;]*?\bto\s`
 const abreLectura = (sql: string, tablas: string) => {
   for (const g of normal(sql).match(/\bgrant\s[^;]*;/g) ?? []) {
     if (!new RegExp(SESION).test(g)) continue
     if (/\bon\s+all\s+tables\s+in\s+schema\s+public\b/.test(g) && /\b(all|select)\b/.test(g.split(/\bon\b/)[0])) return true
-    if (!new RegExp(String.raw`\bon\s+(table\s+)?(public\.)?(${tablas})\b`).test(g)) continue
+    if (!new RegExp(OBJETOS(tablas)).test(g)) continue
     const privs = g.slice(g.indexOf('grant') + 5, g.search(/\bon\s/))
     if (/\ball\b/.test(privs) || /\bselect\b(?!\s*\()/.test(privs)) return true
   }
@@ -70,7 +73,7 @@ const abreEscritura = (sql: string, tablas: string) => {
     const privs = g.slice(g.indexOf('grant') + 5, g.search(/\bon\s/))
     if (!/\b(all|insert|update|delete|truncate)\b/.test(privs)) continue
     if (/\bon\s+all\s+tables\s+in\s+schema\s+public\b/.test(g)) return true
-    if (new RegExp(String.raw`\bon\s+(table\s+)?(public\.)?(${tablas})\b`).test(g)) return true
+    if (new RegExp(OBJETOS(tablas)).test(g)) return true
   }
   return false
 }
@@ -85,7 +88,7 @@ const fuentes = () => [
   SB_SCHEMA,
 ]
 
-test('1. Migración: transaccional, «app ANTES», preflight, epílogo y reversa de 5 partes', () => {
+test('1. Migración: transaccional, «app ANTES», preflight, epílogo y reversa de 4 partes', () => {
   const crudo = migracion()
   expect(crudo).toContain('⚠️ CÓRRELA SOLO DESPUÉS DE DESPLEGAR LA APP DE D22d')
   const s = sinComentariosSql(crudo)
@@ -105,13 +108,28 @@ test('1. Migración: transaccional, «app ANTES», preflight, epílogo y reversa
   expect(s).toContain("has_column_privilege('authenticated', 'public.curso_examen_resultados', 'respuestas', 'SELECT')")
   expect(s).toContain("RAISE EXCEPTION 'D22d: sin RLS o sin techo solo-admin: %.', v_malas;")
   expect(s).toContain("OR (pv.p <> 'DELETE' AND has_any_column_privilege(ro.rol, to_regclass('public.' || x), pv.p)) END;")
-  // Reversa de emergencia en la cabecera: las cinco partes, y la (1) quita los techos.
+  // Cada verificación del epílogo ABORTA (y la transacción se deshace); ninguna se queda en aviso.
+  const iEpilogo = s.indexOf("SELECT string_agg(DISTINCT ro.rol || ' → ' || c.relname")
+  expect(iEpilogo).toBeGreaterThan(0)
+  const epilogo = s.slice(iEpilogo)
+  for (const m of ["'D22d: tras el REVOKE una sesión todavía lee (%)", "'D22d: curso_examen_resultados.respuestas sigue legible con sesión.'",
+    "'D22d: sin RLS o sin techo solo-admin: %.'", "'D22d: intentos o respuestas del quiz siguen escribibles con sesión (%).'",
+    "'D22d: sin RLS o sin techo de lectura propio o admin: %.'"]) {
+    expect(epilogo, m).toContain(`RAISE EXCEPTION ${m}`)
+  }
+  expect(epilogo).not.toMatch(/RAISE NOTICE 'D22d: [^']*(sigue|siguen|todavía|sin RLS)/)
+  // Reversa de emergencia en la cabecera: cuatro partes, solo lo que la app anterior usa con la
+  // sesión; la (1) quita los techos; el upsert JSONB del quiz necesita UPDATE; nada del módulo
+  // Cursos (la app anterior ya lo leía con el service role, y así corre en una base sin él).
   const rev = crudo.slice(crudo.indexOf('-- REVERSA DE EMERGENCIA'), crudo.indexOf('BEGIN;'))
-  for (const n of ['(1)', '(2)', '(3)', '(4)', '(5)']) expect(rev).toContain(`--   ${n} `)
+  for (const n of ['(1)', '(2)', '(3)', '(4)']) expect(rev).toContain(`--   ${n} `)
+  expect(rev).not.toContain('--   (5) ')
   expect(rev).toContain('DROP POLICY IF EXISTS "preguntas: techo solo admin (D22d)"')
-  expect(rev).toContain('DROP POLICY IF EXISTS "curso_examen_preguntas: techo solo admin (D22d)"')
+  expect(rev).toContain('DROP POLICY IF EXISTS "quiz_semana: techo solo admin (D22d)"')
+  expect(rev).toContain('GRANT SELECT ON public.preguntas, public.quiz_semana TO authenticated;')
   expect(rev).toContain('GRANT INSERT ON public.intentos_evaluacion, public.quiz_respuestas TO authenticated;')
-  expect(rev).toContain('GRANT SELECT ON public.curso_examen_resultados TO authenticated;')
+  expect(rev).toContain('GRANT UPDATE ON public.quiz_respuestas TO authenticated;')
+  expect(rev.split('\n').filter(l => /^--\s{3,}(\(\d\) )?(DROP|CREATE|GRANT)/.test(l)).join('\n')).not.toMatch(/curso_/)
 })
 
 test('2. Capa 1: fuera «lectura autenticados»; RLS encendida (CEEVA) y techo solo-admin en los tres bancos', () => {
@@ -155,6 +173,15 @@ test('4. K4: sin escritura con sesión en intentos_evaluacion y quiz_respuestas;
   expect(arreglo(s, 'c_k4')).toEqual(['intentos_evaluacion', 'quiz_respuestas'])
   expect(s).toContain("EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.%I FROM authenticated', v_t);")
   expect(s).toContain("EXECUTE format('GRANT SELECT ON public.%I TO authenticated', v_t);")
+  // H5: cada quien lee lo suyo — RLS encendida y techo RESTRICTIVE «propio o admin», igual en las fuentes.
+  expect(s).toContain("EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_t);")
+  expect(s).toContain("EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT USING (alumno_id = auth.uid() OR public.es_admin())',")
+  for (const f of [join(DIR_MIG, MIG), SCHEMA, SB_SCHEMA]) {
+    const t = sinComentariosSql(leer(f))
+    expect(plano(politica(t, 'intentos: techo propio o admin (D22d)')), f).toBe(plano(TECHO_PROPIO('intentos_evaluacion', 'intentos')))
+    expect(plano(politica(t, 'quiz_respuestas: techo propio o admin (D22d)')), f).toBe(plano(TECHO_PROPIO('quiz_respuestas', 'quiz_respuestas')))
+  }
+  expect(migracion()).not.toContain('No delata claves')
   // Ninguna fuente vuelve a crear el INSERT propio.
   for (const f of [SCHEMA, SB_SCHEMA, ...readdirSync(join(raiz, DIR_MIG)).filter(f => f.endsWith('.sql')).map(f => join(DIR_MIG, f))]) {
     const t = sinComentariosSql(leer(f))
@@ -179,6 +206,14 @@ test('5. Fuentes: los dos schemas y el paso 6 nacen cerrados, con el MISMO techo
       expect(iCrea, `${f} ${tabla}`).toBeGreaterThanOrEqual(0)
       expect(iPriv, `${f} ${tabla}`).toBeGreaterThan(iCrea)
     }
+    for (const tabla of ['preguntas', 'quiz_semana']) {
+      const iAnon = t.indexOf(`REVOKE ALL    ON public.${tabla} FROM anon, PUBLIC;`)
+      const iAut = t.indexOf(`REVOKE SELECT ON public.${tabla} FROM authenticated;`)
+      const iGrant = t.search(new RegExp(`GRANT\\s+SELECT \\([^)]*\\)\\s+ON public\\.${tabla} TO authenticated;`))
+      expect(iAnon, `${f} ${tabla}`).toBeGreaterThanOrEqual(0)
+      expect(iAut, `${f} ${tabla}`).toBeGreaterThanOrEqual(0)
+      expect(iGrant, `${f} ${tabla}`).toBeGreaterThan(Math.max(iAnon, iAut))
+    }
     for (const tabla of ['intentos_evaluacion', 'quiz_respuestas']) {
       expect(t, f).toContain(`REVOKE ALL ON public.${tabla} FROM anon, PUBLIC;`)
       expect(t, f).toContain(`REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.${tabla} FROM authenticated;`)
@@ -194,8 +229,15 @@ test('5. Fuentes: los dos schemas y el paso 6 nacen cerrados, con el MISMO techo
   expect(plano(politica(p6, 'curso_examen_preguntas: techo solo admin (D22d)'))).toBe(plano(TECHO('curso_examen_preguntas')))
   expect(grantColumnas(p6, 'curso_examen_preguntas')).toEqual(LISTA_CURSO)
   expect(grantColumnas(p6, 'curso_examen_resultados')).toEqual(LISTA_RESULTADOS)
-  expect(p6).toContain('REVOKE ALL    ON public.curso_examen_preguntas  FROM anon, PUBLIC;')
-  expect(p6).toContain('REVOKE SELECT ON public.curso_examen_resultados FROM authenticated;')
+  for (const tabla of ['curso_examen_preguntas', 'curso_examen_resultados']) {
+    const pad = tabla === 'curso_examen_preguntas' ? ' ' : ''
+    const iAnon = p6.indexOf(`REVOKE ALL    ON public.${tabla} ${pad}FROM anon, PUBLIC;`)
+    const iAut = p6.indexOf(`REVOKE SELECT ON public.${tabla} ${pad}FROM authenticated;`)
+    const iGrant = p6.search(new RegExp(`GRANT\\s+SELECT \\([^)]*\\)\\s+ON public\\.${tabla} TO authenticated;`))
+    expect(iAnon, tabla).toBeGreaterThanOrEqual(0)
+    expect(iAut, tabla).toBeGreaterThanOrEqual(0)
+    expect(iGrant, tabla).toBeGreaterThan(Math.max(iAnon, iAut))
+  }
   expect(p6).toContain("to_regproc('public.es_admin') IS NULL")
   // La migración de #186 no se toca (historia de MEDERI).
   expect(leer(M186)).toContain("REVOKE SELECT ON public.preguntas FROM anon, authenticated")
@@ -210,11 +252,15 @@ test('6. Ninguna fuente le devuelve a una sesión el SELECT de tabla de un banco
   // Controles del detector.
   for (const sql of ['GRANT SELECT ON public.preguntas TO authenticated;', 'grant all on table "public"."quiz_semana" to anon;',
     'GRANT SELECT, INSERT ON public.curso_examen_preguntas TO authenticated;', 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;',
-    'GRANT SELECT ON public.curso_examen_resultados TO PUBLIC;']) expect(abreLectura(sql, `${BANCOS}|curso_examen_resultados`), sql).toBe(true)
+    'GRANT SELECT ON public.curso_examen_resultados TO PUBLIC;', 'GRANT SELECT ON public.materias, public.quiz_semana TO authenticated;']) {
+    expect(abreLectura(sql, `${BANCOS}|curso_examen_resultados`), sql).toBe(true)
+  }
   for (const sql of ['GRANT SELECT (id, pregunta) ON public.preguntas TO authenticated;', 'GRANT ALL ON public.preguntas TO service_role;',
     'GRANT INSERT, UPDATE, DELETE ON public.curso_examen_preguntas TO authenticated;']) expect(abreLectura(sql, BANCOS), sql).toBe(false)
   for (const sql of ['GRANT INSERT ON public.intentos_evaluacion TO authenticated;', 'GRANT UPDATE (correcta) ON quiz_respuestas TO authenticated;',
-    'GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;']) expect(abreEscritura(sql, K4), sql).toBe(true)
+    'GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;', 'GRANT INSERT ON public.notas_alumno, public.quiz_respuestas TO authenticated;']) {
+    expect(abreEscritura(sql, K4), sql).toBe(true)
+  }
   expect(abreEscritura('GRANT SELECT ON public.intentos_evaluacion TO authenticated;', K4)).toBe(false)
 })
 
@@ -248,6 +294,9 @@ test('7. CHECK 28, 29 y 30 después del 27: privilegio real columna por columna,
   expect(c29).toContain('20260728120000_examen_final_cursos.sql es vieja')
   expect(c30).toContain("OR (pv.p <> 'DELETE' AND has_any_column_privilege(ro.rol, to_regclass('public.' || x.tabla), pv.p)) END")
   expect(c30).toContain('❌ INTENTO FABRICABLE')
+  expect(c30).toContain("IN ('alumno_id=auth.uidores_admin', 'alumno_id=auth.uid')) AS techo")
+  expect(c30).toContain("(SELECT string_agg(tabla, ', ' ORDER BY tabla) FROM l WHERE NOT rls OR NOT techo) AS ajenas")
+  expect(c30).toContain('❌ RESPUESTAS AJENAS A LA VISTA')
   // El techo del CHECK reconoce el de las fuentes (USING normalizado).
   expect(plano('(public.es_admin())')).toBe('es_admin')
 })

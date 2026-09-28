@@ -21,6 +21,9 @@
 --   H4. Una sesión INSERTABA su propio intento aprobado (intentos_evaluacion,
 --       100 y acreditado) y sus respuestas de quiz con correcta=true
 --       (quiz_respuestas): la tarjeta, la ficha y el candado del quiz se forjaban.
+--   H5. Donde quiz_respuestas no tenía RLS (serie CEEVA) o una permisiva de drift
+--       la abría, una sesión leía las respuestas AJENAS del quiz: las marcadas
+--       correcta=true dan la clave de cada pregunta.
 --
 -- LA SOLUCIÓN, en dos capas como D22c (K-d4):
 --   · Filas: RLS encendida (K-d8: la serie CEEVA la traía apagada) + techo
@@ -37,6 +40,8 @@
 --     quiz_respuestas (de tabla y de columna); el SELECT propio se queda. Se
 --     borran «intentos: registrar propio intento» y «quiz_respuestas: registrar
 --     propia».
+--   · H5: RLS encendida y techo RESTRICTIVE de lectura «propio o admin» en
+--     intentos_evaluacion y quiz_respuestas: cada quien lee lo suyo.
 -- La app de D22d lee los bancos y escribe intentos y respuestas con el service
 -- role DESPUÉS del gate; el editor admin, igual (verifyAdmin + service role).
 --
@@ -48,18 +53,21 @@
 --
 -- REVERSA DE EMERGENCIA (solo para un cliente que se quedó con la app anterior;
 -- reabre las claves: vuelve a correr esta migración en cuanto despliegues D22d).
--- Las cinco partes juntas, en una transacción; sin la (1) el techo sigue dando
--- 0 filas aunque vuelvan las políticas:
+-- Reabre SOLO lo que la app anterior lee o escribe con la sesión: los bancos del
+-- examen mensual y del quiz, y la escritura propia de intentos y respuestas (la
+-- forma JSONB del quiz hace upsert: también UPDATE). El examen de curso no se
+-- toca: la app anterior ya lo leía con el service role (y así corre igual en una
+-- base sin módulo Cursos). Las cuatro partes juntas, en una transacción; sin la
+-- (1) el techo sigue dando 0 filas aunque vuelvan las políticas:
 --   (1) DROP POLICY IF EXISTS "preguntas: techo solo admin (D22d)" ON public.preguntas;
 --       DROP POLICY IF EXISTS "quiz_semana: techo solo admin (D22d)" ON public.quiz_semana;
---       DROP POLICY IF EXISTS "curso_examen_preguntas: techo solo admin (D22d)" ON public.curso_examen_preguntas;
 --   (2) CREATE POLICY "preguntas: lectura autenticados" ON public.preguntas FOR SELECT USING (auth.role() = 'authenticated');
 --       CREATE POLICY "quiz_semana: lectura autenticados" ON public.quiz_semana FOR SELECT USING (auth.role() = 'authenticated');
---   (3) GRANT SELECT ON public.preguntas, public.quiz_semana, public.curso_examen_preguntas TO authenticated;
+--   (3) GRANT SELECT ON public.preguntas, public.quiz_semana TO authenticated;
 --   (4) CREATE POLICY "intentos: registrar propio intento" ON public.intentos_evaluacion FOR INSERT WITH CHECK (alumno_id = auth.uid());
 --       CREATE POLICY "quiz_respuestas: registrar propia" ON public.quiz_respuestas FOR INSERT WITH CHECK (alumno_id = auth.uid());
 --       GRANT INSERT ON public.intentos_evaluacion, public.quiz_respuestas TO authenticated;
---   (5) GRANT SELECT ON public.curso_examen_resultados TO authenticated;
+--       GRANT UPDATE ON public.quiz_respuestas TO authenticated;
 -- ============================================================================
 
 BEGIN;
@@ -219,10 +227,32 @@ BEGIN
     EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.%I FROM authenticated', v_t);
     EXECUTE format('GRANT SELECT ON public.%I TO authenticated', v_t);
     EXECUTE format('GRANT ALL ON public.%I TO service_role', v_t);
+    -- H5: cada quien lee lo suyo. Sin RLS (CEEVA) una sesión leía las respuestas
+    -- ajenas del quiz, y las marcadas correcta=true dan la clave.
     IF NOT (SELECT c.relrowsecurity FROM pg_class c WHERE c.oid = to_regclass('public.' || v_t)) THEN
-      RAISE NOTICE 'D22d: % tiene la RLS APAGADA (serie CEEVA): cualquier sesión lee todas sus filas. No delata claves; queda para el issue de la serie.', v_t;
+      RAISE NOTICE 'D22d: % tenía la RLS APAGADA (serie CEEVA): se enciende.', v_t;
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_t);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies
+                    WHERE schemaname = 'public' AND tablename = v_t AND permissive = 'PERMISSIVE'
+                      AND cmd IN ('SELECT', 'ALL') AND coalesce(qual, '') ~* 'auth\.uid\s*\(') THEN
+      EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT USING (alumno_id = auth.uid() OR public.es_admin())',
+                     CASE v_t WHEN 'intentos_evaluacion' THEN 'intentos: ver propios intentos' ELSE 'quiz_respuestas: ver propias' END, v_t);
+      RAISE NOTICE 'D22d: % — se creó la lectura propia (o admin).', v_t;
     END IF;
   END LOOP;
+  IF to_regclass('public.intentos_evaluacion') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "intentos: techo propio o admin (D22d)" ON public.intentos_evaluacion;
+    CREATE POLICY "intentos: techo propio o admin (D22d)" ON public.intentos_evaluacion
+      AS RESTRICTIVE FOR SELECT TO anon, authenticated
+      USING (alumno_id = auth.uid() OR public.es_admin());
+  END IF;
+  IF to_regclass('public.quiz_respuestas') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "quiz_respuestas: techo propio o admin (D22d)" ON public.quiz_respuestas;
+    CREATE POLICY "quiz_respuestas: techo propio o admin (D22d)" ON public.quiz_respuestas
+      AS RESTRICTIVE FOR SELECT TO anon, authenticated
+      USING (alumno_id = auth.uid() OR public.es_admin());
+  END IF;
   SELECT string_agg(tablename || ' → «' || policyname || '»', ', ' ORDER BY tablename, policyname) INTO v_malas
     FROM pg_policies
    WHERE schemaname = 'public' AND tablename = ANY (c_k4) AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL')
@@ -279,6 +309,18 @@ BEGIN
                    OR (pv.p <> 'DELETE' AND has_any_column_privilege(ro.rol, to_regclass('public.' || x), pv.p)) END;
   IF v_malas IS NOT NULL THEN
     RAISE EXCEPTION 'D22d: intentos o respuestas del quiz siguen escribibles con sesión (%).', v_malas;
+  END IF;
+  -- (d) H5: RLS y techo «propio o admin» en las dos.
+  SELECT string_agg(x, ', ') INTO v_malas
+    FROM unnest(c_k4) AS x
+   WHERE to_regclass('public.' || x) IS NOT NULL
+     AND (NOT (SELECT c.relrowsecurity FROM pg_class c WHERE c.oid = to_regclass('public.' || x))
+          OR NOT EXISTS (SELECT 1 FROM pg_policies p
+                          WHERE p.schemaname = 'public' AND p.tablename = x AND p.permissive = 'RESTRICTIVE'
+                            AND p.cmd IN ('ALL', 'SELECT') AND p.roles @> ARRAY['anon', 'authenticated']::name[]
+                            AND lower(regexp_replace(coalesce(p.qual, ''), '[\s()]|public\.', '', 'g')) = 'alumno_id=auth.uidores_admin'));
+  IF v_malas IS NOT NULL THEN
+    RAISE EXCEPTION 'D22d: sin RLS o sin techo de lectura propio o admin: %.', v_malas;
   END IF;
   SELECT count(*) INTO v_n FROM pg_policies
    WHERE schemaname = 'public' AND permissive = 'RESTRICTIVE' AND policyname LIKE '%: techo solo admin (D22d)';
