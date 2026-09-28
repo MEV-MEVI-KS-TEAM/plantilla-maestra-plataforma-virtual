@@ -46,8 +46,9 @@ const fecha = (iso: string | null) =>
 
 export default function PagosPage() {
   const [pagos, setPagos]   = useState<Pago[]>([])
-  // Sin ingresos hasta que la API diga que los ve: así el secretario no ve «$0» un instante.
-  const [kpis, setKpis]     = useState<Kpis>({ pagosRegistrados: 0 })
+  // null hasta la primera respuesta: no se pinta la rejilla de tarjetas, así el
+  // secretario no ve «$0» de ingresos un instante ni el admin ve 1 tarjeta y luego 3.
+  const [kpis, setKpis]     = useState<Kpis | null>(null)
   const [loading, setLoad]  = useState(true)
   const [error, setError]   = useState<string | null>(null)
 
@@ -117,10 +118,13 @@ export default function PagosPage() {
 
   // D14: el subtítulo «Programa · Cursos», solo cuando hay pagos de cursos.
   const partido = (v?: PorVertical) => (v && v.cursos > 0 ? `Programa ${mxn(v.programa)} · Cursos ${mxn(v.cursos)}` : null)
-  const KPI = [
-    ...(kpis.ingresosMes !== undefined && kpis.ingresosTotales !== undefined ? [
-      { label: 'Ingresos del mes',  valor: mxn(kpis.ingresosMes),     Icon: TrendingUp, sub: partido(kpis.porVertical?.mes) },
-      { label: 'Ingresos totales',  valor: mxn(kpis.ingresosTotales), Icon: CreditCard, sub: partido(kpis.porVertical?.total) },
+  // D22a (decisión 4): solo quien recibió los ingresos de la API (el admin) los ve,
+  // en las tarjetas y en el «Total» del pie de la tabla.
+  const verIngresos = kpis?.ingresosMes !== undefined && kpis?.ingresosTotales !== undefined
+  const KPI = !kpis ? [] : [
+    ...(verIngresos ? [
+      { label: 'Ingresos del mes',  valor: mxn(kpis.ingresosMes ?? 0),     Icon: TrendingUp, sub: partido(kpis.porVertical?.mes) },
+      { label: 'Ingresos totales',  valor: mxn(kpis.ingresosTotales ?? 0), Icon: CreditCard, sub: partido(kpis.porVertical?.total) },
     ] : []),
     { label: 'Pagos registrados', valor: String(kpis.pagosRegistrados), Icon: Receipt, sub: null },
   ]
@@ -134,8 +138,8 @@ export default function PagosPage() {
         </p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* KPIs (se pintan cuando llega la primera respuesta) */}
+      {KPI.length > 0 && <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {KPI.map(k => (
           <div key={k.label} className="rounded-2xl p-5"
             style={{ background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
@@ -148,7 +152,7 @@ export default function PagosPage() {
             {k.sub && <p className="text-xs mt-1" style={{ color: 'var(--color-texto-secundario)' }}>{k.sub}</p>}
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Controles */}
       <div className="rounded-2xl p-4 space-y-3"
@@ -302,9 +306,13 @@ export default function PagosPage() {
                   <td className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-texto-secundario)' }}>
                     {filas.length} {filas.length === 1 ? 'pago' : 'pagos'}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-texto-secundario)' }}>Total</td>
-                  <td className="px-4 py-3 font-bold" style={{ color: 'var(--color-primario)' }}>{mxn(totalFiltrado)}</td>
-                  <td colSpan={4} />
+                  {verIngresos ? (
+                    <>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-texto-secundario)' }}>Total</td>
+                      <td className="px-4 py-3 font-bold" style={{ color: 'var(--color-primario)' }}>{mxn(totalFiltrado)}</td>
+                      <td colSpan={4} />
+                    </>
+                  ) : <td colSpan={6} />}
                 </tr>
               </tfoot>
             </table>

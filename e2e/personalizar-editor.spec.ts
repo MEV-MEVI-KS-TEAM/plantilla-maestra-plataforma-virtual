@@ -12,7 +12,7 @@
  *   ADMIN       → storageState acuñado por globalSetup (e2e/.auth/admin.json)
  *   ANÓNIMO     → contexto sin cookies (la landing y /register)
  *   ALUMNO      → login REAL por formulario (QA_ALUMNO_EMAIL/PASSWORD)
- *   SECRETARIO  → sesión acuñada aquí (ve el editor, no lo edita)
+ *   SECRETARIO  → sesión acuñada aquí (desde D22a no entra al editor)
  *
  * UNA SOLA PÁGINA DE ADMIN PARA c1..c5 y (d-ui). El borrador del editor vive
  * SOLO EN MEMORIA (ver el comentario de `beforeunload` en la página): si cada

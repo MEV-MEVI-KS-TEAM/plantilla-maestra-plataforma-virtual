@@ -9,7 +9,7 @@
  *
  * CUATRO IDENTIDADES, cuatro contextos de red:
  *   ADMIN       → storageState acuñado por globalSetup (e2e/.auth/admin.json)
- *   SECRETARIO  → sesión acuñada aquí con mintSession (ve el editor, no edita)
+ *   SECRETARIO  → sesión acuñada aquí con mintSession (desde D22a no lee ni escribe)
  *   ALUMNO      → sesión acuñada aquí (no debe ver ni tocar nada)
  *   ANÓNIMO     → contexto sin cookies
  *
@@ -320,7 +320,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
   // ══════════════════════════════════════════════════════════════════════════
   // b1 — Permisos: quién puede leer, quién puede escribir
   // ══════════════════════════════════════════════════════════════════════════
-  test('b1 — solo el ADMIN escribe; el SECRETARIO lee sin editar; el alumno y el anónimo no pasan', async () => {
+  test('b1 — solo el ADMIN lee y escribe; el SECRETARIO, el alumno y el anónimo no pasan (D22a)', async () => {
     const cuerpo = { nombre: 'Intento no autorizado' }
     const logo = { file: { name: 'logo.png', mimeType: 'image/png', buffer: PNG_1X1 } }
 
@@ -328,7 +328,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     const putAlumno = await alumno.put('/api/admin/configuracion', { data: cuerpo })
     expect(putAlumno.status(), 'PUT como ALUMNO debe dar 403').toBe(403)
     const putSecre = await secretario.put('/api/admin/configuracion', { data: cuerpo })
-    expect(putSecre.status(), 'PUT como SECRETARIO debe dar 403 (ve el editor, no guarda)').toBe(403)
+    expect(putSecre.status(), 'PUT como SECRETARIO debe dar 403').toBe(403)
     const putAnon = await anonimo.put('/api/admin/configuracion', { data: cuerpo })
     expect(putAnon.status(), 'PUT sin sesión debe dar 401').toBe(401)
 

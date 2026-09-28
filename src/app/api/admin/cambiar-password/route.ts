@@ -7,9 +7,9 @@ import { verifyStaff } from '@/lib/supabase/verify-admin'
 // solo del admin, y el secretario únicamente podía cambiarla por
 // /api/alumno/cambiar-password, sin estos endurecimientos; esa ruta ahora es
 // solo de alumnos. Réplica de /api/alumno/cambiar-password
-// con dos endurecimientos, porque esta es la cuenta que controla toda la
-// escuela: mínimo 8 caracteres (el de alumno pide 6) y la nueva debe ser
-// distinta de la actual. Igual que allá, se exige la contraseña actual
+// con dos endurecimientos, porque son las cuentas del PERSONAL (el admin
+// controla toda la escuela; el secretario cobra y da altas): mínimo 8
+// caracteres (el de alumno pide 6) y la nueva debe ser distinta de la actual. Igual que allá, se exige la contraseña actual
 // reautenticando con signInWithPassword — sin SMTP configurado (ningún cliente
 // MEV lo tiene) el "¿Olvidaste tu contraseña?" del login no entrega correos,
 // así que esta pantalla es el único camino real de rotación.

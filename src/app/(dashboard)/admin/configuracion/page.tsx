@@ -27,10 +27,11 @@
  * servidor devuelve un solo error, y sin prevalidación el admin descubre sus
  * cinco campos malos de uno en uno, con un viaje de red cada vez.
  *
- * SOLO LECTURA. El SECRETARIO entra (el layout deja pasar a staff) pero la API
- * le devuelve `puedeEditar: false`: se pinta todo deshabilitado y sin barra de
- * publicar. La seguridad la impone el servidor; esto solo evita que descubra
- * que no puede después de escribir media página.
+ * SOLO DEL ADMIN (D22a). El layout de esta sección manda al SECRETARIO a
+ * /admin/alumnos antes de pintar, y el GET de la configuración es solo del
+ * admin. El modo de solo lectura (`puedeEditar: false`: todo deshabilitado y
+ * sin barra de publicar) queda como defensa por si el editor volviera a abrirse
+ * a otro rol; la seguridad la impone el servidor.
  */
 import { CONFIG } from '@/lib/config'
 import { codigoMoneda } from '@/lib/moneda'

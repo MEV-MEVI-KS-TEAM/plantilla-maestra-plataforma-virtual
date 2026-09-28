@@ -9,8 +9,8 @@
  * baja a mirar los textos no tiene ni idea de que su cambio sigue sin
  * publicarse.
  *
- * Solo se pinta para quien puede editar; el secretario ve el editor en modo
- * lectura y una barra con botones apagados solo sería ruido.
+ * Solo se pinta para quien puede editar. Desde D22a el editor es solo del admin;
+ * si se abriera en solo lectura, una barra con botones apagados solo sería ruido.
  */
 import { ExternalLink, Loader2, RotateCcw, UploadCloud } from 'lucide-react'
 import { BORDE, ROJO, TXT_SUAVE, TXT_TENUE } from './Comunes'

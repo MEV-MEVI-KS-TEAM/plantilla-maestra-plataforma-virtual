@@ -44,7 +44,7 @@ test('2. la tabla de secciones fija las decisiones de Kevin (D22)', () => {
 })
 
 test('3. guardián de PÁGINAS: cada página cae en una sección y las de admin tienen su guarda de servidor', () => {
-  const paginas = recorrer(ADMIN_DIR, 'page.tsx')
+  const paginas = ['page.tsx', 'page.ts', 'page.jsx', 'page.js'].flatMap(n => recorrer(ADMIN_DIR, n))
   expect(paginas.length).toBeGreaterThanOrEqual(15)
   const secciones = Object.keys(SECCIONES_PANEL) as SeccionPanel[]
   for (const p of paginas) {
@@ -64,7 +64,7 @@ test('3. guardián de PÁGINAS: cada página cae en una sección y las de admin 
     }
     const guardado = candidatos.some(c => {
       const t = sinComentarios(readFileSync(join(raiz, c), 'utf8'))
-      return t.includes(`exigirSeccion('${seccion}')`)
+      return t.includes(`await exigirSeccion('${seccion}')`)
         // /admin/cursos/nuevo conserva su guarda de D7b (devuelve a la lista de cursos).
         || (seccion === '/admin/cursos/nuevo' && t.includes("!== 'admin') redirect('/admin/cursos')"))
     })
@@ -154,6 +154,16 @@ function handlers(): Map<string, string> {
 }
 
 test('5. guardián de API: los 102 handlers están en la tabla, y cada uno revisa el rol que dice', () => {
+  // Solo se admite la forma que el guardián sabe leer: `export async function MÉTODO`.
+  const base = join('src', 'app', 'api', 'admin')
+  for (const n of ['route.js', 'route.tsx', 'route.jsx']) expect(recorrer(base, n), n).toEqual([])
+  for (const f of recorrer(base, 'route.ts')) {
+    const s = sinComentarios(readFileSync(join(raiz, f), 'utf8'))
+    expect(s, f).not.toMatch(/export\s+(const|let|var)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/)
+    expect(s, f).not.toMatch(/export\s+function\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/)
+    expect(s, f).not.toMatch(/export\s*\{[^}]*\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b[^}]*\}/)
+    expect(s, f).not.toMatch(/export async function (HEAD|OPTIONS)\b/)
+  }
   const h = handlers()
   expect([...h.keys()].sort()).toEqual(Object.keys(API).sort())
   expect(h.size).toBe(102)
@@ -171,22 +181,29 @@ test('5. guardián de API: los 102 handlers están en la tabla, y cada uno revis
   }
 })
 
-test('6. las funciones SQL de esas cinco rutas revisan es_staff() (nacen así, o D7b les cambia la guarda)', () => {
+test('6. las funciones SQL de esas cinco rutas revisan es_staff() en su definición VIGENTE', () => {
   const mig = join('supabase', 'migrations')
-  const textos = readdirSync(join(raiz, mig)).filter(f => f.endsWith('.sql')).sort().map(f => leer(mig, f))
+  const archivos = readdirSync(join(raiz, mig)).filter(f => f.endsWith('.sql')).sort()
+  const textos = archivos.map(f => leer(mig, f))
+  const iD7b = archivos.findIndex(f => f.includes('_d7b_secretario_abre_cursos'))
+  expect(iD7b).toBeGreaterThan(0)
   for (const nivel of Object.values(API).filter(n => n.startsWith('rpc:'))) {
     const fn = nivel.slice(4)
-    // (a) su definición ya trae es_staff() (D8: curso_activar_segun_ficha), o
-    const nace = textos.some(t => {
+    // La última migración (en orden) que CREA la función.
+    let ultima = -1, pos = -1
+    textos.forEach((t, k) => {
       const i = Math.max(t.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${fn}(`), t.lastIndexOf(`CREATE FUNCTION public.${fn}(`))
-      return i >= 0 && t.slice(i, i + 6000).includes('public.es_staff()')
+      if (i >= 0) { ultima = k; pos = i }
     })
-    // (b) D7b la reescribe: su fila en d7b_staff_abre() cambia es_admin() por es_staff().
-    const d7b = textos.some(t => {
-      const i = t.indexOf(`('public.${fn}(`)
-      return i >= 0 && t.includes('FUNCTION public.d7b_staff_abre()') && t.slice(i, i + 400).includes("'IF NOT public.es_staff() THEN")
-    })
-    expect(nace || d7b, fn).toBe(true)
+    expect(ultima, fn).toBeGreaterThanOrEqual(0)
+    const cuerpo = textos[ultima].slice(pos, textos[ultima].indexOf('$$;', pos) > 0 ? textos[ultima].indexOf('$$;', pos) : pos + 6000)
+    if (cuerpo.includes('public.es_staff()')) continue   // nace con es_staff() (D8)
+    // Si no, D7b le cambia la guarda DESPUÉS de esa definición: su fila existe y va más tarde.
+    expect(ultima, `${fn}: la última definición (${archivos[ultima]}) es posterior a D7b y no trae es_staff()`).toBeLessThan(iD7b)
+    const d7b = textos[iD7b]
+    const i = d7b.indexOf(`('public.${fn}(`)
+    expect(i, `${fn}: sin fila en d7b_staff_abre()`).toBeGreaterThan(0)
+    expect(d7b.slice(i, i + 400), fn).toContain("'IF NOT public.es_staff() THEN")
   }
 })
 
@@ -206,8 +223,15 @@ test('7. las API que cambian: configuración, cursos, pagos, ficha y contraseña
   expect(pagos).toContain("const conIngresos = (await getUserRol(supabase, user.id)) === 'ADMIN'")
   expect(pagos).toContain(': { pagosRegistrados: filas.length },')
   const pagina = sinComentarios(leer(ADMIN_DIR, 'pagos', 'page.tsx'))
-  expect(pagina).toContain('useState<Kpis>({ pagosRegistrados: 0 })')
-  expect(pagina).toContain('...(kpis.ingresosMes !== undefined && kpis.ingresosTotales !== undefined ? [')
+  // Sin tarjetas hasta la primera respuesta (ni «$0» al secretario ni 1→3 al admin).
+  expect(pagina).toContain('useState<Kpis | null>(null)')
+  expect(pagina).toContain('{KPI.length > 0 && <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">')
+  expect(pagina).toContain('const verIngresos = kpis?.ingresosMes !== undefined && kpis?.ingresosTotales !== undefined')
+  expect(pagina).toContain('...(verIngresos ? [')
+  // El «Total» del pie es la misma cifra que «Ingresos totales»: solo con verIngresos.
+  const pie = pagina.slice(pagina.indexOf('<tfoot>'), pagina.indexOf('</tfoot>'))
+  expect(pie).toMatch(/\{verIngresos \? \(\s*<>[\s\S]*\{mxn\(totalFiltrado\)\}[\s\S]*<\/>\s*\) : <td colSpan=\{6\} \/>\}/)
+  expect(pagina.match(/mxn\(totalFiltrado\)/g)?.length).toBe(1)
   // La ficha pide documentos solo si quien la ve es admin.
   const ficha = sinComentarios(leer(ADMIN_DIR, 'alumnos', '[id]', 'page.tsx'))
   expect(ficha).toContain("const docsRes = alumnoData.viewer_rol === 'ADMIN' ? await fetch(`/api/admin/documentos/${id}`) : null")
