@@ -36,3 +36,15 @@ CREATE POLICY "pagos: admin gestiona"
   ON public.pagos FOR ALL
   USING (public.es_admin())
   WITH CHECK (public.es_admin());
+
+-- D22c: `pagos` solo se ESCRIBE desde el servidor (service_role) y desde las
+-- funciones SECURITY DEFINER (curso_cobrar, registrar_cuota_semanal). Supabase le
+-- da ALL a anon y authenticated sobre toda tabla nueva: sin este REVOKE, una
+-- sesión de personal insertaba pagos por /rest/v1/pagos sin las validaciones de
+-- la API y a nombre de otro, y el admin borraba sin pasar por D10. SELECT se queda
+-- (la RLS decide qué filas). Va DESPUÉS del CREATE TABLE: los GRANT de fábrica solo
+-- se aplican al crear la tabla, así que re-correr el CREATE no los devuelve.
+REVOKE ALL ON public.pagos FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.pagos FROM authenticated;
+GRANT  SELECT ON public.pagos TO authenticated;
+GRANT  ALL    ON public.pagos TO service_role;

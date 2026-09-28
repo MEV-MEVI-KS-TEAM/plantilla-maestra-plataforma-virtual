@@ -92,7 +92,8 @@ test('4. lo demás que toca rol_secretario ya es el estado final (scripts/schema
   const perfil = (s: string) => plano(s.match(/CREATE POLICY "usuarios: ver propio perfil"[^;]*;/)?.[0] ?? '')
   expect(perfil(rol)).not.toBe('')
   expect(perfil(rol)).toBe(perfil(schema))
-  // Políticas de pagos: el mismo bloque condicional (SELECT/INSERT staff, UPDATE/DELETE admin).
+  // Políticas de pagos: el mismo bloque condicional (SELECT propio o admin con techo desde D22c,
+  // INSERT staff y UPDATE/DELETE admin, inertes para PostgREST sin GRANT).
   const bloquePagos = (s: string) => {
     const ini = s.indexOf("IF to_regclass('public.pagos') IS NOT NULL THEN\n    DROP POLICY IF EXISTS \"pagos: ver propios\"")
     return ini < 0 ? '' : plano(s.slice(ini, s.indexOf('END IF;', ini)))

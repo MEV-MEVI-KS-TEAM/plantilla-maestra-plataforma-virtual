@@ -428,11 +428,18 @@ $$;
 -- 42501. Se otorga porque el panel las invoca con la sesión del admin.
 DO $grants$
 BEGIN
+  EXECUTE 'REVOKE ALL ON FUNCTION public.curso_registrar_pago(UUID, NUMERIC, TEXT, TEXT, TEXT, DATE, BOOLEAN, INTEGER) FROM PUBLIC';
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.curso_registrar_pago(UUID, NUMERIC, TEXT, TEXT, TEXT, DATE, BOOLEAN, INTEGER) FROM anon';
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_tope_meses(UUID) TO authenticated';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_abrir_mes(UUID, INTEGER) TO authenticated';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_cerrar_mes(UUID, INTEGER) TO authenticated';
-    EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_registrar_pago(UUID, NUMERIC, TEXT, TEXT, TEXT, DATE, BOOLEAN, INTEGER) TO authenticated';
+    -- D22c (H3): curso_registrar_pago es LEGADO (desde D16 el cobro es curso_cobrar)
+    -- y ninguna pantalla la llama; con la sesión dejaba a una sesión de personal
+    -- registrar pagos de curso con monto y fecha libres. Solo el servidor.
+    EXECUTE 'REVOKE ALL ON FUNCTION public.curso_registrar_pago(UUID, NUMERIC, TEXT, TEXT, TEXT, DATE, BOOLEAN, INTEGER) FROM authenticated';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.curso_borrar_modulo(UUID) TO authenticated';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN

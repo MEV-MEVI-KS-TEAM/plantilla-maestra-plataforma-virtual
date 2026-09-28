@@ -110,6 +110,11 @@ Editar SOLO este archivo: src/lib/config.ts
      el trigger de alta, una cuenta nueva se crea su fila con rol `admin`. Una
      instalación nueva ya lo trae en `schema.sql`; en un cliente ya desplegado es
      el retrofit (idempotente). Lo vigila el CHECK 24.
+   > **También en toda base:** después de 7bis corre su **fila 22**
+   > (`20260928160000_d22c_postgrest_directo.sql`, D22c): cierra la escritura directa
+   > de `pagos` y el directorio del personal por PostgREST. No va en este paso porque
+   > las filas 2 y 9 de 7bis corren después y una copia vieja reabriría una parte
+   > (CHECK 26 y 27).
    > Para clientes **ya desplegados**, el retrofit equivalente de S1+S2 es
    > `scripts/fix-s1-s2-roles.sql`, y sigue haciendo falta `scripts/fix-escalada-rol.sql`
    > (Bug 47/52): son vectores distintos, hay que correr los dos.
@@ -140,6 +145,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | 19 | `20260928130000_d20b_constancia_staff.sql` | **D20b** — el secretario también emite constancias (con su sesión; las guardas de B8.2 intactas: sin examen aprobado no hay folio); el folio guarda quién lo emitió (`emitida_por`, nombre y rol) y una inscripción **cancelada** no recibe folio. Re-correr B4 o B8.2 ya no revierte la emisión (prólogo/epílogo) (CHECK 20) |
    | 20 | `20260928140000_d20e_conflicto_pt409.sql` | **D20e** — «alguien lo cambió en medio» (doble clic, otra pestaña, precio o lista que cambió) responde **409** con `PT409` y no con `40001`, que PostgREST reintenta sin fin (la petición se colgaba). Reescribe las funciones instaladas; las migraciones de origen ya lo traen. Aplica a toda base; córrela al final (CHECK 21) |
    | 21 | `20260928150000_d22b_cobranza_solo_admin.sql` | **D22b** — cobranza semanal: condonar, quitar la condonación, regenerar el calendario y el plan a medida son solo del **admin**. Las cuatro funciones del calendario (`registrar_cuota_semanal`, `condonar_semana`, `generar_calendario_pagos`, `generar_calendario_por_nivel`) se ejecutan solo con el service role, y su guardia pide `es_admin()` con sesión: el secretario ya no las llama por `/rest/v1/rpc/…`. «Marcar pagada» sigue siendo de todo el personal (por la API). **Aplica a toda base con cobro semanal** (en las demás avisa y no hace nada): un cliente nuevo ya lo trae en `scripts/schema.sql`; uno ya desplegado la corre aquí, al final (CHECK 25) |
+   | 22 | `20260928160000_d22c_postgrest_directo.sql` | **D22c** — por PostgREST nadie escribe `pagos` (sin INSERT/UPDATE/DELETE para `anon`/`authenticated`, ni de tabla ni de columna: toda escritura va por la API con el service role o por funciones `SECURITY DEFINER`); `curso_registrar_pago` (legado) solo con el service role; `registrar_cuota_semanal` con guarda interna (solo el servidor); el trigger de reversión solo toca la semana del pago borrado; `usuarios` y `pagos` se leen **propio o admin**, con techo `RESTRICTIVE` (el secretario ya no lee el directorio del personal ni todos los pagos). **Aplica a TODA base, venda o no diplomados**: un cliente nuevo ya lo trae en `scripts/schema.sql`; uno ya desplegado la corre aquí, **al final** (las filas 2 y 9, si son copias viejas, reabrirían lo que el techo no cubre) (CHECK 26 y 27) |
 
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
 

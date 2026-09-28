@@ -40,8 +40,10 @@ $$;
 -- Los mismos GRANT que S2 (idempotente).
 GRANT EXECUTE ON FUNCTION public.es_staff() TO anon, authenticated;
 
--- 3. Lectura básica de usuarios pasa a es_staff() (sin columnas sensibles:
---    nombre/apellidos/email/telefono/rol — el secretario las necesita).
+-- 3. Lectura de usuarios: la propia fila o el admin (D22c, K1). Antes pasaba
+--    es_staff() y el secretario leía por PostgREST el directorio completo del
+--    personal (nombre, email, teléfono y rol de todos); nada de la app lo usaba:
+--    las filas ajenas se leen siempre con el service role (/api/admin/*).
 --    Escrituras (INSERT/UPDATE/DELETE) siguen admin-only.
 --    IMPORTANTE: la policy SELECT de ALUMNOS se queda en es_admin() — RLS no
 --    filtra columnas y alumnos.notas_admin es sensible; el secretario lee
@@ -50,12 +52,23 @@ GRANT EXECUTE ON FUNCTION public.es_staff() TO anon, authenticated;
 DROP POLICY IF EXISTS "usuarios: ver propio perfil" ON public.usuarios;
 CREATE POLICY "usuarios: ver propio perfil"
   ON public.usuarios FOR SELECT
-  USING (id = auth.uid() OR public.es_staff());
+  USING (id = auth.uid() OR public.es_admin());
+
+-- D22c (K7): techo RESTRICTIVE. Se combina con AND con toda política permisiva
+-- de SELECT: ni una copia vieja de 20260716130000_rol_secretario.sql re-corrida
+-- después (la fila 2 de 7bis) ni una política de drift (p. ej. `usuarios_select`
+-- de EDVEX) vuelven a abrir el directorio del personal a una sesión.
+DROP POLICY IF EXISTS "usuarios: techo propio o admin (D22c)" ON public.usuarios;
+CREATE POLICY "usuarios: techo propio o admin (D22c)"
+  ON public.usuarios AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (id = auth.uid() OR public.es_admin());
 
 -- 4. Policies de pagos (condicional: la tabla pagos llega con el PR del
 --    módulo de pagos y puede no existir aún en esta BD; seguro en
 --    cualquier orden de aplicación).
---    SELECT/INSERT → es_staff() ; UPDATE/DELETE → es_admin().
+--    SELECT → propio o es_admin() + techo RESTRICTIVE (D22c, K2);
+--    INSERT → es_staff() y UPDATE/DELETE → es_admin(), inertes para PostgREST
+--    desde D22c (la tabla no da INSERT/UPDATE/DELETE a authenticated).
 DO $$
 BEGIN
   IF to_regclass('public.pagos') IS NOT NULL THEN
@@ -65,8 +78,18 @@ BEGIN
     DROP POLICY IF EXISTS "pagos: admin actualiza" ON public.pagos;
     DROP POLICY IF EXISTS "pagos: admin elimina"   ON public.pagos;
 
+    -- D22c (K2): el SECRETARIO ya no lee todos los pagos por PostgREST; el
+    -- historial que le toca le llega por /api/admin/pagos (service role).
     CREATE POLICY "pagos: ver propios" ON public.pagos
-      FOR SELECT USING (alumno_id = auth.uid() OR public.es_staff());
+      FOR SELECT USING (alumno_id = auth.uid() OR public.es_admin());
+
+    -- D22c: techo RESTRICTIVE. Se combina con AND con toda política permisiva:
+    -- una copia vieja de esta migración o una política de drift no reabre el
+    -- SELECT de pagos ajenos para una sesión que no sea del admin.
+    DROP POLICY IF EXISTS "pagos: techo propio o admin (D22c)" ON public.pagos;
+    CREATE POLICY "pagos: techo propio o admin (D22c)" ON public.pagos
+      AS RESTRICTIVE FOR SELECT TO anon, authenticated
+      USING (alumno_id = auth.uid() OR public.es_admin());
 
     CREATE POLICY "pagos: staff registra" ON public.pagos
       FOR INSERT WITH CHECK (public.es_staff());
