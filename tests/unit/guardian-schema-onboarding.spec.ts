@@ -91,6 +91,13 @@ const OBJETOS_EXENTOS = new Set<string>([
   // public.site_config y su política "site_config: lectura abierta". Lo exento
   // es solo el storage.
   'branding: lectura abierta',
+
+  // Techo de D22d sobre el banco del examen final de curso
+  // (20260928170000_d22d_claves_solo_servidor.sql, dentro de un EXECUTE porque
+  // la tabla solo existe con el módulo de Cursos). Mismo trato que el módulo:
+  // curso_examen_preguntas no vive en scripts/schema.sql, sino en el paso 6
+  // (20260728120000_examen_final_cursos.sql, exento arriba), que ya trae el techo.
+  'curso_examen_preguntas: techo solo admin (D22d)',
 ])
 
 function sinComentarios(sql: string): string {

@@ -22,7 +22,13 @@
 --   * curso_examen_resultados: el alumno ve los suyos; escribe solo la API con
 --     cliente admin al calificar.
 --   * Ninguna política hace SELECT a su propia tabla en USING (regla anti-Bug 16).
---   * Se reutiliza public.is_admin() — NO se crea otra función de rol.
+--   * Se reutiliza public.is_admin() — NO se crea otra función de rol. El techo
+--     de D22d usa public.es_admin(), la misma que los techos de los otros bancos.
+--   * D22d: dos capas en el banco (techo RESTRICTIVE solo-admin + SELECT por
+--     lista blanca de columnas, sin respuesta_correcta ni explicacion) y
+--     `respuestas` de los resultados sin SELECT para la sesión: el ✓/✗ guardado
+--     de un envío con reintento pendiente delataba la clave por eliminación.
+--     Re-correr este archivo ya no reabre nada (CHECK 29).
 
 BEGIN;
 
@@ -35,8 +41,8 @@ BEGIN
   IF to_regclass('public.alumnos') IS NULL THEN
     RAISE EXCEPTION 'Falta public.alumnos (schema base).';
   END IF;
-  IF to_regproc('public.is_admin') IS NULL THEN
-    RAISE EXCEPTION 'Falta public.is_admin(). Corre antes supabase/schema.sql.';
+  IF to_regproc('public.is_admin') IS NULL OR to_regproc('public.es_admin') IS NULL THEN
+    RAISE EXCEPTION 'Falta public.is_admin() o public.es_admin(). Corre antes supabase/schema.sql.';
   END IF;
 END
 $preflight$;
@@ -92,6 +98,13 @@ CREATE POLICY "curso_examen_preguntas: solo admin" ON public.curso_examen_pregun
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
+-- D22d: techo RESTRICTIVE solo-admin. Se combina con AND con toda permisiva:
+-- ni una política de drift ni una copia vieja la ensanchan.
+DROP POLICY IF EXISTS "curso_examen_preguntas: techo solo admin (D22d)" ON public.curso_examen_preguntas;
+CREATE POLICY "curso_examen_preguntas: techo solo admin (D22d)" ON public.curso_examen_preguntas
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (public.es_admin()) WITH CHECK (public.es_admin());
+
 -- resultados: el alumno ve los propios; admin ve todos.
 DROP POLICY IF EXISTS "curso_examen_resultados: ver propios o admin" ON public.curso_examen_resultados;
 CREATE POLICY "curso_examen_resultados: ver propios o admin" ON public.curso_examen_resultados
@@ -107,9 +120,24 @@ CREATE POLICY "curso_examen_resultados: admin escribe" ON public.curso_examen_re
   WITH CHECK (public.is_admin());
 
 -- ── Grants ──
--- El acceso real lo decide la RLS; sin estos GRANT, PostgREST responde 401
--- antes siquiera de evaluar las políticas.
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.curso_examen_preguntas  TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.curso_examen_resultados TO authenticated;
+-- El acceso real a las filas lo decide la RLS; sin GRANT, PostgREST responde 401
+-- antes siquiera de evaluar las políticas. D22d: el SELECT va por LISTA BLANCA de
+-- columnas (el REVOKE de tabla quita antes cualquier GRANT viejo, también los de
+-- columna): ninguna sesión lee respuesta_correcta ni explicacion del banco, ni
+-- `respuestas` (el ✓/✗ de cada envío) de los resultados. anon, nada. La app lee y
+-- escribe todo con el service role.
+REVOKE ALL    ON public.curso_examen_preguntas  FROM anon, PUBLIC;
+REVOKE SELECT ON public.curso_examen_preguntas  FROM authenticated;
+GRANT  INSERT, UPDATE, DELETE ON public.curso_examen_preguntas TO authenticated;
+GRANT  SELECT (id, curso_id, orden, tema, enunciado, opcion_a, opcion_b, opcion_c, opcion_d)
+  ON public.curso_examen_preguntas TO authenticated;
+GRANT  ALL    ON public.curso_examen_preguntas  TO service_role;
+
+REVOKE ALL    ON public.curso_examen_resultados FROM anon, PUBLIC;
+REVOKE SELECT ON public.curso_examen_resultados FROM authenticated;
+GRANT  INSERT, UPDATE, DELETE ON public.curso_examen_resultados TO authenticated;
+GRANT  SELECT (id, curso_id, alumno_id, aciertos, total, porcentaje, desglose_temas, created_at)
+  ON public.curso_examen_resultados TO authenticated;
+GRANT  ALL    ON public.curso_examen_resultados TO service_role;
 
 COMMIT;

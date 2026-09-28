@@ -867,3 +867,184 @@ SELECT
     ELSE '✅ OK (cada sesión lee su fila; el admin, todas)'
   END AS resultado
 FROM r;
+
+-- ─── CHECK 28: claves del examen mensual y del quiz solo por el servidor (D22d) ─
+-- Aplica a toda base. Por /rest/v1 ninguna sesión lee respuesta_correcta,
+-- explicacion ni retroalimentacion de preguntas y quiz_semana, ni una columna
+-- fuera de la lista blanca (una columna nueva nace oculta); anon no lee nada. Dos
+-- capas, como D22c: privilegios por columna y un techo RESTRICTIVE solo-admin con
+-- la RLS encendida (el alumno y el secretario no ven filas). La app los lee con
+-- el service role DESPUÉS del gate. Las permisivas sin admin (drift: «read_quiz»,
+-- «preguntas_select») se listan solo como aviso: las frena el techo (K-d9). Un
+-- GRANT amplio o un schema viejo corrido después reabren los privilegios: por
+-- eso se mide el privilegio real, columna por columna.
+WITH b AS (
+  SELECT x.tabla, x.lista, to_regclass('public.' || x.tabla) AS oid
+    FROM (VALUES
+      ('preguntas',   ARRAY['id', 'evaluacion_id', 'pregunta', 'opcion_a', 'opcion_b', 'opcion_c', 'opcion_d', 'orden', 'activa', 'created_at']),
+      ('quiz_semana', ARRAY['id', 'semana_id', 'pregunta', 'opcion_a', 'opcion_b', 'opcion_c', 'opcion_d', 'opciones', 'orden', 'activa'])
+    ) AS x(tabla, lista)
+), vista AS (
+  SELECT string_agg(ro.rol || ' → ' || b.tabla || '.' || a.attname, ', ' ORDER BY b.tabla, a.attname, ro.rol) AS abiertas
+    FROM b
+    JOIN pg_attribute a ON a.attrelid = b.oid AND a.attnum > 0 AND NOT a.attisdropped
+   CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     AND has_column_privilege(ro.rol, b.oid, a.attnum, 'SELECT')
+     AND (a.attname::text IN ('respuesta_correcta', 'explicacion', 'retroalimentacion')
+          OR NOT (a.attname::text = ANY (b.lista)) OR ro.rol = 'anon')
+), t AS (
+  SELECT b.tabla, b.oid, c.relrowsecurity AS rls, c.relforcerowsecurity AS forzada,
+         EXISTS (SELECT 1 FROM pg_policies p
+                  WHERE p.schemaname = 'public' AND p.tablename = b.tabla AND p.permissive = 'RESTRICTIVE'
+                    AND p.cmd IN ('ALL', 'SELECT')
+                    AND (p.roles @> ARRAY['anon', 'authenticated']::name[] OR p.roles @> ARRAY['public']::name[])
+                    AND lower(regexp_replace(coalesce(p.qual, ''), '[\s()]|public\.', '', 'g')) IN ('es_admin', 'is_admin')) AS techo,
+         (SELECT string_agg(p.policyname, ', ' ORDER BY p.policyname) FROM pg_policies p
+           WHERE p.schemaname = 'public' AND p.tablename = b.tabla AND p.permissive = 'PERMISSIVE'
+             AND p.cmd IN ('SELECT', 'ALL') AND coalesce(p.qual, '') !~* '(es_admin|is_admin)\s*\(') AS sin_admin
+    FROM b LEFT JOIN pg_class c ON c.oid = b.oid
+), r AS (
+  SELECT string_agg(tabla, ', ') FILTER (WHERE oid IS NULL) AS faltan,
+         string_agg(tabla, ', ') FILTER (WHERE forzada) AS forzadas,
+         string_agg(tabla, ', ') FILTER (WHERE oid IS NOT NULL AND NOT rls) AS sin_rls,
+         string_agg(tabla, ', ') FILTER (WHERE oid IS NOT NULL AND NOT techo) AS sin_techo,
+         string_agg(CASE WHEN rls THEN 'sí' ELSE 'NO' END, ',' ORDER BY tabla) AS rls_txt,
+         string_agg(CASE WHEN techo THEN 'sí' ELSE 'NO' END, ',' ORDER BY tabla) AS techo_txt,
+         string_agg(tabla || ' → ' || sin_admin, '; ' ORDER BY tabla) FILTER (WHERE sin_admin IS NOT NULL) AS sin_admin,
+         (SELECT abiertas FROM vista) AS abiertas
+    FROM t
+)
+SELECT
+  'Claves del examen mensual y del quiz solo por el servidor (D22d)' AS check_name,
+  'clave legible por: ' || COALESCE(abiertas, 'nadie')
+    || ' / RLS: ' || COALESCE(rls_txt, '-') || ' / techo: ' || COALESCE(techo_txt, '-')
+    || CASE WHEN sin_admin IS NOT NULL THEN ' / permisivas sin admin (las frena el techo): ' || sin_admin ELSE '' END AS valor,
+  CASE
+    WHEN faltan IS NOT NULL
+      THEN '❌ FALTA la tabla ' || faltan || ' → corre scripts/schema.sql (o supabase/schema.sql) antes de este check'
+    WHEN forzadas IS NOT NULL
+      THEN '❌ ' || forzadas || ' con FORCE ROW LEVEL SECURITY: las funciones SECURITY DEFINER dejarían de leer → quítalo y corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql'
+    WHEN abiertas IS NOT NULL OR sin_rls IS NOT NULL OR sin_techo IS NOT NULL
+      THEN '❌ ' || CASE WHEN abiertas IS NOT NULL THEN 'CLAVES A LA VISTA (' || abiertas || ')'
+                         WHEN sin_rls IS NOT NULL THEN 'RLS APAGADA (' || sin_rls || ')'
+                         ELSE 'SIN TECHO (' || sin_techo || ')' END
+           || ': un alumno lee las respuestas con /rest/v1/… → primero despliega el código de D22d y después corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql (idempotente); si reapareció tras un GRANT amplio o un schema viejo, vuelve a correrla'
+    ELSE '✅ OK (el alumno y el secretario no ven filas; con sesión nadie lee la clave ni la explicación: la app las lee con el service role)'
+  END AS resultado
+FROM r;
+
+-- ─── CHECK 29: claves del examen final de curso solo por el servidor (D22d) ─
+-- Aplica a toda base con el módulo de Cursos (paso 6); sin él no aplica. Mismas
+-- dos capas que el 28 sobre curso_examen_preguntas (el examen de la constancia),
+-- y además `respuestas` de curso_examen_resultados (el ✓/✗ guardado de cada
+-- envío) sin SELECT para la sesión: con reintento pendiente delataba la clave por
+-- eliminación (K-d3). La constancia sigue leyendo `porcentaje` con la sesión.
+-- Una copia vieja de 20260728120000_examen_final_cursos.sql (el paso 6) le
+-- devolvía el SELECT de tabla a authenticated: por eso se mide el privilegio real.
+WITH b AS (
+  SELECT to_regclass('public.curso_examen_preguntas') AS oid,
+         ARRAY['id', 'curso_id', 'orden', 'tema', 'enunciado', 'opcion_a', 'opcion_b', 'opcion_c', 'opcion_d'] AS lista,
+         to_regclass('public.curso_examen_resultados') AS res
+), vista AS (
+  SELECT string_agg(ro.rol || ' → curso_examen_preguntas.' || a.attname, ', ' ORDER BY a.attname, ro.rol) AS abiertas
+    FROM b
+    JOIN pg_attribute a ON a.attrelid = b.oid AND a.attnum > 0 AND NOT a.attisdropped
+   CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     AND has_column_privilege(ro.rol, b.oid, a.attnum, 'SELECT')
+     AND (a.attname::text IN ('respuesta_correcta', 'explicacion', 'retroalimentacion')
+          OR NOT (a.attname::text = ANY (b.lista)) OR ro.rol = 'anon')
+), res AS (
+  SELECT string_agg(ro.rol || ' → curso_examen_resultados.respuestas', ', ' ORDER BY ro.rol) AS abiertas
+    FROM b CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     -- CASE: el orden de evaluación del WHERE no está garantizado y sin la
+     -- columna has_column_privilege lanza error en vez de dar false.
+     AND CASE WHEN EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = b.res AND a.attname = 'respuestas' AND NOT a.attisdropped)
+              THEN has_column_privilege(ro.rol, b.res, 'respuestas', 'SELECT') ELSE false END
+), r AS (
+  SELECT b.oid IS NOT NULL AS existe, b.res IS NOT NULL AS existe_res,
+         COALESCE(c.relrowsecurity, false) AS rls, COALESCE(c.relforcerowsecurity, false) AS forzada,
+         EXISTS (SELECT 1 FROM pg_policies p
+                  WHERE p.schemaname = 'public' AND p.tablename = 'curso_examen_preguntas' AND p.permissive = 'RESTRICTIVE'
+                    AND p.cmd IN ('ALL', 'SELECT')
+                    AND (p.roles @> ARRAY['anon', 'authenticated']::name[] OR p.roles @> ARRAY['public']::name[])
+                    AND lower(regexp_replace(coalesce(p.qual, ''), '[\s()]|public\.', '', 'g')) IN ('es_admin', 'is_admin')) AS techo,
+         (SELECT abiertas FROM vista) AS abiertas, (SELECT abiertas FROM res) AS res_abiertas
+    FROM b LEFT JOIN pg_class c ON c.oid = b.oid
+)
+SELECT
+  'Claves del examen final de curso solo por el servidor (D22d)' AS check_name,
+  CASE WHEN NOT existe THEN 'sin módulo Cursos (no existe curso_examen_preguntas)'
+       ELSE 'clave legible por: ' || COALESCE(abiertas, 'nadie')
+         || ' / ✓/✗ guardado legible por: ' || COALESCE(res_abiertas, 'nadie')
+         || ' / RLS: ' || CASE WHEN rls THEN 'sí' ELSE 'NO' END
+         || ' / techo: ' || CASE WHEN techo THEN 'sí' ELSE 'NO' END
+  END AS valor,
+  CASE
+    WHEN NOT existe
+      THEN '✅ OK (esta base no tiene el examen final de curso: no aplica)'
+    WHEN forzada
+      THEN '❌ curso_examen_preguntas con FORCE ROW LEVEL SECURITY: las funciones SECURITY DEFINER dejarían de leer → quítalo y corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql'
+    WHEN abiertas IS NOT NULL OR res_abiertas IS NOT NULL OR NOT rls OR NOT techo
+      THEN '❌ ' || CASE WHEN abiertas IS NOT NULL THEN 'CLAVES A LA VISTA (' || abiertas || ')'
+                         WHEN res_abiertas IS NOT NULL THEN '✓/✗ GUARDADO A LA VISTA (' || res_abiertas || ')'
+                         WHEN NOT rls THEN 'RLS APAGADA'
+                         ELSE 'SIN TECHO' END
+           || ': un alumno saca la clave del examen de la constancia con /rest/v1/… → primero despliega el código de D22d y después corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql (idempotente); si reapareció tras re-correr el paso 6, esa copia de 20260728120000_examen_final_cursos.sql es vieja'
+    ELSE '✅ OK (el banco del examen de curso solo lo lee el servidor; el ✓/✗ guardado no sale con sesión)'
+  END AS resultado
+FROM r;
+
+-- ─── CHECK 30: intentos y respuestas del quiz solo los escribe el servidor (D22d) ─
+-- Aplica a toda base. Ni anon ni authenticated INSERTAN, ACTUALIZAN ni BORRAN en
+-- intentos_evaluacion ni en quiz_respuestas (ni por privilegio de tabla ni de
+-- columna): el intento y la respuesta los escribe la app con el service role,
+-- calificando ella. Con escritura propia, una sesión se fabricaba un intento
+-- aprobado con 100 (la tarjeta y la ficha) o respuestas con correcta=true (el
+-- candado del quiz). La lectura: cada quien la suya (RLS encendida y techo
+-- RESTRICTIVE «propio o admin»): sin RLS (serie CEEVA) o con una permisiva de
+-- drift, una sesión leía las respuestas AJENAS del quiz, y las marcadas
+-- correcta=true dan la clave.
+WITH p AS (
+  SELECT string_agg(ro.rol || ' ' || lower(pv.p) || ' ' || x.tabla, ', ' ORDER BY x.tabla, ro.rol, pv.p) AS abiertos,
+         string_agg(DISTINCT x.tabla, ', ') FILTER (WHERE to_regclass('public.' || x.tabla) IS NULL) AS faltan
+    FROM unnest(ARRAY['intentos_evaluacion', 'quiz_respuestas']) AS x(tabla)
+   CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) AS pv(p)
+   WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     AND CASE WHEN to_regclass('public.' || x.tabla) IS NULL THEN true
+              ELSE has_table_privilege(ro.rol, to_regclass('public.' || x.tabla), pv.p)
+                   OR (pv.p <> 'DELETE' AND has_any_column_privilege(ro.rol, to_regclass('public.' || x.tabla), pv.p)) END
+), l AS (
+  SELECT x.tabla, COALESCE(c.relrowsecurity, false) AS rls,
+         EXISTS (SELECT 1 FROM pg_policies pp
+                  WHERE pp.schemaname = 'public' AND pp.tablename = x.tabla AND pp.permissive = 'RESTRICTIVE'
+                    AND pp.cmd IN ('ALL', 'SELECT')
+                    AND (pp.roles @> ARRAY['anon', 'authenticated']::name[] OR pp.roles @> ARRAY['public']::name[])
+                    AND lower(regexp_replace(coalesce(pp.qual, ''), '[\s()]|public\.', '', 'g')) IN ('alumno_id=auth.uidores_admin', 'alumno_id=auth.uid')) AS techo
+    FROM unnest(ARRAY['intentos_evaluacion', 'quiz_respuestas']) AS x(tabla)
+    LEFT JOIN pg_class c ON c.oid = to_regclass('public.' || x.tabla)
+), r AS (
+  SELECT (SELECT faltan FROM p) AS faltan,
+         (SELECT abiertos FROM p WHERE (SELECT faltan FROM p) IS NULL) AS abiertos,
+         (SELECT string_agg(tabla, ', ' ORDER BY tabla) FROM l WHERE NOT rls OR NOT techo) AS ajenas,
+         (SELECT string_agg(CASE WHEN rls THEN 'sí' ELSE 'NO' END, ',' ORDER BY tabla) FROM l) AS rls_txt,
+         (SELECT string_agg(CASE WHEN techo THEN 'sí' ELSE 'NO' END, ',' ORDER BY tabla) FROM l) AS techo_txt
+)
+SELECT
+  'Intentos y respuestas del quiz solo los escribe el servidor (D22d)' AS check_name,
+  CASE WHEN faltan IS NOT NULL THEN 'faltan tablas: ' || faltan
+       ELSE 'escritura con sesión: ' || COALESCE(abiertos, 'nadie')
+         || ' / RLS: ' || rls_txt || ' / techo de lectura propio o admin: ' || techo_txt END AS valor,
+  CASE
+    WHEN faltan IS NOT NULL
+      THEN '❌ FALTA la tabla ' || faltan || ' → corre scripts/schema.sql (o supabase/schema.sql) antes de este check'
+    WHEN abiertos IS NOT NULL
+      THEN '❌ INTENTO FABRICABLE (' || abiertos || '): un alumno se inserta un intento aprobado o respuestas del quiz correctas con /rest/v1/… → primero despliega el código de D22d y después corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql (idempotente)'
+    WHEN ajenas IS NOT NULL
+      THEN '❌ RESPUESTAS AJENAS A LA VISTA (' || ajenas || '): sin RLS o sin techo, una sesión lee las respuestas del quiz de otros alumnos, y las marcadas correctas dan la clave → primero despliega el código de D22d y después corre supabase/migrations/20260928170000_d22d_claves_solo_servidor.sql (idempotente)'
+    ELSE '✅ OK (intentos y respuestas del quiz solo por el servidor; cada quien lee los suyos)'
+  END AS resultado
+FROM r;

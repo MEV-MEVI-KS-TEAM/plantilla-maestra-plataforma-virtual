@@ -19,10 +19,23 @@ test('el envío califica leyendo preguntas con service_role', () => {
   expect(leer('src/lib/evaluaciones/examen-mensual.ts')).toMatch(/admin\s*\.from\('preguntas'\)/)
 })
 
-for (const archivo of ['supabase/migrations/20260924140000_preguntas_sin_clave_rest.sql', 'supabase/schema.sql', 'scripts/schema.sql']) {
-  test(`${archivo}: revoca SELECT de tabla y re-otorga sin respuesta_correcta`, () => {
-    const sql = leer(archivo)
-    expect(sql).toContain("REVOKE SELECT ON public.preguntas FROM anon, authenticated")
-    expect(sql).toContain("column_name <> 'respuesta_correcta'")
+// La migración de #186 no se toca: es la historia de MEDERI (D22d la corre encima).
+test('la migración de #186: revoca SELECT de tabla y re-otorga sin respuesta_correcta', () => {
+  const sql = leer('supabase/migrations/20260924140000_preguntas_sin_clave_rest.sql')
+  expect(sql).toContain("REVOKE SELECT ON public.preguntas FROM anon, authenticated")
+  expect(sql).toContain("column_name <> 'respuesta_correcta'")
+})
+
+// D22d: los schemas ya no llevan el bloque de #186 sino la LISTA BLANCA estática
+// (K-d5): tampoco sale una columna nueva ni, en quiz_semana, la explicación.
+for (const archivo of ['supabase/schema.sql', 'scripts/schema.sql']) {
+  test(`${archivo}: revoca SELECT de tabla y re-otorga por lista blanca, sin la clave`, () => {
+    const sql = leer(archivo).replace(/\r\n/g, '\n')
+    expect(sql).toContain('REVOKE SELECT ON public.preguntas FROM authenticated;')
+    expect(sql).toContain('REVOKE ALL    ON public.preguntas FROM anon, PUBLIC;')
+    const grant = sql.match(/GRANT\s+SELECT \(([^)]*)\)\s+ON public\.preguntas TO authenticated;/)
+    expect(grant).not.toBeNull()
+    expect(grant![1].split(/,\s*/)).toEqual(['id', 'evaluacion_id', 'pregunta', 'opcion_a', 'opcion_b', 'opcion_c', 'opcion_d', 'orden', 'activa', 'created_at'])
+    expect(sql).not.toContain("column_name <> 'respuesta_correcta'")
   })
 }

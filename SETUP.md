@@ -73,10 +73,12 @@ Editar SOLO este archivo: src/lib/config.ts
    (En el SQL Editor de Supabase no aplica: ahí se pega el contenido de cada
    archivo por separado.)
    Es el orquestador único del seed (materias, meses, semanas, evaluaciones y las
-   265 preguntas universales). Reemplaza a los antiguos `seed-materias.sql` y
+   preguntas universales: el archivo trae 265 y entran las de las evaluaciones que
+   existen). Reemplaza a los antiguos `seed-materias.sql` y
    `distribuir-meses.sql`, que **ya no existen en el repo**.
    Ajustar nombres de materias según el cliente después de sembrar.
-   Resultado esperado: 25 materias, 265 preguntas, 592 del quiz semanal.
+   Resultado esperado: 25 materias, 266 preguntas (240 universales + 26 del demo;
+   lo avisa el propio `setup.sql`), 592 del quiz semanal.
 4. **Admin** → `scripts/create-admin.sql` está **comentado entero** (líneas
    17-31, bloque `/* … */`): es plantilla de referencia, no un script
    ejecutable — correrlo es un no-op. El admin se crea así: Supabase
@@ -115,6 +117,11 @@ Editar SOLO este archivo: src/lib/config.ts
    > de `pagos` y el directorio del personal por PostgREST. No va en este paso porque
    > las filas 2 y 9 de 7bis corren después y una copia vieja reabriría una parte
    > (CHECK 26 y 27).
+   > **Y en toda base, después de desplegar la app de D22d:** su **fila 23**
+   > (`20260928170000_d22d_claves_solo_servidor.sql`): la respuesta correcta de los
+   > tres exámenes solo la lee el servidor; intentos y respuestas del quiz solo los
+   > escribe él, y cada quien lee los suyos. Con la app anterior, el quiz y el
+   > examen mensual se quedan sin preguntas (CHECK 28, 29 y 30).
    > Para clientes **ya desplegados**, el retrofit equivalente de S1+S2 es
    > `scripts/fix-s1-s2-roles.sql`, y sigue haciendo falta `scripts/fix-escalada-rol.sql`
    > (Bug 47/52): son vectores distintos, hay que correr los dos.
@@ -146,6 +153,7 @@ Editar SOLO este archivo: src/lib/config.ts
    | 20 | `20260928140000_d20e_conflicto_pt409.sql` | **D20e** — «alguien lo cambió en medio» (doble clic, otra pestaña, precio o lista que cambió) responde **409** con `PT409` y no con `40001`, que PostgREST reintenta sin fin (la petición se colgaba). Reescribe las funciones instaladas; las migraciones de origen ya lo traen. Aplica a toda base; córrela al final (CHECK 21) |
    | 21 | `20260928150000_d22b_cobranza_solo_admin.sql` | **D22b** — cobranza semanal: condonar, quitar la condonación, regenerar el calendario y el plan a medida son solo del **admin**. Las cuatro funciones del calendario (`registrar_cuota_semanal`, `condonar_semana`, `generar_calendario_pagos`, `generar_calendario_por_nivel`) se ejecutan solo con el service role, y su guardia pide `es_admin()` con sesión: el secretario ya no las llama por `/rest/v1/rpc/…`. «Marcar pagada» sigue siendo de todo el personal (por la API). **Aplica a toda base con cobro semanal** (en las demás avisa y no hace nada): un cliente nuevo ya lo trae en `scripts/schema.sql`; uno ya desplegado la corre aquí, al final (CHECK 25) |
    | 22 | `20260928160000_d22c_postgrest_directo.sql` | **D22c** — por PostgREST nadie escribe `pagos` (sin INSERT/UPDATE/DELETE para `anon`/`authenticated`, ni de tabla ni de columna: toda escritura va por la API con el service role o por funciones `SECURITY DEFINER`); `curso_registrar_pago` (legado) solo con el service role; `registrar_cuota_semanal` con guarda interna (solo el servidor); el trigger de reversión solo toca la semana del pago borrado; `usuarios` y `pagos` se leen **propio o admin**, con techo `RESTRICTIVE` (el secretario ya no lee el directorio del personal ni todos los pagos). **Aplica a TODA base, venda o no diplomados**: un cliente nuevo ya lo trae en `scripts/schema.sql`; uno ya desplegado la corre aquí, **al final** (las filas 2 y 9, si son copias viejas, reabrirían lo que el techo no cubre) (CHECK 26 y 27) |
+   | 23 | `20260928170000_d22d_claves_solo_servidor.sql` | **D22d** — la respuesta correcta del examen mensual, del quiz semanal y del examen final de curso solo la lee el servidor: por `/rest/v1` ninguna sesión lee `respuesta_correcta` ni `explicacion` (privilegios por **lista blanca** de columnas), y el alumno y el secretario no ven filas de esos bancos (techo `RESTRICTIVE` solo-admin; la RLS se enciende donde estaba apagada); el ✓/✗ guardado de cada envío del examen de curso (`curso_examen_resultados.respuestas`) tampoco sale con sesión; `intentos_evaluacion` y `quiz_respuestas` solo los escribe el servidor, y cada quien lee solo los suyos (RLS encendida y techo «propio o admin»: con las respuestas ajenas marcadas correctas se sacaba la clave del quiz). Incluye lo de #186 (Bug 221): quien ya lo corrió, la corre encima. **Aplica a TODA base.** ⚠️ **Desplegar la app de D22d ANTES**: con el código anterior, el quiz y el examen mensual se quedan sin preguntas y no guardan, sin avisar. Córrela **al final**: una copia vieja del paso 6 o de un schema reabre los privilegios (CHECK 28, 29 y 30) |
 
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
 
