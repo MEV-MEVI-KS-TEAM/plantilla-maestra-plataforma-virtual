@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { faltaBitacoraMes, type EventoMes } from '@/lib/meses-programa'
+import { esPersonal, reglaPatchAlumno, rolDeQuienEdita } from '@/lib/alumno-patch'
 import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
 import { getSiteConfig } from '@/lib/site-config'
 import { CONFIG } from '@/lib/config'
@@ -245,27 +246,38 @@ export async function PATCH(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const denied = await verifyAdmin(supabase, user.id)
-    if (denied) return denied
-
-    const body = await request.json()
-    const updates: Record<string, unknown> = {}
-
-    if (typeof body.contactado_whatsapp === 'boolean') {
-      updates.contactado_whatsapp = body.contactado_whatsapp
+    // D21a: «Marcar contactado» es del PERSONAL (admin y secretario). Para el
+    // secretario la regla es una lista blanca de UN campo (lib/alumno-patch):
+    // cualquier otra clave → 403 antes de escribir nada.
+    const rol = await rolDeQuienEdita(supabase, user.id)
+    if (!esPersonal(rol)) {
+      return NextResponse.json({ error: 'Acceso denegado. Se requiere rol ADMIN o SECRETARIO.' }, { status: 403 })
     }
 
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 })
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Cuerpo inválido: se esperaba JSON' }, { status: 400 })
     }
+    const regla = reglaPatchAlumno(rol, body)
+    if (!regla.ok) return NextResponse.json({ error: regla.error }, { status: regla.status })
 
     const admin = createAdminClient()
-    const { error } = await admin
+    // .select('id'): un id que no es de un alumno no toca nada y antes respondía
+    // «success»; ahora dice que no existe.
+    const { data: tocadas, error } = await admin
       .from('alumnos')
-      .update(updates)
+      .update(regla.updates)
       .eq('id', params.id)
+      .select('id')
 
+    // 22P02: el id no es un UUID → tampoco es un alumno.
+    if (error?.code === '22P02') return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!tocadas || tocadas.length === 0) {
+      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {

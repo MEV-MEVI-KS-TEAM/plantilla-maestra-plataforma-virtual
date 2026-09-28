@@ -703,6 +703,8 @@ export default function AlumnoDetallePage() {
   const todosBloqueados = alumno.meses_desbloqueados >= alumno.plan.duracion_meses
   // Secretario: modo lectura — sin acciones de admin, sin notas internas ni documentos
   const esSecretario = alumno.viewer_rol === 'SECRETARIO'
+  // D21a: lo destructivo va con condición POSITIVA: si viewer_rol faltara, se oculta.
+  const esAdmin = alumno.viewer_rol === 'ADMIN'
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -1795,25 +1797,29 @@ export default function AlumnoDetallePage() {
         </div>
       )}
 
-      {/* Modal Confirmar Eliminar Pago */}
       {/* Zona de riesgo: separada del resto y al final, para que no se pulse
-          por accidente al recorrer la ficha. */}
-      <div className="mt-10 rounded-2xl p-5" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.3)' }}>
-        <p className="text-sm font-bold" style={{ color: '#F87171' }}>Eliminar alumno</p>
-        <p className="text-xs mt-1 mb-4" style={{ color: '#94A3B8' }}>
-          Borra al alumno y todo su avance: calificaciones, documentos, constancias y su
-          acceso a la plataforma. No se puede deshacer. Si solo quieres que deje de
-          aparecer en las listas, usa <strong>Dar de baja</strong> en su lugar.
-        </p>
-        <button
-          onClick={() => { setBorrarAlumno(true); setConfirmaMatricula(''); setBorrarError(null) }}
-          className="px-4 py-2 rounded-lg text-sm font-semibold"
-          style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.4)' }}>
-          Eliminar alumno definitivamente
-        </button>
-      </div>
+          por accidente al recorrer la ficha. Solo el ADMINISTRADOR (D21a): el
+          borrado definitivo sigue siendo suyo (DELETE con verifyAdmin). */}
+      {esAdmin && (
+        <div className="mt-10 rounded-2xl p-5" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.3)' }}>
+          <p className="text-sm font-bold" style={{ color: '#F87171' }}>Eliminar alumno</p>
+          <p className="text-xs mt-1 mb-4" style={{ color: '#94A3B8' }}>
+            Borra al alumno y todo su avance: calificaciones, documentos, constancias y su
+            acceso a la plataforma. No se puede deshacer. Si solo quieres sacarlo sin perder
+            nada, usa <strong>Desactivar alumno</strong> (arriba, junto a «Resetear contraseña»):
+            queda como Inactivo, sale del Estado de Cuenta, conserva su avance y lo puedes
+            volver a activar.
+          </p>
+          <button
+            onClick={() => { setBorrarAlumno(true); setConfirmaMatricula(''); setBorrarError(null) }}
+            className="px-4 py-2 rounded-lg text-sm font-semibold"
+            style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.4)' }}>
+            Eliminar alumno definitivamente
+          </button>
+        </div>
+      )}
 
-      {borrarAlumno && alumno && (
+      {esAdmin && borrarAlumno && alumno && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
             <h3 className="text-lg font-bold text-gray-100 mb-2">⚠️ Eliminar a {alumno.matricula}</h3>
@@ -1851,6 +1857,7 @@ export default function AlumnoDetallePage() {
         </div>
       )}
 
+      {/* Modal Confirmar Eliminar Pago */}
       {pagoAEliminar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>

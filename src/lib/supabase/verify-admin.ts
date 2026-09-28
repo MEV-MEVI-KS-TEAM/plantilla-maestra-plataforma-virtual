@@ -23,7 +23,9 @@ export async function verifyAdmin(
 
 /**
  * Verifica que el usuario autenticado es staff: rol ADMIN o SECRETARIO.
- * Solo para endpoints acotados (lectura de alumnos, registro de pagos).
+ * Para lo que hace el personal: altas de alumnos, «Marcar contactado», cobros,
+ * abrir meses y constancias (Dec. 6 + D7b + D20b + D21a). Lo que sigue siendo
+ * solo del administrador va con verifyAdmin.
  * Retorna un NextResponse 403 si no lo es, o null si la verificación pasa.
  */
 export async function verifyStaff(

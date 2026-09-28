@@ -138,8 +138,10 @@ test('5b. D7b (decisión 6): el SECRETARIO también asigna y abre; los botones s
   const api = sinComentarios(leer('src/app/api/admin/alumnos/route.ts'))
   expect(api).toContain('const puedeGestionarCursos = true')
   expect(api.match(/anexarCursoIngreso\(admin, \w+, puedeGestionarCursos\)/g)?.length).toBe(3)
-  // El alta de alumnos (POST) sigue siendo del admin.
-  expect(api).toContain('const isAdmin = await checkAdmin(user.id)')
+  // D21a (decisión de Kevin, 27-sep-2026): el alta de alumnos (POST) es del PERSONAL.
+  const post = api.slice(api.indexOf('export async function POST'))
+  expect(post).toContain('const denied = await verifyStaff(supabase, user.id)')
+  expect(api).not.toContain('checkAdmin(')
   expect(api).toContain('curso_puede_gestionar:   puedeGestionar')
   const page = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
   // Cada enlace y cada botón de curso van detrás de curso_puede_gestionar.

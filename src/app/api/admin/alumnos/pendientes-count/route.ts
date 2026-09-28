@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { verifyStaff } from '@/lib/supabase/verify-admin'
 
 /**
  * GET /api/admin/alumnos/pendientes-count
  * Retorna el número de alumnos con inscripcion_pagada=false y contactado_whatsapp=false
  * (los que todavía no han sido contactados por Control Escolar).
  * Devuelve { count: 0 } en caso de error para no romper el sidebar.
+ * D21a: lo ve el PERSONAL (admin y secretario): contactar es tarea de recepción,
+ * y es el mismo número que el secretario ya ve en la pestaña «Pendientes de contactar».
  */
 export async function GET() {
   try {
@@ -15,7 +17,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ count: 0 })
 
-    const denied = await verifyAdmin(supabase, user.id)
+    const denied = await verifyStaff(supabase, user.id)
     if (denied) return NextResponse.json({ count: 0 })
 
     const admin = createAdminClient()
