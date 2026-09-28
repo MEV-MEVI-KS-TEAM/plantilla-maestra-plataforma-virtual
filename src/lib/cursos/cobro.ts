@@ -191,6 +191,13 @@ export type FilaCursoAlumno = {
   cobro: EstadoCobro
   /** D20b: la constancia emitida (folio, fecha y quién la emitió), o null. */
   constancia?: ConstanciaDeCurso | null
+  /**
+   * ¿Vería HOY lo que se le abre? Curso publicado e inscripción vigente (los
+   * filtros del candado). Con cualquiera de los dos en falso, la 2ª confirmación
+   * de «Cobrar y abrir todo» no dice «Acceso completo inmediato».
+   */
+  curso_publicado: boolean
+  vigente_hoy: boolean
 }
 
 /** D20b: el folio de una inscripción y quién lo emitió (foto de su nombre y rol). */
@@ -205,7 +212,8 @@ export type ConstanciaDeCurso = {
  * Qué abre la casilla, dicho para quien cobra (D17). `null` si con ese
  * concepto y ese mes no hay nada que abrir (la casilla no aparece).
  * `todo` = abre el curso completo: pide la doble confirmación con
- * AVISO_PAGO_UNICO (decisión 6).
+ * AVISO_PAGO_UNICO (decisión 6), o con AVISO_NO_REEMBOLSABLE y cuándo lo verá
+ * si hoy no lo vería (curso en borrador o inscripción no vigente; D21b · OS1).
  */
 export function queAbre(
   f: Pick<FilaCursoAlumno, 'por_activar' | 'precarga'>,

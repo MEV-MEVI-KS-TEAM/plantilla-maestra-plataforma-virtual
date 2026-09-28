@@ -243,6 +243,20 @@ export function hayModuloVisible(ordenes: readonly (number | null | undefined)[]
   return ordenes.some(o => resolverOrden({ orden: o }) < limite)
 }
 
+/**
+ * ¿La inscripción concede hoy lo que tiene abierto? Activa o completada, y sin
+ * vencer (la fecha es la de hoy en UTC, como `motivoBloqueo`). Es la parte de
+ * la inscripción del candado (curso_ventana_limite); la del curso es que esté
+ * publicado.
+ */
+export function inscripcionVigente(
+  inscripcion: Pick<InscripcionVentana, 'estado' | 'fecha_vencimiento'>,
+  hoy: string = new Date().toISOString().slice(0, 10),
+): boolean {
+  if (!(ESTADOS_CON_ACCESO as readonly string[]).includes(inscripcion.estado ?? '')) return false
+  return !(inscripcion.fecha_vencimiento && inscripcion.fecha_vencimiento < hoy)
+}
+
 export function motivoBloqueo(args: {
   inscripcion: InscripcionVentana | null | undefined
   curso: CursoVentana | null | undefined

@@ -50,8 +50,8 @@ test('OS1. «no reembolsable» SOLO con ficha de pago único; mensual y sin prec
   expect(cuandoVeraTodo(false, true, false)).toBe('cuando el administrador lo publique')
   expect(cuandoVeraTodo(true, false, false)).toBe('cuando su inscripción esté activa y vigente')
   expect(plano(TAB)).not.toContain('verá todo el curso desde ya')
-  expect(TAB).toContain("const cuandoActivar = confirmActivar ? cuandoVeraTodo(publicado, accesoVigente(confirmActivar.i, publicado), esAdmin) : 'desde ya'")
-  expect(TAB).toContain("const cuandoAbrirTodo = confirmAbrirTodo ? cuandoVeraTodo(publicado, accesoVigente(confirmAbrirTodo.i, publicado), esAdmin) : 'desde ya'")
+  expect(TAB).toContain("const cuandoActivar = confirmActivar ? cuandoVeraTodo(publicado, inscripcionVigente(confirmActivar.i), esAdmin) : 'desde ya'")
+  expect(TAB).toContain("const cuandoAbrirTodo = confirmAbrirTodo ? cuandoVeraTodo(publicado, inscripcionVigente(confirmAbrirTodo.i), esAdmin) : 'desde ya'")
   // «Acceso completo inmediato» solo con «desde ya»; si no, el aviso sin «inmediato».
   expect(AVISO_NO_REEMBOLSABLE).not.toMatch(/inmediato/i)
   expect(TAB.match(/\{AVISO_PAGO_UNICO\}/g)?.length).toBe(2)

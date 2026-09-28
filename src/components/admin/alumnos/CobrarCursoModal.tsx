@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Loader2, X, DollarSign } from 'lucide-react'
 import { ConfirmDialog } from '@/components/admin/cursos/ConfirmDialog'
 import { AVISO_PAGO_UNICO } from '@/lib/cursos/precio-regla'
+import { AVISO_NO_REEMBOLSABLE, cuandoVeraTodo } from '@/lib/cursos/textos-alumnos'
 import { cubreElCobro, queAbre, type ConceptoCobro, type FilaCursoAlumno } from '@/lib/cursos/cobro'
 import { etiquetaConcepto } from '@/lib/pagos/conceptos'
 
@@ -19,7 +20,10 @@ import { etiquetaConcepto } from '@/lib/pagos/conceptos'
  *  - La casilla «abrir» solo aparece si hay algo que abrir con ESE concepto y
  *    ese mes; sale marcada si lo acumulado cubre y se desmarca sola en un abono
  *    (hasta que quien cobra la toque). Admin y secretario (decisión 6).
- *  - Si abre TODO el curso: doble confirmación con AVISO_PAGO_UNICO.
+ *  - Si abre TODO el curso: doble confirmación con AVISO_PAGO_UNICO, o con
+ *    AVISO_NO_REEMBOLSABLE y «lo verá cuando …» si hoy no lo vería (curso en
+ *    borrador o inscripción no vigente): el mismo criterio de «Abrir todo»
+ *    (D21b · OS1).
  *  - `pago_id` se genera UNA vez al abrir el modal: el doble clic o un
  *    reintento no cobran dos veces (curso_cobrar es idempotente por él).
  */
@@ -49,6 +53,7 @@ export function CobrarCursoModal({
   fmt,
   onClose,
   onCobrado,
+  esAdmin,
 }: {
   fila: FilaCursoAlumno
   alumnoNombre: string
@@ -56,6 +61,8 @@ export function CobrarCursoModal({
   fmt: (n: number) => string
   onClose: () => void
   onCobrado: (mensaje: string) => void
+  /** Quién cobra: «cuando lo publiques» (admin) o «cuando el administrador lo publique». */
+  esAdmin: boolean
 }) {
   const p = fila.precarga
   const [pagoId] = useState(nuevoId)
@@ -93,6 +100,9 @@ export function CobrarCursoModal({
   // Sin tocar la casilla, sigue a lo que cubre el monto (un abono no abre).
   const abrir = abre !== null && (abrirTocado ? abrirMarcado : cubreElCobro(fila.cobro, concepto, montoNum) && p.abrirPorDefecto)
 
+  // «Acceso completo inmediato» solo si hoy lo vería; si no, cuándo (D21b · OS1).
+  const cuando = cuandoVeraTodo(fila.curso_publicado, fila.vigente_hoy, esAdmin)
+
   const titulo = useMemo(() => `${fila.curso_tipo === 'diplomado' ? 'Diplomado' : 'Curso'} «${fila.curso_nombre}»`, [fila])
 
   async function enviar() {
@@ -121,7 +131,9 @@ export function CobrarCursoModal({
         setConfirmar(0)
         return
       }
-      const abrio = json.abrio === 'todo' ? ' y se le abrió TODO el curso' : json.abrio === 'mes' ? ` y se le abrió el mes ${json.meses_desbloqueados}` : ''
+      const abrio = (json.abrio === 'todo' ? ' y se le abrió TODO el curso' : json.abrio === 'mes' ? ` y se le abrió el mes ${json.meses_desbloqueados}` : '')
+        // Lo mismo que dicen las confirmaciones (y los avisos de la pestaña Alumnos): si hoy no lo ve, cuándo.
+        + (json.abrio && cuando !== 'desde ya' ? ` (lo verá ${cuando})` : '')
       onCobrado(json.repetido
         ? `Ese cobro ya estaba registrado (no se cobró dos veces).`
         : `💵 ${alumnoNombre}: cobro de ${fmt(montoNum)} al ${titulo.toLowerCase().startsWith('diplomado') ? 'diplomado' : 'curso'}${abrio}`)
@@ -249,7 +261,7 @@ export function CobrarCursoModal({
       <ConfirmDialog
         open={confirmar === 1}
         title="Cobrar y abrir TODO el curso"
-        message={<>Se registra el cobro de {Number.isFinite(montoNum) ? fmt(montoNum) : '—'} y {alumnoNombre} recibe acceso al {titulo} completo.</>}
+        message={<>Se registra el cobro de {Number.isFinite(montoNum) ? fmt(montoNum) : '—'} y {alumnoNombre} recibe acceso al {titulo} completo{cuando === 'desde ya' ? '' : ` (lo verá ${cuando})`}.</>}
         confirmLabel="Continuar"
         onConfirm={() => setConfirmar(2)}
         onCancel={() => setConfirmar(0)}
@@ -258,7 +270,8 @@ export function CobrarCursoModal({
         open={confirmar === 2}
         danger
         title="¿Seguro? Segunda confirmación"
-        message={<>Cobrar {Number.isFinite(montoNum) ? fmt(montoNum) : '—'} y abrir TODO el {titulo}. {AVISO_PAGO_UNICO}</>}
+        message={<>Cobrar {Number.isFinite(montoNum) ? fmt(montoNum) : '—'} y abrir TODO el {titulo}.{' '}
+          {cuando === 'desde ya' ? <>{AVISO_PAGO_UNICO}</> : <>{AVISO_NO_REEMBOLSABLE}. Lo verá {cuando}.</>}</>}
         confirmLabel="Sí, cobrar y abrir todo"
         busy={enviando || !paso2Listo}
         onConfirm={() => { void enviar() }}
