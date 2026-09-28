@@ -239,17 +239,19 @@ test('S1 en TODO archivo que define handle_new_user: rol «alumno» fijo, nunca 
   // schema-02-funciones.sql conservaron el cuerpo viejo hasta el 28-sep-2026:
   // el guardián de arriba solo leía scripts/schema.sql. Una base instalada con
   // ellos y sin el paso 7 dejaba registrarse como admin con la anon key.
-  const archivos = [
-    ['scripts', 'schema.sql'],
-    ['supabase', 'schema.sql'],
-    ['supabase', 'schema-02-funciones.sql'],
-    ['supabase', 'migrations', '20260729120000_fix_s1_rol_alta.sql'],
-    ['scripts', 'fix-s1-s2-roles.sql'],
-  ]
-  for (const partes of archivos) {
-    const nombre = partes.join('/')
-    const sql = sinComentarios(readFileSync(join(raiz, ...partes), 'utf8'))
-    expect(sql, nombre).toContain('FUNCTION public.handle_new_user()')
+  // Se DESCUBREN (todo .sql de supabase/ y scripts/ que la define), no se listan:
+  // una copia nueva con el cuerpo viejo no se escapa por no estar en la lista.
+  const todos = (dir: string): string[] => readdirSync(join(raiz, dir), { withFileTypes: true })
+    .flatMap(e => e.isDirectory() ? todos(join(dir, e.name)) : e.name.endsWith('.sql') ? [join(dir, e.name)] : [])
+  const archivos = [...todos('supabase'), ...todos('scripts')]
+    .filter(f => /FUNCTION\s+public\.handle_new_user\s*\(/.test(sinComentarios(readFileSync(join(raiz, f), 'utf8'))))
+  // Hoy son 5: scripts/schema.sql, supabase/schema.sql, schema-02, la migración S1 y fix-s1-s2-roles.sql.
+  expect(archivos.length).toBeGreaterThanOrEqual(5)
+  for (const f of ['scripts/schema.sql', 'supabase/schema.sql', 'supabase/schema-02-funciones.sql']) {
+    expect(archivos.map(a => a.replace(/\\/g, '/')), f).toContain(f)
+  }
+  for (const nombre of archivos) {
+    const sql = sinComentarios(readFileSync(join(raiz, nombre), 'utf8'))
     // Ninguna forma de leer el rol del metadata (->>, ->, #>> '{rol}'), con o sin espacios.
     expect(sql, nombre).not.toMatch(/raw_user_meta_data\s*(->>?|#>>?)\s*'\{?rol\}?'/)
     // Y el valor que SÍ se inserta es 'alumno', justo después del nombre.

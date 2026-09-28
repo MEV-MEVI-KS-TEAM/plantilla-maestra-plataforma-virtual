@@ -31,7 +31,9 @@ test('2. CHECK 23 lee el cuerpo SIN comentarios (el de S1 menciona el metadata e
   // ->>, -> y #>> '{rol}', con o sin espacios.
   expect(c23).toContain("cuerpo ~* 'raw_user_meta_data\\s*(->>?|#>>?)\\s*''\\{?rol\\}?'''")
   expect(c23).toContain("cuerpo ~ '''alumno'''")
-  expect(c23).toMatch(/t\.tgrelid = to_regclass\('auth\.users'\) AND NOT t\.tgisinternal\s+AND t\.tgfoid = f\.oid AND t\.tgenabled <> 'D'/)
+  // Que se DISPARE en un signUp: modo origen ('O'/'A'; 'R' solo corre en réplica), de fila y en INSERT.
+  expect(c23).toMatch(/t\.tgrelid = to_regclass\('auth\.users'\) AND NOT t\.tgisinternal\s+AND t\.tgfoid = f\.oid AND t\.tgenabled IN \('O', 'A'\)\s+AND \(t\.tgtype & 1\) = 1 AND \(t\.tgtype & 4\) = 4\)/)
+  expect(c23).not.toContain("tgenabled <> 'D'")
   // No el ILIKE crudo que marcaba como vulnerable a una base ya corregida.
   expect(c23).not.toContain("ILIKE '%raw_user_meta_data%rol%'")
   expect(c23).toContain('supabase/migrations/20260729120000_fix_s1_rol_alta.sql')
@@ -68,6 +70,18 @@ test('4. SETUP: la migración de #185 es el 4º parche del paso 7 (toda base, no
 test('5. regla de conexión (Bug 228): pooler en modo sesión sí; nunca el 6543', () => {
   expect(SETUP).toContain('Nunca el 6543')
   expect(SETUP).not.toContain('nunca el pooler (6543)')
+  // Los scripts de retrofit a los que mandan SETUP y el CHECK 23, y los ejemplos de psql.
+  for (const partes of [['scripts', 'fix-s1-s2-roles.sql'], ['scripts', 'fix-escalada-rol.sql'], ['scripts', 'README.md'], ['scripts', 'migrations', '2026-05-add-opcion-d-quiz-semana.sql']]) {
+    const t = leer(...partes)
+    const nombre = partes.join('/')
+    expect(t, nombre).not.toMatch(/NUNCA el pooler(?! 6543)/i)
+    expect(t, nombre).not.toMatch(/pooler\.supabase\.com:6543/)
+    expect(t, nombre).toMatch(/nunca el 6543/i)
+  }
+  // Solo-Cursos: los cuatro parches del paso 7, no tres.
+  const solo = leer('INSTRUCCIONES-SOLO-CURSOS.md')
+  expect(solo).toContain('los cuatro del paso 7 de `SETUP.md`')
+  expect(solo).not.toContain('| Parches de seguridad | los tres `20260729*` |')
   for (const f of ['20260924120000_usuarios_sin_insert_propio.sql', '20260910130000_periodicidad_semanal.sql']) {
     const m = leer('supabase', 'migrations', f)
     expect(m, f).not.toMatch(/nunca el pooler[).]/i)

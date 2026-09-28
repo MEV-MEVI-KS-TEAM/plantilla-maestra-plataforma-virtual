@@ -616,7 +616,9 @@ FROM resumen;
 -- 28-sep-2026, supabase/schema.sql y schema-02-funciones.sql traían el cuerpo
 -- viejo. Se revisa el cuerpo SIN comentarios: el de S1 menciona
 -- raw_user_meta_data->>'rol' en un comentario, y un ILIKE sobre prosrc crudo lo
--- marcaba como vulnerable. También se pide el trigger de auth.users encendido.
+-- marcaba como vulnerable. También se pide que el trigger de auth.users se
+-- DISPARE en un signUp: de fila, en INSERT, y en modo origen ('O' o 'A'). 'D'
+-- (apagado) y 'R' (solo réplica, tras un ENABLE REPLICA TRIGGER) no corren.
 WITH f AS (
   SELECT p.oid,
          regexp_replace(regexp_replace(p.prosrc, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g') AS cuerpo
@@ -630,7 +632,8 @@ WITH f AS (
     COALESCE((SELECT EXISTS (
        SELECT 1 FROM pg_trigger t
         WHERE t.tgrelid = to_regclass('auth.users') AND NOT t.tgisinternal
-          AND t.tgfoid = f.oid AND t.tgenabled <> 'D') FROM f), false) AS con_trigger
+          AND t.tgfoid = f.oid AND t.tgenabled IN ('O', 'A')
+          AND (t.tgtype & 1) = 1 AND (t.tgtype & 4) = 4) FROM f), false) AS con_trigger
 )
 SELECT
   'handle_new_user() sin rol del metadata (S1)' AS check_name,

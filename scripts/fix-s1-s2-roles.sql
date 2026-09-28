@@ -22,8 +22,10 @@
 -- Solo reemplaza objetos que YA EXISTEN: nunca crea una función que el cliente
 -- no tuviera (un cliente sin es_staff() no la gana por correr esto).
 --
--- Aplicar por conexión DIRECTA (puerto 5432) como rol postgres. NUNCA el pooler:
---   psql "postgresql://postgres:<PWD>@db.<REF>.supabase.co:5432/postgres" \
+-- Aplicar como rol postgres por conexión directa (5432) o por el pooler en MODO
+-- SESIÓN (también 5432, usuario postgres.<REF>; la directa es solo IPv6), o el
+-- SQL Editor. NUNCA el 6543 (modo transacción): regla del Bug 228.
+--   psql "postgresql://postgres.<REF>:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres" \
 --        -v ON_ERROR_STOP=1 -f scripts/fix-s1-s2-roles.sql
 --
 -- ⚠️ Este script NO degrada a nadie. Si un cliente ya tiene cuentas con rol
