@@ -12,17 +12,18 @@
  * Cambia la contraseña de LA CUENTA con la que se inició sesión, nunca la de
  * otro usuario.
  *
- * Y SOLO SI ES ADMIN. /api/admin/cambiar-password pasa por `verifyAdmin`, así
- * que al SECRETARIO —que entra al editor en solo lectura— el formulario le
- * devolvería un 403 después de teclear tres contraseñas. Se deshabilita con el
- * mismo `puedeEditar` que el resto del editor y se dice por qué.
+ * Desde D22a el editor es solo del admin (su layout manda al secretario a su
+ * pantalla y el GET de la configuración es solo del admin), así que aquí solo
+ * llega un admin. /api/admin/cambiar-password acepta a todo el personal, cada uno
+ * su propia cuenta; el «Mi cuenta» del secretario va aparte (#261). El formulario sigue
+ * atado a `puedeEditar` por si el editor volviera a abrirse en solo lectura.
  */
 import { useState } from 'react'
 import { Eye, EyeOff, Loader2, Lock } from 'lucide-react'
 import { BORDE, INPUT_STYLE, TXT, TXT_SUAVE, TXT_TENUE } from './Comunes'
 
 export interface PestanaCuentaProps {
-  /** `false` = la sesión no es ADMIN: el endpoint responde 403. */
+  /** `false` = modo de solo lectura (hoy inalcanzable: el editor es solo del admin desde D22a). */
   puedeEditar: boolean
   onMensaje: (texto: string, tipo: 'success' | 'error') => void
 }

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getUserRol } from '@/lib/supabase/verify-admin'
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    // D22a (decisión 6): solo alumnos. El personal cambia la suya por
+    // /api/admin/cambiar-password (mínimo 8 caracteres y distinta de la actual).
+    if ((await getUserRol(supabase, user.id)) !== 'ALUMNO') {
+      return NextResponse.json({ error: 'Esta ruta es solo para alumnos.' }, { status: 403 })
+    }
 
     const { currentPassword, newPassword } = await request.json()
 

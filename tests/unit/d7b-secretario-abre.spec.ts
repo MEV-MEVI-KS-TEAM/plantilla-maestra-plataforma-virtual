@@ -191,11 +191,12 @@ test('8. interfaz: el secretario ve los botones de abrir; los de solo admin no',
   expect(tab).toContain('{textoUltimoMovimiento(i.ultimo_movimiento)}')
 
   const curso = sinComentarios(leer('src/app/(dashboard)/admin/cursos/[id]/page.tsx'))
-  expect(curso).toContain("const esAdmin = detalle.viewer_rol !== 'SECRETARIO'")
+  // D22a: condición POSITIVA (si viewer_rol faltara, no es admin).
+  expect(curso).toContain("const esAdmin = detalle.viewer_rol === 'ADMIN'")
   expect(curso).toContain("const tabs = esAdmin ? TABS : TABS.filter(t => t.id === 'alumnos')")
   expect(curso).toContain('esAdmin={esAdmin}')
   const lista = sinComentarios(leer('src/app/(dashboard)/admin/cursos/page.tsx'))
-  expect(lista).toContain("setEsAdmin(res.headers.get('x-rol-visor') !== 'SECRETARIO')")
+  expect(lista).toContain("setEsAdmin(res.headers.get('x-rol-visor') === 'ADMIN')")
   expect(lista.match(/\{esAdmin && \(/g)?.length).toBe(3) // «Nuevo curso» ×2 y «Eliminar»
 
   const ficha = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/[id]/page.tsx'))

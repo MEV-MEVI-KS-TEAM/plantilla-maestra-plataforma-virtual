@@ -5,6 +5,7 @@ import { getMesesByModalidad } from '@/lib/modalidades'
 import { esSoloCursos } from '@/lib/modo'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { etiquetaNivel } from '@/lib/niveles-ui'
+import { exigirSeccion } from '@/lib/permisos-panel'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function getServiceClient() {
@@ -69,6 +70,9 @@ function NivelBadge({ nivel }: { nivel?: string | null }) {
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 export default async function AdminDashboardPage() {
+  // D22a (decisión 1): el Dashboard lee con service role los conteos de toda la
+  // escuela. El secretario no lo ve: va a /admin/alumnos ANTES de leer nada.
+  await exigirSeccion('/admin')
   const supabase = getServiceClient()
   // Nombre editable desde "Personalizar mi página": defaults + overrides.
   const cfg = await getSiteConfig()

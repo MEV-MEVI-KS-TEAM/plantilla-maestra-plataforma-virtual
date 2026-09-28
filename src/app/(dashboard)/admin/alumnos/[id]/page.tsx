@@ -265,14 +265,16 @@ export default function AlumnoDetallePage() {
     setLoading(true)
     setError(null)
     try {
-      const [alumnoRes, docsRes, pagosRes, avanceRes] = await Promise.all([
+      const [alumnoRes, pagosRes, avanceRes] = await Promise.all([
         fetch(`/api/admin/alumnos/${id}`),
-        fetch(`/api/admin/documentos/${id}`),
         fetch(`/api/admin/alumnos/${id}/pagos`),
         fetch(`/api/admin/alumnos/${id}/avance`),
       ])
       if (!alumnoRes.ok) throw new Error('Alumno no encontrado')
       const alumnoData = await alumnoRes.json()
+      // D22a (decisión 3): Documentos es solo del admin. Al secretario ya no se le
+      // piden (antes era un 403 en cada ficha); condición POSITIVA.
+      const docsRes = alumnoData.viewer_rol === 'ADMIN' ? await fetch(`/api/admin/documentos/${id}`) : null
       setAlumno(alumnoData)
       // El avance es informativo: si falla, la ficha se muestra igual
       if (avanceRes.ok) {
@@ -291,7 +293,7 @@ export default function AlumnoDetallePage() {
       if (alumnoData.notas_admin !== undefined) {
         setNotas(alumnoData.notas_admin ?? '')
       }
-      const docsData: DocumentoAdmin[] = docsRes.ok ? await docsRes.json() : []
+      const docsData: DocumentoAdmin[] = docsRes?.ok ? await docsRes.json() : []
       setDocumentos(docsData)
       // Inicializar edits con valores actuales
       const edits: Record<string, { estado: DocEstado; comentario: string }> = {}

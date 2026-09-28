@@ -17,7 +17,9 @@ export async function GET() {
     // crear (POST) sigue siendo del admin.
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
-    const viewerRol = (await getUserRol(supabase, user.id)) === 'SECRETARIO' ? 'SECRETARIO' : 'ADMIN'
+    // D22a: condición POSITIVA. Si la lectura del rol fallara, no se le pintan
+    // «Nuevo curso» ni «Eliminar» (antes, null valía ADMIN).
+    const viewerRol = (await getUserRol(supabase, user.id)) === 'ADMIN' ? 'ADMIN' : 'SECRETARIO'
 
     const admin = createAdminClient()
 

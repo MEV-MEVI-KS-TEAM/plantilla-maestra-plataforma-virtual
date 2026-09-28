@@ -4,7 +4,7 @@ import { getSiteConfig } from '@/lib/site-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyStaff } from '@/lib/supabase/verify-admin'
+import { getUserRol, verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONCEPTOS_LECTURA, CONCEPTOS_PROGRAMA, totalesPorVertical } from '@/lib/pagos/conceptos'
 import { leerPagosConCurso } from '@/lib/pagos/con-curso'
 
@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
 
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+    // D22a (decisión 4): el secretario ve el historial y «Pagos registrados», no
+    // los ingresos (por eso Informes no está en su menú). Condición POSITIVA.
+    const conIngresos = (await getUserRol(supabase, user.id)) === 'ADMIN'
 
     const { searchParams } = new URL(request.url)
     const q        = (searchParams.get('q') ?? '').trim().toLowerCase()
@@ -131,16 +134,18 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       pagos: filas,
-      kpis: {
-        ingresosMes:      suma(delMes),
-        ingresosTotales:  suma(filas),
-        pagosRegistrados: filas.length,
-        // D14: el subtítulo «Programa · Cursos» de cada tarjeta.
-        porVertical: {
-          mes:   { programa: vMes.programa,   cursos: vMes.cursos },
-          total: { programa: vTotal.programa, cursos: vTotal.cursos },
-        },
-      },
+      kpis: conIngresos
+        ? {
+            ingresosMes:      suma(delMes),
+            ingresosTotales:  suma(filas),
+            pagosRegistrados: filas.length,
+            // D14: el subtítulo «Programa · Cursos» de cada tarjeta.
+            porVertical: {
+              mes:   { programa: vMes.programa,   cursos: vMes.cursos },
+              total: { programa: vTotal.programa, cursos: vTotal.cursos },
+            },
+          }
+        : { pagosRegistrados: filas.length },
     })
   } catch (err) {
     console.error('[GET /api/admin/pagos]', err)

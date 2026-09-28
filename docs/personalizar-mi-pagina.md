@@ -9,8 +9,9 @@ avanzados token por token con validador de contraste que avisa qué par no llega
 de la landing** (hero, situaciones, programas, transformación, proceso, testimonios, beneficios,
 FAQ, cierre); los **precios** —inscripción, certificaciones y, por modalidad, `mensualidad` y
 `activa`—; y **contacto y redes** (WhatsApp, teléfono, correos, Facebook, Instagram). Se publica al
-instante: guardar escribe la fila y purga la caché en la misma petición. El **SECRETARIO** solo ve
-(el `GET` lo deja pasar con `puedeEditar: false`; `PUT` y `DELETE` son solo ADMIN).
+instante: guardar escribe la fila y purga la caché en la misma petición. Todo es **solo del ADMIN**
+(`GET`, `PUT` y `DELETE`): desde D22a el **SECRETARIO** que abre `/admin/configuracion` va a
+`/admin/alumnos` sin ver el editor, y su `GET` responde 403.
 
 **Invariante que no se negocia:** con la tabla vacía —o inexistente— la app es idéntica a la
 plantilla. `mergeSiteConfig(CONFIG, {})` es deep-equal a `CONFIG`, `config.ts` sigue siendo la

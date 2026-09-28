@@ -37,7 +37,9 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
-    const viewerRol = (await getUserRol(supabase, user.id)) === 'SECRETARIO' ? 'SECRETARIO' : 'ADMIN'
+    // D22a: condición POSITIVA. Si la lectura del rol fallara, antes valía ADMIN y
+    // el secretario recibía módulos, lecciones y material firmado; ahora, nada de eso.
+    const viewerRol = (await getUserRol(supabase, user.id)) === 'ADMIN' ? 'ADMIN' : 'SECRETARIO'
 
     const admin = createAdminClient()
 
