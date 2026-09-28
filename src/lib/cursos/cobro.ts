@@ -191,6 +191,13 @@ export type FilaCursoAlumno = {
   cobro: EstadoCobro
   /** D20b: la constancia emitida (folio, fecha y quién la emitió), o null. */
   constancia?: ConstanciaDeCurso | null
+  /**
+   * ¿Vería HOY lo que se le abre? Curso publicado e inscripción vigente (los
+   * filtros del candado). Con cualquiera de los dos en falso, la 2ª confirmación
+   * de «Cobrar y abrir todo» no dice «Acceso completo inmediato».
+   */
+  curso_publicado: boolean
+  vigente_hoy: boolean
 }
 
 /** D20b: el folio de una inscripción y quién lo emitió (foto de su nombre y rol). */

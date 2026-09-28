@@ -1933,6 +1933,7 @@ export default function AlumnoDetallePage() {
           alumnoNombre={alumno.usuario.nombre_completo}
           moneda={codigoMoneda(CONFIG.moneda)}
           fmt={fmtMoneda}
+          esAdmin={esAdmin}
           onClose={() => { setCobroCurso(null); void cargarCursos() }}
           onCobrado={async (mensaje) => {
             setCobroCurso(null)

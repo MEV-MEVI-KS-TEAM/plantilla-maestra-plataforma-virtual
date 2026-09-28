@@ -5,7 +5,7 @@ import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { EVENTOS_DE_ACCESO } from '@/lib/cursos/bitacora'
 import { precargaCobro, resumenCobro, type ConstanciaDeCurso, type EstadoCobro, type PagoDeCurso } from '@/lib/cursos/cobro'
 import type { PreciosCurso } from '@/lib/cursos/precio-regla'
-import { topeMeses } from '@/lib/cursos/acceso'
+import { inscripcionVigente, topeMeses } from '@/lib/cursos/acceso'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -27,10 +27,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 type Inscripcion = {
   id: string; curso_id: string; estado?: string | null; meses_desbloqueados?: number | null
   acceso_total?: boolean | null; fecha_inscripcion?: string | null; created_at?: string | null
+  fecha_vencimiento?: string | null
 }
 type Curso = {
   id: string; nombre: string; tipo: string | null; precio_inscripcion: number | null; precio_mensualidad: number | null
-  duracion_meses?: number | null; modulos_por_mes?: number | null
+  duracion_meses?: number | null; modulos_por_mes?: number | null; estado?: string | null
 }
 type Evento = { inscripcion_id: string; tipo: string; detalle: Record<string, unknown> | null; created_at: string }
 
@@ -168,6 +169,9 @@ export async function GET(
         // El estado completo: la pantalla re-evalúa la casilla con cubreElCobro al cambiar el monto.
         cobro: estado,
         constancia: constancias.get(i.id) ?? null,
+        // ¿Lo vería hoy? Los filtros del candado: curso publicado e inscripción vigente.
+        curso_publicado: c?.estado === 'publicado',
+        vigente_hoy: inscripcionVigente({ estado: estado.estado, fecha_vencimiento: i.fecha_vencimiento ?? null }),
       }
     })
 

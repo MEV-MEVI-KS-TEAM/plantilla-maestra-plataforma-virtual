@@ -875,6 +875,7 @@ Se borra su inscripción y deja de ver el curso.
           alumnoNombre={cobrando.nombre}
           moneda={codigoMoneda(CONFIG.moneda)}
           fmt={fmtCobro}
+          esAdmin={esAdmin}
           onClose={() => setCobrando(null)}
           onCobrado={(mensaje) => { setCobrando(null); onChanged(mensaje) }}
         />
