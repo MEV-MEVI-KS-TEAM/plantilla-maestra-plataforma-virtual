@@ -26,6 +26,17 @@ const FIRMAS = [
   'registrar_cuota_semanal(UUID, INTEGER, TEXT, UUID, TEXT, DATE, NUMERIC, TEXT, NUMERIC)',
   'condonar_semana(UUID, INTEGER, UUID, TEXT, BOOLEAN)',
 ]
+// SQL normalizado para buscar GRANT/CREATE en cualquier forma: sin comentarios ni comillas dobles, en minúsculas.
+const normal = (sql: string) => sinComentariosSql(sql).replace(/\/\*[\s\S]*?\*\//g, '').replace(/"/g, '').toLowerCase()
+// ¿Este SQL le da EXECUTE a una sesión (anon, authenticated o PUBLIC) sobre `fn`? Con o sin esquema y lista de
+// argumentos, por ALL FUNCTIONS/ROUTINES IN SCHEMA public, o con un GRANT dinámico (format con %s/%I).
+const A_SESION = String.raw`\bto\s+[^;]*\b(anon|authenticated|public)\b`
+const reabre = (sql: string, fn: string) => {
+  const n = normal(sql)
+  return new RegExp(String.raw`grant\s[^;]*?\bon\s+((all\s+(functions|routines)\s+in\s+schema\s+public)|((function|routine)\s+(public\.)?${fn}\b))[^;]*?` + A_SESION).test(n)
+    || (n.includes(fn) && new RegExp(String.raw`grant\s[^;']*%[si][^;']*` + A_SESION).test(n))
+}
+const crea = (sql: string, fn: string) => (normal(sql).match(new RegExp(String.raw`create\s+(or\s+replace\s+)?function\s+(public\.)?${fn}\s*\(`, 'g')) ?? []).length
 const guardia = (sql: string) => {
   const i = sql.indexOf('CREATE OR REPLACE FUNCTION public.calendario_pagos_autorizado()')
   expect(i).toBeGreaterThanOrEqual(0)
@@ -36,6 +47,19 @@ test('1. API: toda acción que no sea «pagar» pide verifyAdmin, antes del serv
   const t = sinComentariosTs(leer('src', 'app', 'api', 'admin', 'cobranza', '[alumnoId]', 'route.ts'))
   expect(t).toContain("import { verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'")
   const post = t.slice(t.indexOf('export async function POST'))
+  // El prólogo EXACTO: sesión → staff → cuerpo → guarda por acción → service role, sin nada en medio.
+  expect(post).toContain(`  const denied = await verifyStaff(supabase, user.id)
+  if (denied) return denied
+
+  const body = await req.json().catch(() => ({}))
+  const accion = String(body.accion ?? '')
+  if (accion !== 'pagar') {
+    const soloAdmin = await verifyAdmin(supabase, user.id)
+    if (soloAdmin) return soloAdmin
+  }
+  const admin = createAdminClient()
+`)
+  expect(post.match(/body\.accion/g)?.length).toBe(1)
   const iStaff = post.indexOf('const denied = await verifyStaff(supabase, user.id)')
   const iAdmin = post.indexOf("if (accion !== 'pagar') {\n    const soloAdmin = await verifyAdmin(supabase, user.id)\n    if (soloAdmin) return soloAdmin\n  }")
   expect(iStaff).toBeGreaterThan(0)
@@ -46,6 +70,13 @@ test('1. API: toda acción que no sea «pagar» pide verifyAdmin, antes del serv
   // Una sola excepción, y es 'pagar': ninguna otra acción se salta la guarda.
   expect(post.match(/accion !== '/g)?.length).toBe(1)
   expect(post.match(/verifyAdmin\(/g)?.length).toBe(1)
+  // Toda rama por acción va DESPUÉS de la guarda.
+  for (const m of post.matchAll(/accion === '/g)) expect(m.index!).toBeGreaterThan(iAdmin)
+  // La rama 'pagar' (la única del secretario) solo registra la cuota: nada de regenerar ni condonar por ahí.
+  const pagar = post.slice(post.indexOf("if (accion === 'pagar') {"), post.indexOf("if (accion === 'condonar') {"))
+  expect(pagar.match(/\.rpc\(/g)).toEqual(['.rpc('])
+  expect(pagar).toContain("admin.rpc('registrar_cuota_semanal'")
+  for (const x of ['generarCalendarioSemanal(', 'sincronizarPlanSemanal(', 'condonar_semana', 'generar_calendario_']) expect(pagar, x).not.toContain(x)
   // Las cuatro acciones siguen existiendo y cada una llama a su función.
   for (const [accion, fn] of [['pagar', 'registrar_cuota_semanal'], ['condonar', 'condonar_semana'],
     ['regenerar', 'generar_calendario_por_nivel'], ['plan_a_medida', 'generar_calendario_pagos']]) {
@@ -117,24 +148,38 @@ test('5. Fuentes: periodicidad y scripts/schema.sql nacen cerradas, con la MISMA
       expect(sql, `${nombre}: ${firma}`).toContain(
         `REVOKE ALL ON FUNCTION public.${firma} FROM PUBLIC, anon, authenticated;\nGRANT EXECUTE ON FUNCTION public.${firma} TO service_role;`)
     }
-    const s = sinComentariosSql(sql)
     for (const fn of FUNCIONES) {
-      expect(s, `${nombre}: ${fn} con GRANT a una sesión`).not.toMatch(new RegExp(`GRANT[^;]*FUNCTION public\\.${fn}\\([^;]*\\b(anon|authenticated)\\b`, 'i'))
+      expect(reabre(sql, fn), `${nombre}: ${fn} con EXECUTE para una sesión`).toBe(false)
+      // Una sola definición (una sobrecarga nueva nace con EXECUTE de fábrica: tendría que traer su REVOKE).
+      expect(crea(sql, fn), `${nombre}: definiciones de ${fn}`).toBe(1)
     }
+    expect(crea(sql, 'calendario_pagos_autorizado'), `${nombre}: definiciones de la guardia`).toBe(1)
   }
 })
 
-test('6. Ninguna otra migración reabre las cuatro ni redefine la guardia', () => {
+test('6. Ninguna otra migración reabre, crea ni redefine las cuatro o la guardia', () => {
   const dir = join('supabase', 'migrations')
-  for (const f of readdirSync(join(raiz, dir)).filter(f => f.endsWith('.sql'))) {
-    const s = sinComentariosSql(leer(dir, f))
+  const fuentes = [...readdirSync(join(raiz, dir)).filter(f => f.endsWith('.sql')).map(f => join(dir, f)),
+    join('scripts', 'schema.sql'), join('supabase', 'schema.sql')]
+  for (const f of fuentes) {
+    const sql = leer(f)
+    const nombre = f.split(/[\\/]/).pop()!
     for (const fn of FUNCIONES) {
-      expect(s, `${f}: GRANT de ${fn} a una sesión`).not.toMatch(new RegExp(`GRANT[^;]*FUNCTION public\\.${fn}\\([^;]*\\b(anon|authenticated)\\b`, 'i'))
+      expect(reabre(sql, fn), `${f}: EXECUTE de ${fn} para una sesión`).toBe(false)
+      if (crea(sql, fn)) expect([PERIODICIDAD, 'schema.sql'], `${f} crea ${fn}`).toContain(nombre)
     }
-    if (s.includes('FUNCTION public.calendario_pagos_autorizado()') && s.includes('CREATE OR REPLACE FUNCTION public.calendario_pagos_autorizado()')) {
-      expect([PERIODICIDAD, MIG], f).toContain(f)
-    }
+    if (crea(sql, 'calendario_pagos_autorizado')) expect([PERIODICIDAD, MIG, 'schema.sql'], `${f} redefine la guardia`).toContain(nombre)
   }
+  // El detector sí ve las formas habituales de reabrir (que la prueba no sea vacía).
+  for (const sql of [
+    'GRANT EXECUTE ON FUNCTION public.condonar_semana TO authenticated;',
+    'grant execute on function "public"."condonar_semana"(uuid, integer, uuid, text, boolean) to anon;',
+    'GRANT EXECUTE ON FUNCTION condonar_semana(UUID) TO PUBLIC;',
+    'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;',
+    "EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', 'public.condonar_semana(uuid)');",
+  ]) expect(reabre(sql, 'condonar_semana'), sql).toBe(true)
+  expect(reabre('GRANT EXECUTE ON FUNCTION public.condonar_semana(UUID) TO service_role;', 'condonar_semana')).toBe(false)
+  expect(crea('create function PUBLIC.Condonar_Semana (p uuid)', 'condonar_semana')).toBe(1)
 })
 
 test('7. La app nunca llama las cuatro con la sesión del usuario', () => {
@@ -150,8 +195,18 @@ test('7. La app nunca llama las cuatro con la sesión del usuario', () => {
   for (const f of archivos) {
     const t = sinComentariosTs(readFileSync(join(raiz, f), 'utf8'))
     for (const fn of FUNCIONES) {
-      expect(t, `${f}: ${fn} con la sesión`).not.toMatch(new RegExp(`supabase\\s*\\.rpc\\(\\s*'${fn}'`))
-      llamadas += (t.match(new RegExp(`admin\\.rpc\\(\\s*'${fn}'`, 'g')) ?? []).length
+      // Toda llamada, con el cliente que sea, tiene que ser `admin.rpc(` (el service role).
+      const todas = (t.match(new RegExp(String.raw`\.rpc\(\s*['"${'`'}]${fn}['"${'`'}]`, 'g')) ?? []).length
+      const deAdmin = (t.match(new RegExp(String.raw`\badmin\.rpc\(\s*'${fn}'`, 'g')) ?? []).length
+      expect(todas, `${f}: ${fn} con un cliente que no es el service role`).toBe(deAdmin)
+      llamadas += deAdmin
+    }
+    // Los ayudantes de plan-semanal tragan el error (nunca lanzan): con la sesión fallarían en silencio.
+    if (!f.endsWith('plan-semanal.ts')) {
+      for (const m of t.matchAll(/(generarCalendarioSemanal|sincronizarPlanSemanal)\(\s*(\w+)/g)) {
+        expect(m[2], `${f}: ${m[1]} con «${m[2]}»`).toBe('admin')
+        expect(t, `${f}: «admin» no es el service role`).toContain('const admin = createAdminClient()')
+      }
     }
   }
   // route.ts (pagar, condonar, regenerar, plan a medida) + plan-semanal.ts (alta y registro).
