@@ -29,12 +29,14 @@ const FIRMAS = [
 // SQL normalizado para buscar GRANT/CREATE en cualquier forma: sin comentarios ni comillas dobles, en minúsculas.
 const normal = (sql: string) => sinComentariosSql(sql).replace(/\/\*[\s\S]*?\*\//g, '').replace(/"/g, '').toLowerCase()
 // ¿Este SQL le da EXECUTE a una sesión (anon, authenticated o PUBLIC) sobre `fn`? Con o sin esquema y lista de
-// argumentos, por ALL FUNCTIONS/ROUTINES IN SCHEMA public, o con un GRANT dinámico (format con %s/%I).
+// argumentos, por ALL FUNCTIONS/ROUTINES IN SCHEMA public, o con un GRANT dinámico sobre UNA FUNCIÓN
+// (format('GRANT EXECUTE ON FUNCTION %s …')). Un GRANT dinámico de otra cosa (p. ej. el de columnas de
+// preguntas de #186) no cuenta: antes lo marcaba cualquier archivo que solo nombrara la función.
 const A_SESION = String.raw`\bto\s+[^;]*\b(anon|authenticated|public)\b`
 const reabre = (sql: string, fn: string) => {
   const n = normal(sql)
   return new RegExp(String.raw`grant\s[^;]*?\bon\s+((all\s+(functions|routines)\s+in\s+schema\s+public)|((function|routine)\s+(public\.)?${fn}\b))[^;]*?` + A_SESION).test(n)
-    || (n.includes(fn) && new RegExp(String.raw`grant\s[^;']*%[si][^;']*` + A_SESION).test(n))
+    || (n.includes(fn) && new RegExp(String.raw`grant\s+(execute|all(\s+privileges)?)\s+on\s+(function|routine)\s+%[si][^;']*` + A_SESION).test(n))
 }
 const crea = (sql: string, fn: string) => (normal(sql).match(new RegExp(String.raw`create\s+(or\s+replace\s+)?function\s+(public\.)?${fn}\s*\(`, 'g')) ?? []).length
 const guardia = (sql: string) => {
@@ -179,6 +181,8 @@ test('6. Ninguna otra migración reabre, crea ni redefine las cuatro o la guardi
     "EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', 'public.condonar_semana(uuid)');",
   ]) expect(reabre(sql, 'condonar_semana'), sql).toBe(true)
   expect(reabre('GRANT EXECUTE ON FUNCTION public.condonar_semana(UUID) TO service_role;', 'condonar_semana')).toBe(false)
+  // Un GRANT dinámico de OTRA cosa en un archivo que nombra la función (el de columnas de preguntas de #186).
+  expect(reabre("-- condonar_semana\nSELECT 1 FROM x WHERE f = 'condonar_semana'; EXECUTE format('GRANT SELECT (%s) ON public.preguntas TO authenticated', cols);", 'condonar_semana')).toBe(false)
   expect(crea('create function PUBLIC.Condonar_Semana (p uuid)', 'condonar_semana')).toBe(1)
 })
 
