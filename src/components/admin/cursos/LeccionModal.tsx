@@ -1,5 +1,6 @@
 'use client'
 
+import { CONFIG } from '@/lib/config'
 import { useEffect, useRef, useState } from 'react'
 import { FileText, Trash2, Upload, X } from 'lucide-react'
 import { VideoPreview } from './VideoPreview'
@@ -173,7 +174,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
 
           <div>
             <label htmlFor="leccion-video" className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-              URL de video <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(YouTube, Vimeo o Loom)</span>
+              URL de video <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(YouTube, Vimeo o Loom{(CONFIG.contenidoHtml?.dominios ?? []).length > 0 && `, o una página de ${(CONFIG.contenidoHtml?.dominios ?? []).join(', ')}`})</span>
             </label>
             <input
               id="leccion-video"

@@ -3,6 +3,8 @@
 import { ExternalLink } from 'lucide-react'
 import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
 import { safeExternalUrl } from '@/lib/cursos/url-safe'
+import { CONFIG } from '@/lib/config'
+import { MarcoEmbebido } from './MarcoEmbebido'
 
 /**
  * Player embebido para el visor del alumno. Reutiliza parseVideoUrl (mismo
@@ -11,7 +13,7 @@ import { safeExternalUrl } from '@/lib/cursos/url-safe'
  * bloquea la lección).
  */
 export function VideoPlayer({ url, titulo }: { url: string; titulo: string }) {
-  const parsed = parseVideoUrl(url)
+  const parsed = parseVideoUrl(url, CONFIG.contenidoHtml?.dominios ?? [])
 
   if (!parsed) {
     // No es un proveedor reconocido. Solo ofrecer enlace si es http(s) seguro;
@@ -39,16 +41,9 @@ export function VideoPlayer({ url, titulo }: { url: string; titulo: string }) {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-primario)' }}>
-      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-        <iframe
-          src={parsed.embedUrl}
-          title={`Video: ${titulo}`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-        />
-      </div>
-    </div>
+    <MarcoEmbebido
+      parsed={parsed}
+      title={parsed.provider === 'html' ? `Contenido: ${titulo}` : `Video: ${titulo}`}
+    />
   )
 }

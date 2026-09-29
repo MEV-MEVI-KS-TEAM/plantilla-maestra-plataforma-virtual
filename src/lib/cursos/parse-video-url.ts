@@ -12,7 +12,7 @@
  * el embedUrl con IDs validados por regex.
  */
 
-export type VideoProvider = 'youtube' | 'vimeo' | 'loom'
+export type VideoProvider = 'youtube' | 'vimeo' | 'loom' | 'html'
 
 export interface ParsedVideo {
   provider: VideoProvider
@@ -45,7 +45,24 @@ function youtubeEmbed(id: string, start: number | null): ParsedVideo {
   }
 }
 
-export function parseVideoUrl(url: string): ParsedVideo | null {
+/**
+ * ¿`host` es uno de los dominios de la escuela o un subdominio suyo?
+ * «senderi.mx» acepta senderi.mx y semillas.senderi.mx, pero NO
+ * otrosenderi.mx ni senderi.mx.evil.com.
+ */
+function hostPermitido(host: string, dominios: readonly string[]): boolean {
+  return dominios.some(d => {
+    const dom = d.trim().toLowerCase().replace(/^\.+/, '')
+    return !!dom && (host === dom || host.endsWith(`.${dom}`))
+  })
+}
+
+/**
+ * @param dominiosHtml  Dominios de la escuela cuyas páginas pueden mostrarse
+ *   dentro de la lección (`CONFIG.contenidoHtml.dominios`). Solo https, y solo
+ *   si el link no es de un proveedor de video.
+ */
+export function parseVideoUrl(url: string, dominiosHtml: readonly string[] = []): ParsedVideo | null {
   if (!url || typeof url !== 'string') return null
 
   let parsed: URL
@@ -109,6 +126,18 @@ export function parseVideoUrl(url: string): ParsedVideo | null {
       }
     }
     return null
+  }
+
+  // ── Página HTML de la escuela ──────────────────────────────────────────────
+  // Va al final: un link de YouTube/Vimeo/Loom nunca cae aquí. Solo https y
+  // solo dominios declarados; el embedUrl sale de URL.href (normalizado), no
+  // del texto crudo, y sin credenciales en la URL.
+  if (
+    parsed.protocol === 'https:' &&
+    !parsed.username && !parsed.password &&
+    hostPermitido(parsed.hostname.toLowerCase(), dominiosHtml)
+  ) {
+    return { provider: 'html', embedUrl: parsed.href }
   }
 
   return null
