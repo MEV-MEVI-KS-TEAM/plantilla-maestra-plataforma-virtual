@@ -4,6 +4,7 @@ import { getSiteConfig } from '@/lib/site-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { getUserRol, verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONCEPTOS_LECTURA, CONCEPTOS_PROGRAMA, totalesPorVertical } from '@/lib/pagos/conceptos'
 import { leerPagosConCurso } from '@/lib/pagos/con-curso'
@@ -221,20 +222,15 @@ export async function POST(request: NextRequest) {
     // fusionada (BD + config.ts), no del config.ts a secas.
     const cfgSitio = await getSiteConfig()
 
-    // Validar que el alumno exista antes de insertar
-    const { data: alumno, error: alumnoErr } = await admin
-      .from('alumnos')
-      .select('id')
-      .eq('id', alumno_id)
-      .single()
-    if (alumnoErr || !alumno) {
-      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
-    }
+    // #187: que exista Y que sea una cuenta de ALUMNO (no personal, no uno mismo),
+    // con el rol leído de la BD, antes de insertar.
+    const objetivo = await cargarAlumnoObjetivo(admin, alumno_id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
     const { data: pago, error } = await admin
       .from('pagos')
       .insert({
-        alumno_id,
+        alumno_id: objetivo.alumno.id,
         monto: montoNum,
         concepto,
         mes_desbloqueado: mesDesbloqueado,

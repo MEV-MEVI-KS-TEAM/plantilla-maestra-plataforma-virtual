@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoDeFila, respuestaObjetivo } from '@/lib/admin-alumno'
 import { conActores } from '@/lib/cursos/bitacora'
 import { errorDeRpcCurso, esEstadoInscripcion, fechaValida } from '@/lib/cursos/inscripciones'
 
@@ -21,6 +22,11 @@ export async function GET(
     if (denied) return denied
 
     const admin = createAdminClient()
+
+    // #187: esta vista trae el nombre y el correo de la cuenta inscrita. Sobre
+    // personal (o uno mismo) → 403, igual que la ficha del alumno.
+    const objetivo = await cargarAlumnoDeFila(admin, 'curso_inscripciones', params.id, user.id, 'Inscripción no encontrada')
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
     const { data: insc } = await conAccesoTotal<Record<string, unknown>>(
       'id, curso_id, alumno_id, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento, created_at',
@@ -138,6 +144,11 @@ export async function PATCH(
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const denied = await verifyAdmin(supabase, user.id)
     if (denied) return denied
+
+    // #187: la inscripción es de un ALUMNO. Sobre la de personal (o la propia)
+    // → 403, con el rol leído de la BD, antes de la RPC.
+    const objetivo = await cargarAlumnoDeFila(createAdminClient(), 'curso_inscripciones', params.id, user.id, 'Inscripción no encontrada')
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
     const body = await request.json().catch(() => ({}))
     const parche: Record<string, unknown> = {}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 
 /**
  * PATCH /api/admin/alumnos/[id]/datos — edición de los datos del alumno.
@@ -34,6 +35,11 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
  *     emitidos, y la genera un trigger. Cambiarla rompe el historial.
  *   - `meses_desbloqueados`: tiene su propio endpoint con las reglas de avance.
  *   - `rol`: un alta de alumno no debe poder convertirse en admin desde aquí.
+ *
+ * #187 (Bug 229): SOLO cuentas de alumno. Antes bastaba con que el id existiera
+ * en `usuarios`, donde también vive el personal: un admin le cambiaba el correo
+ * de acceso a otro admin o a un secretario y, con «olvidé mi contraseña», se
+ * quedaba con su cuenta. Sobre personal o sobre uno mismo → 403 antes de Auth.
  */
 
 /** Campos de `usuarios`. El email se trata aparte por lo de Auth. */
@@ -68,18 +74,13 @@ export async function PATCH(
     }
     const admin = createAdminClient()
 
-    // ── Estado previo: hace falta para revertir y para el registro ───────────
-    const { data: previo } = await admin
-      .from('usuarios')
-      .select('nombre, apellidos, email, telefono')
-      .eq('id', params.id)
-      .single()
+    // ── Objetivo (#187) y estado previo, que hace falta para revertir ───────
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
-    if (!previo) {
-      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
-    }
-
-    const anterior = previo as { nombre: string | null; apellidos: string | null; email: string | null; telefono: string | null }
+    const anterior = objetivo.alumno
+    // El id tal como está en la BD: con él van Auth y la tabla.
+    const alumnoId = anterior.id
 
     // ── Correo: validar y comprobar que no lo tenga otra cuenta ─────────────
     const emailNuevo = typeof body.email === 'string' ? body.email.trim().toLowerCase() : null
@@ -94,7 +95,7 @@ export async function PATCH(
         .from('usuarios')
         .select('id')
         .eq('email', emailNuevo)
-        .neq('id', params.id)
+        .neq('id', alumnoId)
         .maybeSingle()
 
       if (ocupado) {
@@ -105,7 +106,7 @@ export async function PATCH(
       }
 
       // Auth PRIMERO: es la llave de acceso. Si esto falla, no se toca nada más.
-      const { error: errAuth } = await admin.auth.admin.updateUserById(params.id, {
+      const { error: errAuth } = await admin.auth.admin.updateUserById(alumnoId, {
         email: emailNuevo,
       })
       if (errAuth) {
@@ -125,12 +126,12 @@ export async function PATCH(
     if (cambiaEmail) parcheUsuario.email = emailNuevo
 
     if (Object.keys(parcheUsuario).length > 0) {
-      const { error } = await admin.from('usuarios').update(parcheUsuario).eq('id', params.id)
+      const { error } = await admin.from('usuarios').update(parcheUsuario).eq('id', alumnoId)
       if (error) {
         // Reversión: Auth ya tiene el correo nuevo y la tabla no. Sin esto el
         // alumno queda entrando con un correo que la plataforma no reconoce.
         if (cambiaEmail && anterior.email) {
-          await admin.auth.admin.updateUserById(params.id, { email: anterior.email })
+          await admin.auth.admin.updateUserById(alumnoId, { email: anterior.email })
         }
         console.error('[admin/alumnos/datos] update usuarios:', error.message)
         return NextResponse.json({ error: error.message }, { status: 500 })
@@ -142,7 +143,7 @@ export async function PATCH(
     // que por ahora queda en el log del servidor (consultable en Vercel). Crear
     // esa tabla es un cambio de esquema y va aparte.
     console.info('[admin/alumnos/datos]', JSON.stringify({
-      alumno: params.id,
+      alumno: alumnoId,
       editado_por: user.id,
       cuando: new Date().toISOString(),
       campos: Object.keys(parcheUsuario),

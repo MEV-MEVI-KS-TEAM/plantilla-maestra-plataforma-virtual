@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { baseSinPagosDeCurso } from '@/lib/cursos/inscripciones'
@@ -19,6 +20,10 @@ export async function DELETE(
 
     const admin = createAdminClient()
 
+    // #187: solo inscripciones de ALUMNOS. Sobre personal (o uno mismo) → 403.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.alumnoId, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
+
     // ⚠️ Una inscripción CON diploma emitido NO se borra (B4: la FK de
     // curso_constancias es ON DELETE RESTRICT). El registro de folios es el libro
     // contable de diplomas: con CASCADE, este mismo clic evaporaba el folio con
@@ -32,7 +37,7 @@ export async function DELETE(
       .from('curso_inscripciones')
       .select('*')
       .eq('curso_id', params.id)
-      .eq('alumno_id', params.alumnoId)
+      .eq('alumno_id', objetivo.alumno.id)
       .maybeSingle()
 
     if (!insc) return NextResponse.json({ error: 'Inscripción no encontrada' }, { status: 404 })
@@ -84,7 +89,7 @@ export async function DELETE(
       .from('curso_inscripciones')
       .delete({ count: 'exact' })
       .eq('curso_id', params.id)
-      .eq('alumno_id', params.alumnoId)
+      .eq('alumno_id', objetivo.alumno.id)
 
     // Red de seguridad: si entre la comprobación y el DELETE se emitiera una
     // constancia, Postgres devuelve 23503 y se traduce igual, sin 500 crudo.

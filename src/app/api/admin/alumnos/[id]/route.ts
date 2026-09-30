@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { faltaBitacoraMes, type EventoMes } from '@/lib/meses-programa'
 import { esPersonal, reglaPatchAlumno, rolDeQuienEdita } from '@/lib/alumno-patch'
@@ -28,6 +29,12 @@ export async function GET(
     const esAdminViewer = viewerRol === 'ADMIN'
 
     const admin = createAdminClient()
+
+    // #187: la ficha es de ALUMNOS. Sobre personal (o uno mismo) → 403: el
+    // secretario no lee por aquí el correo ni el teléfono de un admin, y la
+    // ficha no pinta botones de baja ni de edición sobre personal.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
     // ── Paso 1: obtener fila de alumnos ───────────────────────────────────────
     const { data: alumno, error } = await admin
@@ -223,11 +230,16 @@ export async function PUT(
     const body = await request.json()
     const admin = createAdminClient()
 
+    // #187: esta ruta es de ALUMNOS. Sobre personal (admin o secretario) o sobre
+    // uno mismo → 403, con el rol leído de la BD y ANTES de escribir nada.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
+
     // Schema nuevo: alumnos.id = user.id — actualizar alumnos.activo directamente
     const { error } = await admin
       .from('alumnos')
       .update({ activo: body.activo })
-      .eq('id', params.id)
+      .eq('id', objetivo.alumno.id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -264,12 +276,16 @@ export async function PATCH(
     if (!regla.ok) return NextResponse.json({ error: regla.error }, { status: regla.status })
 
     const admin = createAdminClient()
+    // #187: esta ruta es de ALUMNOS. Sobre personal (admin o secretario) o sobre
+    // uno mismo → 403, con el rol leído de la BD y ANTES de escribir nada.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
     // .select('id'): un id que no es de un alumno no toca nada y antes respondía
     // «success»; ahora dice que no existe.
     const { data: tocadas, error } = await admin
       .from('alumnos')
       .update(regla.updates)
-      .eq('id', params.id)
+      .eq('id', objetivo.alumno.id)
       .select('id')
 
     // 22P02: el id no es un UUID → tampoco es un alumno.
@@ -315,15 +331,18 @@ export async function DELETE(
     const denied = await verifyAdmin(supabase, user.id)
     if (denied) return denied
 
-    // Un admin no puede borrarse a sí mismo: se quedaría sin panel.
-    if (params.id === user.id) {
-      return NextResponse.json(
-        { error: 'No puedes eliminar tu propia cuenta.' },
-        { status: 400 },
-      )
-    }
-
     const admin = createAdminClient()
+
+    // #187 (Bug 229): SOLO cuentas de alumno, en los dos modos. Antes, con el id
+    // de otro admin o de un secretario, el borrado definitivo no encontraba fila
+    // en `alumnos` (sin error) y seguía: le borraba `usuarios` y su cuenta de
+    // Auth. Uno mismo también da 403 aquí (con el UUID en mayúsculas incluido):
+    // un admin no puede dejarse sin panel.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
+    // El id tal como está en la BD: Auth no acepta el UUID en mayúsculas.
+    const alumnoId = objetivo.alumno.id
+
     const definitivo = request.nextUrl.searchParams.get('definitivo') === 'true'
 
     if (!definitivo) {
@@ -331,23 +350,23 @@ export async function DELETE(
       const { error } = await admin
         .from('alumnos')
         .update({ activo: false })
-        .eq('id', params.id)
+        .eq('id', alumnoId)
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ success: true, modo: 'desactivado' })
     }
 
     // ── Borrado definitivo ────────────────────────────────────────────────
-    const { error: errAlumno } = await admin.from('alumnos').delete().eq('id', params.id)
+    const { error: errAlumno } = await admin.from('alumnos').delete().eq('id', alumnoId)
     if (errAlumno) return NextResponse.json({ error: errAlumno.message }, { status: 500 })
 
     // `usuarios` no cuelga de la cascada de `alumnos`: se limpia aparte.
-    await admin.from('usuarios').delete().eq('id', params.id)
+    await admin.from('usuarios').delete().eq('id', alumnoId)
 
     // Y la cuenta de Auth, o el correo queda ocupado y no puede volver a
     // registrarse. Si esto falla no se revierte lo anterior: el alumno ya no
     // existe para la escuela, que es lo que se pidió.
-    const { error: errAuth } = await admin.auth.admin.deleteUser(params.id)
+    const { error: errAuth } = await admin.auth.admin.deleteUser(alumnoId)
     if (errAuth) {
       console.error('[alumnos DELETE] no se pudo borrar el usuario de Auth:', errAuth)
       return NextResponse.json({

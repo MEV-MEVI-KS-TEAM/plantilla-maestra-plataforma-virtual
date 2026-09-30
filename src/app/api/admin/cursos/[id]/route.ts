@@ -10,6 +10,7 @@ import { validarParametrosCurso } from '@/lib/cursos/parametros'
 import { purgarCatalogoPublico } from '@/lib/cursos/purga'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import { baseSinPagosDeCurso } from '@/lib/cursos/inscripciones'
+import { esRolAlumno } from '@/lib/admin-alumno'
 import type { Curso, CursoDetalle, CursoInscrito, CursoLeccion, CursoModulo } from '@/types/cursos'
 
 type LeccionRow = Omit<CursoLeccion, 'materialUrl'>
@@ -115,7 +116,7 @@ export async function GET(
     if (alumnoIds.length > 0) {
       const inscIds = (inscripciones ?? []).map(i => i.id)
       const [{ data: usuarios }, { data: alumnos }, movimientos, pendientes] = await Promise.all([
-        admin.from('usuarios').select('id, nombre, apellidos, email').in('id', alumnoIds),
+        admin.from('usuarios').select('id, nombre, apellidos, email, rol').in('id', alumnoIds),
         admin.from('alumnos').select('id, matricula, activo').in('id', alumnoIds),
         // Bitácora: el último movimiento de cada uno, con quién lo hizo (D7b).
         ultimosMovimientos(admin, inscIds),
@@ -125,7 +126,14 @@ export async function GET(
       const porActivarIds = new Set((pendientes ?? []).map(p => p.inscripcion_id))
       const uMap = new Map((usuarios ?? []).map(u => [u.id, u]))
       const aMap = new Map((alumnos ?? []).map(a => [a.id, a]))
-      inscritos = (inscripciones ?? []).map(i => {
+      // #187: el personal con inscripción (ascendido desde alumno o con una fila
+      // fabricada) no sale entre los inscritos, igual que en la lista de Alumnos:
+      // sus acciones responden 403 y su correo no se le enseña al secretario.
+      const esPersonal = (id: string) => {
+        const u = uMap.get(id) as { rol?: unknown } | undefined
+        return !!u && !esRolAlumno(u.rol)
+      }
+      inscritos = (inscripciones ?? []).filter(i => !esPersonal(i.alumno_id)).map(i => {
         const u = uMap.get(i.alumno_id) as { nombre?: string; apellidos?: string; email?: string } | undefined
         const a = aMap.get(i.alumno_id) as { matricula?: string; activo?: boolean } | undefined
         const row = i as unknown as {

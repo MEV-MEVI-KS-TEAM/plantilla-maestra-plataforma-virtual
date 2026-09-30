@@ -16,6 +16,7 @@ import { conAccesoTotal } from '@/lib/cursos/acceso-total'
 import { porActivar } from '@/lib/cursos/bitacora'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
 import { precioCursoNumerico } from '@/lib/cursos/precio-curso'
+import { esRolAlumno } from '@/lib/admin-alumno'
 import { ROL_ALTA, datosAltaDesdeCuerpo, deshacerAlta, filaUsuarioAlta, mensajeAltaAMedias, opcionesAuthAlta, revertirAltaSinCursos } from '@/lib/alta-alumno'
 
 /**
@@ -188,7 +189,8 @@ export async function GET() {
           apellidos,
           email,
           foto_url,
-          telefono
+          telefono,
+          rol
         )
       `)
       .order('created_at', { ascending: false })
@@ -201,9 +203,16 @@ export async function GET() {
         id: string; matricula?: string; nivel?: string; modalidad?: string; carrera?: string | null
         es_sindicalizado?: boolean; sindicalizado?: boolean; activo?: boolean; meses_desbloqueados?: number
         inscripcion_pagada?: boolean; contactado_whatsapp?: boolean; created_at: string
-        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null } | null
+        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null; rol?: string | null } | null
       }
-      const result = (data as unknown as Row[]).map(a => {
+      // #187: una cuenta de PERSONAL con fila en `alumnos` (un admin ascendido
+      // desde alumno, o una fila fabricada) no se lista como alumno: la lista
+      // no le ofrece acciones de alumno. Sus rutas responden 403 de todos modos.
+      const soloAlumnos = (data as unknown as Row[]).filter(a => {
+        const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
+        return esRolAlumno(u?.rol)
+      })
+      const result = soloAlumnos.map(a => {
         const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
         return {
           id:                   a.id,
@@ -249,7 +258,8 @@ export async function GET() {
           apellidos,
           email,
           foto_url,
-          telefono
+          telefono,
+          rol
         )
       `)
       .order('created_at', { ascending: false })
@@ -262,9 +272,13 @@ export async function GET() {
         id: string; matricula?: string; nivel?: string; modalidad?: string; carrera?: string | null
         es_sindicalizado?: boolean; sindicalizado?: boolean; activo?: boolean; meses_desbloqueados?: number
         inscripcion_pagada?: boolean; contactado_whatsapp?: boolean; created_at: string; usuario_id?: string
-        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null } | null
+        usuarios: { nombre?: string; apellidos?: string; email?: string; foto_url?: string | null; telefono?: string | null; rol?: string | null } | null
       }
-      const result2 = (data2 as unknown as Row2[]).map(a => {
+      // #187: sin personal, igual que el intento 1 (aquí la cuenta puede faltar).
+      const result2 = (data2 as unknown as Row2[]).filter(a => {
+        const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
+        return !u || esRolAlumno(u.rol)
+      }).map(a => {
         const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
         return {
           id:                   a.id,
@@ -308,9 +322,11 @@ export async function GET() {
     }[]) {
       const { data: u } = await admin
         .from('usuarios')
-        .select('nombre, apellidos, email, foto_url, telefono')
+        .select('nombre, apellidos, email, foto_url, telefono, rol')
         .eq('id', a.id)
         .single()
+      // #187: sin personal, igual que el intento 1.
+      if (u && !esRolAlumno((u as { rol?: unknown }).rol)) continue
       resultFallback.push({
         id:                   a.id,
         matricula:            a.matricula ?? `${CONFIG.nombre}-0000`,

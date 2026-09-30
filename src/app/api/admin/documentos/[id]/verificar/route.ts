@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cargarAlumnoDeFila, respuestaObjetivo } from '@/lib/admin-alumno'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { buildDocEstadoUpdates, type DocEstadoAdmin } from '@/lib/admin/documentos-admin'
 
@@ -31,6 +32,9 @@ export async function PUT(
     }
 
     const admin = createAdminClient()
+    // #187: el documento es de un ALUMNO. Sobre el de personal (o el propio) → 403.
+    const objetivo = await cargarAlumnoDeFila(admin, 'documentos_alumno', params.id, user.id, 'Documento no encontrado')
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
     const { nuevo, legacy } = buildDocEstadoUpdates(estado, comentario ?? null)
 
     let { error } = await admin

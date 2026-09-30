@@ -75,7 +75,11 @@ test('el endpoint de emisión llama con la SESIÓN, no con service_role', () => 
   // de que la bitácora diga quién emitió.
   const src = sinComentarios(leer('src/app/api/admin/inscripciones/[id]/constancia/route.ts'))
   expect(src).toContain("supabase.rpc('curso_emitir_constancia'")
-  expect(src).not.toContain('createAdminClient')
+  // El cliente admin SOLO aparece en la guarda de #187 (lee de quién es la
+  // inscripción); la emisión sigue con la sesión.
+  expect(src.match(/createAdminClient\(\)/g)?.length).toBe(1)
+  expect(src).toContain("cargarAlumnoDeFila(createAdminClient(), 'curso_inscripciones', params.id, user.id,")
+  expect(src).not.toMatch(/createAdminClient\(\)\s*\.rpc\(/)
   // Y ya no manda calificación: el snapshot lo calcula y verifica la función.
   expect(src).not.toContain('p_calificacion')
 })

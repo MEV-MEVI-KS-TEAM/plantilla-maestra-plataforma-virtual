@@ -270,7 +270,12 @@ export default function AlumnoDetallePage() {
         fetch(`/api/admin/alumnos/${id}/pagos`),
         fetch(`/api/admin/alumnos/${id}/avance`),
       ])
-      if (!alumnoRes.ok) throw new Error('Alumno no encontrado')
+      if (!alumnoRes.ok) {
+        // #187: sobre una cuenta de personal el servidor responde 403 con su
+        // motivo; la ficha no se pinta (ni sus botones de baja o edición).
+        const motivo = await alumnoRes.json().catch(() => null) as { error?: unknown } | null
+        throw new Error(typeof motivo?.error === 'string' ? motivo.error : 'Alumno no encontrado')
+      }
       const alumnoData = await alumnoRes.json()
       // D22a (decisión 3): Documentos es solo del admin. Al secretario ya no se le
       // piden (antes era un 403 en cada ficha); condición POSITIVA.
