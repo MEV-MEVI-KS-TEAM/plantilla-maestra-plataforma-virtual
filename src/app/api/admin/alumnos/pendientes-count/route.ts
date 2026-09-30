@@ -24,16 +24,29 @@ export async function GET() {
 
     // #187: el mismo criterio que la lista: el personal con fila en `alumnos` no
     // cuenta como pendiente (no sale en la lista ni se puede marcar contactado).
+    // ilike: sin distinguir mayúsculas, como esRolAlumno.
     const { count, error } = await admin
       .from('alumnos')
       .select('id, usuarios!inner(rol)', { count: 'exact', head: true })
       .eq('inscripcion_pagada', false)
       .eq('contactado_whatsapp', false)
-      .eq('usuarios.rol', 'alumno')
+      .ilike('usuarios.rol', 'alumno')
 
     if (error) {
-      console.error('[GET /api/admin/alumnos/pendientes-count]', error)
-      return NextResponse.json({ count: 0 })
+      // Sin el embed (base con otra relación alumnos → usuarios): el conteo de
+      // antes de #187, sin quitar al personal. Mejor uno de más que un 0 que
+      // esconde a los prospectos.
+      console.error('[GET /api/admin/alumnos/pendientes-count] embed', error)
+      const previo = await admin
+        .from('alumnos')
+        .select('id', { count: 'exact', head: true })
+        .eq('inscripcion_pagada', false)
+        .eq('contactado_whatsapp', false)
+      if (previo.error) {
+        console.error('[GET /api/admin/alumnos/pendientes-count]', previo.error)
+        return NextResponse.json({ count: 0 })
+      }
+      return NextResponse.json({ count: previo.count ?? 0 })
     }
 
     return NextResponse.json({ count: count ?? 0 })

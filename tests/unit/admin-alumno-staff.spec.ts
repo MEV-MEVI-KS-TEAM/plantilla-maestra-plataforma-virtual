@@ -166,7 +166,8 @@ const RUTAS_ESPERADAS = [
   'DELETE /api/admin/cursos/[id]/inscripciones/[alumnoId]', 'PATCH /api/admin/documentos/[id]',
   'PATCH /api/admin/inscripciones/[id]', 'POST inscripciones/[id]/abrir-mes', 'POST inscripciones/[id]/abrir-todo',
   'POST inscripciones/[id]/activar', 'POST inscripciones/[id]/cerrar-mes', 'POST inscripciones/[id]/constancia',
-  'POST inscripciones/[id]/pago', 'POST inscripciones/[id]/quitar-acceso-total', 'PUT /api/admin/documentos/[id]/verificar',
+  'POST inscripciones/[id]/pago', 'POST inscripciones/[id]/quitar-acceso-total', 'GET /api/admin/inscripciones/[id]',
+  'PUT /api/admin/documentos/[id]/verificar',
 ]
 
 /** Escrituras que de verdad tocaron algo (un update de 0 filas no cuenta). */
@@ -178,13 +179,13 @@ test.describe('matriz ruta × actor × objetivo (route.ts reales, Supabase falso
   test.skip(!nodeSirve, `hace falta Node ≥ 23.6 (type stripping + module.registerHooks); hay ${process.versions.node}`)
   test.describe.configure({ mode: 'serial' })
 
-  test('6. el arnés cubre las 27 rutas de gestión de alumnos × 2 actores × sus objetivos + register-complete', () => {
+  test('6. el arnés cubre las 28 rutas de gestión de alumnos × 2 actores × sus objetivos + register-complete', () => {
     const m = correrMatriz()
     expect(m.metodosDesconocidos).toEqual([])
     expect(m.rutas.map((r) => r.n)).toEqual(RUTAS_ESPERADAS)
     const porAlumno = m.rutas.filter((r) => r.c === 'alumno').length
     const porFila = m.rutas.filter((r) => r.c === 'fila').length
-    expect([porAlumno, porFila]).toEqual([18, 9])
+    expect([porAlumno, porFila]).toEqual([18, 10])
     // 10 objetivos por ruta de alumno (con las formas raras del UUID), 6 por ruta de fila.
     expect(m.casos.length).toBe(porAlumno * 2 * 10 + porFila * 2 * 6 + 3)
     expect(m.casos.filter((c) => c.status === 'EXCEPCION' || c.status === 'SIN-HANDLER')).toEqual([])
@@ -199,7 +200,7 @@ test.describe('matriz ruta × actor × objetivo (route.ts reales, Supabase falso
 
   test('8. sobre un ALUMNO: quien tiene permiso pasa (2xx) y escribe; quien no, 403 sin escribir', () => {
     const casos = correrMatriz().casos.filter((c) => c.clase === 'alumno' && c.quien !== 'sesion')
-    expect(casos.length).toBe(18 * 2 * 2 + 9 * 2)
+    expect(casos.length).toBe(18 * 2 * 2 + 10 * 2)
     for (const c of casos) {
       const permitido = c.quien === 'staff' || c.actor === 'admin'
       if (permitido) {
@@ -240,6 +241,33 @@ test.describe('matriz ruta × actor × objetivo (route.ts reales, Supabase falso
       expect(c.status, `${c.ruta} ${c.actor}`).toBe(permitido ? 404 : 403)
       expect(efectivas(c)).toEqual([])
     }
+  })
+
+  test('12b. la lista de inscritos de un curso (GET cursos/[id]) no trae al personal, la pida el admin o el secretario', () => {
+    const r = correrMatriz() as unknown as { cursoInscritos: Record<string, { status: number; alumnos: string[]; escrituras: Escritura[] }> }
+    for (const actor of ['admin', 'secretario']) {
+      const x = r.cursoInscritos[actor]
+      expect(x.status, actor).toBe(200)
+      // Todas las cuentas de la BD están inscritas: solo quedan las de rol alumno y
+      // la fila de alumno SIN usuario (drift: no es personal, se sigue viendo).
+      expect(x.alumnos, actor).toEqual([
+        '66666666-0000-4000-8000-000000000006', '88888888-0000-4000-8000-000000000008',
+        '99999999-0000-4000-8000-000000000009', 'eeeeeeee-0000-4000-8000-00000000000e',
+      ])
+      expect(x.escrituras, actor).toEqual([])
+    }
+  })
+
+  test('12c. caso (4): un alumno con el correo de alguien del personal nunca lleva a la cuenta del personal', () => {
+    const r = correrMatriz() as unknown as { caso4: { caso: string; status: number; tocadas: string[] }[] }
+    expect(r.caso4.map((c) => [c.caso, c.status])).toEqual([
+      ['datos: al alumno se le pone el correo del admin B', 409],
+      ['borrado definitivo del alumno que ya trae el correo del admin B', 200],
+      ['reset-password del alumno que ya trae el correo del admin B', 200],
+    ])
+    // Lo único que se toca es el alumno (por su id); el admin B, nunca.
+    for (const c of r.caso4) expect(c.tocadas.every((id) => id === 'eeeeeeee-0000-4000-8000-00000000000e'), c.caso).toBe(true)
+    expect(r.caso4[0].tocadas).toEqual([])
   })
 
   test('12. register-complete (#263): el personal NO se degrada a alumno; un alumno nuevo sí se registra', () => {
@@ -349,6 +377,14 @@ test('14. la ficha (GET [id]) también pasa por la guarda: el secretario no lee 
   expect(g).toBeLessThan(get.indexOf(".from('alumnos')"))
 })
 
+test('14b. la vista de una inscripción (GET inscripciones/[id]) pasa por la guarda ANTES de leer el nombre y el correo', () => {
+  const get = handlers(leer('src/app/api/admin/inscripciones/[id]/route.ts')).find(([m]) => m === 'GET')![1]
+  const g = get.indexOf("await cargarAlumnoDeFila(admin, 'curso_inscripciones', params.id, user.id,")
+  expect(g).toBeGreaterThan(0)
+  expect(get.slice(g, g + 260)).toContain('if (!objetivo.ok) return respuestaObjetivo(objetivo)')
+  expect(g).toBeLessThan(get.indexOf(".from('usuarios')"))
+})
+
 test('15. después de la guarda las escrituras usan el id DE LA BD, no el que llegó', () => {
   for (const archivo of [...rutasBajo(DIR), 'src/app/api/admin/documentos/[id]/route.ts']) {
     for (const [metodo, cuerpo] of handlers(leer(archivo))) {
@@ -395,7 +431,15 @@ test('17. la lista de alumnos no incluye personal (en sus TRES intentos), el con
   expect(get).toContain('if (u && !esRolAlumno((u as { rol?: unknown }).rol)) continue')
   const pendientes = sinComentarios(leer('src/app/api/admin/alumnos/pendientes-count/route.ts'))
   expect(pendientes).toContain(".select('id, usuarios!inner(rol)', { count: 'exact', head: true })")
-  expect(pendientes).toContain(".eq('usuarios.rol', 'alumno')")
+  // sin distinguir mayúsculas (como esRolAlumno) y, si el embed falla, el conteo de antes en vez de 0
+  expect(pendientes).toContain(".ilike('usuarios.rol', 'alumno')")
+  expect(pendientes).not.toContain(".eq('usuarios.rol'")
+  const respaldo = pendientes.slice(pendientes.indexOf('if (error) {'))
+  expect(respaldo).toContain(".select('id', { count: 'exact', head: true })")
+  expect(respaldo).toContain('return NextResponse.json({ count: previo.count ?? 0 })')
+  const cursoGet = handlers(leer('src/app/api/admin/cursos/[id]/route.ts')).find(([m]) => m === 'GET')![1]
+  expect(cursoGet).toContain(".select('id, nombre, apellidos, email, rol')")
+  expect(cursoGet).toContain('.filter(i => !esPersonal(i.alumno_id))')
   const ficha = leer('src/app/(dashboard)/admin/alumnos/[id]/page.tsx')
   expect(ficha).toContain("typeof motivo?.error === 'string' ? motivo.error : 'Alumno no encontrado'")
 })

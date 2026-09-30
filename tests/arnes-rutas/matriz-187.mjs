@@ -30,6 +30,10 @@ export const ID = {
   alumnoNuevo: '88888888-0000-4000-8000-000000000008',
 }
 const CURSO = '77777777-0000-4000-8000-000000000007'
+// Drift: una fila de alumno (e inscripción) sin fila en `usuarios`. No es personal:
+// la lista de inscritos del curso la sigue enseñando (con «—»), como antes de #187.
+const SIN_USUARIO = '66666666-0000-4000-8000-000000000006'
+const INS_SIN_USUARIO = '12345678-6666-4000-8000-000000000006'
 
 /** Una inscripción y un documento por cuenta: el id de la fila se deriva del de la cuenta. */
 const FILA = {}
@@ -58,9 +62,12 @@ function bdInicial() {
   return {
     usuarios: cuentas,
     // El admin «con fila» es el drift: ascendido desde alumno, o una fila fabricada por PostgREST.
-    alumnos: [alumno(ID.alumnoX), alumno(ID.adminConFila)],
+    alumnos: [alumno(ID.alumnoX), alumno(ID.adminConFila), alumno(SIN_USUARIO)],
     cursos: [{ id: CURSO, nombre: 'Curso QA', estado: 'publicado', precio_inscripcion: 2490, precio_mensualidad: 0 }],
-    curso_inscripciones: cuentas.map((c) => ({ id: FILA[c.id].ins, curso_id: CURSO, alumno_id: c.id, estado: 'activa', meses_desbloqueados: 1 })),
+    curso_inscripciones: [
+      ...cuentas.map((c) => ({ id: FILA[c.id].ins, curso_id: CURSO, alumno_id: c.id, estado: 'activa', meses_desbloqueados: 1 })),
+      { id: INS_SIN_USUARIO, curso_id: CURSO, alumno_id: SIN_USUARIO, estado: 'activa', meses_desbloqueados: 1 },
+    ],
     documentos_alumno: cuentas.map((c) => ({ id: FILA[c.id].doc, alumno_id: c.id, tipo: 'acta', estado: 'pendiente' })),
     curso_constancias: [],
     pagos: [],
@@ -92,6 +99,7 @@ const RPC = {
   curso_emitir_constancia: () => ({ data: [{ folio: 'QA-2026-0001', emitida: true }], error: null }),
   curso_cobrar: () => ({ data: [{ pago_id: 'x', abierto: false, meses_desbloqueados: 1, acceso_total: false }], error: null }),
   curso_cambiar_estado: () => FILA_RPC,
+  curso_tope_meses: () => ({ data: 3, error: null }),
 }
 
 const A = 'src/app/api/admin/alumnos/[id]'
@@ -131,6 +139,7 @@ export const RUTAS = [
   { n: 'POST inscripciones/[id]/constancia', f: 'src/app/api/admin/inscripciones/[id]/constancia/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: {} }) },
   { n: 'POST inscripciones/[id]/pago', f: 'src/app/api/admin/inscripciones/[id]/pago/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { pago_id: PAGO_ID, concepto: 'curso_mensualidad', monto: 100, metodo_pago: 'EFECTIVO' } }) },
   { n: 'POST inscripciones/[id]/quitar-acceso-total', f: 'src/app/api/admin/inscripciones/[id]/quitar-acceso-total/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { motivo: 'QA' } }) },
+  { n: 'GET /api/admin/inscripciones/[id]', f: 'src/app/api/admin/inscripciones/[id]/route.ts', m: 'GET', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins } }) },
   { n: 'PUT /api/admin/documentos/[id]/verificar', f: 'src/app/api/admin/documentos/[id]/verificar/route.ts', m: 'PUT', q: 'admin', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].doc }, body: { estado: 'aprobado' } }) },
 ]
 
@@ -166,10 +175,11 @@ async function modulo(rel) {
 
 const ESCRITURAS = new Set(['update', 'delete', 'insert', 'upsert', 'rpc', 'auth.updateUserById', 'auth.deleteUser', 'auth.createUser', 'storage.remove', 'storage.upload'])
 // Lecturas que las rutas hacen por RPC y que no escriben nada.
-const RPC_DE_LECTURA = new Set(['candado_corregir_plan'])
+const RPC_DE_LECTURA = new Set(['candado_corregir_plan', 'curso_tope_meses', 'curso_inscripciones_por_activar'])
 
-async function ejecutar({ rel, metodo, actorId, params, body, query = '' }) {
+async function ejecutar({ rel, metodo, actorId, params, body, query = '', conCuerpo = false, ajustarBd = null }) {
   const bd = bdInicial()
+  if (ajustarBd) ajustarBd(bd)
   const esc = crearEscenario({ bd, auth: cuentasAuth(bd), actorId, rpc: RPC })
   globalThis.__arnes = esc
   const mod = await modulo(rel)
@@ -192,6 +202,7 @@ async function ejecutar({ rel, metodo, actorId, params, body, query = '' }) {
   return {
     status: res.status,
     error: json && typeof json.error === 'string' ? json.error : null,
+    ...(conCuerpo ? { cuerpo: json } : {}),
     escrituras: esc.bitacora.filter((b) => ESCRITURAS.has(b.op) && !(b.op === 'rpc' && RPC_DE_LECTURA.has(b.nombre))),
   }
 }
@@ -219,7 +230,32 @@ export async function correrMatriz() {
     })
     casos.push({ ruta: 'POST /api/auth/register-complete', quien: 'sesion', claseRuta: 'sesion', actor: etiqueta, objetivo: 'su propia cuenta', clase, ...x })
   }
-  return { raiz: RAIZ, rutas: RUTAS.map((r) => ({ n: r.n, q: r.q, c: r.c })), casos, metodosDesconocidos: metodosDesconocidos() }
+  // GET /api/admin/cursos/[id]: la lista de inscritos del curso (todas las cuentas
+  // de la BD están inscritas) no trae al personal, lo pida el admin o el secretario.
+  const cursoInscritos = {}
+  for (const actor of Object.keys(ACTORES)) {
+    const x = await ejecutar({ rel: 'src/app/api/admin/cursos/[id]/route.ts', metodo: 'GET', actorId: ACTORES[actor], params: { id: CURSO }, conCuerpo: true })
+    cursoInscritos[actor] = {
+      status: x.status,
+      error: x.error,
+      alumnos: (x.cuerpo?.inscritos ?? []).map((i) => i.alumno_id).sort(),
+      escrituras: x.escrituras,
+    }
+  }
+  // Caso (4) del encargo: un alumno con el correo de alguien del personal. Las rutas
+  // identifican por id: nunca llegan a la cuenta del personal por el correo.
+  const correoDeB = (bd) => { bd.usuarios.find((u) => u.id === ID.alumnoX).email = 'b@qa.mx' }
+  const caso4 = []
+  for (const [etiqueta, rel, metodo, body, query, ajustarBd] of [
+    ['datos: al alumno se le pone el correo del admin B', `${A}/datos/route.ts`, 'PATCH', { email: 'b@qa.mx' }, '', null],
+    ['borrado definitivo del alumno que ya trae el correo del admin B', `${A}/route.ts`, 'DELETE', undefined, '?definitivo=true', correoDeB],
+    ['reset-password del alumno que ya trae el correo del admin B', `${A}/reset-password/route.ts`, 'POST', { newPassword: 'secreta-nueva-123' }, '', correoDeB],
+  ]) {
+    const x = await ejecutar({ rel, metodo, actorId: ID.adminA, params: { id: ID.alumnoX }, body, query, ajustarBd })
+    const tocadas = x.escrituras.flatMap((e) => [e.id, ...(e.ids ?? [])]).filter(Boolean)
+    caso4.push({ caso: etiqueta, status: x.status, error: x.error, tocadas: [...new Set(tocadas)] })
+  }
+  return { raiz: RAIZ, rutas: RUTAS.map((r) => ({ n: r.n, q: r.q, c: r.c })), casos, cursoInscritos, caso4, metodosDesconocidos: metodosDesconocidos() }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

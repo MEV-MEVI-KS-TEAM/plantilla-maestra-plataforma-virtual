@@ -23,6 +23,11 @@ export async function GET(
 
     const admin = createAdminClient()
 
+    // #187: esta vista trae el nombre y el correo de la cuenta inscrita. Sobre
+    // personal (o uno mismo) → 403, igual que la ficha del alumno.
+    const objetivo = await cargarAlumnoDeFila(admin, 'curso_inscripciones', params.id, user.id, 'Inscripción no encontrada')
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
+
     const { data: insc } = await conAccesoTotal<Record<string, unknown>>(
       'id, curso_id, alumno_id, meses_desbloqueados, estado, fecha_inscripcion, fecha_vencimiento, created_at',
       campos => admin
