@@ -86,7 +86,7 @@ const CAMINOS = {
 }
 
 // Los datos que siembra setup.sql, y las evaluaciones que quedarían vacías.
-const CONTEO_DATOS = `SELECT 'materias|' || count(*) FROM materias
+const CONTEO_DATOS = `SELECT 'materias|' || count(*) || ' ' || md5(coalesce(string_agg(coalesce(nivel, '') || ':' || nombre, ',' ORDER BY nivel, nombre), '')) FROM materias
   UNION ALL SELECT 'meses_contenido|' || count(*) FROM meses_contenido
   UNION ALL SELECT 'semanas|' || count(*) FROM semanas
   UNION ALL SELECT 'evaluaciones|' || count(*) FROM evaluaciones

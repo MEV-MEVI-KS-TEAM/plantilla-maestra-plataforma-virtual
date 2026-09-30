@@ -163,8 +163,8 @@ test('4. los buckets que crean los instaladores son EXACTAMENTE los que usa el c
 test('4b. supabase/schema.sql no siembra materias (la demo la trae setup.sql con UUID fijo)', () => {
   // Una materia sembrada aquí (la vieja «Tutoría de Ingreso», UUID al azar) recibía
   // de seed-crear-evaluaciones.sql un examen SIN preguntas (Bug D, Fase 6 del E3).
-  expect(sinComentarios(leer('supabase/schema.sql'))).not.toMatch(/INSERT INTO public\.materias/)
-  expect(sinComentarios(leer('scripts/schema.sql'))).not.toMatch(/INSERT INTO public\.materias/)
+  expect(sinComentarios(leer('supabase/schema.sql'))).not.toMatch(/INSERT\s+INTO\s+(?:public\.)?"?materias"?/i)
+  expect(sinComentarios(leer('scripts/schema.sql'))).not.toMatch(/INSERT\s+INTO\s+(?:public\.)?"?materias"?/i)
 })
 
 test('5. el comparador con Postgres existe y cubre los tres caminos', () => {
