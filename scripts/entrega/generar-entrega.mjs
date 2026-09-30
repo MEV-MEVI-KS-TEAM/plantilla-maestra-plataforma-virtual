@@ -207,6 +207,17 @@ fijarMoneda(CONFIG.moneda)
 const FOLIO_VERIFICABLE =
   String(CONFIG.landing?.validezOficial?.folio ?? '').trim() !== ''
 
+/**
+ * Lo que la sección de Validez de la landing REALMENTE dice (Mundo Estudio
+ * #234): el documento afirmaba «México + Estados Unidos» y «los dos documentos
+ * oficiales, con imagen» en todas las escuelas. Una escuela con la sección
+ * solo México y sin imágenes recibía un PDF oficial que prometía otra cosa.
+ * El alcance sale del título publicado; los documentos, de su lista.
+ */
+const VALIDEZ_DOS_PAISES = /USA|Estados Unidos/i.test(String(CONFIG.landing?.validezOficial?.titulo ?? ''))
+const DOCUMENTOS_VALIDEZ = (CONFIG.landing?.validezOficial?.documentos ?? []).length
+const ALCANCE_VALIDEZ = VALIDEZ_DOS_PAISES ? 'México + Estados Unidos' : 'ante la SEP'
+
 /* ── 2. Credenciales (fuera del repo) ────────────────────────────────────── */
 const rutaDatos = path.join(RAIZ, opt('datos', 'entrega.local.json'))
 if (!fs.existsSync(rutaDatos)) abortar(`No encuentro ${path.basename(rutaDatos)}`, [
@@ -847,6 +858,8 @@ const datos = {
   vendeIngreso: VENDE_INGRESO,
   validez: VALIDEZ,
   folioVerificable: FOLIO_VERIFICABLE,
+  validezDosPaises: VALIDEZ_DOS_PAISES,
+  documentosValidez: DOCUMENTOS_VALIDEZ,
   soporte: D.soporte || SOPORTE,
   tutoriales: [
     `Playlist completa: ${TUTORIALES.playlist}`,
@@ -873,7 +886,7 @@ const datos = {
     CURSOS_PUBLICADOS.length
       ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso ya publicado' : 'cursos ya publicados'} y a la venta`
       : 'Módulo de Cursos y Diplomados listo para tu propio contenido',
-    VALIDEZ && 'Sección de Validez Oficial México + Estados Unidos',
+    VALIDEZ && `Sección de Validez Oficial ${ALCANCE_VALIDEZ}`,
     'Panel de pagos, reportes y estado de cuenta',
   ].filter(Boolean),
   palabraInstitucion: D.palabraInstitucion || 'instituto',
@@ -887,8 +900,8 @@ const datos = {
     'Desbloqueo progresivo del contenido, mes a mes, a tu ritmo de cobro',
     'Video, quiz semanal y examen final en cada materia',
     VALIDEZ && (FOLIO_VERIFICABLE
-      ? 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP'
-      : 'Sección de Validez Oficial México + Estados Unidos, con los dos documentos oficiales que recibe el alumno'),
+      ? `Sección de Validez Oficial ${ALCANCE_VALIDEZ}, con folio verificable en el portal SIGED de la SEP`
+      : `Sección de Validez Oficial ${ALCANCE_VALIDEZ}${DOCUMENTOS_VALIDEZ ? ', con los documentos oficiales que recibe el alumno' : ''}`),
     'Módulo de pagos: recibo en PDF con tu marca y envío por WhatsApp',
     'Estado de cuenta por alumno',
     SEMANAL && 'Cobro semanal: calendario de pagos por alumno con la fecha de cada semana, «Mis Pagos» para el alumno y «Cobranza» para ti, con quién trae semanas vencidas',
@@ -1137,8 +1150,8 @@ if (!flag('solo-pdf')) {
   // que existen para poder enseñarlas.
   const publicas = [
     VALIDEZ && (FOLIO_VERIFICABLE
-      ? `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`
-      : `• Validez oficial México y Estados Unidos, con los dos documentos oficiales que recibe el alumno: ${URL_BASE}/#validez`),
+      ? `• Validez oficial ${VALIDEZ_DOS_PAISES ? 'México y Estados Unidos' : 'ante la SEP'}, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`
+      : `• Validez oficial ${VALIDEZ_DOS_PAISES ? 'México y Estados Unidos' : 'ante la SEP'}${DOCUMENTOS_VALIDEZ ? ', con los documentos oficiales que recibe el alumno' : ''}: ${URL_BASE}/#validez`),
     PAGINA_INSTITUCIONAL && `• Manifiesto de tu marca, con una demostración de un curso real que se prueba sin registro: ${URL_BASE}${PAGINA_INSTITUCIONAL}`,
     FORMULARIO_DIAGNOSTICO && `• Formulario de diagnóstico para captar prospectos: ${URL_BASE}/#diagnostico`,
     OFERTA_INFORMATIVA?.personalizados.length && `• Planes con atención personalizada, que se contratan por WhatsApp: ${OFERTA_INFORMATIVA.personalizados.join(' · ')}${anclaEnLanding('planes') ? ` — ${URL_BASE}/#planes` : ''}`,

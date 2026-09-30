@@ -19,6 +19,7 @@ import { formatoDinero, type ModalidadEditable } from '@/lib/site-config-editor'
 import { varsInscripcionPorNivel } from '@/lib/precios-nivel'
 import type { Moneda } from '@/lib/moneda'
 import type { TokensColores } from '@/lib/site-config-paletas'
+import { ratioContraste } from '@/lib/contraste'
 import { BORDE, TXT, TXT_SUAVE, TXT_TENUE } from './Comunes'
 
 export interface VistaPreviaProps {
@@ -60,6 +61,11 @@ export function VistaPrevia({
   } satisfies Record<Placeholder, string>
   // `satisfies`: un comodín de PLACEHOLDERS sin su valor aquí no compila (saldría literal).
   const t = (s: string) => interpolar(s, vars)
+  // Mundo Estudio #234: si el acento no se distingue del primario (sus dos verdes
+  // dan 1.65), el resaltado va en blanco subrayado y el botón con contorno, en
+  // vez de pintar justo la combinación que la escuela no debe usar.
+  const acentoSeLee = ratioContraste(colores.acento, colores.primario) >= 4.5
+  const acentoSeDistingue = ratioContraste(colores.acento, colores.primario) >= 3
 
   return (
     <div className="space-y-3">
@@ -76,7 +82,7 @@ export function VistaPrevia({
             style={{ color: '#FFFFFF' }}
           >
             {t(heroTitulo)}{' '}
-            <span style={{ color: colores.acento }}>{t(heroHighlight)}</span>
+            <span style={acentoSeLee ? { color: colores.acento } : { color: '#FFFFFF', textDecoration: 'underline', textUnderlineOffset: 4 }}>{t(heroHighlight)}</span>
           </p>
           <p
             className="text-xs mt-2 leading-relaxed whitespace-pre-line"
@@ -90,7 +96,7 @@ export function VistaPrevia({
             tabIndex={-1}
             aria-hidden="true"
             className="mt-4 px-4 py-2 rounded-lg text-xs font-semibold"
-            style={{ background: colores.acento, color: colores.textoSobreAcento }}
+            style={{ background: colores.acento, color: colores.textoSobreAcento, ...(acentoSeDistingue ? {} : { border: '1.5px solid #FFFFFF' }) }}
           >
             {t(heroCtaPrimario)}
           </button>
