@@ -37,6 +37,7 @@ import {
   lineasPreciosMensualWhatsApp, ofreceCertificacion, certificacionEntrega,
 } from './planes.mjs'
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
+import { leerEnvLocal as leerEnvLocalDe, urlSupabaseDesdeEnv as urlSupabaseDe } from './env-local.mjs'
 import {
   unirConY, soloLicenciaturas, desglosesLicenciatura, porcentajeTitulacionTexto, nombrarProgramas,
   ritmoDeApertura, planLicVendible, planesLicSinMensualidad, conNombresPublicados,
@@ -63,10 +64,24 @@ const log = (...a) => console.log(...a)
 // volcado del WhatsApp.
 const AVISOS = []
 const avisar = (msg) => { AVISOS.push(msg); log(`  ⚠ ${msg}`) }
+// 🐞 #256: abortar() ya NO llama a process.exit(1). Con una conexión todavía
+// cerrándose (el fetch de site_config, el inventario), process.exit en Windows +
+// Node 24 disparaba la aserción de libuv `!(handle->flags & UV_HANDLE_CLOSING)` y
+// el proceso terminaba con 0xC0000409 en vez de 1: un script que encadene la
+// entrega no distinguía «abortó a propósito» de «tronó». Ahora se deja
+// exitCode = 1 y se corta el flujo con una excepción que el manejador de abajo
+// reconoce y calla: Node termina solo, cuando se cierran los sockets.
+class AbortoEntrega extends Error {}
+process.on('uncaughtException', (e) => {
+  if (e instanceof AbortoEntrega) { process.exitCode = 1; return }
+  console.error(e)   // cualquier otra cosa: como siempre, traza y salida con 1
+  process.exit(1)
+})
 const abortar = (msg, ayuda) => {
   console.error(`\n✖ ${msg}`)
   if (ayuda) console.error(`\n${ayuda}`)
-  process.exit(1)
+  process.exitCode = 1
+  throw new AbortoEntrega(msg)
 }
 
 /* ── Constantes de la línea MEV ──────────────────────────────────────────── */
@@ -129,6 +144,17 @@ const CONFIG = mergeSiteConfig(CONFIG_TS, PUBLICADO)
 // botones, que en la página no aparecen.
 const { whatsappEscuelaDisponible } = await import(pathToFileURL(path.join(RAIZ, 'src/lib/contacto-ui.ts')).href)
 const SIN_WHATSAPP = !whatsappEscuelaDisponible(CONFIG.whatsapp)
+// Bloque E2: el correo que ven alumnos y landing, por el mismo camino que la app
+// (`canalEscuela`: contactoEmail || email), ya con lo publicado. El de fábrica de
+// la plantilla (contacto@mev.com) no es de la escuela: no se imprime y se avisa.
+const CORREO_PUBLICO = (() => {
+  const c = String(CONFIG.contactoEmail || CONFIG.email || '').trim()
+  if (/@mev\.com$/i.test(c)) {
+    avisar(`El correo público es el de fábrica de la plantilla (${c}): corrígelo en «Personalizar mi página» antes de entregar.`)
+    return ''
+  }
+  return c
+})()
 // El precio de cada NIVEL sale del mismo resolver que usa la plataforma
 // (landing, estado de cuenta, ficha). Es puro —solo un `import type`— y por eso
 // se importa igual que config.ts. Ver la Fase 2 en precios-nivel.ts.
@@ -256,14 +282,10 @@ const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG_TS.licenciaturas)
 const LIC = licenciaturaEfectiva(CONFIG_TS.licenciaturas, PUBLICADO.licenciaturas)
 if (JSON.stringify(LIC) !== JSON.stringify(CONFIG_TS.licenciaturas)) log('  · licenciatura: con los precios publicados en el panel')
 
-/** .env.local del repo (lo publicado y el inventario). Aguanta CRLF y BOM. */
+/** .env.local del repo (lo publicado, el inventario y la infraestructura). Aguanta
+ *  CRLF y BOM: una sola lectura, en env-local.mjs (#197). */
 function leerEnvLocal() {
-  const env = path.join(RAIZ, '.env.local')
-  if (!fs.existsSync(env)) return null
-  // `\r?\n`: un .env.local guardado en Windows (CRLF) también se lee; sin BOM.
-  return Object.fromEntries(fs.readFileSync(env, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)
-    .map(l => l.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean)
-    .map(m => [m[1], m[2].trim().replace(/^["']|["']$/g, '')]))
+  return leerEnvLocalDe(RAIZ)
 }
 
 /* ── 3. Conteo real de contenido ─────────────────────────────────────────── */
@@ -661,11 +683,9 @@ modalidadesFilas.push(filaResumenCursos(CURSOS_PUBLICADOS))
 // documento. Registrador: entrega.local.json → `registrador` (default GoDaddy,
 // donde MEV registra todos los dominios). `"infraestructura": false` omite la página,
 // salvo que haya `cuentas`: esas se entregan siempre (CUENTAS_CLIENTE, arriba).
+// #197: la MISMA lectura que el resto (antes una regex propia que no quitaba el BOM).
 function urlSupabaseDesdeEnv() {
-  const env = path.join(RAIZ, '.env.local')
-  if (!fs.existsSync(env)) return ''
-  const m = fs.readFileSync(env, 'utf8').match(/^NEXT_PUBLIC_SUPABASE_URL=["']?([^"'\n]+)["']?\s*$/m)
-  return m ? m[1].trim() : ''
+  return urlSupabaseDe(RAIZ)
 }
 const supabaseUrl = String(D.supabaseUrl || urlSupabaseDesdeEnv()).trim().replace(/\/$/, '')
 const supabaseRef = (supabaseUrl.match(/^https?:\/\/([a-z0-9-]+)\.supabase\.(?:co|in)$/i) || [])[1] || null
@@ -781,6 +801,13 @@ const datos = {
   // Sin WhatsApp real no se imprime ningún «WhatsApp de contacto»: ni el
   // marcador de ceros ni el número de la plantilla.
   whatsappDisplay: SIN_WHATSAPP ? '' : CONFIG.whatsappDisplay,
+  // Bloque E2: el correo PÚBLICO (el que ven alumnos y landing, `contactoEmail
+  // || email` como `canalEscuela`), con lo publicado encima. Antes el documento
+  // no lo decía en ningún lado: el cliente no podía comprobar qué correo
+  // anuncia su página.
+  correoPublico: CORREO_PUBLICO,
+  // #165-A: sin certificación, el documento no usa la palabra (Nota 199).
+  certifica: CERTIFICA,
   // Una escuela puede entregar SIN WhatsApp a propósito (el intake no trajo
   // número, o trajo un placeholder que no existe). En ese caso la página se
   // entrega con los botones apagados y la única forma de encenderlos es que el
@@ -944,6 +971,14 @@ if (!flag('solo-pdf')) {
   L.push(`¡Hola ${D.adminNombre.split(' ')[0]}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
   L.push('🌐 TU PLATAFORMA', URL_BASE, '')
   L.push('👤 ACCESO ADMINISTRADOR', `Usuario: ${D.adminEmail}`, `Contraseña: ${D.adminPassword}`, `Panel: ${URL_BASE}/admin`, '')
+  // Bloque E2: lo que tu página enseña para que te contacten (ya con lo
+  // publicado en «Personalizar mi página»), para que lo compruebes.
+  if (!SIN_WHATSAPP || CORREO_PUBLICO) {
+    L.push('📞 ASÍ TE CONTACTAN TUS ALUMNOS')
+    if (!SIN_WHATSAPP && datos.whatsappDisplay) L.push(`WhatsApp: ${datos.whatsappDisplay}`)
+    if (CORREO_PUBLICO) L.push(`Correo: ${CORREO_PUBLICO}`)
+    L.push('')
+  }
   if (ALUMNOS_PRUEBA.length > 1) {
     L.push('🎓 ACCESO ALUMNOS DE PRUEBA', '(para que veas la plataforma tal como la ve un alumno de cada nivel)')
     for (const a of datos.alumnosPrueba)

@@ -239,6 +239,8 @@ ${kv([
           d.matricula && ['Matrícula del alumno', d.matricula],
         ]),
     d.whatsappDisplay && ['WhatsApp de contacto', d.whatsappDisplay],
+    // Bloque E2: el correo que ven alumnos y landing (el del admin es su login).
+    d.correoPublico && ['Correo de contacto', d.correoPublico],
   ])}
 ${d.alumnosPrueba?.length ? `<p class="small">Se entrega un alumno de prueba por nivel, para que veas
 exactamente lo que verá cada alumno al registrarse. Úsalos también para recorridos
@@ -505,9 +507,13 @@ ${kv([
     // cada una tiene la suya y ponerla aquí arriba induce a error. Sin decir
     // CUÁNDO se paga: la plataforma no lo sabe, y hay escuelas que la cobran
     // en parcialidades (#194).
+    // #165-A: en una escuela que no certifica (Nota 199) no se dice
+    // «certificación»: el concepto es la titulación (título y cédula).
     DESGLOSES.length
       ? ['Titulación', mxn(L.certificacion)]
-      : (!RUTAS.length && L.certificacion) ? ['Certificación profesional', mxn(L.certificacion)] : null,
+      : (!RUTAS.length && L.certificacion)
+        ? [d.certifica === false ? 'Titulación' : 'Certificación profesional', mxn(L.certificacion)]
+        : null,
   ])}
 ${grupos.map(([rotulo, cs]) =>
     `<h3>${grupos.length > 1 ? rotulo : 'Catálogo'}</h3>${tabla(cs)}`).join('')}
