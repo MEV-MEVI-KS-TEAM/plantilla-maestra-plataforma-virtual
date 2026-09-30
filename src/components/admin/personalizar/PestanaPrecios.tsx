@@ -511,8 +511,11 @@ export function PestanaPrecios({
 
           Las DOS CLAVES siguen en `CLAVES_EDITABLES` y en el catálogo de
           `site-config-campos.ts` a propósito — quitarlas de ahí dejaría huérfano
-          cualquier override ya guardado y rompería "Restaurar diseño original".
-          Lo único que cambia es que esta tarjeta no se dibuja.
+          cualquier override ya guardado (el merge lo ignoraría sin avisar).
+          Lo único que cambia es que esta tarjeta no se dibuja. Ojo: desde #279
+          «Restaurar diseño original» CONSERVA los precios, así que un override
+          viejo de certificación sin tarjeta solo se quita por SQL (Nota 265
+          del PLAYBOOK de mev-tools, con permiso de Kevin).
 
           Con la bandera en `true`, que es el default, la pestaña se ve
           exactamente igual que antes de este cambio. */}

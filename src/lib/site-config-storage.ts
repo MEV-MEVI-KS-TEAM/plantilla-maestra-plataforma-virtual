@@ -11,8 +11,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { removeFolder } from '@/lib/storage-comun'
 import { normalizarOrigen, pathDesdeUrlBranding } from '@/lib/site-config-validacion'
+import { CLAVES_LOGO_BRANDING, logosABorrar } from '@/lib/site-config-restaurar'
 
 export const BUCKET_BRANDING = 'branding'
 
@@ -45,41 +45,54 @@ export async function borrarLogoSiEsDelBucket(admin: SupabaseClient, url: unknow
 }
 
 /**
- * Vacía el bucket entero (raíz + cualquier subcarpeta). Se usa al restaurar
- * los defaults: la fila queda en `{}` y ningún logo subido se referencia ya.
+ * «Restaurar diseño original» (#279): borra de la RAÍZ del bucket los logos que
+ * la fila (releída después de restaurar) ya no referencia y que, o se subieron
+ * antes de `antesDeMs` (la ruta resta un margen: ver `MARGEN_LOGOS_MS`), o la
+ * fila de antes de restaurar (`previa`) ya usaba. Nada más: otros objetos,
+ * subcarpetas, un logo que la fila siga usando o uno recién subido que nadie
+ * había aplicado se dejan (ver `logosABorrar`).
  *
- * Misma mecánica que `removeFolder` de storage-comun.ts pero sobre la RAÍZ:
- * `list('')` pagina de a 1000 y aquí se va borrando lo listado, así que se
- * repite sin offset hasta que no quede nada o una pasada no avance.
+ * Primero lista TODO (paginado de a 1000) y después borra, para que el borrado
+ * no mueva las páginas mientras se recorren. Un fallo se registra y no se
+ * propaga: la fila ya quedó restaurada y un huérfano en el bucket es
+ * preferible a un 500 después de un guardado exitoso.
  */
-export async function limpiarBucketBranding(admin: SupabaseClient): Promise<void> {
-  for (let pasada = 0; pasada < 20; pasada++) {
-    const { data: entries, error } = await admin.storage.from(BUCKET_BRANDING).list('', { limit: 1000 })
+export async function borrarLogosSinReferencia(
+  admin: SupabaseClient,
+  fila: Record<string, unknown>,
+  antesDeMs: number,
+  previa: Record<string, unknown> | null = null,
+): Promise<void> {
+  const paths = (f: Record<string, unknown> | null) => {
+    const s = new Set<string>()
+    for (const clave of CLAVES_LOGO_BRANDING) {
+      const path = pathDesdeUrlPublica(f?.[clave])
+      if (path) s.add(path)
+    }
+    return s
+  }
+  const referenciados = paths(fila)
+  const previos = paths(previa)
+
+  const nombres: string[] = []
+  for (let offset = 0; offset < 100000; offset += 1000) {
+    const { data: entries, error } = await admin.storage
+      .from(BUCKET_BRANDING)
+      .list('', { limit: 1000, offset })
     if (error) {
       console.error('[branding] no se pudo listar el bucket:', error.message)
       return
     }
-    if (!entries || entries.length === 0) return
+    if (!entries || entries.length === 0) break
+    // Los archivos reales traen id; las carpetas virtuales traen id null.
+    for (const entry of entries) if (entry.id) nombres.push(entry.name)
+    if (entries.length < 1000) break
+  }
 
-    const archivos: string[] = []
-    const carpetas: string[] = []
-    for (const entry of entries) {
-      // Los archivos reales traen id; las carpetas virtuales traen id null.
-      if (entry.id) archivos.push(entry.name)
-      else carpetas.push(entry.name)
-    }
-
-    let avance = false
-    if (archivos.length > 0) {
-      const { error: rmError } = await admin.storage.from(BUCKET_BRANDING).remove(archivos)
-      if (rmError) console.error('[branding] error borrando la raíz del bucket:', rmError.message)
-      else avance = true
-    }
-    for (const sub of carpetas) {
-      await removeFolder(admin, BUCKET_BRANDING, sub)
-      avance = true
-    }
-    if (!avance) return
-    if (entries.length < 1000 && carpetas.length === 0) return
+  const aBorrar = logosABorrar(nombres, referenciados, antesDeMs, previos)
+  for (let i = 0; i < aBorrar.length; i += 1000) {
+    const lote = aBorrar.slice(i, i + 1000)
+    const { error } = await admin.storage.from(BUCKET_BRANDING).remove(lote)
+    if (error) console.error('[branding] no se pudieron borrar logos viejos:', error.message)
   }
 }

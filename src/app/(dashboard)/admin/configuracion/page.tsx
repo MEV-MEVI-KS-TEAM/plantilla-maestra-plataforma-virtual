@@ -12,7 +12,9 @@
  *
  *   GET /api/admin/configuracion  →  defaults + overrides + merged
  *        defaults  = config.ts del cliente. Es el fallback de TODO campo sin
- *                    override y lo que se ve al pulsar "Restaurar".
+ *                    override y lo que se ve al pulsar el "Restaurar" de un
+ *                    campo. «Restaurar diseño original» (#279) solo regresa el
+ *                    DISEÑO a esto: los datos del negocio quedan publicados.
  *        overrides = el BORRADOR editable (`overrides` en el estado). Es
  *                    exactamente lo que se manda de vuelta en el PUT.
  *        merged    = lo publicado. Aquí solo se usa para los LOGOS, que el PUT
@@ -35,7 +37,7 @@
  */
 import { CONFIG } from '@/lib/config'
 import { codigoMoneda } from '@/lib/moneda'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Lock } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import type { SiteConfigOverrides } from '@/lib/site-config-core'
@@ -45,6 +47,7 @@ import { validarOverrides } from '@/lib/site-config-validacion'
 import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
 import { campoPorClave } from '@/lib/site-config-campos'
 import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } from '@/lib/site-config-textos'
+import { conservarNegocioDelBorrador, verificarConservados } from '@/lib/site-config-restaurar'
 import { whatsappComoSeVera } from '@/lib/contacto-ui'
 import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
@@ -147,6 +150,15 @@ export default function PersonalizarPage() {
   const [modal, setModal] = useState<null | 'precios' | 'restaurar'>(null)
 
   const dirty = !mismoContenido(overrides, overridesBase)
+  // El borrador y la base VIGENTES para lo asíncrono (Restaurar, #279): lo que
+  // el admin teclee mientras el DELETE está en vuelo no debe perderse, y el
+  // cierre del callback solo conoce el render en que se confirmó el modal.
+  const overridesVigentes = useRef(overrides)
+  const baseVigente = useRef(overridesBase)
+  useEffect(() => {
+    overridesVigentes.current = overrides
+    baseVigente.current = overridesBase
+  }, [overrides, overridesBase])
   // La barra fija tapa el final del formulario; el padding se reserva aquí y
   // no en el layout, que es común a todo el admin.
   const espacioBarra = puedeEditar ? 'pb-24' : 'pb-6'
@@ -345,9 +357,9 @@ export default function PersonalizarPage() {
     void publicar()
   }
 
-  // ─── Restaurar todo ────────────────────────────────────────────────────────
+  // ─── Restaurar diseño original (#279: solo el diseño) ──────────────────────
 
-  const restaurarTodo = useCallback(async () => {
+  const restaurarDisenoOriginal = useCallback(async () => {
     setModal(null)
     setRestaurando(true)
     try {
@@ -360,18 +372,35 @@ export default function PersonalizarPage() {
         )
         return
       }
+      // #279: la API conserva los datos del negocio (contacto, precios,
+      // planes, FAQ…) y el editor parte de lo que quedó publicado. Lo que el
+      // admin CAMBIÓ en campos del negocio y aún no publica (lo que difiere de
+      // lo que cargó) se vuelve a poner encima: el modal promete que NO cambia.
+      // El diseño del borrador sí se va.
+      const conservados = (data.overrides ?? {}) as SiteConfigOverrides
+      const borrador = conservarNegocioDelBorrador(conservados, overridesVigentes.current, baseVigente.current)
       setMerged(data.merged as ConfigEditable)
-      setOverrides({})
-      setOverridesBase({})
+      setOverrides(borrador)
+      setOverridesBase(conservados)
       setClaveConError(null)
       setPublicado(true)
-      showToast('Tu página volvió al diseño original', 'success')
+      // Un dato del negocio que hoy no pasa la validación (#279: se conserva
+      // igual) se señala con su campo para que el siguiente «Publicar» no lo
+      // rechace a ciegas. Se mira el borrador que queda en el editor, no solo
+      // lo publicado: si el admin ya lo corrigió sin publicar, no hay aviso.
+      const pendiente = verificarConservados(borrador, mergeSiteConfig(CONFIG, {}))
+      if (pendiente) {
+        showToast(`Tu diseño volvió al original, pero falta corregir un dato: ${pendiente.error}`, 'error', 8000)
+        if (pendiente.clave) irAlCampo(pendiente.clave)
+      } else {
+        showToast('Tu página volvió al diseño original. Tus datos del negocio no cambiaron.', 'success')
+      }
     } catch {
       showToast('No se pudo restaurar el diseño', 'error')
     } finally {
       setRestaurando(false)
     }
-  }, [showToast])
+  }, [showToast, irAlCampo])
 
   // ─── Datos derivados para la vista previa ──────────────────────────────────
 
@@ -575,7 +604,7 @@ export default function PersonalizarPage() {
         etiquetaConfirmar="Sí, restaurar"
         peligro
         ocupado={restaurando}
-        onConfirmar={() => void restaurarTodo()}
+        onConfirmar={() => void restaurarDisenoOriginal()}
         onCancelar={() => setModal(null)}
       />
     </div>

@@ -12,8 +12,13 @@
  *            (ver CLAVES_LOGO): esas dos claves solo las cambia
  *            /api/admin/configuracion/logo, que es quien sube y borra el
  *            archivo. Mandarlas no falla; la respuesta lo avisa.
- *   DELETE → vuelve a los defaults: vacía el bucket de logos (ya nadie los
- *            referencia) y deja `data = {}`. Solo ADMIN.
+ *   DELETE → «Restaurar diseño original» (#279): quita de la fila SOLO las
+ *            claves de diseño (logos, colores y los títulos, kickers, botones y
+ *            frases de venta de la landing) y conserva los datos del negocio
+ *            (nombre, contacto, redes, precios, planes, tipo de cambio) y el
+ *            contenido con datos de la escuela (FAQ, testimonios, cifras,
+ *            pasos, respaldos, carreras, ciudad, CCT). Borra del bucket solo
+ *            los logos que la fila ya no referencia. Solo ADMIN.
  *
  * ESCRITURA SOLO CON SERVICE ROLE. La tabla no tiene política de INSERT/UPDATE
  * para `authenticated` a propósito (ver la migración): la única vía de
@@ -35,7 +40,8 @@ import { verifyAdmin, verifyStaff, getUserRol } from '@/lib/supabase/verify-admi
 import { CONFIG } from '@/lib/config'
 import { mergeSiteConfig, revalidateSiteConfig } from '@/lib/site-config'
 import { recortarAEditables, recortarOverrides, validarOverrides } from '@/lib/site-config-validacion'
-import { limpiarBucketBranding } from '@/lib/site-config-storage'
+import { borrarLogosSinReferencia } from '@/lib/site-config-storage'
+import { MARGEN_LOGOS_MS, restaurarDiseno, verificarConservados } from '@/lib/site-config-restaurar'
 import {
   MENSAJE_SITE_CONFIG_SIN_MIGRAR,
   SITE_CONFIG_SIN_MIGRAR,
@@ -241,24 +247,46 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// ─── DELETE /api/admin/configuracion — restaurar defaults ────────────────────
+// ─── DELETE /api/admin/configuracion — restaurar el DISEÑO ───────────────────
+// #279 (decisión de Kevin): regresa SOLO el diseño (logos, colores y los
+// títulos y frases de venta de la landing) y CONSERVA con su valor publicado
+// los datos del negocio (nombre, contacto, redes, precios, planes, tipo de
+// cambio) y el contenido con datos de la escuela (FAQ, testimonios, cifras,
+// pasos…). La partición vive en site-config-restaurar.ts.
 export async function DELETE() {
   try {
     const auth = await autorizar(true)
     if (auth.denied) return auth.denied
 
+    const inicio = Date.now()
     const admin = createAdminClient()
+    const previa = await leerFila(admin)
+    const restaurada = restaurarDiseno(previa?.data)
     // Primero la fila (es lo que decide qué se ve), después los archivos: si
     // el borrado del bucket fallara a medias, quedarían huérfanos que nadie
     // referencia, no una landing apuntando a un logo que ya no existe.
-    await guardarFila(admin, {}, auth.user.id)
+    await guardarFila(admin, restaurada, auth.user.id)
     revalidateSiteConfig()
-    await limpiarBucketBranding(admin)
+    // Se relee la fila: lo que quedó en la BD manda (un PUT o un logo de otra
+    // pestaña pudo escribir en medio). Los logos que se conservan son los que
+    // ella referencia y los subidos en los últimos minutos que la fila previa
+    // no usaba (pueden estar a medio aplicar). Si la relectura falla, el
+    // bucket no se toca: un huérfano es preferible a borrar un logo que
+    // alguien acaba de poner.
+    const actual = await leerFila(admin).catch(() => null)
+    const fila = actual && esObjetoPlano(actual.data) ? actual.data : null
+    const usados = previa && esObjetoPlano(previa.data) ? previa.data : null
+    if (fila) await borrarLogosSinReferencia(admin, fila, inicio - MARGEN_LOGOS_MS, usados)
 
+    // Lo mismo que devolvería el GET: recortado a la lista blanca.
+    const overrides = recortarOverrides(fila ?? restaurada, DEFAULTS())
     return NextResponse.json({
       ok: true,
-      merged: recortarAEditables(DEFAULTS()),
-      overrides: {},
+      merged: recortarAEditables(mergeSiteConfig(CONFIG, overrides)),
+      overrides,
+      // Un dato del negocio conservado que no pasa la validación de hoy (regla
+      // de Kevin: se conserva) se señala para que el admin lo corrija.
+      pendiente: verificarConservados(overrides, DEFAULTS(), process.env.NEXT_PUBLIC_SUPABASE_URL),
     })
   } catch (e) {
     console.error('[configuracion]', e)

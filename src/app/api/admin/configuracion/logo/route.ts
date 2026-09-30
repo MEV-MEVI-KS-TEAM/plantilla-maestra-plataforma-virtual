@@ -394,8 +394,8 @@ export async function POST(request: NextRequest) {
 /**
  * Quita `logo` / `logoOscuro` de la fila y borra el objeto del bucket si era
  * nuestro. Existe porque el PUT de /configuracion ya no toca esas claves: sin
- * esto no habría forma de volver al logo por defecto sin restaurar TODA la
- * configuración.
+ * esto no habría forma de volver al logo por defecto sin «Restaurar diseño
+ * original» (que además regresa colores y textos).
  *
  * Quitar la clave (no ponerla en `''`) es lo que hace que el merge caiga al
  * default de config.ts. En `logoOscuro`, además, `''` significa otra cosa: "no

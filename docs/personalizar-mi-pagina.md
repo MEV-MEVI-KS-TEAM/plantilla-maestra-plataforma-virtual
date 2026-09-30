@@ -141,12 +141,50 @@ contra los `L.x` del propio JSX para que no se desincronicen.
 
 ## 5. Restaurar
 
-En el editor, **"Restaurar diseño original"** (`DELETE /api/admin/configuracion`): deja
-`data = '{}'` y vacía el bucket `branding` — primero la fila, después los archivos, para no dejar
-nunca la landing apuntando a un logo ya borrado. A mano, si hiciera falta:
+En el editor, **"Restaurar diseño original"** (`DELETE /api/admin/configuracion`). Desde #279
+(decisión de Kevin, 30-sep-2026) regresa **solo el DISEÑO** y **conserva los datos del negocio**
+con su valor publicado. La partición vive en `src/lib/site-config-restaurar.ts` (`CLAVES_DISENO` /
+`CLAVES_NEGOCIO`; una prueba exige que toda clave editable esté en una de las dos):
+
+- **Se revierte (diseño = presentación):** `logo`, `logoOscuro`, `colores.*` y los títulos,
+  kickers, bajadas, botones y frases de venta de la landing (`landing.hero_*`, `respaldo_titulo`,
+  `catalogo*`, `dolor_*`, `programas_*`, `transformacion_*`, `proceso_kicker`/`_titulo`,
+  `testimonios_kicker`/`_titulo`/`_subtitulo`, `beneficios_*`, `faq_kicker`/`_titulo`, `cta_*`,
+  `licenciaturas_kicker`/`_titulo`/`_subtitulo`).
+- **Se conserva (negocio):** `nombre`, `nombreCompleto`, `tagline`, `cct`, `landing.cct`,
+  `landing.ciudad`, el WhatsApp (`whatsapp`, `whatsappUrl`, `whatsappDisplay`,
+  `contactoTelefono`), el correo (`email`, `contactoEmail`), `redes.*`, `precios.*`,
+  `tipoCambioMXN`, `modalidades`, `licenciaturas.*` y el CONTENIDO con datos de la escuela:
+  `landing.contadores`, `landing.testimonios`, `landing.faq_items`, `landing.proceso_pasos`,
+  `landing.respaldo_badges`, `landing.licenciaturas_carreras` y `landing.licenciaturas_pasos`. Lo que
+  no está en la lista blanca tampoco se toca. Regla para los casos dudosos: **se conservan**.
+- Favicon (archivo estático), fuentes (`next/font`), estilo de la landing (`config.ts`), orden de las
+  secciones (fijo en el JSX) y links de cobro (`config.ts`) no se editan desde el panel ni viven en
+  `site_config`: Restaurar no los toca. Horarios y dirección no existen como dato: si el cliente los
+  escribió en el contenido que se conserva (p. ej. la FAQ), se quedan; en un título o una frase de
+  venta, esa frase vuelve a la de fábrica.
+
+Primero se escribe la fila; después se relee y se borran del bucket `branding` **solo los logos**
+que ella ya no referencia y que, o la fila de antes de restaurar ya usaba, o se subieron hace más de
+5 minutos (`MARGEN_LOGOS_MS`: una subida en curso no pierde su archivo); si la relectura falla, el
+bucket no se toca. Nada más. El editor parte de lo conservado y vuelve a poner encima lo que el admin
+CAMBIÓ en campos del negocio y no ha publicado (fusión a tres bandas contra lo que cargó: un valor
+que otra pestaña publicó en medio no se pisa con el viejo). La unidad es el campo; los grupos que el
+editor escribe juntos (los dos correos, los dos CCT) van enteros; en el WhatsApp manda el número (un
+retoque del texto solo vale si el número publicado no cambió); los planes van plan por plan y campo
+por campo, y una lista (FAQ, testimonios…) va entera. Si al juntar planes de dos pestañas queda una
+regla rota (p. ej. ningún plan activo), el editor lo avisa como dato por corregir.
+Si un dato del negocio conservado no pasa la validación de hoy, la respuesta trae `pendiente` y el
+editor (que valida el borrador que le queda, por si el admin ya lo corrigió) lleva al admin a ese campo (si el campo no se dibuja —p. ej. la certificación con
+`ofreceCertificacion: false`—, solo queda la receta SQL de la Nota 265 del PLAYBOOK de mev-tools).
+Para regresar un dato del negocio a `config.ts`, cada campo o plan tiene su propio **"Restaurar"**.
+
+A mano, si hiciera falta un reset TOTAL (con permiso de Kevin; borra también el negocio):
 `UPDATE public.site_config SET data = '{}'::jsonb WHERE id = 1;`, borrar los objetos del bucket
 desde el Dashboard y después forzar una petición al sitio para regenerar la landing (el SQL no
-purga la caché de Next; eso solo lo hace la API).
+purga la caché de Next; eso solo lo hace la API). Para quitar solo el diseño a mano, se borran las
+claves de diseño una por una; **nunca** `data - 'landing'` entero, porque `landing` también guarda
+datos del negocio (CCT, ciudad, FAQ, testimonios, cifras, pasos).
 
 ## 6. Decisiones de diseño que no hay que "arreglar"
 
@@ -228,9 +266,11 @@ deriva alias **cuando el override está presente** (§6). Pero **el primer guard
 que incluya esa mensualidad los UNIFICA**: los cinco alias del plan pasan a valer lo mismo que el
 campo que él vio en pantalla, que es exactamente lo que el editor le prometió.
 
-Para deshacerlo: **"Restaurar diseño original"** (§5) deja `data = '{}'` y devuelve todos los precios
-a los del `config.ts`, diferencias por nivel incluidas. Si el cliente necesita conservar esas
-diferencias *y* editar precios desde el panel, hoy no se puede: hay que tocar su `config.ts`.
+Para deshacerlo: el **"Restaurar"** de su plan (o el de cada campo de precio) en la pestaña Precios
+quita el override y los alias vuelven a los del `config.ts`, diferencias por nivel
+incluidas. **"Restaurar diseño original"** (§5) ya NO sirve para esto: desde #279 conserva los
+precios. Si el cliente necesita conservar esas diferencias *y* editar precios desde el panel, hoy no
+se puede: hay que tocar su `config.ts`.
 
 Commits en `feat/editor-personalizacion`: `023ab56` (tabla + bucket), `7ffa8f1` (merge y provider),
 `1f0b9e7` (paletas y contraste), `efe82e1` / `6bb89bc` (textos de la landing), `b1cf20d` (API del
