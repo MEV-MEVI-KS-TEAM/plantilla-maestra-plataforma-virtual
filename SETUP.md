@@ -228,13 +228,21 @@ Copiar .env.example → .env.local y llenar con datos de Supabase
 3. Environment Variables → pegar las 3 variables de .env.local
 4. Deploy
 5. **Verifica el commit desplegado** (Bloque E3): el deploy de producción tiene
-   que ser de `main` con **D22d-1 (`fe00225`) o posterior**. La fila 23 de 7bis
-   (D22d) deja el quiz y el examen mensual sin preguntas con una app anterior.
-   En Vercel → Deployments, el de Production muestra su commit; o por la API:
-   `curl -s -H "Authorization: Bearer $VERCEL_TOKEN" https://api.vercel.com/v13/deployments/<dominio-o-url>`
-   → `meta.githubCommitSha`. Luego, en el repo del cliente (con `git fetch`):
-   `git merge-base --is-ancestor fe00225 <sha-desplegado> && echo OK`.
-   Si no sale OK: redeploy desde `main` antes de correr la fila 23.
+   que traer el código de **D22d-1** (plantilla `fe00225`, #273) o posterior. La
+   fila 23 de 7bis (D22d) deja el quiz y el examen mensual sin preguntas con una
+   app anterior.
+   - El commit desplegado: Vercel → Deployments → el de Production muestra su
+     commit; o por la API
+     `curl -s -H "Authorization: Bearer $VERCEL_TOKEN" https://api.vercel.com/v13/deployments/<dominio-o-url>`
+     → `meta.githubCommitSha`. Tiene que ser la cabeza de `main` del repo del
+     cliente (`git fetch && git rev-parse origin/main`).
+   - Que ese commit trae D22d-1. El repo de un cliente nace de la plantilla SIN
+     su historia, así que no se compara contra `fe00225`: se busca el código que
+     D22d-1 agregó, en el repo del cliente:
+     `git cat-file -e <sha-desplegado>:src/lib/evaluaciones/examen-mensual.ts && git cat-file -e <sha-desplegado>:src/lib/quiz/quiz-semana.ts && echo OK`
+     (en la plantilla misma sirve `git merge-base --is-ancestor fe00225 <sha> && echo OK`).
+   Si no sale OK: actualiza el repo con la plantilla y redeploy desde `main` antes
+   de correr la fila 23.
 
 ## Paso 7 — Dominio (10 min)
 1. Vercel → Settings → Domains → Add

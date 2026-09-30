@@ -112,7 +112,8 @@ lo del módulo y las demás son solo del módulo:
 | 23 | `20260928170000_d22d_claves_solo_servidor.sql` (D22d) | 28, 29 y 30 |
 
 > ⚠️ **Fila 23 (D22d): SOLO después de desplegar la app de D22d** (`main` con
-> D22d-1 `fe00225` o posterior; verifícalo como dice el Paso 6, punto 5, de `SETUP.md`).
+> el código de D22d-1 —plantilla `fe00225`— o posterior; verifícalo como dice el
+> Paso 6, punto 5, de `SETUP.md`).
 > Con una app anterior, la clave del examen final de curso (el de la constancia)
 > y la del quiz y el examen mensual dejan de leerse y esas pantallas se quedan
 > sin preguntas, sin avisar. Córrela **al final**: una copia vieja del paso 6 o
@@ -287,7 +288,7 @@ Solo-Cursos la necesita.
 - [ ] Identidad, colores, logo y WhatsApp del cliente
 - [ ] Tabla 7bis aplicada, filas 1 a 23 (la 23 después de desplegar la app de D22d) y `post-setup-check.sql` con los CHECK 15-30 en ✅
 - [ ] Los 6 buckets (`SELECT id FROM storage.buckets ORDER BY id`)
-- [ ] El deploy de producción es de `main` con `fe00225` (D22d-1) o posterior
+- [ ] El deploy de producción es la cabeza de `main` y trae el código de D22d-1 (`SETUP.md`, Paso 6, punto 5)
 - [ ] Al menos un diplomado **publicado**, con precios y ritmo
 - [ ] Catálogo visible en la landing sin sesión, y en móvil
 - [ ] Un alumno de prueba: registro → inscripción → pago → abrir mes → ve el módulo
