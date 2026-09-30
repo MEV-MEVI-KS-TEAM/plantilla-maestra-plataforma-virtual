@@ -273,6 +273,23 @@ test('9b. una pestaña desfasada no reinyecta valores viejos: lo que el admin no
   })
 })
 
+test('9d. los dos correos y los dos CCT van como grupo: nunca mitad de una pestaña y mitad de otra', () => {
+  // La otra pestaña publicó los dos correos en «c»; aquí el borrador cambió solo
+  // `email` (el otro coincidía con lo cargado). Campo por campo quedaría b + c.
+  const correo = conservarNegocioDelBorrador(
+    { email: 'c@x.test', contactoEmail: 'c@x.test' } as SiteConfigOverrides,
+    { email: 'b@x.test', contactoEmail: 'a@x.test' } as SiteConfigOverrides,
+    { email: 'a@x.test', contactoEmail: 'a@x.test' } as SiteConfigOverrides,
+  )
+  expect(correo).toEqual({ email: 'b@x.test', contactoEmail: 'a@x.test' })
+  const cct = conservarNegocioDelBorrador(
+    { cct: 'C', landing: { cct: 'C' } } as unknown as SiteConfigOverrides,
+    { cct: 'B', landing: { cct: 'A' } } as unknown as SiteConfigOverrides,
+    { cct: 'A', landing: { cct: 'A' } } as unknown as SiteConfigOverrides,
+  )
+  expect(cct).toEqual({ cct: 'B', landing: { cct: 'A' } })
+})
+
 test('9c. los planes se fusionan plan por plan y campo por campo; los grupos del editor van enteros', () => {
   // Planes: la pestaña cargó {} y otra publicó 6m apagado + 3m a 1000. Aquí el
   // admin solo cambió la mensualidad de 3m. Nada de lo ajeno se pierde.
@@ -297,13 +314,22 @@ test('9c. los planes se fusionan plan por plan y campo por campo; los grupos del
   ) as Obj
   expect(lic).toEqual({ licenciaturas: { modalidades: { a: { mensualidad: 5 }, b: { mensualidad: 2 } } } })
 
-  // Grupo WhatsApp: la otra pestaña cambió el número; aquí el admin solo retocó
-  // el texto → el grupo entero del borrador (número y texto coherentes entre sí).
+  // WhatsApp: el NÚMERO manda.
   const baseW = { whatsapp: '521111', contactoTelefono: '521111', whatsappDisplay: '52 1111' } as SiteConfigOverrides
-  const borrW = { whatsapp: '521111', contactoTelefono: '521111', whatsappDisplay: '(52) 1111' } as SiteConfigOverrides
   const consW = { whatsapp: '522222', contactoTelefono: '522222', whatsappDisplay: '52 2222', whatsappUrl: 'https://wa.me/522222' } as SiteConfigOverrides
-  expect(conservarNegocioDelBorrador(consW, borrW, baseW)).toEqual(borrW)
-  // …y si no tocó nada del grupo, se queda el del servidor completo.
+  // (a) Otra pestaña publicó otro número y aquí solo se retocó el texto: el
+  //     retoque era del número viejo → se queda TODO lo del servidor.
+  const soloTexto = { whatsapp: '521111', contactoTelefono: '521111', whatsappDisplay: '(52) 1111' } as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(consW, soloTexto, baseW)).toEqual(consW)
+  // (a') Igual si la pestaña cargó sin WhatsApp y solo escribió un texto.
+  expect(conservarNegocioDelBorrador(consW, { whatsappDisplay: '33 1234 5678' } as SiteConfigOverrides, {})).toEqual(consW)
+  // (b) Mismo número en el servidor y retoque del texto: el texto del borrador vale.
+  const mismoNumero = { ...baseW, whatsappUrl: 'https://wa.me/521111' } as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(mismoNumero, soloTexto, baseW)).toEqual({ ...mismoNumero, whatsappDisplay: '(52) 1111' })
+  // (c) El admin capturó otro número: número y texto del borrador (la URL la deriva el servidor al publicar).
+  const nuevo = { whatsapp: '523333', contactoTelefono: '523333', whatsappDisplay: '52 3333' } as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(consW, nuevo, baseW)).toEqual({ ...nuevo, whatsappUrl: 'https://wa.me/522222' })
+  // (d) Sin tocar nada del WhatsApp, se queda el del servidor completo.
   expect(conservarNegocioDelBorrador(consW, baseW, baseW)).toEqual(consW)
 })
 
@@ -421,7 +447,9 @@ test('14. tras restaurar, el editor parte de lo conservado y le pone encima el n
   const bloque = pagina.slice(ini, fin)
   // Lee el borrador VIGENTE (lo tecleado mientras el DELETE estaba en vuelo cuenta).
   expect(bloque).toContain('conservarNegocioDelBorrador(conservados, overridesVigentes.current, baseVigente.current)')
-  expect(pagina).toContain('overridesVigentes.current = overrides')
+  const efecto = pagina.slice(pagina.indexOf('overridesVigentes.current = overrides'))
+  expect(efecto.slice(0, 200)).toContain('baseVigente.current = overridesBase')
+  expect(efecto.slice(0, 200)).toContain('}, [overrides, overridesBase])')
   expect(bloque).toContain('setOverrides(borrador)')
   expect(bloque).toContain('setOverridesBase(conservados)')
   // El aviso se calcula sobre el borrador que queda, no solo sobre lo publicado.
@@ -437,8 +465,18 @@ test('15. el PDF y el mensaje de entrega ya no prometen que Restaurar regresa to
   const msg = leer('scripts/entrega/generar-entrega.mjs')
   expect(msg).not.toContain('devuelve todo a como se te entregó')
   expect(msg).toContain('no cambian; cada campo tiene además su propio «Restaurar»')
-  // Las dos piezas dicen lo mismo que el modal: frases DE VENTA, y nombran el contenido que se queda.
-  for (const [nombre, texto] of [['documento.mjs', doc.replace(/\s+/g, ' ')], ['generar-entrega.mjs', msg]]) {
+  // Las dos piezas dicen lo mismo que el modal: frases DE VENTA, y nombran el
+  // contenido que se queda — DENTRO del párrafo de Restaurar, no en todo el archivo.
+  const recorte = (texto: string, desde: string, hasta: string) => {
+    const i = texto.indexOf(desde)
+    const j = texto.indexOf(hasta, i)
+    expect(i, desde).toBeGreaterThan(-1)
+    expect(j, hasta).toBeGreaterThan(i)
+    return texto.slice(i, j)
+  }
+  const parrafoDoc = recorte(doc.replace(/\s+/g, ' '), 'Restaurar diseño original</b> devuelve', 'Nada de lo que pruebes')
+  const parrafoMsg = recorte(msg, '«Restaurar diseño original» devuelve', 'probar sin miedo')
+  for (const [nombre, texto] of [['documento.mjs', parrafoDoc], ['generar-entrega.mjs', parrafoMsg]]) {
     for (const f of ['frases de venta', 'tus planes', 'preguntas frecuentes', 'testimonios', 'cifras', 'pasos', 'respaldos', 'carreras']) {
       expect(texto, `${nombre}: ${f}`).toContain(f)
     }

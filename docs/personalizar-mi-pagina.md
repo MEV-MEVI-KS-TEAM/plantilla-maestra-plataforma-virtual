@@ -170,8 +170,10 @@ que ella ya no referencia y que, o la fila de antes de restaurar ya usaba, o se 
 bucket no se toca. Nada más. El editor parte de lo conservado y vuelve a poner encima lo que el admin
 CAMBIÓ en campos del negocio y no ha publicado (fusión a tres bandas contra lo que cargó: un valor
 que otra pestaña publicó en medio no se pisa con el viejo). La unidad es el campo; los grupos que el
-editor escribe juntos (número de WhatsApp y derivados, los dos correos, los dos CCT) van enteros, los
-planes van plan por plan y campo por campo, y una lista (FAQ, testimonios…) va entera.
+editor escribe juntos (los dos correos, los dos CCT) van enteros; en el WhatsApp manda el número (un
+retoque del texto solo vale si el número publicado no cambió); los planes van plan por plan y campo
+por campo, y una lista (FAQ, testimonios…) va entera. Si al juntar planes de dos pestañas queda una
+regla rota (p. ej. ningún plan activo), el editor lo avisa como dato por corregir.
 Si un dato del negocio conservado no pasa la validación de hoy, la respuesta trae `pendiente` y el
 editor (que valida el borrador que le queda, por si el admin ya lo corrigió) lleva al admin a ese campo (si el campo no se dibuja —p. ej. la certificación con
 `ofreceCertificacion: false`—, solo queda la receta SQL de la Nota 265 del PLAYBOOK de mev-tools).

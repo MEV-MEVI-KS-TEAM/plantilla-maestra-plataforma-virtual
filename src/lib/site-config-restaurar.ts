@@ -228,15 +228,25 @@ export function restaurarDiseno(data: unknown): ObjetoPlano {
 }
 
 /**
- * Claves que el editor escribe JUNTAS (el número de WhatsApp y sus derivados,
- * los dos correos, los dos CCT): en la fusión van como una sola, para que el
- * borrador nunca quede con el número de una pestaña y el texto de otra.
+ * Claves que el editor escribe JUNTAS (los dos correos, los dos CCT): en la
+ * fusión van como una sola, para que el borrador nunca quede con la mitad de
+ * una pestaña y la mitad de otra.
  */
 const GRUPOS_NEGOCIO: ReadonlyArray<ReadonlyArray<string>> = [
-  ['whatsapp', 'whatsappUrl', 'whatsappDisplay', 'contactoTelefono'],
   ['email', 'contactoEmail'],
   ['cct', 'landing.cct'],
 ]
+
+/**
+ * El WhatsApp: el NÚMERO (`whatsapp` + `contactoTelefono`) manda y arrastra su
+ * texto (`whatsappDisplay`). Un retoque del texto solo vale si el número del
+ * servidor sigue siendo el que la pestaña cargó; si otra pestaña publicó otro
+ * número, el retoque era del número viejo y se descarta (no se reinyecta el
+ * número viejo). `whatsappUrl` no entra: lo deriva el servidor al publicar.
+ */
+const NUMERO_WHATSAPP = ['whatsapp', 'contactoTelefono'] as const
+const TEXTO_WHATSAPP = 'whatsappDisplay'
+const CLAVES_WHATSAPP_FUSIONADAS: ReadonlySet<string> = new Set([...NUMERO_WHATSAPP, TEXTO_WHATSAPP])
 
 /** Planes: objetos indexados por id; se fusionan plan por plan y campo por campo. */
 const CLAVES_POR_PLAN: ReadonlySet<string> = new Set(['modalidades', 'licenciaturas.modalidades'])
@@ -295,8 +305,9 @@ function fusionarPlanes(salida: ObjetoPlano, borrador: ObjetoPlano, base: Objeto
  * pestaña cargó (otra pestaña u otro admin publicó en medio); tomar el borrador
  * completo reinyectaba esos valores viejos y el siguiente «Publicar» los
  * devolvía a la fila. La unidad es el campo; los grupos que el editor escribe
- * juntos van enteros (`GRUPOS_NEGOCIO`), los planes van plan por plan y campo
- * por campo, y una lista (FAQ, testimonios…) va entera.
+ * juntos van enteros (`GRUPOS_NEGOCIO`), en el WhatsApp manda el número, los
+ * planes van plan por plan y campo por campo, y una lista (FAQ, testimonios…)
+ * va entera.
  */
 export function conservarNegocioDelBorrador(
   conservados: SiteConfigOverrides,
@@ -304,8 +315,18 @@ export function conservarNegocioDelBorrador(
   base: SiteConfigOverrides,
 ): SiteConfigOverrides {
   const salida = copiaJson((conservados ?? {}) as ObjetoPlano)
+  const servidor = (conservados ?? {}) as ObjetoPlano
   const fuente = (borrador ?? {}) as ObjetoPlano
   const cargado = (base ?? {}) as ObjetoPlano
+  // WhatsApp: el número manda (ver NUMERO_WHATSAPP).
+  if (NUMERO_WHATSAPP.some((ruta) => cambiada(fuente, cargado, ruta))) {
+    for (const ruta of CLAVES_WHATSAPP_FUSIONADAS) tomarDelBorrador(salida, fuente, ruta)
+  } else if (
+    cambiada(fuente, cargado, TEXTO_WHATSAPP) &&
+    NUMERO_WHATSAPP.every((ruta) => !cambiada(servidor, cargado, ruta))
+  ) {
+    tomarDelBorrador(salida, fuente, TEXTO_WHATSAPP)
+  }
   // Un grupo con cualquier cambio va entero del borrador. (Sus claves vuelven a
   // pasar por el bucle de abajo, que solo toma las que cambiaron: son las mismas
   // que ya se copiaron.)
@@ -315,6 +336,7 @@ export function conservarNegocioDelBorrador(
     }
   }
   for (const ruta of CLAVES_NEGOCIO) {
+    if (CLAVES_WHATSAPP_FUSIONADAS.has(ruta)) continue
     if (CLAVES_POR_PLAN.has(ruta)) fusionarPlanes(salida, fuente, cargado, ruta)
     else if (cambiada(fuente, cargado, ruta)) tomarDelBorrador(salida, fuente, ruta)
   }
