@@ -11,7 +11,8 @@
 --                    role), así que no lleva políticas. (Bug 103: el esquema viejo
 --                    creaba 'avatares', que nadie usa.)
 --   * 'documentos' — «Mis documentos» (src/app/api/alumno/documentos/route.ts):
---                    sin el bucket, el alumno no puede subir nada.
+--                    sin el bucket, el alumno no puede subir nada. Admite
+--                    jpeg, png, webp y pdf: lo mismo que acepta la pantalla.
 -- Y 'materias' (20260819130000) se creaba sin tipo permitido: aquí toma el mismo
 -- que supabase/schema.sql y la app (MATERIAL_MIMES = solo PDF), SOLO si no tenía.
 --
@@ -23,7 +24,7 @@
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('avatars',    'avatars',    true,  5242880,  ARRAY['image/jpeg','image/png','image/webp']),
-  ('documentos', 'documentos', false, 10485760, ARRAY['image/jpeg','image/png','application/pdf'])
+  ('documentos', 'documentos', false, 10485760, ARRAY['image/jpeg','image/png','image/webp','application/pdf'])
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE storage.buckets

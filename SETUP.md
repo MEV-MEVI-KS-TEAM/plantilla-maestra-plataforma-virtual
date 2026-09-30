@@ -183,13 +183,15 @@ Editar SOLO este archivo: src/lib/config.ts
    CHECK 8 sale ❌ hasta crear el admin.
 9. **Buckets de Storage — son 6, los que usa el código** (Bloque E3; lo vigila
    `tests/unit/e3-instaladores-equivalentes.spec.ts`). `scripts/schema.sql` no
-   crea ninguno: por la ruta de este documento corre las tres migraciones de
+   crea ninguno: por la ruta de este documento corre las cuatro migraciones de
    storage (idempotentes; si una política falla por ownership, córrela en el SQL
-   Editor):
+   Editor), también en una escuela que no corre 7bis:
+   `supabase/migrations/20260716140000_bucket_recibos.sql` (`recibos`; es la fila 3
+   de 7bis, sin ella «Recibo» del pago da 500),
    `supabase/migrations/20260819130000_cms_contenido_materiales.sql` (`materias`),
    `supabase/migrations/20260908120000_site_config.sql` (`branding`) y
    `supabase/migrations/20260929120000_e3_buckets_de_la_app.sql` (`avatars` y
-   `documentos`). `recibos` viene con la fila 3 de 7bis y `cursos` con el paso 5.
+   `documentos`). `cursos` viene con el paso 5.
    (La ruta de PROMPTS-MAESTROS, TAREA 3.9 A1, corre todas las migraciones y ya
    los trae.) Verificar:
 
@@ -233,8 +235,8 @@ Copiar .env.example → .env.local y llenar con datos de Supabase
    app anterior.
    - El commit desplegado: Vercel → Deployments → el de Production muestra su
      commit; o por la API
-     `curl -s -H "Authorization: Bearer $VERCEL_TOKEN" https://api.vercel.com/v13/deployments/<dominio-o-url>`
-     → `meta.githubCommitSha`. Tiene que ser la cabeza de `main` del repo del
+     `curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v13/deployments/<dominio-o-url>?teamId=<team>"`
+     → `meta.githubCommitSha` (el proyecto vive en un team: sin `teamId` responde 404). Tiene que ser la cabeza de `main` del repo del
      cliente (`git fetch && git rev-parse origin/main`).
    - Que ese commit trae D22d-1. El repo de un cliente nace de la plantilla SIN
      su historia, así que no se compara contra `fe00225`: se busca el código que

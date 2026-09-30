@@ -164,5 +164,9 @@ test('5. el comparador con Postgres existe y cubre los tres caminos', () => {
   const cmp = leer('scripts/verificar-schema/comparar-instaladores.mjs')
   for (const c of ["B: [['supabase/schema.sql']]", 'BS:', 'BM:', 'SM:']) expect(cmp).toContain(c)
   expect(existsSync(join(raiz, 'scripts/verificar-schema/foto-esquema.sql'))).toBe(true)
-  expect(existsSync(join(raiz, 'scripts/verificar-schema/harness-supabase.sql'))).toBe(true)
+  // Sin los privilegios de fábrica de Supabase, todo REVOKE sería invisible (revisión E3).
+  const arnes = leer('scripts/verificar-schema/harness-supabase.sql')
+  for (const t of ['TABLES', 'SEQUENCES', 'FUNCTIONS'])
+    expect(arnes).toContain(`ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON ${t}`)
+  expect(cmp).toContain('El arnés no emula los privilegios por defecto de Supabase')
 })

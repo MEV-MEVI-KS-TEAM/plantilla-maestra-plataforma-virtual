@@ -29,8 +29,18 @@ Comparaciones (sale con 1 si alguna tiene una diferencia no prevista):
 
 `harness-supabase.sql` emula lo que Supabase da por hecho y Postgres pelado no
 (roles `anon`/`authenticated`/`service_role`, `auth.users`, `auth.uid()`,
-`storage.buckets`, `storage.objects`, `storage.foldername()`). Es copia del de
-mev-tools `scripts/verificar-migraciones/harness.sql`.
+`storage.buckets`, `storage.objects`, `storage.foldername()`) y, sobre todo, los
+**privilegios de fábrica** de Supabase (`ALTER DEFAULT PRIVILEGES … GRANT ALL ON
+TABLES/SEQUENCES/FUNCTIONS TO anon, authenticated, service_role`). Sin ellos,
+todo `REVOKE … FROM anon, authenticated` sería invisible y el comparador daría
+verde con un cierre de seguridad perdido (D22c, D22d, #185); por eso el
+comparador aborta si la foto de `B` no trae ningún permiso de escritura para
+`authenticated` (canario). Parte del de mev-tools
+`scripts/verificar-migraciones/harness.sql`.
+
+Prueba de mutación (29-sep-2026): quitar de `supabase/schema.sql` el `REVOKE
+INSERT ON public.usuarios FROM anon, authenticated` hace que la comparación 1
+marque `grant|usuarios.anon` y `grant|usuarios.authenticated`.
 
 ## Uso
 

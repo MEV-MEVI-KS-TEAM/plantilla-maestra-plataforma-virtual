@@ -953,7 +953,7 @@ END $$;
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('avatars',     'avatars',     true,  5242880,   ARRAY['image/jpeg','image/png','image/webp']),
-  ('documentos',  'documentos',  false, 10485760,  ARRAY['image/jpeg','image/png','application/pdf']),
+  ('documentos',  'documentos',  false, 10485760,  ARRAY['image/jpeg','image/png','image/webp','application/pdf']),
   ('recibos',     'recibos',     false, 2097152,   ARRAY['application/pdf']),
   -- F2: PDF de material por semana. Privado y SIN lectura para el alumno: se
   -- sirve por GET /api/material/[id], que comprueba el acceso en TypeScript.

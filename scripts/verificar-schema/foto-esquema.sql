@@ -37,7 +37,8 @@ indices AS (
 ),
 funciones AS (
   SELECT 'funcion|' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')|'
-         || 'returns=' || pg_get_function_result(p.oid)
+         || 'args=' || pg_get_function_arguments(p.oid)
+         || ' returns=' || pg_get_function_result(p.oid)
          || ' lang=' || l.lanname
          || ' secdef=' || p.prosecdef
          || ' vol=' || p.provolatile::text

@@ -138,9 +138,11 @@ const EXENTO_1 = [
   // B6 reescribe los reportes de ingresos y el estado de cuenta con columnas por
   // vertical que leen pagos.curso_inscripcion_id y curso_inscripciones: B guarda
   // a propósito la versión anterior a B6 (no depende del módulo).
-  ['funcion|reporte_ingresos_semanales(', 'B6: versión por vertical, lee tablas de Cursos'],
-  ['funcion|reporte_ingresos_mensuales(', 'B6: versión por vertical, lee tablas de Cursos'],
-  ['funcion|estado_cuenta_alumnos(', 'B6: filtra pagos.curso_inscripcion_id (módulo Cursos)'],
+  // Solo el CUERPO puede diferir: firma, SECURITY DEFINER, search_path y
+  // volatilidad se siguen comparando (la tercera columna lo marca).
+  ['funcion|reporte_ingresos_semanales(', 'B6: versión por vertical (columnas programa/cursos), lee tablas de Cursos', 'cuerpo+retorno'],
+  ['funcion|reporte_ingresos_mensuales(', 'B6: versión por vertical (columnas programa/cursos), lee tablas de Cursos', 'cuerpo+retorno'],
+  ['funcion|estado_cuenta_alumnos(', 'B6: filtra pagos.curso_inscripcion_id (módulo Cursos)', 'cuerpo'],
 ]
 const EXENTO_2 = []
 
@@ -149,7 +151,13 @@ function filtrar(difs, exentos, conCursos) {
   const quedan = difs.filter((d) => {
     const linea = d.a || d.b
     if (conCursos && esDeCursos(d.clave, linea)) return false
-    const ex = exentos.find(([pref]) => d.clave === pref || d.clave.startsWith(pref))
+    const sinCuerpo = (l, retorno) => {
+      let t = (l || '').replace(/ body=[0-9a-f]+/, '')
+      if (retorno) t = t.replace(/ returns=.*? lang=/, ' lang=')
+      return t
+    }
+    const ex = exentos.find(([pref, , solo]) => (d.clave === pref || d.clave.startsWith(pref))
+      && (!solo || (d.a && d.b && sinCuerpo(d.a, solo === 'cuerpo+retorno') === sinCuerpo(d.b, solo === 'cuerpo+retorno'))))
     if (ex) { usados.add(ex[0]); return false }
     return true
   })
@@ -173,6 +181,13 @@ for (const c of Object.keys(CAMINOS)) {
   process.stdout.write(`armando ${c}… `)
   fotos[c] = armar(c)
   console.log(`${fotos[c].length} objetos`)
+}
+// Canario del arnés: con los privilegios de fábrica de Supabase emulados, alguna
+// tabla de B le da escritura a `authenticated`. Si no, el arnés perdió el
+// ALTER DEFAULT PRIVILEGES y ningún REVOKE se vería: resultado inválido.
+if (!fotos.B.some((l) => /^grant\|[a-z_]+\.authenticated\|.*(INSERT|UPDATE|DELETE)/.test(l))) {
+  console.error('✖ El arnés no emula los privilegios por defecto de Supabase (ALTER DEFAULT PRIVILEGES): la comparación no vería un REVOKE que falte.')
+  process.exit(1)
 }
 let fallas = 0
 fallas += imprimir('1. supabase/schema.sql vs schema.sql + todas las migraciones (sin módulo Cursos)',

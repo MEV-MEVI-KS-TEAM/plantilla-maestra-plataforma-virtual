@@ -68,3 +68,13 @@ GRANT USAGE ON SCHEMA public, auth, storage TO anon, authenticated, service_role
 GRANT SELECT ON storage.objects TO authenticated;
 GRANT SELECT ON storage.buckets TO authenticated;
 GRANT ALL    ON storage.objects, storage.buckets TO service_role;
+
+-- Supabase da ALL de fábrica a los tres roles sobre todo objeto NUEVO de public
+-- (ALTER DEFAULT PRIVILEGES del rol postgres). Sin emularlo, en el Postgres local
+-- una tabla nace sin GRANT y una función solo con EXECUTE para PUBLIC: todo
+-- `REVOKE … FROM anon, authenticated` sería un no-op y el comparador no vería
+-- que falta (D22c, D22d, #185). Revisión del Bloque E3.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES    TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+GRANT ALL ON storage.objects, storage.buckets TO anon, authenticated;
