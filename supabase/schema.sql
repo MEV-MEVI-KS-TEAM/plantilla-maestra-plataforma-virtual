@@ -1034,10 +1034,14 @@ CREATE POLICY "branding: lectura abierta"
 --  8. DATOS INICIALES — MATERIA DEMO
 -- ============================================================
 
-INSERT INTO public.materias (nombre, descripcion, nivel, orden, icono, color)
-VALUES
-  ('Tutoría de Ingreso', 'Orientación inicial para nuevos alumnos', 'demo', 0, '🎓', '#3AAFA9')
-ON CONFLICT DO NOTHING;
+-- Bloque E3 (Fase 6): aquí se sembraba una materia «Tutoría de Ingreso» (sin el
+-- «I», UUID al azar) que scripts/schema.sql no trae. Con el seed de setup.sql
+-- encima, seed-crear-evaluaciones.sql le creaba un «Examen Final — Tutoría de
+-- Ingreso» SIN preguntas (Bug D: un examen vacío a la vista del alumno) y la base
+-- quedaba con 26 materias en vez de 25. La materia demo de verdad es «Tutoría de
+-- Ingreso I» (UUID fijo f0551b82-…) y la siembra scripts/seed-demo-materia.sql.
+-- Los dos instaladores ya no difieren en datos: lo compara
+-- scripts/verificar-schema/comparar-instaladores.mjs (comparación 4).
 
 
 -- ============================================================

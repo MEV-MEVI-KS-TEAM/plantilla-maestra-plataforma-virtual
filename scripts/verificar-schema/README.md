@@ -18,6 +18,7 @@ de función, permisos de ejecución, triggers, políticas —también las de
 | `BS` | `B` + `scripts/setup.sql` (los seeds, corridos desde `scripts/`) |
 | `BM` | `B` + `scripts/migracion-cursos-diplomados.sql` + todas las `supabase/migrations/*.sql` en orden de nombre |
 | `SM` | `scripts/schema.sql` + `scripts/setup.sql` + lo mismo que `BM` (la ruta del combo: TAREA 3 y 3.9 de PROMPTS-MAESTROS) |
+| `SS` | `scripts/schema.sql` + `scripts/setup.sql` (para comparar datos con `BS`) |
 
 Comparaciones (sale con 1 si alguna tiene una diferencia no prevista):
 
@@ -26,6 +27,11 @@ Comparaciones (sale con 1 si alguna tiene una diferencia no prevista):
    leen tablas del módulo); una excepción que ya no hace falta también es error.
 2. `BM` vs `SM`: los dos instaladores con las migraciones encima.
 3. `B` vs `BS`: `setup.sql` corre limpio sobre `B` y no le cambia el esquema.
+4. `BS` vs `SS` (= `scripts/schema.sql` + `setup.sql`): los dos instaladores dejan
+   los **mismos datos** sembrados (materias, meses, semanas, evaluaciones,
+   preguntas, quiz) y **ninguna evaluación sin preguntas** (Bug D). Nació en la
+   Fase 6 del Bloque E: `supabase/schema.sql` sembraba una materia demo vieja que
+   recibía un examen vacío.
 
 `harness-supabase.sql` emula lo que Supabase da por hecho y Postgres pelado no
 (roles `anon`/`authenticated`/`service_role`, `auth.users`, `auth.uid()`,

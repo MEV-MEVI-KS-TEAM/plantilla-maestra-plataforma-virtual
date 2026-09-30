@@ -20,6 +20,9 @@
  *   2. BM vs SM: los dos instaladores tienen que acabar en la MISMA base.
  *   3. B  vs BS: setup.sql corre limpio sobre B (sus seeds usan el UNIQUE de
  *      preguntas) y no le cambia el esquema.
+ *   4. BS vs SS: con el seed encima, los dos instaladores dejan los MISMOS datos
+ *      (materias, meses, semanas, evaluaciones, preguntas, quiz) y ninguna
+ *      evaluación sin preguntas (Bug D).
  *
  * Lo que se exime está en `EXENTO_*` con su porqué; una exención que ya no
  * aparece en la diferencia también es error (no se acumulan exenciones zombi).
@@ -29,7 +32,7 @@
  *     node scripts/verificar-schema/comparar-instaladores.mjs
  * Necesita un cluster local ya arriba en 127.0.0.1:$PGPORT con usuario
  * `postgres` sin contraseña (ver scripts/verificar-schema/README.md). Crea y
- * borra las bases `verif_b`, `verif_bs`, `verif_bm` y `verif_sm`.
+ * borra las bases `verif_b`, `verif_bs`, `verif_ss`, `verif_bm` y `verif_sm`.
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -75,10 +78,23 @@ const CAMINOS = {
   // Los seeds de setup.sql sobre B: las 265 preguntas entran con
   // ON CONFLICT (evaluacion_id, pregunta) y sin el UNIQUE fallan con 42P10.
   BS: [['supabase/schema.sql'], ['setup.sql', path.join(RAIZ, 'scripts')]],
+  // Lo mismo con el instalador del combo: para comparar los DATOS sembrados.
+  SS: [['scripts/schema.sql'], ['setup.sql', path.join(RAIZ, 'scripts')]],
   BM: [['supabase/schema.sql'], [CURSOS_BASE], ...MIGRACIONES.map((m) => [m])],
   // setup.sql usa `\i` con rutas relativas a scripts/: se corre desde ahí.
   SM: [['scripts/schema.sql'], ['setup.sql', path.join(RAIZ, 'scripts')], [CURSOS_BASE], ...MIGRACIONES.map((m) => [m])],
 }
+
+// Los datos que siembra setup.sql, y las evaluaciones que quedarían vacías.
+const CONTEO_DATOS = `SELECT 'materias|' || count(*) FROM materias
+  UNION ALL SELECT 'meses_contenido|' || count(*) FROM meses_contenido
+  UNION ALL SELECT 'semanas|' || count(*) FROM semanas
+  UNION ALL SELECT 'evaluaciones|' || count(*) FROM evaluaciones
+  UNION ALL SELECT 'preguntas|' || count(*) FROM preguntas
+  UNION ALL SELECT 'quiz_semana|' || count(*) FROM quiz_semana
+  UNION ALL SELECT 'evaluaciones_sin_preguntas|' || count(*) FROM evaluaciones e
+    WHERE NOT EXISTS (SELECT 1 FROM preguntas p WHERE p.evaluacion_id = e.id)`
+const DATOS = {}
 
 function armar(nombre) {
   const db = `verif_${nombre.toLowerCase()}`
@@ -90,6 +106,7 @@ function armar(nombre) {
     catch (e) { throw new Error(`[${nombre}] falló ${archivo}\n${e.message}`) }
   }
   const foto = psql(db, ['-f', path.join(AQUI, 'foto-esquema.sql')]).split(/\r?\n/).filter(Boolean)
+  DATOS[nombre] = psql(db, ['-tAc', CONTEO_DATOS]).split(/\r?\n/).filter(Boolean)
   // VERIF_CONSERVAR=1 deja las bases para inspeccionarlas (se borran en la siguiente corrida).
   if (!process.env.VERIF_CONSERVAR) psql('postgres', ['-c', `DROP DATABASE IF EXISTS ${db}`])
   if (SALIDA) fs.writeFileSync(path.join(SALIDA, `foto-${nombre}.txt`), foto.join('\n') + '\n')
@@ -196,5 +213,16 @@ fallas += imprimir('2. instalador B + migraciones vs instalador S (combo) + migr
   filtrar(diferencia(fotos.BM, fotos.SM), EXENTO_2, false), 'BM', 'SM')
 fallas += imprimir('3. supabase/schema.sql vs supabase/schema.sql + setup.sql (seeds)',
   filtrar(diferencia(fotos.B, fotos.BS), [], false), 'B ', 'BS')
+{
+  const a = DATOS.BS || [], b = DATOS.SS || []
+  const distintos = a.filter((l) => !b.includes(l)).concat(b.filter((l) => !a.includes(l)))
+  const vacias = [...a, ...b].filter((l) => l.startsWith('evaluaciones_sin_preguntas|') && !l.endsWith('|0'))
+  const n = new Set(distintos).size + (vacias.length ? 1 : 0)
+  console.log(`\n== 4. datos sembrados: supabase/schema.sql + setup.sql vs scripts/schema.sql + setup.sql: ${n} problema(s)`)
+  for (const l of new Set(distintos)) console.log(`  • ${l}  (${a.includes(l) ? 'BS' : 'SS'})`)
+  if (vacias.length) console.log(`  • evaluaciones sin preguntas (Bug D): ${vacias.join(' · ')}`)
+  console.log(`  BS: ${a.join(' · ')}`)
+  fallas += n
+}
 console.log(fallas ? `\n✖ ${fallas} problema(s)` : '\n✔ los instaladores son equivalentes')
 process.exit(fallas ? 1 : 0)
