@@ -37,7 +37,7 @@
  */
 import { CONFIG } from '@/lib/config'
 import { codigoMoneda } from '@/lib/moneda'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Lock } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
 import type { SiteConfigOverrides } from '@/lib/site-config-core'
@@ -150,6 +150,15 @@ export default function PersonalizarPage() {
   const [modal, setModal] = useState<null | 'precios' | 'restaurar'>(null)
 
   const dirty = !mismoContenido(overrides, overridesBase)
+  // El borrador y la base VIGENTES para lo asíncrono (Restaurar, #279): lo que
+  // el admin teclee mientras el DELETE está en vuelo no debe perderse, y el
+  // cierre del callback solo conoce el render en que se confirmó el modal.
+  const overridesVigentes = useRef(overrides)
+  const baseVigente = useRef(overridesBase)
+  useEffect(() => {
+    overridesVigentes.current = overrides
+    baseVigente.current = overridesBase
+  }, [overrides, overridesBase])
   // La barra fija tapa el final del formulario; el padding se reserva aquí y
   // no en el layout, que es común a todo el admin.
   const espacioBarra = puedeEditar ? 'pb-24' : 'pb-6'
@@ -369,7 +378,7 @@ export default function PersonalizarPage() {
       // lo que cargó) se vuelve a poner encima: el modal promete que NO cambia.
       // El diseño del borrador sí se va.
       const conservados = (data.overrides ?? {}) as SiteConfigOverrides
-      const borrador = conservarNegocioDelBorrador(conservados, overrides, overridesBase)
+      const borrador = conservarNegocioDelBorrador(conservados, overridesVigentes.current, baseVigente.current)
       setMerged(data.merged as ConfigEditable)
       setOverrides(borrador)
       setOverridesBase(conservados)
@@ -391,7 +400,7 @@ export default function PersonalizarPage() {
     } finally {
       setRestaurando(false)
     }
-  }, [overrides, overridesBase, showToast, irAlCampo])
+  }, [showToast, irAlCampo])
 
   // ─── Datos derivados para la vista previa ──────────────────────────────────
 

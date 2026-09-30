@@ -430,11 +430,12 @@ ${ul([
   ])}
 <div class="note"><b>Publicar y volver atrás</b><p>Cada cambio se guarda cuando
 pulsas <b>Publicar cambios</b>. <b>Restaurar diseño original</b> devuelve tu
-logo, tus colores y los títulos y frases de tu página a como se te entregaron;
-tu nombre, tu eslogan, tu WhatsApp, tu correo, tus redes, tus precios, tus
-preguntas frecuentes y tus testimonios se quedan como los dejaste (cada campo
-tiene además su propio <b>Restaurar</b>). Nada de lo que pruebes es
-irreversible.</p></div>
+logo, tus colores y los títulos y frases de venta de tu página a como se te
+entregaron; tu nombre, tu eslogan, tu WhatsApp, tu correo, tus redes, tus
+precios, tus planes y el contenido con datos de tu escuela (preguntas
+frecuentes, testimonios, cifras, pasos, respaldos y carreras) se quedan como
+los dejaste (cada campo tiene además su propio <b>Restaurar</b>). Nada de lo
+que pruebes es irreversible.</p></div>
 ${d.sinWhatsApp ? `<div class="note"><b>⭐ Tu WhatsApp, en cuanto lo captures</b>
 <p>Tu página se entrega <b>sin botones de WhatsApp</b> a propósito: no nos diste
 un número y preferimos no publicar uno que no lleve a ninguna parte. En cuanto

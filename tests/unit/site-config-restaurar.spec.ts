@@ -264,9 +264,47 @@ test('9b. una pestaña desfasada no reinyecta valores viejos: lo que el admin no
     redes: { facebook: 'https://facebook.com/nuevo' },
   } as SiteConfigOverrides
   expect(conservarNegocioDelBorrador(conservados, borrador, base)).toEqual(conservados)
-  // Si el admin sí cambió uno (el correo), solo ese se pone encima.
-  const conCorreo = { ...borrador, contactoEmail: 'nuevo@escuela.test' } as SiteConfigOverrides
-  expect(conservarNegocioDelBorrador(conservados, conCorreo, base)).toEqual({ ...conservados, contactoEmail: 'nuevo@escuela.test' })
+  // Si el admin sí cambió el correo, ese grupo (los dos correos) se pone encima.
+  const conCorreo = { ...borrador, email: 'nuevo@escuela.test', contactoEmail: 'nuevo@escuela.test' } as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(conservados, conCorreo, base)).toEqual({
+    ...conservados,
+    email: 'nuevo@escuela.test',
+    contactoEmail: 'nuevo@escuela.test',
+  })
+})
+
+test('9c. los planes se fusionan plan por plan y campo por campo; los grupos del editor van enteros', () => {
+  // Planes: la pestaña cargó {} y otra publicó 6m apagado + 3m a 1000. Aquí el
+  // admin solo cambió la mensualidad de 3m. Nada de lo ajeno se pierde.
+  const base = {} as SiteConfigOverrides
+  const borrador = { modalidades: { '3_meses': { mensualidad: 1200 } } } as unknown as SiteConfigOverrides
+  const conservados = {
+    modalidades: { '3_meses': { mensualidad: 1000, activa: true }, '6_meses': { activa: false } },
+  } as unknown as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(conservados, borrador, base)).toEqual({
+    modalidades: { '3_meses': { mensualidad: 1200, activa: true }, '6_meses': { activa: false } },
+  })
+  // Quitar con «Restaurar plan» el único override que cargó no borra los planes ajenos.
+  const base2 = { modalidades: { '3_meses': { mensualidad: 900 } } } as unknown as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(conservados, {}, base2)).toEqual({
+    modalidades: { '3_meses': { activa: true }, '6_meses': { activa: false } },
+  })
+  // Lo mismo en licenciaturas.
+  const lic = conservarNegocioDelBorrador(
+    { licenciaturas: { modalidades: { a: { mensualidad: 1 }, b: { mensualidad: 2 } } } } as unknown as SiteConfigOverrides,
+    { licenciaturas: { modalidades: { a: { mensualidad: 5 } } } } as unknown as SiteConfigOverrides,
+    { licenciaturas: { modalidades: { a: { mensualidad: 1 } } } } as unknown as SiteConfigOverrides,
+  ) as Obj
+  expect(lic).toEqual({ licenciaturas: { modalidades: { a: { mensualidad: 5 }, b: { mensualidad: 2 } } } })
+
+  // Grupo WhatsApp: la otra pestaña cambió el número; aquí el admin solo retocó
+  // el texto → el grupo entero del borrador (número y texto coherentes entre sí).
+  const baseW = { whatsapp: '521111', contactoTelefono: '521111', whatsappDisplay: '52 1111' } as SiteConfigOverrides
+  const borrW = { whatsapp: '521111', contactoTelefono: '521111', whatsappDisplay: '(52) 1111' } as SiteConfigOverrides
+  const consW = { whatsapp: '522222', contactoTelefono: '522222', whatsappDisplay: '52 2222', whatsappUrl: 'https://wa.me/522222' } as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(consW, borrW, baseW)).toEqual(borrW)
+  // …y si no tocó nada del grupo, se queda el del servidor completo.
+  expect(conservarNegocioDelBorrador(consW, baseW, baseW)).toEqual(consW)
 })
 
 // ─── 5. Bucket branding ──────────────────────────────────────────────────────
@@ -377,11 +415,13 @@ test('13. el DELETE restaura solo el diseño y ya no vacía la fila ni el bucket
 test('14. tras restaurar, el editor parte de lo conservado y le pone encima el negocio sin publicar', () => {
   const pagina = leer('src/app/(dashboard)/admin/configuracion/page.tsx')
   const ini = pagina.indexOf('const restaurarDisenoOriginal')
-  const fin = pagina.indexOf('}, [overrides, overridesBase, showToast, irAlCampo])', ini)
+  const fin = pagina.indexOf('}, [showToast, irAlCampo])', ini)
   expect(ini).toBeGreaterThan(-1)
   expect(fin).toBeGreaterThan(ini)
   const bloque = pagina.slice(ini, fin)
-  expect(bloque).toContain('conservarNegocioDelBorrador(conservados, overrides, overridesBase)')
+  // Lee el borrador VIGENTE (lo tecleado mientras el DELETE estaba en vuelo cuenta).
+  expect(bloque).toContain('conservarNegocioDelBorrador(conservados, overridesVigentes.current, baseVigente.current)')
+  expect(pagina).toContain('overridesVigentes.current = overrides')
   expect(bloque).toContain('setOverrides(borrador)')
   expect(bloque).toContain('setOverridesBase(conservados)')
   // El aviso se calcula sobre el borrador que queda, no solo sobre lo publicado.
@@ -393,9 +433,14 @@ test('14. tras restaurar, el editor parte de lo conservado y le pone encima el n
 test('15. el PDF y el mensaje de entrega ya no prometen que Restaurar regresa todo', () => {
   const doc = leer('scripts/entrega/documento.mjs')
   expect(doc).not.toContain('exactamente a como se te entregó')
-  expect(doc).toContain('se quedan como los dejaste')
+  expect(doc).toContain('se quedan como')
   const msg = leer('scripts/entrega/generar-entrega.mjs')
   expect(msg).not.toContain('devuelve todo a como se te entregó')
-  expect(msg).toContain('tus precios no cambian')
-  expect(msg).toContain('cada campo tiene además su propio «Restaurar»')
+  expect(msg).toContain('no cambian; cada campo tiene además su propio «Restaurar»')
+  // Las dos piezas dicen lo mismo que el modal: frases DE VENTA, y nombran el contenido que se queda.
+  for (const [nombre, texto] of [['documento.mjs', doc.replace(/\s+/g, ' ')], ['generar-entrega.mjs', msg]]) {
+    for (const f of ['frases de venta', 'tus planes', 'preguntas frecuentes', 'testimonios', 'cifras', 'pasos', 'respaldos', 'carreras']) {
+      expect(texto, `${nombre}: ${f}`).toContain(f)
+    }
+  }
 })

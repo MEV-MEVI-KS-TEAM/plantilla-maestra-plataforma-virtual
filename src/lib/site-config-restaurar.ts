@@ -167,8 +167,11 @@ function copiaJson<T>(v: T): T {
  * ESTE borrado (`colores: {}`, `landing: {}`) también se quita, para que la
  * fila restaurada no arrastre cáscaras vacías.
  */
-function quitarRuta(obj: ObjetoPlano, ruta: string): void {
-  const partes = ruta.split('.')
+type Ruta = string | ReadonlyArray<string>
+const segmentos = (ruta: Ruta): string[] => (typeof ruta === 'string' ? ruta.split('.') : [...ruta])
+
+function quitarRuta(obj: ObjetoPlano, ruta: Ruta): void {
+  const partes = segmentos(ruta)
   const hoja = partes.pop() as string
   let actual: ObjetoPlano = obj
   const cadena: Array<[ObjetoPlano, string]> = []
@@ -189,17 +192,17 @@ function quitarRuta(obj: ObjetoPlano, ruta: string): void {
 }
 
 /** ¿La ruta existe? Y su valor. */
-function leerRuta(obj: ObjetoPlano, ruta: string): { hay: boolean; valor?: unknown } {
+function leerRuta(obj: ObjetoPlano, ruta: Ruta): { hay: boolean; valor?: unknown } {
   let actual: unknown = obj
-  for (const parte of ruta.split('.')) {
+  for (const parte of segmentos(ruta)) {
     if (!esObjetoPlano(actual) || !(parte in actual)) return { hay: false }
     actual = actual[parte]
   }
   return { hay: true, valor: actual }
 }
 
-function ponerRuta(obj: ObjetoPlano, ruta: string, valor: unknown): void {
-  const partes = ruta.split('.')
+function ponerRuta(obj: ObjetoPlano, ruta: Ruta, valor: unknown): void {
+  const partes = segmentos(ruta)
   const hoja = partes.pop() as string
   let actual = obj
   for (const parte of partes) {
@@ -225,6 +228,60 @@ export function restaurarDiseno(data: unknown): ObjetoPlano {
 }
 
 /**
+ * Claves que el editor escribe JUNTAS (el número de WhatsApp y sus derivados,
+ * los dos correos, los dos CCT): en la fusión van como una sola, para que el
+ * borrador nunca quede con el número de una pestaña y el texto de otra.
+ */
+const GRUPOS_NEGOCIO: ReadonlyArray<ReadonlyArray<string>> = [
+  ['whatsapp', 'whatsappUrl', 'whatsappDisplay', 'contactoTelefono'],
+  ['email', 'contactoEmail'],
+  ['cct', 'landing.cct'],
+]
+
+/** Planes: objetos indexados por id; se fusionan plan por plan y campo por campo. */
+const CLAVES_POR_PLAN: ReadonlySet<string> = new Set(['modalidades', 'licenciaturas.modalidades'])
+
+const SEGMENTOS_PROHIBIDOS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype'])
+
+/** ¿El admin cambió esta ruta en su borrador respecto de lo que cargó? */
+function cambiada(borrador: ObjetoPlano, base: ObjetoPlano, ruta: Ruta): boolean {
+  const b = leerRuta(borrador, ruta)
+  const c = leerRuta(base, ruta)
+  return !(b.hay === c.hay && (!b.hay || mismoContenido(b.valor, c.valor)))
+}
+
+/** Pone en `salida` lo que el borrador tiene en `ruta` (su valor, o su ausencia). */
+function tomarDelBorrador(salida: ObjetoPlano, borrador: ObjetoPlano, ruta: Ruta): void {
+  const b = leerRuta(borrador, ruta)
+  if (b.hay) ponerRuta(salida, ruta, b.valor)
+  else quitarRuta(salida, ruta)
+}
+
+function fusionarPlanes(salida: ObjetoPlano, borrador: ObjetoPlano, base: ObjetoPlano, ruta: string): void {
+  const planes = (o: ObjetoPlano) => {
+    const v = leerRuta(o, ruta).valor
+    return esObjetoPlano(v) ? v : {}
+  }
+  const pb = planes(borrador)
+  const pc = planes(base)
+  for (const id of new Set([...Object.keys(pb), ...Object.keys(pc)])) {
+    if (SEGMENTOS_PROHIBIDOS.has(id)) continue
+    const rutaPlan = [...ruta.split('.'), id]
+    if (!esObjetoPlano(pb[id] ?? {}) || !esObjetoPlano(pc[id] ?? {})) {
+      // Un plan que no es objeto (fila escrita a mano): se compara entero.
+      if (cambiada(borrador, base, rutaPlan)) tomarDelBorrador(salida, borrador, rutaPlan)
+      continue
+    }
+    const fb = (pb[id] ?? {}) as ObjetoPlano
+    const fc = (pc[id] ?? {}) as ObjetoPlano
+    for (const campo of new Set([...Object.keys(fb), ...Object.keys(fc)])) {
+      const rutaCampo = [...rutaPlan, campo]
+      if (cambiada(borrador, base, rutaCampo)) tomarDelBorrador(salida, borrador, rutaCampo)
+    }
+  }
+}
+
+/**
  * El borrador del editor DESPUÉS de restaurar: lo conservado en la fila, más
  * los datos del negocio que el admin cambió en su borrador y aún no publica
  * (tecleados, o quitados con el «Restaurar» de su campo). Sin esto, restaurar
@@ -233,11 +290,13 @@ export function restaurarDiseno(data: unknown): ObjetoPlano {
  * sí se descarta: eso es lo que se restauró.
  *
  * Fusión a tres bandas contra `base` (lo publicado que el editor cargó): solo
- * cuenta como cambio del admin la ruta donde el borrador difiere de `base`. En
- * las demás manda lo conservado en la fila, que puede ser MÁS NUEVO que lo que
- * esta pestaña cargó (otra pestaña u otro admin publicó en medio); tomar el
- * borrador completo reinyectaba esos valores viejos y el siguiente «Publicar»
- * los devolvía a la fila.
+ * cuenta como cambio del admin lo que en el borrador difiere de `base`. En lo
+ * demás manda lo conservado en la fila, que puede ser MÁS NUEVO que lo que esta
+ * pestaña cargó (otra pestaña u otro admin publicó en medio); tomar el borrador
+ * completo reinyectaba esos valores viejos y el siguiente «Publicar» los
+ * devolvía a la fila. La unidad es el campo; los grupos que el editor escribe
+ * juntos van enteros (`GRUPOS_NEGOCIO`), los planes van plan por plan y campo
+ * por campo, y una lista (FAQ, testimonios…) va entera.
  */
 export function conservarNegocioDelBorrador(
   conservados: SiteConfigOverrides,
@@ -247,12 +306,17 @@ export function conservarNegocioDelBorrador(
   const salida = copiaJson((conservados ?? {}) as ObjetoPlano)
   const fuente = (borrador ?? {}) as ObjetoPlano
   const cargado = (base ?? {}) as ObjetoPlano
+  // Un grupo con cualquier cambio va entero del borrador. (Sus claves vuelven a
+  // pasar por el bucle de abajo, que solo toma las que cambiaron: son las mismas
+  // que ya se copiaron.)
+  for (const grupo of GRUPOS_NEGOCIO) {
+    if (grupo.some((ruta) => cambiada(fuente, cargado, ruta))) {
+      for (const ruta of grupo) tomarDelBorrador(salida, fuente, ruta)
+    }
+  }
   for (const ruta of CLAVES_NEGOCIO) {
-    const b = leerRuta(fuente, ruta)
-    const c = leerRuta(cargado, ruta)
-    if (b.hay === c.hay && (!b.hay || mismoContenido(b.valor, c.valor))) continue
-    if (b.hay) ponerRuta(salida, ruta, b.valor)
-    else quitarRuta(salida, ruta)
+    if (CLAVES_POR_PLAN.has(ruta)) fusionarPlanes(salida, fuente, cargado, ruta)
+    else if (cambiada(fuente, cargado, ruta)) tomarDelBorrador(salida, fuente, ruta)
   }
   return salida as SiteConfigOverrides
 }
