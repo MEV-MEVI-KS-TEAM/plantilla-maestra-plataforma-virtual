@@ -1,11 +1,16 @@
 'use client'
 
 import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
+import { CONFIG } from '@/lib/config'
+import { MarcoEmbebido } from '@/components/cursos/MarcoEmbebido'
+
+const DOMINIOS_HTML = CONFIG.contenidoHtml?.dominios ?? []
 
 const PROVIDER_LABEL: Record<string, string> = {
   youtube: 'YouTube',
   vimeo: 'Vimeo',
   loom: 'Loom',
+  html: 'Página de tu escuela',
 }
 
 /**
@@ -16,12 +21,12 @@ export function VideoPreview({ url, titulo }: { url: string; titulo?: string }) 
   const trimmed = url.trim()
   if (!trimmed) return null
 
-  const parsed = parseVideoUrl(trimmed)
+  const parsed = parseVideoUrl(trimmed, DOMINIOS_HTML)
 
   if (!parsed) {
     return (
       <p className="text-xs mt-2" style={{ color: '#F59E0B' }}>
-        Pega un enlace de YouTube, Vimeo o Loom. (Puedes guardar la lección de todas formas.)
+        Pega un enlace de YouTube, Vimeo o Loom{DOMINIOS_HTML.length > 0 && <>, o de una página de {DOMINIOS_HTML.join(', ')} (con https)</>}. (Puedes guardar la lección de todas formas.)
       </p>
     )
   }
@@ -34,17 +39,10 @@ export function VideoPreview({ url, titulo }: { url: string; titulo?: string }) 
       >
         {PROVIDER_LABEL[parsed.provider]}
       </span>
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-primario)' }}>
-        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-          <iframe
-            src={parsed.embedUrl}
-            title={titulo?.trim() ? `Video: ${titulo}` : 'Vista previa del video de la lección'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-          />
-        </div>
-      </div>
+      <MarcoEmbebido
+        parsed={parsed}
+        title={titulo?.trim() ? `${parsed.provider === 'html' ? 'Contenido' : 'Video'}: ${titulo}` : 'Vista previa de la lección'}
+      />
     </div>
   )
 }

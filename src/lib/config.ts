@@ -638,6 +638,16 @@ export const CONFIG = {
     }>,
   },
 
+  // === CONTENIDO HTML EN LECCIONES ===
+  // Dominios DE LA ESCUELA cuyas páginas se pueden mostrar dentro de una lección
+  // del módulo Cursos, pegando su link en «URL de video» igual que YouTube
+  // (Sénderi, TICKET-2026-09-28-13). Vacío = solo YouTube, Vimeo y Loom.
+  // Cuenta el dominio y todos sus subdominios; solo https; iframe con sandbox.
+  // Ejemplo: dominios: ['miescuela.mx'] as readonly string[],
+  contenidoHtml: {
+    dominios: [] as readonly string[],
+  },
+
   cursosIngreso: {
     activa: false,
     pagoUnico: true,
