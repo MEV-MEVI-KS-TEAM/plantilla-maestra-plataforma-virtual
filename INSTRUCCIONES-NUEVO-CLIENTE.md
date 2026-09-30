@@ -38,17 +38,18 @@
 - Ejecutar `scripts/seed-quiz-semanal-universal.sql` (576 preguntas quiz semanal: 12 mat prepa × 8 sem × 3 preg + 12 mat sec × 8 sem × 3 preg, distribución 6/6/6/6 a/b/c/d)
 
 ### Paso 4: Crear usuario admin
-- En Supabase → Authentication → Add User → Create new user
+- En Supabase → Authentication → Add user → Create new user, con «Auto Confirm User»
 - Email y password del admin del cliente
 - En SQL Editor (rol en minúsculas — el CHECK de usuarios.rol solo acepta 'alumno' | 'admin' | 'secretario'; no hace falta copiar el UUID):
-```sql
-INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
-SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
-  FROM auth.users WHERE email = '<correo del admin>'
-ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
-  nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos;
-```
-- El trigger `handle_new_user` ya le creó al admin su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el panel y la bitácora muestran el correo del admin. Debe responder `INSERT 0 1`; `INSERT 0 0` = ese correo no está en Auth. Un apóstrofo en el nombre va doble (`O''Higgins`).
+  ```sql
+  INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+  SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+    FROM auth.users WHERE email = lower(btrim('<correo del admin>'))
+  ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+    nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos
+  RETURNING id, email, nombre, apellidos, rol;
+  ```
+- Como el admin se crea después del esquema, el trigger `handle_new_user` ya le creó su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el encabezado del panel y la bitácora muestran el correo del admin. Debe devolver **1 fila** con rol `admin` y el nombre (en psql además sale `INSERT 0 1`); 0 filas = ese correo no está en Auth (la receta ya ignora mayúsculas y espacios). Un apóstrofo en el nombre va doble (`O''Higgins`).
 - Las cuentas de staff adicionales (admin o secretario) se crean después desde la app en /admin/usuarios
 
 ### Paso 5: Crear planes de estudio

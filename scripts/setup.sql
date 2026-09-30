@@ -19,7 +19,7 @@
 --   5. seed-preguntas-evaluaciones-universal.sql — 265 INSERT de preguntas reales (canónico, cierra Bug C)
 --
 -- Pasos manuales POSTERIORES a este script:
---   - create-admin.sql            — Crear usuario administrador (requiere UUID real)
+--   - Crear el admin: Auth > Add user + receta de SETUP.md, Paso 3 punto 4 (create-admin.sql está comentado entero)
 --   - node scripts/update-videos.mjs   — Poblar video_url via YouTube API
 -- ============================================================
 
