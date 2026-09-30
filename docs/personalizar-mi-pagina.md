@@ -96,10 +96,10 @@ el código. Lo único aparte es el **bucket `branding`** (público, 2 MB, guarda
 **sin `image/svg+xml`**, ver §6; lectura pública, escritura solo service role), porque
 `scripts/schema.sql` no crea ni un bucket:
 
-- lo crea el operador a mano en el pre-vuelo junto con los otros 8 (`scripts/README.md`, "Workflow
-  de cliente nuevo", paso 2; `SETUP.md` paso 9), **o**
-- se corre `supabase/migrations/20260908120000_site_config.sql` desde el SQL Editor, que lo inserta
-  con `ON CONFLICT DO NOTHING`.
+- se corre `supabase/migrations/20260908120000_site_config.sql` (la TAREA 3.9 de PROMPTS-MAESTROS
+  corre todas las migraciones; `SETUP.md` paso 9), que lo inserta con `ON CONFLICT DO NOTHING`, **o**
+- lo trae `supabase/schema.sql` junto con los otros 4 de su ruta. En total la app usa 6 buckets
+  (`scripts/README.md`, "Workflow de cliente nuevo", paso 2).
 
 ## 4. Cliente LEGACY (F-Flota, fuera de este PR)
 

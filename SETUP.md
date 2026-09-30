@@ -1,7 +1,7 @@
 # 🚀 Setup Nuevo Cliente LMS — Tiempo estimado: 2 horas
 
 ## Paso 1 — Crear repo desde template (5 min)
-1. Ir a github.com/KssK-code/ivs-virtual-plataforma
+1. Ir a github.com/MEV-MEVI-KS-TEAM/plantilla-maestra-plataforma-virtual
 2. Clic en "Use this template" → "Create a new repository"
 3. Nombre del repo: nombre-cliente-plataforma
 4. Clone local: git clone [url]
@@ -10,7 +10,10 @@
 ## Paso 2 — Personalizar cliente (10 min)
 Editar SOLO este archivo: src/lib/config.ts
 - nombre, nombreCompleto
-- whatsapp, whatsappDisplay
+- whatsapp: `52` + 10 dígitos (12 en total). `whatsappDisplay` se deja vacío: la
+  app lo arma a partir del número (Bloque A3)
+- email / contactoEmail: el correo PÚBLICO de la escuela (el que ven alumnos y
+  landing); el del admin es su usuario, no va aquí
 - logo (subir archivo a /public/)
 - colores (primary, secondary, accent)
 - dominio
@@ -25,7 +28,7 @@ Editar SOLO este archivo: src/lib/config.ts
 > ✅ **LA CADENA COMPLETA ES RE-EJECUTABLE** (desde B8.1): la prueba original se
 > hizo con 19 migraciones y las 19 pasaron el replay — dos pasadas limpias
 > contra un proyecto Supabase real. `supabase/migrations/` ha crecido desde
-> entonces (28 archivos al momento de escribir esto; el número no es estático,
+> entonces (45 archivos el 29-sep-2026; el número no es estático,
 > verificar con `ls supabase/migrations | wc -l`). (Hubo una época
 > en que no: B6 amplió dos funciones de ingresos y el replay moría en
 > `20260716150000` y `20260717120000` con `cannot change return type` — es el
@@ -44,27 +47,38 @@ Editar SOLO este archivo: src/lib/config.ts
    > | `scripts/schema.sql` | **Línea tradicional.** Se mantiene a mano. | `mev-onboarding.py` (TAREA 3, paso 1), este documento, `INSTRUCCIONES-NUEVO-CLIENTE.md`, `scripts/README.md` |
    > | `supabase/schema.sql` | **Línea Solo-Cursos** y desarrollo local con la cadena de migraciones. | `INSTRUCCIONES-SOLO-CURSOS.md`, `supabase db reset` |
    >
-   > **`supabase/schema.sql` es hoy un superconjunto estricto de
-   > `scripts/schema.sql`**: mismas 22 tablas, mismas columnas, 13 funciones,
-   > 3 triggers y 22 RLS — más las **políticas de storage** de los buckets
-   > `avatares`, `documentos`, `constancias`, `recibos`, `materias` y `branding`,
-   > que solo él declara.
-   > Por la ruta de este documento esas políticas se crean en el paso 9
-   > (Buckets de Storage), así que tampoco falta nada aquí.
+   > **Los dos acaban en la MISMA base** (Bloque E3, 29-sep-2026):
+   > - `supabase/schema.sql` solo = aplicar TODAS las migraciones, salvo el módulo
+   >   Cursos (que instalan `scripts/migracion-cursos-diplomados.sql` y sus
+   >   migraciones). Trae además los 5 buckets base con sus políticas
+   >   (`avatars`, `documentos`, `recibos`, `materias`, `branding`).
+   > - `scripts/schema.sql` no trae storage (con el rol del onboarding el DDL de
+   >   `storage.objects` aborta el script): los buckets llegan con las migraciones
+   >   (paso 9).
+   > - Con las migraciones encima, los dos caminos dan el mismo catálogo: tablas,
+   >   columnas, restricciones, índices, cuerpos de función, políticas, permisos
+   >   por columna y buckets.
    >
-   > Los dos archivos los vigila **`tests/unit/guardian-schema-onboarding.spec.ts`
-   > en ambas direcciones**: que todo `CREATE` de `supabase/migrations/` llegue a
-   > `scripts/schema.sql`, y que toda columna de `scripts/schema.sql` exista
-   > también en `supabase/schema.sql`. Si agregas algo a uno, el guardián te
-   > exige el otro.
+   > Lo prueba **`scripts/verificar-schema/comparar-instaladores.mjs`** en un
+   > Postgres local (ver su README) y lo vigilan, sin Postgres,
+   > **`tests/unit/e3-instaladores-equivalentes.spec.ts`** (todo objeto de las
+   > migraciones está en `supabase/schema.sql`; UNIQUE de preguntas y documentos;
+   > S2; los buckets que crean los instaladores son exactamente los que usa el
+   > código) y **`tests/unit/guardian-schema-onboarding.spec.ts`** (todo `CREATE`
+   > de las migraciones llega a `scripts/schema.sql`). Si agregas algo a uno, los
+   > guardianes te exigen el otro.
+   >
+   > *Antes del Bloque E3* `supabase/schema.sql` se había quedado atrás en 9
+   > puntos (es_admin sin S2 #253, sin `contactado_whatsapp`, sin columnas de
+   > licenciatura ni `6_meses_lic`, sin periodicidad semanal, sin
+   > `idx_pagos_fecha_pago`, sin los UNIQUE de preguntas y de documentos, CHECK de
+   > moneda con otro nombre): sembrar sobre él fallaba con 42P10.
    >
    > *Historia:* hasta ago-2026 `supabase/schema.sql` no traía
    > `semanas.contenido`, `video_url_2` ni `video_url_3`, y usarlo aquí hacía
    > reventar el seed del paso 3 con *column "video_url_2" does not exist*.
    > **Esa advertencia ya no aplica.** Ver **Bug 99** del PLAYBOOK.
 
-   (Al correrlo verás `ERROR: schema "public" already exists` en la línea 28:
-   es inofensivo — toda base de Postgres ya trae `public`. Continúa solo.)
 3. **Seed de contenido** → ejecutar `scripts/setup.sql`
    ⚠️ **Desde dentro de `scripts/`**, no desde la raíz del repo: usa `\i` con
    rutas relativas al *directorio de trabajo*, así que `psql -f scripts/setup.sql`
@@ -102,6 +116,8 @@ Editar SOLO este archivo: src/lib/config.ts
    - `supabase/migrations/20260729121000_fix_s2_es_admin.sql`
      `es_admin()` / `es_staff()` en plpgsql con `LOWER(rol)` y `search_path` (S2).
      Sin esto, un admin con `rol='ADMIN'` en mayúsculas no puede administrar cursos.
+     Los dos `schema.sql` ya la traen (desde el Bloque E3 también
+     `supabase/schema.sql`, #253): en una instalación nueva es un no-op.
      Lo vigila el CHECK 22 de `scripts/post-setup-check.sql`.
    - `supabase/migrations/20260729122000_fix_portadas_storage_policy.sql`
      Corrige la política del bucket para que el alumno vea las portadas.
@@ -161,25 +177,41 @@ Editar SOLO este archivo: src/lib/config.ts
    **`INSTRUCCIONES-SOLO-CURSOS.md`**: la configuración del modo, el catálogo
    público y los 3 pasos posteriores.
 
-8. **Verificación** → ejecutar `scripts/post-setup-check.sql`
+8. **Verificación** → ejecutar `scripts/post-setup-check.sql` (CHECK 1 a 30)
    Reporta ✅/❌ por check. Si todo sale ✅, la plataforma está lista para entregar.
-9. **Buckets de Storage** — los crea el SQL de los pasos anteriores; verificar que existan:
+   Sin seed (línea Solo-Cursos) los CHECK 1-6, 9 y 10 salen ❌ a propósito, y el
+   CHECK 8 sale ❌ hasta crear el admin.
+9. **Buckets de Storage — son 6, los que usa el código** (Bloque E3; lo vigila
+   `tests/unit/e3-instaladores-equivalentes.spec.ts`). `scripts/schema.sql` no
+   crea ninguno: por la ruta de este documento corre las cuatro migraciones de
+   storage (idempotentes; si una política falla por ownership, córrela en el SQL
+   Editor), también en una escuela que no corre 7bis:
+   `supabase/migrations/20260716140000_bucket_recibos.sql` (`recibos`; es la fila 3
+   de 7bis, sin ella «Recibo» del pago da 500),
+   `supabase/migrations/20260819130000_cms_contenido_materiales.sql` (`materias`),
+   `supabase/migrations/20260908120000_site_config.sql` (`branding`) y
+   `supabase/migrations/20260929120000_e3_buckets_de_la_app.sql` (`avatars` y
+   `documentos`). `cursos` viene con el paso 5.
+   (La ruta de PROMPTS-MAESTROS, TAREA 3.9 A1, corre todas las migraciones y ya
+   los trae.) Verificar:
+
+   ```sql
+   SELECT id, public, file_size_limit FROM storage.buckets ORDER BY id;
+   -- 6 filas: avatars t 5242880 · branding t 2097152 · cursos f 10485760 ·
+   --          documentos f 10485760 · materias f 10485760 · recibos f 2097152
+   ```
 
    | Bucket | Privacidad | Límite | Lo crea | Notas |
    |---|---|---|---|---|
-   | `avatares` | **público** | 5 MB | `supabase/schema.sql` → `INSERT INTO storage.buckets` | ⚠️ ver aviso abajo |
-   | `documentos` | privado | 10 MB | idem | documentos del alumno + la constancia |
-   | `constancias` | privado | 10 MB | idem | declarado pero **sin uso en la app** hoy |
-   | `recibos` | privado | 2 MB | idem + `migrations/20260716140000` | recibos de pago |
-   | `branding` | **público** | 2 MB | idem + `migrations/20260908120000_site_config.sql` | logo que sube el admin desde "Personalizar mi página". El bucket solo guarda **png/jpeg/webp** (sin `image/svg+xml`): el editor acepta SVG a la *entrada*, pero la API lo rasteriza a PNG antes de subir. Escritura solo service role |
-   | `cursos` | privado | 10 MB | `scripts/migracion-cursos-diplomados.sql:241` | portadas y PDF de Cursos y Diplomados |
+   | `avatars` | **público** | 5 MB | `supabase/schema.sql` · `migrations/20260929120000` | foto de perfil del alumno (`src/app/api/alumno/avatar/route.ts`, `getPublicUrl`). Escribe solo el servidor. Antes el schema creaba `avatares`, que nadie usa (Bug 103) |
+   | `documentos` | privado | 10 MB | `supabase/schema.sql` · `migrations/20260929120000` | «Mis documentos» del alumno |
+   | `recibos` | privado | 2 MB | `supabase/schema.sql` · `migrations/20260716140000` | recibos de pago |
+   | `materias` | privado | 10 MB, solo PDF | `supabase/schema.sql` · `migrations/20260819130000` | material por semana; solo admin en storage |
+   | `branding` | **público** | 2 MB | `supabase/schema.sql` · `migrations/20260908120000_site_config.sql` | logo que sube el admin desde "Personalizar mi página". El bucket solo guarda **png/jpeg/webp** (sin `image/svg+xml`): el editor acepta SVG a la *entrada*, pero la API lo rasteriza a PNG antes de subir. Escritura solo service role |
+   | `cursos` | privado | 10 MB | `scripts/migracion-cursos-diplomados.sql` | portadas y PDF de Cursos y Diplomados |
 
-   > ⚠️ **Discrepancia conocida `avatares` vs `avatars`.** El schema crea el bucket
-   > `avatares` (en español), pero el código sube la foto de perfil a `avatars`
-   > (en inglés): `src/app/api/alumno/avatar/route.ts:28`, que además usa
-   > `getPublicUrl`. Hasta que se unifique el nombre, **crear también el bucket
-   > `avatars` como público** o la foto de perfil no funciona. No se toca en este
-   > PR porque excede su alcance; queda registrado para no perderlo.
+   > `avatares` y `constancias` ya no se crean: ningún código los usa. En un
+   > cliente ya instalado pueden existir; no estorban (no se borran por inercia).
 10. Copiar: Project URL, anon key, service_role key
 
 ## Paso 4 — Variables de entorno (5 min)
@@ -197,6 +229,22 @@ Copiar .env.example → .env.local y llenar con datos de Supabase
 2. Importar repo GitHub del cliente
 3. Environment Variables → pegar las 3 variables de .env.local
 4. Deploy
+5. **Verifica el commit desplegado** (Bloque E3): el deploy de producción tiene
+   que traer el código de **D22d-1** (plantilla `fe00225`, #273) o posterior. La
+   fila 23 de 7bis (D22d) deja el quiz y el examen mensual sin preguntas con una
+   app anterior.
+   - El commit desplegado: Vercel → Deployments → el de Production muestra su
+     commit; o por la API
+     `curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v13/deployments/<dominio-o-url>?teamId=<team>"`
+     → `meta.githubCommitSha` (el proyecto vive en un team: sin `teamId` responde 404). Tiene que ser la cabeza de `main` del repo del
+     cliente (`git fetch && git rev-parse origin/main`).
+   - Que ese commit trae D22d-1. El repo de un cliente nace de la plantilla SIN
+     su historia, así que no se compara contra `fe00225`: se busca el código que
+     D22d-1 agregó, en el repo del cliente:
+     `git cat-file -e <sha-desplegado>:src/lib/evaluaciones/examen-mensual.ts && git cat-file -e <sha-desplegado>:src/lib/quiz/quiz-semana.ts && echo OK`
+     (en la plantilla misma sirve `git merge-base --is-ancestor fe00225 <sha> && echo OK`).
+   Si no sale OK: actualiza el repo con la plantilla y redeploy desde `main` antes
+   de correr la fila 23.
 
 ## Paso 7 — Dominio (10 min)
 1. Vercel → Settings → Domains → Add
@@ -237,7 +285,7 @@ Detalle completo en `scripts/entrega/README.md`.
 | src/lib/config.ts | Todo |
 | public/logo.png | Logo del cliente |
 | .env.local | Credenciales Supabase |
-| scripts/seed-materias.sql | Materias del cliente |
+| (tras el seed del Paso 3) | Nombres de materias del cliente, por SQL |
 
 ## Qué NO tocar
 - Toda la lógica de meses/materias

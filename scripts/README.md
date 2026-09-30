@@ -142,19 +142,21 @@ SELECT COUNT(*) FROM (
 ## Workflow de cliente nuevo (paso a paso)
 
 1. Crear proyecto Supabase desde dashboard
-2. Crear los 8 buckets de Storage que usa la plantilla — `scripts/schema.sql`
-   **no crea ninguno**, hay que crearlos a mano y verificar que existan:
-   `avatares` y `avatars` (ambos **públicos**: el código sube la foto de
-   perfil a `avatars`, ver `src/app/api/alumno/avatar/route.ts:28` y
-   `SETUP.md:137`), `branding` (**público**, 2 MB, `image/png` + `image/jpeg` +
-   `image/webp`, **sin `image/svg+xml`**: el editor acepta también SVG a la
-   *entrada*, pero la API lo rasteriza a PNG antes de subir, así que en el
-   bucket no hay ni un SVG. El logo que sube el admin desde "Personalizar mi
-   página"; lectura pública, escritura solo service role — lo declara
-   `supabase/migrations/20260908120000_site_config.sql`),
-   `documentos`, `constancias`, `recibos` y `materias`
-   (privados), `cursos` (privado, lo declara `migracion-cursos-diplomados.sql`
-   pero conviene tenerlo listo desde aquí)
+2. Los buckets de Storage: son **6, los que usa el código** (Bloque E3; lo
+   vigila `tests/unit/e3-instaladores-equivalentes.spec.ts`): `avatars`
+   (**público**, 5 MB, foto de perfil: `src/app/api/alumno/avatar/route.ts`
+   guarda `getPublicUrl`), `branding` (**público**, 2 MB, `image/png` +
+   `image/jpeg` + `image/webp`, **sin `image/svg+xml`**: el editor acepta
+   también SVG a la *entrada*, pero la API lo rasteriza a PNG antes de subir.
+   El logo que sube el admin desde "Personalizar mi página"; lectura pública,
+   escritura solo service role), `documentos`, `recibos` y `materias`
+   (privados) y `cursos` (privado, del módulo de Cursos). `scripts/schema.sql`
+   **no crea ninguno**: llegan con las migraciones —
+   `20260716140000_bucket_recibos.sql`, `20260819130000_cms_contenido_materiales.sql`,
+   `20260908120000_site_config.sql`, `20260929120000_e3_buckets_de_la_app.sql`
+   (`avatars` y `documentos`)— y `migracion-cursos-diplomados.sql` (`cursos`).
+   Ver `SETUP.md` paso 9. (`avatares` y `constancias` ya no se crean: ningún
+   código los usa.)
 3. Ejecutar setup:
 ```bash
    export CLIENT_DB_URL="..."

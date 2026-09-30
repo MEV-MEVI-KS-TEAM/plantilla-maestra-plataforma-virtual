@@ -74,19 +74,60 @@ Igual que `SETUP.md`, **más el módulo de Cursos, que aquí no es opcional**:
 
 | Paso | Archivo |
 |---|---|
-| Schema base | `supabase/schema.sql` |
-| Módulo de Cursos | `scripts/migracion-cursos-diplomados.sql` |
+| Schema base | `supabase/schema.sql` (desde el Bloque E3 ya trae todo lo de las migraciones fuera del módulo Cursos, los 5 buckets base y el UNIQUE que usan los seeds) |
+| Módulo de Cursos | `scripts/migracion-cursos-diplomados.sql` (bucket `cursos`) |
 | Examen final | `supabase/migrations/20260728120000_examen_final_cursos.sql` |
-| Parches de seguridad | los cuatro del paso 7 de `SETUP.md`: los tres `20260729*` y `20260924120000_usuarios_sin_insert_propio.sql` (en una instalación nueva ya viene en `supabase/schema.sql`; en un cliente desplegado es el retrofit). Los vigilan los CHECK 22, 23 y 24 |
-| Línea Solo-Cursos | los `20260730*`, en orden (B1 → B2 → B3 → B4 → B6 → B7 → B8.2) |
-| Acceso total (C3b) | `supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql`, después de los `20260730*`: «Asignar» abre el curso completo si es de pago único y el mes 1 si no |
-| Cierres posteriores | las filas 15 a 23 de la tabla 7bis de `SETUP.md` (D7b → D22d), en orden y **al final**. La 23 (**D22d**: la clave del examen final de curso, el de la constancia, solo la lee el servidor) va **solo después de desplegar la app de D22d** (CHECK 29) |
+| Parches de seguridad | los cuatro del paso 7 de `SETUP.md`: los tres `20260729*` y `20260924120000_usuarios_sin_insert_propio.sql` (en una instalación nueva S1, S2 y #185 ya vienen en `supabase/schema.sql`; en un cliente desplegado son el retrofit). Los vigilan los CHECK 22, 23 y 24 |
+| Tabla 7bis de `SETUP.md`, **filas 1 a 23, en orden** | ver la tabla de abajo |
+
+La tabla 7bis completa, en el orden en que se corre (la misma de `SETUP.md`, paso
+7bis). En una base instalada con `supabase/schema.sql` las filas 1-6 y 18
+re-aplican lo que el schema ya trae (son idempotentes), las 21-23 además cierran
+lo del módulo y las demás son solo del módulo:
+
+| Fila | Migración | CHECK |
+|---|---|---|
+| 1 | `20260716120000_pagos.sql` | — |
+| 2 | `20260716130000_rol_secretario.sql` | 22 |
+| 3 | `20260716140000_bucket_recibos.sql` | — |
+| 4 | `20260716150000_reporte_ingresos.sql` | — |
+| 5 | `20260716160000_estado_cuenta.sql` | — |
+| 6 | `20260717120000_pagos_fecha_pago.sql` | — |
+| 7 | `20260730120000_b1_fundacion_solo_cursos.sql` (B1) | — |
+| 8 | `20260730130000_b2_gate_ventana_cursos.sql` (B2) | — |
+| 9 | `20260730140000_b3_abrir_mes_y_pagos_curso.sql` (B3) | — |
+| 10 | `20260730150000_b4_constancia_y_eventos.sql` (B4) | — |
+| 11 | `20260730160000_b6_reportes_por_vertical.sql` (B6) | — |
+| 12 | `20260730170000_b7_estado_cuenta_excluye_diplomado.sql` (B7) | — |
+| 13 | `20260730180000_b82_emision_manual_con_actor.sql` (B8.2) | 20 |
+| 14 | `20260926120000_c3b_acceso_total_cursos.sql` (C3b: «Asignar» abre el curso completo si es de pago único y el mes 1 si no) | 15 |
+| 15 | `20260927120000_d7b_secretario_abre_cursos.sql` (D7b) | 16 |
+| 16 | `20260927130000_d8_activar_segun_ficha.sql` (D8) | 17 |
+| 17 | `20260927140000_d16_curso_cobrar.sql` (D16) | 18 |
+| 18 | `20260928120000_d20a_bitacora_meses_programa.sql` (D20a) | 19 |
+| 19 | `20260928130000_d20b_constancia_staff.sql` (D20b) | 20 |
+| 20 | `20260928140000_d20e_conflicto_pt409.sql` (D20e) | 21 |
+| 21 | `20260928150000_d22b_cobranza_solo_admin.sql` (D22b) | 25 |
+| 22 | `20260928160000_d22c_postgrest_directo.sql` (D22c), **después** de las filas 2 y 9 | 26 y 27 |
+| 23 | `20260928170000_d22d_claves_solo_servidor.sql` (D22d) | 28, 29 y 30 |
+
+> ⚠️ **Fila 23 (D22d): SOLO después de desplegar la app de D22d** (`main` con
+> el código de D22d-1 —plantilla `fe00225`— o posterior; verifícalo como dice el
+> Paso 6, punto 5, de `SETUP.md`).
+> Con una app anterior, la clave del examen final de curso (el de la constancia)
+> y la del quiz y el examen mensual dejan de leerse y esas pantallas se quedan
+> sin preguntas, sin avisar. Córrela **al final**: una copia vieja del paso 6 o
+> de un schema reabre los privilegios.
+
+Buckets: `supabase/schema.sql` crea 5 (`avatars`, `documentos`, `recibos`,
+`materias`, `branding`) y el módulo crea `cursos`: son los **6** que usa el
+código (paso 9 de `SETUP.md`).
 
 > **El schema base de esta línea es `supabase/schema.sql`, a propósito** — no lo
 > cambies por `scripts/schema.sql` aunque `SETUP.md` use ese otro. Solo
-> `supabase/schema.sql` declara las políticas de storage (`avatares`,
-> `documentos`, `constancias`, `recibos`, `materias`, `branding`), y repuntar
-> aquí las perdería.
+> `supabase/schema.sql` declara los buckets y sus políticas de storage
+> (`avatars`, `documentos`, `recibos`, `materias`, `branding`); por la otra ruta
+> llegan con las migraciones (paso 9 de `SETUP.md`).
 > Las tablas `cursos` y `curso_inscripciones` no salen de ningún schema base:
 > las crea `scripts/migracion-cursos-diplomados.sql`, el paso siguiente.
 >
@@ -96,7 +137,12 @@ Igual que `SETUP.md`, **más el módulo de Cursos, que aquí no es opcional**:
 
 **Puedes saltarte** `scripts/setup.sql` (el seed de materias, meses y las 265
 preguntas del programa). Un cliente Solo-Cursos no usa nada de eso, y sembrarlo
-solo deja tablas llenas que nadie consulta.
+solo deja tablas llenas que nadie consulta. Si lo corres, ya no falla: desde el
+Bloque E3 `supabase/schema.sql` trae el UNIQUE `(evaluacion_id, pregunta)` que usa
+su `ON CONFLICT` (antes: 42P10) y el de `documentos_alumno`, que antes solo creaba
+`setup.sql` («Mis Documentos» necesita ese UNIQUE; ahora llega con el schema).
+Sin seed, los CHECK 1-6, 9 y 10 de `scripts/post-setup-check.sql` salen ❌ a
+propósito.
 
 ---
 
@@ -240,7 +286,9 @@ Solo-Cursos la necesita.
 - [ ] `landing.mostrarCatalogoCursos: true` + los dos textos
 - [ ] `diploma.folioPrefijo` fijado **antes** de la primera constancia
 - [ ] Identidad, colores, logo y WhatsApp del cliente
-- [ ] Migraciones aplicadas hasta B7
+- [ ] Tabla 7bis aplicada, filas 1 a 23 (la 23 después de desplegar la app de D22d) y `post-setup-check.sql` con los CHECK 15-30 en ✅
+- [ ] Los 6 buckets (`SELECT id FROM storage.buckets ORDER BY id`)
+- [ ] El deploy de producción es la cabeza de `main` y trae el código de D22d-1 (`SETUP.md`, Paso 6, punto 5)
 - [ ] Al menos un diplomado **publicado**, con precios y ritmo
 - [ ] Catálogo visible en la landing sin sesión, y en móvil
 - [ ] Un alumno de prueba: registro → inscripción → pago → abrir mes → ve el módulo
