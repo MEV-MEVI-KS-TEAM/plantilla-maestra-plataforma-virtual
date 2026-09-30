@@ -146,23 +146,31 @@ En el editor, **"Restaurar diseño original"** (`DELETE /api/admin/configuracion
 con su valor publicado. La partición vive en `src/lib/site-config-restaurar.ts` (`CLAVES_DISENO` /
 `CLAVES_NEGOCIO`; una prueba exige que toda clave editable esté en una de las dos):
 
-- **Se revierte (diseño):** `logo`, `logoOscuro`, `colores.*` y los textos de la landing
-  (`landing.hero_*`, `contadores`, `respaldo_*`, `catalogo*`, `dolor_*`, `programas_*`,
-  `transformacion_*`, `proceso_*`, `testimonios*`, `beneficios_*`, `faq_*`, `cta_*`,
-  `licenciaturas_*`).
+- **Se revierte (diseño = presentación):** `logo`, `logoOscuro`, `colores.*` y los títulos,
+  kickers, bajadas, botones y frases de venta de la landing (`landing.hero_*`, `respaldo_titulo`,
+  `catalogo*`, `dolor_*`, `programas_*`, `transformacion_*`, `proceso_kicker`/`_titulo`,
+  `testimonios_kicker`/`_titulo`/`_subtitulo`, `beneficios_*`, `faq_kicker`/`_titulo`, `cta_*`,
+  `licenciaturas_kicker`/`_titulo`/`_subtitulo`).
 - **Se conserva (negocio):** `nombre`, `nombreCompleto`, `tagline`, `cct`, `landing.cct`,
   `landing.ciudad`, el WhatsApp (`whatsapp`, `whatsappUrl`, `whatsappDisplay`,
   `contactoTelefono`), el correo (`email`, `contactoEmail`), `redes.*`, `precios.*`,
-  `tipoCambioMXN`, `modalidades` y `licenciaturas.*`. Lo que no está en la lista blanca tampoco se
-  toca. Regla para los casos dudosos: **se conservan**.
-- Favicon, fuentes, estilo de la landing, orden de las secciones, horarios, dirección y links de
-  cobro no viven en `site_config` (son de `config.ts`): Restaurar no los toca.
+  `tipoCambioMXN`, `modalidades`, `licenciaturas.*` y el CONTENIDO con datos de la escuela:
+  `landing.contadores`, `landing.testimonios`, `landing.faq_items`, `landing.proceso_pasos`,
+  `landing.respaldo_badges`, `landing.licenciaturas_carreras` y `landing.licenciaturas_pasos`. Lo que
+  no está en la lista blanca tampoco se toca. Regla para los casos dudosos: **se conservan**.
+- Favicon (archivo estático), fuentes (`next/font`), estilo de la landing (`config.ts`), orden de las
+  secciones (fijo en el JSX) y links de cobro (`config.ts`) no se editan desde el panel ni viven en
+  `site_config`: Restaurar no los toca. Horarios y dirección no existen como dato: si el cliente los
+  escribió, están en el contenido que se conserva (p. ej. la FAQ).
 
-Primero se escribe la fila, después se borran del bucket `branding` **solo los logos** que la fila
-(releída) ya no referencia y que se subieron antes de empezar a restaurar; nada más. Si un dato del
-negocio conservado no pasa la validación de hoy, la respuesta trae `pendiente` y el editor lleva al
-admin a ese campo. Para regresar un dato del negocio a `config.ts`, cada campo o plan tiene su
-propio **"Restaurar"**.
+Primero se escribe la fila; después se relee y se borran del bucket `branding` **solo los logos**
+que ella ya no referencia y que se subieron hace más de 5 minutos (`MARGEN_LOGOS_MS`: una subida en
+curso no pierde su archivo); si la relectura falla, el bucket no se toca. Nada más. El editor parte
+de lo conservado y vuelve a poner encima lo que el admin tecleó en campos del negocio sin publicar.
+Si un dato del negocio conservado no pasa la validación de hoy, la respuesta trae `pendiente` y el
+editor lleva al admin a ese campo (si el campo no se dibuja —p. ej. la certificación con
+`ofreceCertificacion: false`—, solo queda la receta SQL de la Nota 265 del PLAYBOOK de mev-tools).
+Para regresar un dato del negocio a `config.ts`, cada campo o plan tiene su propio **"Restaurar"**.
 
 A mano, si hiciera falta un reset TOTAL (con permiso de Kevin; borra también el negocio):
 `UPDATE public.site_config SET data = '{}'::jsonb WHERE id = 1;`, borrar los objetos del bucket
@@ -251,8 +259,8 @@ deriva alias **cuando el override está presente** (§6). Pero **el primer guard
 que incluya esa mensualidad los UNIFICA**: los cinco alias del plan pasan a valer lo mismo que el
 campo que él vio en pantalla, que es exactamente lo que el editor le prometió.
 
-Para deshacerlo: el **"Restaurar plan"** (o el "Restaurar" de cada campo de precio) en la pestaña
-Precios quita el override y los alias vuelven a los del `config.ts`, diferencias por nivel
+Para deshacerlo: el **"Restaurar"** de su plan (o el de cada campo de precio) en la pestaña Precios
+quita el override y los alias vuelven a los del `config.ts`, diferencias por nivel
 incluidas. **"Restaurar diseño original"** (§5) ya NO sirve para esto: desde #279 conserva los
 precios. Si el cliente necesita conservar esas diferencias *y* editar precios desde el panel, hoy no
 se puede: hay que tocar su `config.ts`.

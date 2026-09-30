@@ -134,12 +134,13 @@ export function confirmacionDePrecios({
 /**
  * El modal de "Restaurar diseño original". Desde #279 (decisión de Kevin) el
  * DELETE regresa SOLO el diseño al config.ts DE LA ESCUELA: logos, colores y
- * textos de la página. Nombre, contacto, redes, precios, planes y tipo de
- * cambio se conservan (ver site-config-restaurar.ts). Los links de cobro no
- * viven en site_config: tampoco cambian.
+ * los títulos y frases de la página. Identidad (nombre, lema, CCT, ciudad),
+ * contacto, redes, precios, planes, tipo de cambio y el contenido con datos de
+ * la escuela (FAQ, testimonios, cifras, pasos) se conservan (ver
+ * site-config-restaurar.ts). Los links de cobro no viven en site_config.
  */
 export const TEXTO_CONFIRMA_RESTAURAR =
-  'Se regresan el logo, los colores y los textos de tu página al diseño original. Tu nombre, WhatsApp, correo, redes, precios, planes y links de cobro NO cambian, y tampoco los pagos ni los calendarios ya generados. ¿Continuar?'
+  'Se regresan el logo, los colores y los títulos y frases de tu página al diseño original. NO cambian tu nombre, tu lema, tu WhatsApp, tu correo, tus redes, tus precios, tus planes, tus preguntas frecuentes, tus testimonios ni tus cifras, y tampoco los links de cobro, los pagos ni los calendarios ya generados. ¿Continuar?'
 
 /** Ayuda bajo los planes de una escuela SEMANAL (pestaña Precios). */
 export const AYUDA_CUOTA_SEMANAL =

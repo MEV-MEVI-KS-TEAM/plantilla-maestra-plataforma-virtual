@@ -81,9 +81,10 @@ test('4. ningún texto promete lo que la plataforma no hace', () => {
   }
   // #279 (Kevin): Restaurar regresa SOLO el diseño al config.ts de la escuela
   // y dice qué NO cambia. Ya no puede anunciar que revierte precios o planes.
-  expect(TEXTO_CONFIRMA_RESTAURAR).toContain('el logo, los colores y los textos')
+  expect(TEXTO_CONFIRMA_RESTAURAR).toContain('el logo, los colores y los títulos y frases')
   expect(TEXTO_CONFIRMA_RESTAURAR).toContain('diseño original')
-  for (const dato of ['WhatsApp', 'correo', 'precios', 'planes', 'links de cobro']) {
+  for (const dato of ['nombre', 'lema', 'WhatsApp', 'correo', 'redes', 'precios', 'planes',
+    'preguntas frecuentes', 'testimonios', 'cifras', 'links de cobro']) {
     expect(TEXTO_CONFIRMA_RESTAURAR).toContain(dato)
   }
   expect(TEXTO_CONFIRMA_RESTAURAR).toContain('NO cambian')

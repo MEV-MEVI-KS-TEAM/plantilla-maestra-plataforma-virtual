@@ -216,7 +216,7 @@ export function CampoEntero({
   /** ¿Tenía override al entrar? Si no, reponer es QUITAR la clave, no escribir el default. */
   const sobrescritoAlEntrar = useRef(sobrescrito)
 
-  // Cuando el valor cambia desde fuera (Restaurar, restaurar todo, recarga
+  // Cuando el valor cambia desde fuera (Restaurar, restaurar el diseño, recarga
   // tras publicar) el input tiene que seguirlo; mientras el admin teclea, no.
   useEffect(() => {
     setTexto((actual) => (parseEntero(actual) === valor ? actual : String(valor)))

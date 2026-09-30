@@ -11,7 +11,6 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { removeFolder } from '@/lib/storage-comun'
 import { normalizarOrigen, pathDesdeUrlBranding } from '@/lib/site-config-validacion'
 import { CLAVES_LOGO_BRANDING, logosABorrar } from '@/lib/site-config-restaurar'
 
@@ -47,8 +46,9 @@ export async function borrarLogoSiEsDelBucket(admin: SupabaseClient, url: unknow
 
 /**
  * «Restaurar diseño original» (#279): borra de la RAÍZ del bucket los logos que
- * la fila (releída después de restaurar) ya no referencia y que se subieron
- * antes de `antesDeMs`. Nada más: otros objetos, subcarpetas, un logo que la
+ * la fila (releída después de restaurar) ya no referencia y cuyo nombre marca
+ * una subida anterior a `antesDeMs` (la ruta resta un margen: ver
+ * `MARGEN_LOGOS_MS`). Nada más: otros objetos, subcarpetas, un logo que la
  * fila siga usando o uno recién subido se dejan (ver `logosABorrar`).
  *
  * Primero lista TODO (paginado de a 1000) y después borra, para que el borrado
@@ -87,46 +87,5 @@ export async function borrarLogosSinReferencia(
     const lote = aBorrar.slice(i, i + 1000)
     const { error } = await admin.storage.from(BUCKET_BRANDING).remove(lote)
     if (error) console.error('[branding] no se pudieron borrar logos viejos:', error.message)
-  }
-}
-
-/**
- * Vacía el bucket entero (raíz + cualquier subcarpeta). Ya NO lo usa
- * «Restaurar diseño original» (desde #279 solo se borran los logos sin
- * referencia, con `borrarLogosSinReferencia`); queda para limpiezas manuales.
- *
- * Misma mecánica que `removeFolder` de storage-comun.ts pero sobre la RAÍZ:
- * `list('')` pagina de a 1000 y aquí se va borrando lo listado, así que se
- * repite sin offset hasta que no quede nada o una pasada no avance.
- */
-export async function limpiarBucketBranding(admin: SupabaseClient): Promise<void> {
-  for (let pasada = 0; pasada < 20; pasada++) {
-    const { data: entries, error } = await admin.storage.from(BUCKET_BRANDING).list('', { limit: 1000 })
-    if (error) {
-      console.error('[branding] no se pudo listar el bucket:', error.message)
-      return
-    }
-    if (!entries || entries.length === 0) return
-
-    const archivos: string[] = []
-    const carpetas: string[] = []
-    for (const entry of entries) {
-      // Los archivos reales traen id; las carpetas virtuales traen id null.
-      if (entry.id) archivos.push(entry.name)
-      else carpetas.push(entry.name)
-    }
-
-    let avance = false
-    if (archivos.length > 0) {
-      const { error: rmError } = await admin.storage.from(BUCKET_BRANDING).remove(archivos)
-      if (rmError) console.error('[branding] error borrando la raíz del bucket:', rmError.message)
-      else avance = true
-    }
-    for (const sub of carpetas) {
-      await removeFolder(admin, BUCKET_BRANDING, sub)
-      avance = true
-    }
-    if (!avance) return
-    if (entries.length < 1000 && carpetas.length === 0) return
   }
 }

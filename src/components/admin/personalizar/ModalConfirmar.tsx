@@ -4,7 +4,8 @@
  * Confirmación de las dos acciones del editor que no se pueden deshacer con
  * un clic: publicar un cambio de PRECIOS (se ve en la página pública en unos
  * segundos; los pagos ya registrados no cambian) y restaurar el diseño
- * original (borra todo, incluido el logo). Los textos viven en
+ * original (quita logo, colores y textos de diseño; desde #279 conserva los
+ * datos del negocio). Los textos viven en
  * `src/lib/site-config-textos.ts`.
  *
  * No reutiliza `admin/cursos/ConfirmDialog` a propósito: aquél se pinta con

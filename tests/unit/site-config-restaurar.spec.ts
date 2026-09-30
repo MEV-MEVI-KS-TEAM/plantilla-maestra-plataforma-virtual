@@ -1,16 +1,21 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { CONFIG } from '@/lib/config'
-import { CLAVES_EDITABLES, mergeSiteConfig } from '@/lib/site-config-core'
+import { CLAVES_EDITABLES, mergeSiteConfig, type SiteConfigOverrides } from '@/lib/site-config-core'
 import { recortarOverrides, validarOverrides } from '@/lib/site-config-validacion'
 import { prepararParaPublicar } from '@/lib/site-config-editor'
+import { borrarLogosSinReferencia } from '@/lib/site-config-storage'
 import {
   CLAVES_DISENO,
   CLAVES_LOGO_BRANDING,
   CLAVES_NEGOCIO,
+  MARGEN_LOGOS_MS,
+  conservarNegocioDelBorrador,
   logosABorrar,
   restaurarDiseno,
+  verificarConservados,
 } from '@/lib/site-config-restaurar'
 
 /**
@@ -20,9 +25,9 @@ import {
  *   · que cada clave de negocio sobreviva con su valor y cada clave de diseño se vaya;
  *   · que la fila restaurada siga siendo publicable y que el merge (lo que pinta
  *     la landing) muestre el negocio EDITADO y el diseño de fábrica;
- *   · que solo se borren del bucket los logos sin referencia y anteriores al restaurar;
- *   · que la API y el editor usen esto (y el editor no vuelva a {} tras restaurar,
- *     porque su siguiente «Publicar» reemplazaría la fila y borraría el negocio).
+ *   · que el editor conserve lo que el admin tecleó en campos del negocio sin publicar;
+ *   · que solo se borren del bucket los logos sin referencia y fuera del margen;
+ *   · que la API, el editor y los textos de entrega usen esto.
  *
  * ⚠️ Se importa de '@/lib/site-config-core', NUNCA de '@/lib/site-config'
  * (lleva `server-only`).
@@ -94,16 +99,22 @@ test('1. diseño y negocio reparten TODAS las claves editables, sin repetir', ()
   expect([...CLAVES_LOGO_BRANDING].every((c) => diseno.has(c))).toBe(true)
 })
 
-test('2. lo que Kevin nombró está del lado correcto', () => {
+test('2. lo nombrado por Kevin y los dudosos están del lado correcto', () => {
+  // Diseño que Kevin nombró: logo, colores y los textos de hero y secciones.
   for (const c of ['logo', 'logoOscuro', 'colores.primario', 'colores.acento', 'landing.hero_titulo',
-    'landing.hero_subtitulo', 'landing.faq_items', 'landing.cta_titulo', 'landing.testimonios']) {
+    'landing.hero_subtitulo', 'landing.cta_titulo', 'landing.faq_titulo', 'landing.programas_titulo']) {
     expect(CLAVES_DISENO as ReadonlyArray<string>, c).toContain(c)
   }
+  // Negocio que Kevin nombró.
   for (const c of ['nombre', 'whatsapp', 'contactoEmail', 'email', 'contactoTelefono', 'redes.facebook',
     'redes.instagram', 'precios.inscripcion', 'precios.mensualidadSecundaria3Meses', 'modalidades',
-    'licenciaturas.inscripcion', 'licenciaturas.modalidades', 'tipoCambioMXN',
-    // dudosos → se conservan
-    'tagline', 'landing.ciudad', 'landing.cct']) {
+    'licenciaturas.inscripcion', 'licenciaturas.modalidades', 'tipoCambioMXN']) {
+    expect(CLAVES_NEGOCIO as ReadonlyArray<string>, c).toContain(c)
+  }
+  // Dudosos → se conservan (identidad y contenido con datos de la escuela).
+  for (const c of ['tagline', 'landing.ciudad', 'landing.cct', 'landing.contadores', 'landing.testimonios',
+    'landing.faq_items', 'landing.proceso_pasos', 'landing.respaldo_badges',
+    'landing.licenciaturas_carreras', 'landing.licenciaturas_pasos']) {
     expect(CLAVES_NEGOCIO as ReadonlyArray<string>, c).toContain(c)
   }
 })
@@ -116,9 +127,12 @@ test('3. cada clave de negocio sobrevive con su valor; cada clave de diseño des
   const r = restaurarDiseno(fila)
   for (const c of CLAVES_NEGOCIO) expect(tomar(r, c), c).toEqual(tomar(fila, c))
   for (const c of CLAVES_DISENO) expect(tiene(r, c), c).toBe(false)
-  // colores se queda sin nada → la cáscara vacía se poda; landing conserva ciudad y cct.
+  // colores se queda sin nada → la cáscara vacía se poda; landing conserva lo del negocio.
   expect('colores' in r).toBe(false)
-  expect(Object.keys(r.landing as Obj).sort()).toEqual(['cct', 'ciudad'])
+  expect(Object.keys(r.landing as Obj).sort()).toEqual([
+    'cct', 'ciudad', 'contadores', 'faq_items', 'licenciaturas_carreras', 'licenciaturas_pasos',
+    'proceso_pasos', 'respaldo_badges', 'testimonios',
+  ])
   expect(JSON.stringify(fila)).toBe(antes) // no muta la entrada
 })
 
@@ -149,7 +163,12 @@ test('6. lo que no está en la lista blanca se conserva tal cual (dudoso → se 
 test('7. publicar diseño + negocio → restaurar: la fila se puede volver a publicar y el merge muestra el negocio EDITADO', () => {
   const cuerpo = {
     colores: { primario: '#123456', acento: '#ABCDEF' },
-    landing: { hero_titulo: 'Título de prueba 279', cta_titulo: 'Llamado QA', ciudad: 'Puebla' },
+    landing: {
+      hero_titulo: 'Título de prueba 279',
+      cta_titulo: 'Llamado QA',
+      ciudad: 'Puebla',
+      faq_items: [{ q: '¿Cuál es el horario?', a: 'Lunes a viernes de 9 a 18 h.' }],
+    },
     tagline: 'Lema QA',
     whatsapp: '525511223344',
     contactoEmail: 'informes@qa-279.test',
@@ -161,13 +180,21 @@ test('7. publicar diseño + negocio → restaurar: la fila se puede volver a pub
   const publicado = validarOverrides(cuerpo, BASE)
   expect(publicado.ok, publicado.ok ? '' : `${publicado.error} (${publicado.clave})`).toBe(true)
   if (!publicado.ok) return
-  const fila = publicado.overrides as Obj
+  // Los logos los escribe la ruta de subida, no el PUT: se agregan como ella.
+  const fila = {
+    ...(publicado.overrides as Obj),
+    logo: 'https://qa279.supabase.co/storage/v1/object/public/branding/logo-claro-1.png',
+    logoOscuro: 'https://qa279.supabase.co/storage/v1/object/public/branding/logo-oscuro-2.png',
+  }
 
   const restaurada = restaurarDiseno(fila)
+  expect(restaurada).not.toHaveProperty('logo')
+  expect(restaurada).not.toHaveProperty('logoOscuro')
   const overrides = recortarOverrides(restaurada, BASE)
   // El siguiente «Publicar cambios» del editor (mismo cuerpo que manda) pasa.
   const otraVez = validarOverrides(prepararParaPublicar(overrides), BASE)
   expect(otraVez.ok, otraVez.ok ? '' : `${otraVez.error} (${otraVez.clave})`).toBe(true)
+  expect(verificarConservados(overrides, BASE)).toBeNull()
 
   const m = mergeSiteConfig(CONFIG, overrides)
   // diseño → fábrica
@@ -186,49 +213,142 @@ test('7. publicar diseño + negocio → restaurar: la fila se puede volver a pub
   expect(m.tipoCambioMXN).toBe(18.5)
   expect(m.tagline).toBe('Lema QA')
   expect(m.landing.ciudad).toBe('Puebla')
+  expect(JSON.stringify(m.landing.faq_items)).toContain('Lunes a viernes de 9 a 18 h.')
 })
 
-// ─── 4. Bucket branding ──────────────────────────────────────────────────────
+test('8. un dato del negocio conservado que no pasa la validación queda como `pendiente` con su campo', () => {
+  const pend = verificarConservados({ contactoEmail: 'no-es-correo' } as SiteConfigOverrides, BASE)
+  expect(pend).not.toBeNull()
+  expect(pend?.clave).toBe('contactoEmail')
+  expect(verificarConservados({}, BASE)).toBeNull()
+})
 
-test('8. solo se borran logos sin referencia y subidos antes de restaurar', () => {
-  const inicio = 1_000_000
+// ─── 4. El borrador del editor ───────────────────────────────────────────────
+
+test('9. tras restaurar, el borrador conserva lo tecleado en campos del negocio y suelta el diseño', () => {
+  const conservados = { whatsapp: '525511223344', precios: { inscripcion: 700 }, redes: { facebook: 'https://facebook.com/a' } } as SiteConfigOverrides
+  const borrador = {
+    whatsapp: '523312345678', // tecleado y sin publicar → se queda
+    redes: { facebook: 'https://facebook.com/a' },
+    // precios.inscripcion quitado con el «Restaurar» del campo → también sin precio
+    colores: { primario: '#111111' }, // diseño en el borrador → se va
+    landing: { hero_titulo: 'x', faq_items: [{ q: 'q', a: 'a' }] },
+  } as unknown as SiteConfigOverrides
+  const r = conservarNegocioDelBorrador(conservados, borrador) as Obj
+  expect(r.whatsapp).toBe('523312345678')
+  expect(r).not.toHaveProperty('precios')
+  expect(r).not.toHaveProperty('colores')
+  expect(r.landing).toEqual({ faq_items: [{ q: 'q', a: 'a' }] })
+  expect(r.redes).toEqual({ facebook: 'https://facebook.com/a' })
+  // Sin nada sin publicar, el borrador queda idéntico a lo conservado.
+  expect(conservarNegocioDelBorrador(conservados, conservados)).toEqual(conservados)
+  expect(conservarNegocioDelBorrador({}, {})).toEqual({})
+})
+
+// ─── 5. Bucket branding ──────────────────────────────────────────────────────
+
+test('10. solo se borran logos sin referencia y subidos antes del corte', () => {
+  const corte = 1_000_000
   const nombres = [
     'logo-claro-900000.png', // viejo y sin referencia → se borra
     'logo-oscuro-900001.jpg', // viejo y sin referencia → se borra
     'logo-claro-900002.png', // viejo pero referenciado → se queda
-    'logo-claro-1000001.png', // subido DESPUÉS de empezar a restaurar → se queda
+    'logo-claro-1000001.png', // después del corte → se queda
     'favicon.png', // no es un logo de la ruta de subida → se queda
     'hack-logo-claro-1.png',
     'logo-claro-abc.png',
     'logo-medio-900003.png',
   ]
-  expect(logosABorrar(nombres, new Set(['logo-claro-900002.png']), inicio)).toEqual([
+  expect(logosABorrar(nombres, new Set(['logo-claro-900002.png']), corte)).toEqual([
     'logo-claro-900000.png',
     'logo-oscuro-900001.jpg',
   ])
-  expect(logosABorrar([], new Set(), inicio)).toEqual([])
+  expect(logosABorrar([], new Set(), corte)).toEqual([])
+  expect(MARGEN_LOGOS_MS).toBeGreaterThanOrEqual(60_000)
 })
 
-// ─── 5. La API y el editor usan esto ─────────────────────────────────────────
+function adminFalso(paginas: Array<Array<{ name: string; id: string | null }>>, opciones: { errorLista?: boolean; errorBorrar?: boolean } = {}) {
+  const listados: number[] = []
+  const borrados: string[][] = []
+  const admin = {
+    storage: {
+      from: () => ({
+        list: async (_prefijo: string, o: { limit: number; offset: number }) => {
+          listados.push(o.offset)
+          if (opciones.errorLista) return { data: null, error: { message: 'sin permiso' } }
+          return { data: paginas[o.offset / o.limit] ?? [], error: null }
+        },
+        remove: async (lote: string[]) => {
+          borrados.push(lote)
+          return { error: opciones.errorBorrar ? { message: 'falló' } : null }
+        },
+      }),
+    },
+  } as unknown as SupabaseClient
+  return { admin, listados, borrados }
+}
 
-test('9. el DELETE restaura solo el diseño y ya no vacía la fila ni el bucket', () => {
+test('11. borrarLogosSinReferencia: pagina, ignora carpetas, respeta la referencia y borra por lotes', async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://qa279.supabase.co'
+  const pagina1 = Array.from({ length: 1000 }, (_, i) => ({ name: `logo-claro-${1000 + i}.png`, id: `id${i}` }))
+  const pagina2 = [
+    { name: 'logo-oscuro-5000.png', id: 'x1' }, // referenciado por la fila → se queda
+    { name: 'otro.png', id: 'x2' }, // no es logo → se queda
+    { name: 'logo-oscuro-1500.png', id: null }, // carpeta virtual (aunque se llame como logo) → se ignora
+    { name: `logo-claro-${Date.now()}.png`, id: 'x3' }, // después del corte → se queda
+  ]
+  const { admin, listados, borrados } = adminFalso([pagina1, pagina2])
+  const fila = { logoOscuro: 'https://qa279.supabase.co/storage/v1/object/public/branding/logo-oscuro-5000.png' }
+  await borrarLogosSinReferencia(admin, fila, Date.now() - 60_000)
+  expect(listados).toEqual([0, 1000])
+  expect(borrados.length).toBe(1)
+  expect(borrados[0].length).toBe(1000)
+  expect(borrados.flat()).not.toContain('logo-oscuro-5000.png')
+  expect(borrados.flat()).not.toContain('otro.png')
+  expect(borrados.flat()).not.toContain('logo-oscuro-1500.png')
+})
+
+test('12. borrarLogosSinReferencia: si no puede listar, no borra; si no puede borrar, no lanza', async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://qa279.supabase.co'
+  const sinLista = adminFalso([[{ name: 'logo-claro-1.png', id: 'a' }]], { errorLista: true })
+  await borrarLogosSinReferencia(sinLista.admin, {}, Date.now())
+  expect(sinLista.borrados).toEqual([])
+  const sinBorrar = adminFalso([[{ name: 'logo-claro-1.png', id: 'a' }]], { errorBorrar: true })
+  await expect(borrarLogosSinReferencia(sinBorrar.admin, {}, Date.now())).resolves.toBeUndefined()
+  expect(sinBorrar.borrados).toEqual([['logo-claro-1.png']])
+})
+
+// ─── 6. La API, el editor y los textos de entrega usan esto ──────────────────
+
+test('13. el DELETE restaura solo el diseño y ya no vacía la fila ni el bucket', () => {
   const ruta = leer('src/app/api/admin/configuracion/route.ts')
   const del = ruta.slice(ruta.indexOf('export async function DELETE'))
-  expect(del).toContain('restaurarDiseno(fila?.data)')
-  expect(del).toContain('borrarLogosSinReferencia(admin, referencia, inicio)')
+  expect(del).toContain('restaurarDiseno(previa?.data)')
+  expect(del).toContain('borrarLogosSinReferencia(admin, fila, inicio - MARGEN_LOGOS_MS)')
+  expect(del).toContain('if (fila) await borrarLogosSinReferencia')
+  expect(del).toContain('verificarConservados(overrides')
   expect(del).not.toContain('guardarFila(admin, {}')
-  expect(del).not.toContain('limpiarBucketBranding')
-  expect(del).toContain('pendiente')
+  expect(leer('src/lib/site-config-storage.ts')).not.toContain('limpiarBucketBranding')
 })
 
-test('10. tras restaurar, el editor adopta los overrides que devuelve la API (no {})', () => {
+test('14. tras restaurar, el editor parte de lo conservado y le pone encima el negocio sin publicar', () => {
   const pagina = leer('src/app/(dashboard)/admin/configuracion/page.tsx')
-  const ini = pagina.indexOf('const restaurarTodo')
+  const ini = pagina.indexOf('const restaurarDisenoOriginal')
   const fin = pagina.indexOf('}, [showToast, irAlCampo])', ini)
   expect(ini).toBeGreaterThan(-1)
   expect(fin).toBeGreaterThan(ini)
   const bloque = pagina.slice(ini, fin)
-  expect(bloque).toContain('data.overrides')
+  expect(bloque).toContain('conservarNegocioDelBorrador(conservados, borrador)')
+  expect(bloque).toContain('setOverridesBase(conservados)')
   expect(bloque).not.toContain('setOverrides({})')
   expect(bloque).not.toContain('setOverridesBase({})')
+})
+
+test('15. el PDF y el mensaje de entrega ya no prometen que Restaurar regresa todo', () => {
+  const doc = leer('scripts/entrega/documento.mjs')
+  expect(doc).not.toContain('exactamente a como se te entregó')
+  expect(doc).toContain('se quedan como los dejaste')
+  const msg = leer('scripts/entrega/generar-entrega.mjs')
+  expect(msg).not.toContain('devuelve todo a como se te entregó')
+  expect(msg).toContain('tus precios no cambian')
 })

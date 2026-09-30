@@ -39,8 +39,7 @@ import { CONFIG } from '@/lib/config'
 import { mergeSiteConfig, revalidateSiteConfig } from '@/lib/site-config'
 import { recortarAEditables, recortarOverrides, validarOverrides } from '@/lib/site-config-validacion'
 import { borrarLogosSinReferencia } from '@/lib/site-config-storage'
-import { restaurarDiseno } from '@/lib/site-config-restaurar'
-import { prepararParaPublicar } from '@/lib/site-config-editor'
+import { MARGEN_LOGOS_MS, restaurarDiseno, verificarConservados } from '@/lib/site-config-restaurar'
 import {
   MENSAJE_SITE_CONFIG_SIN_MIGRAR,
   SITE_CONFIG_SIN_MIGRAR,
@@ -257,34 +256,31 @@ export async function DELETE() {
 
     const inicio = Date.now()
     const admin = createAdminClient()
-    const fila = await leerFila(admin)
-    const restaurada = restaurarDiseno(fila?.data)
+    const previa = await leerFila(admin)
+    const restaurada = restaurarDiseno(previa?.data)
     // Primero la fila (es lo que decide qué se ve), después los archivos: si
     // el borrado del bucket fallara a medias, quedarían huérfanos que nadie
     // referencia, no una landing apuntando a un logo que ya no existe.
     await guardarFila(admin, restaurada, auth.user.id)
     revalidateSiteConfig()
-    // Los logos que se conservan son los que referencia la fila RELEÍDA (un
-    // logo que otra pestaña subió mientras tanto ya estaría ahí) y los subidos
-    // después de `inicio`, que tampoco se tocan.
+    // Se relee la fila: lo que quedó en la BD manda (un PUT o un logo de otra
+    // pestaña pudo escribir en medio). Los logos que se conservan son los que
+    // ella referencia y los subidos en los últimos minutos (pueden estar a medio
+    // aplicar). Si la relectura falla, el bucket no se toca: un huérfano es
+    // preferible a borrar un logo que alguien acaba de poner.
     const actual = await leerFila(admin).catch(() => null)
-    const referencia = actual && esObjetoPlano(actual.data) ? actual.data : restaurada
-    await borrarLogosSinReferencia(admin, referencia, inicio)
+    const fila = actual && esObjetoPlano(actual.data) ? actual.data : null
+    if (fila) await borrarLogosSinReferencia(admin, fila, inicio - MARGEN_LOGOS_MS)
 
     // Lo mismo que devolvería el GET: recortado a la lista blanca.
-    const overrides = recortarOverrides(restaurada, DEFAULTS())
-    // Restaurar ya no es la «válvula de escape» de un dato del negocio que no
-    // pasa la validación de hoy (p. ej. escrito a mano en la fila): se conserva
-    // (regla de Kevin), pero se avisa cuál es para que el admin lo corrija en su
-    // campo; si no, el siguiente «Publicar cambios» lo rechazaría sin decir por qué.
-    const verificacion = validarOverrides(prepararParaPublicar(overrides), DEFAULTS(), {
-      origenStorage: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    })
+    const overrides = recortarOverrides(fila ?? restaurada, DEFAULTS())
     return NextResponse.json({
       ok: true,
       merged: recortarAEditables(mergeSiteConfig(CONFIG, overrides)),
       overrides,
-      pendiente: verificacion.ok ? null : { error: verificacion.error, clave: verificacion.clave ?? null },
+      // Un dato del negocio conservado que no pasa la validación de hoy (regla
+      // de Kevin: se conserva) se señala para que el admin lo corrija.
+      pendiente: verificarConservados(overrides, DEFAULTS(), process.env.NEXT_PUBLIC_SUPABASE_URL),
     })
   } catch (e) {
     console.error('[configuracion]', e)

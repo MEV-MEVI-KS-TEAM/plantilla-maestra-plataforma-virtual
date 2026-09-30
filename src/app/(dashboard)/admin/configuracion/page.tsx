@@ -47,6 +47,7 @@ import { validarOverrides } from '@/lib/site-config-validacion'
 import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
 import { campoPorClave } from '@/lib/site-config-campos'
 import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } from '@/lib/site-config-textos'
+import { conservarNegocioDelBorrador } from '@/lib/site-config-restaurar'
 import { whatsappComoSeVera } from '@/lib/contacto-ui'
 import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
@@ -347,9 +348,9 @@ export default function PersonalizarPage() {
     void publicar()
   }
 
-  // ─── Restaurar todo ────────────────────────────────────────────────────────
+  // ─── Restaurar diseño original (#279: solo el diseño) ──────────────────────
 
-  const restaurarTodo = useCallback(async () => {
+  const restaurarDisenoOriginal = useCallback(async () => {
     setModal(null)
     setRestaurando(true)
     try {
@@ -363,10 +364,12 @@ export default function PersonalizarPage() {
         return
       }
       // #279: la API conserva los datos del negocio (contacto, precios,
-      // planes…): el editor sigue mostrando lo que quedó publicado.
+      // planes, FAQ…) y el editor parte de lo que quedó publicado. Lo que el
+      // admin tecleó en campos del negocio y aún no publica se vuelve a poner
+      // encima (el modal promete que NO cambia); el diseño del borrador sí se va.
       const conservados = (data.overrides ?? {}) as SiteConfigOverrides
       setMerged(data.merged as ConfigEditable)
-      setOverrides(conservados)
+      setOverrides((borrador) => conservarNegocioDelBorrador(conservados, borrador))
       setOverridesBase(conservados)
       setClaveConError(null)
       setPublicado(true)
@@ -377,7 +380,7 @@ export default function PersonalizarPage() {
         showToast(`Tu diseño volvió al original, pero falta corregir un dato: ${pendiente.error}`, 'error', 8000)
         if (typeof pendiente.clave === 'string') irAlCampo(pendiente.clave)
       } else {
-        showToast('Tu página volvió al diseño original', 'success')
+        showToast('Tu página volvió al diseño original. Tus datos del negocio no cambiaron.', 'success')
       }
     } catch {
       showToast('No se pudo restaurar el diseño', 'error')
@@ -588,7 +591,7 @@ export default function PersonalizarPage() {
         etiquetaConfirmar="Sí, restaurar"
         peligro
         ocupado={restaurando}
-        onConfirmar={() => void restaurarTodo()}
+        onConfirmar={() => void restaurarDisenoOriginal()}
         onCancelar={() => setModal(null)}
       />
     </div>

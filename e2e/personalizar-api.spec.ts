@@ -14,8 +14,9 @@
  *   ANÓNIMO     → contexto sin cookies
  *
  * ⚠️ DESTRUCTIVA: deja `site_config.data = {}` (upsert con el service role) y
- * BORRA los logos del bucket `branding` (DELETE del admin) para partir de una
- * pizarra limpia. La fila se guarda en `beforeAll` y se restaura en
+ * BORRA los logos `logo-*` del bucket `branding` (el DELETE del admin, los
+ * viejos; el `afterAll`, todos) para partir de una pizarra limpia. La fila se
+ * guarda en `beforeAll` y se restaura en
  * `afterAll`, pero los BYTES de un logo que estuviera en el bucket no se
  * pueden restaurar. Es la misma premisa que el resto de la suite
  * (globalSetup ya cambia la contraseña del alumno y borra cursos): corre
@@ -708,14 +709,15 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
   // ══════════════════════════════════════════════════════════════════════════
   // d — "Restaurar diseño original" (#279: solo el diseño)
   // ══════════════════════════════════════════════════════════════════════════
-  test('d — el DELETE regresa solo el diseño: conserva WhatsApp, correo y precios, y borra los logos', async () => {
+  test('d — el DELETE regresa solo el diseño: conserva WhatsApp, correo y precios, y borra los logos viejos sin referencia', async () => {
     // Dos esperas de hasta 30 s por la purga de la landing.
     test.setTimeout(180_000)
 
     // Diseño + negocio publicados juntos (el logo de b6 sigue en la fila: el
     // PUT no toca los logos).
     const TITULO_D = `Diseño QA d ${Date.now()}`
-    const INSCRIPCION_D = Number(DEFAULTS.precios.inscripcion) + 7
+    const base = Number(DEFAULTS.precios.inscripcion)
+    const INSCRIPCION_D = (Number.isFinite(base) ? base : 600) + 7
     const put = await admin.put('/api/admin/configuracion', {
       data: {
         landing: { hero_titulo: TITULO_D },
@@ -728,6 +730,20 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
       },
     })
     expect(put.status(), `PUT diseño + negocio → 200 (${(await put.text()).slice(0, 200)})`).toBe(200)
+    // Sin esto, «el título se fue» de abajo pasaría aunque nunca hubiera llegado.
+    await esperarHtml(anonimo, '/', TITULO_D, true)
+
+    // Un logo huérfano VIEJO (su nombre marca una subida de 1970) y los de b6,
+    // subidos hace segundos. El DELETE borra el viejo; a los recientes los
+    // protege el margen (MARGEN_LOGOS_MS: una subida en curso fija su nombre
+    // antes de escribir la fila) y los quita el afterAll.
+    const HUERFANO = 'logo-claro-1000.png'
+    const { error: subir } = await svc()
+      .storage.from(BUCKET)
+      .upload(HUERFANO, PNG_1X1, { contentType: 'image/png', upsert: true })
+    expect(subir, `No se pudo subir el huérfano de prueba: ${subir?.message}`).toBeNull()
+    const recientes = (await objetosBranding('logo-')).filter((n) => n !== HUERFANO)
+    const corte = Date.now() - 4 * 60 * 1000 // un minuto de holgura contra el margen de 5
 
     const res = await admin.delete('/api/admin/configuracion')
     const del = await json<{ ok: true; merged: ConfigEditable; overrides: Record<string, unknown>; pendiente: unknown }>(res)
@@ -758,14 +774,19 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     expect(enBD).not.toHaveProperty('colores')
     expect(enBD).not.toHaveProperty('logo')
 
-    // Del bucket se van los logos (ya nadie los referencia); nada más.
+    // Del bucket se va el logo viejo que ya nadie referencia; los recientes se quedan.
     await expect
-      .poll(async () => await objetosBranding('logo-'), {
-        message: 'Restaurar el diseño original borra los logos que ya nadie referencia',
+      .poll(async () => (await objetosBranding('logo-')).includes(HUERFANO), {
+        message: 'Restaurar el diseño original borra los logos viejos que ya nadie referencia',
         timeout: 15_000,
         intervals: [500],
       })
-      .toEqual([])
+      .toBe(false)
+    const despues = await objetosBranding('logo-')
+    for (const nombre of recientes) {
+      const ts = Number(/-(\d+)\./.exec(nombre)?.[1] ?? 0)
+      if (ts > corte) expect(despues, `«${nombre}» se subió hace menos de 5 min: se queda`).toContain(nombre)
+    }
 
     // Y el GET lo confirma.
     const get = await json<RespuestaGet>(await admin.get('/api/admin/configuracion'))

@@ -21,8 +21,9 @@
  * `beforeAll` y se comparte, y por eso el describe es `.serial`.
  *
  * ⚠️ DESTRUCTIVA, igual que la suite de API: deja `site_config.data = {}`
- * (upsert con el service role) y BORRA los logos del bucket `branding` (DELETE
- * del admin) para partir de una pizarra limpia. La fila se
+ * (upsert con el service role) y BORRA los logos `logo-*` del bucket
+ * `branding` (el DELETE del admin, los viejos; el `afterAll`, todos) para
+ * partir de una pizarra limpia. La fila se
  * guarda en `beforeAll` y se repone en `afterAll` (los BYTES de un logo que
  * estuviera en el bucket no se pueden restaurar). Corre SOLO contra la base de
  * QA. Ver e2e/README-QA.md.
@@ -693,15 +694,15 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await editor.getByRole('tab', { name: 'Textos de mi página' }).click()
     await expect(editor.getByLabel('Título del hero', { exact: true })).toHaveValue(HERO_DEFAULT)
 
-    // El logo de c8 también se fue: la tarjeta vuelve a fábrica y sus archivos
-    // salen del bucket (ya nadie los referencia).
+    // El logo de c8 también se fue: la tarjeta vuelve a fábrica y la fila ya no
+    // lo referencia. Sus bytes se quedan en el bucket porque se subieron hace
+    // menos de MARGEN_LOGOS_MS (los quita el afterAll); que el DELETE borre los
+    // logos VIEJOS sin referencia lo prueba el caso d de personalizar-api.
     await editor.getByRole('tab', { name: 'Identidad' }).click()
     await expect(editor.getByText('Personalizado', { exact: true })).toHaveCount(0)
-    await expect.poll(async () => await objetosBranding('logo-'), {
-      message: 'Restaurar debe borrar los logos del bucket branding',
-      timeout: 15_000,
-      intervals: [500],
-    }).toEqual([])
+    const trasRestaurar = await json<RespuestaGet>(await adminApi.get('/api/admin/configuracion'))
+    expect(trasRestaurar.overrides.logo, 'La fila ya no tiene logo').toBeUndefined()
+    expect(trasRestaurar.overrides.logoOscuro, 'Ni logo oscuro').toBeUndefined()
 
     // #279: los precios que publicó c5 son datos del negocio y se CONSERVAN.
     await editor.getByRole('tab', { name: 'Precios' }).click()
