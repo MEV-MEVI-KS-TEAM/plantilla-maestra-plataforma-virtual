@@ -72,6 +72,7 @@ la política viven en `scripts/entrega/publicado.mjs`.
 | Nombre, colores, logo | `src/lib/config.ts` con lo publicado encima. El logo publicado (una URL) se descarga e incrusta; si no se puede, va el de `config.ts` y se avisa en REVISA |
 | Dominio, niveles | `src/lib/config.ts` (no se editan en el panel) |
 | Modalidades, precios, WhatsApp | `src/lib/config.ts` con lo publicado encima. Un WhatsApp que la página no enciende (vacío, el marcador `520000000000` o un número que no se puede normalizar: la regla `whatsappEscuelaDisponible` de `src/lib/contacto-ui.ts`, la misma de las dos portadas) cuenta como **sin WhatsApp**: el documento no imprime «WhatsApp de contacto» y explica cómo encender los botones |
+| Correo de contacto (el que ven alumnos y landing) | El MISMO camino que la app (`canalEscuela` de `src/lib/contacto-ui.ts`): `contactoEmail` y, si está vacío, `email`, de `config.ts` con lo publicado encima. Sale en la página de accesos («Correo de contacto», aparte del usuario administrador) y en el WhatsApp («📞 ASÍ TE CONTACTAN TUS ALUMNOS», junto al WhatsApp). El de fábrica de la plantilla (`…@mev.com`) no es de la escuela: no se imprime y se avisa en REVISA (Bloque E2) |
 | Nombre de cada carrera (licenciaturas, diplomados, cursos del riel) | El de `config.ts` con el publicado en «Personalizar mi página» encima (`landing.licenciaturas_carreras[].nombre`, casado por `slug`), con la MISMA regla que la tarjeta de la landing. Cada nombre cambiado se avisa en REVISA: el registro, el panel y las constancias siguen diciendo el de `config.ts`. Un nombre publicado con un comodín que el documento no resuelve (p. ej. `{duracion}`) no se usa: queda el de `config.ts` y se avisa en REVISA. El tipo de programa (licenciatura, diplomado, curso) se decide con el de `config.ts` |
 | Inscripción y mensualidad **por nivel** | El MISMO resolver de la plataforma (`src/lib/precios-nivel.ts`), con las mismas claves que leen la landing, el estado de cuenta y la ficha del alumno: `precios.inscripcionSecundaria` / `precios.inscripcionPreparatoria` y `precios.mensualidadSecundaria3Meses`, `…6Meses`, `precios.mensualidadPreparatoria3Meses`, `…6Meses`. Vacías (`null`) = la general. Sin mensualidad propia, Secundaria usa su alias `precios.secundaria_<n>meses_normal` si es mayor que 0 y Preparatoria, la del plan. Con lo publicado en «Personalizar mi página» encima (D12) |
 | Licenciaturas | `src/lib/config.ts` con lo publicado en «Personalizar mi página» encima: inscripción, titulación y la mensualidad de cada plan (`site_config` → `licenciaturas`, con la MISMA regla de la plataforma, `src/lib/precios-licenciatura.ts`). Sin fila o con `--solo-config`, solo `config.ts` |
@@ -82,6 +83,16 @@ la política viven en `scripts/entrega/publicado.mjs`.
 | Dominio y URL de la plataforma (Infraestructura) | `CONFIG.dominio` |
 | Registrador del dominio (Infraestructura) | `entrega.local.json` → `registrador`; si falta, **GoDaddy** |
 | Proyecto de Supabase: ref, URL y panel (Infraestructura) | `NEXT_PUBLIC_SUPABASE_URL` de `.env.local` (o `supabaseUrl` en `entrega.local.json` si no hay `.env.local`). El ref es el subdominio; el panel es `https://supabase.com/dashboard/project/<ref>`. El ref y el nombre de la escuela publicada salen en consola y en REVISA; un nombre publicado distinto del de `config.ts`, o un `supabaseUrl` de otro proyecto que `.env.local`, **aborta** salvo con `--forzar-proyecto` |
+
+El `.env.local` se lee UNA sola vez y con la misma regla para todo (lo publicado,
+el inventario y la página de Infraestructura): aguanta CRLF, BOM, espacios y
+comillas (`scripts/entrega/env-local.mjs`, #197). `ENTREGA_ENV_LOCAL=<archivo>`
+lee otro archivo en vez de `<repo>/.env.local` (lo usan las pruebas).
+
+Cuando el script **aborta**, sale con código **1** y sin generar nada. Antes, en
+Windows con Node 24, un aborto con una conexión todavía cerrándose terminaba con
+una aserción de libuv y el código `3221226505` (#256): ya no llama a
+`process.exit` al abortar, deja `exitCode = 1` y Node sale solo.
 
 Sin `.env.local`, o sin su URL o su llave, el script **aborta** antes de todo
 esto (D12: no puede leer lo publicado). Con `--solo-config` sigue sin lo

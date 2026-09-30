@@ -398,9 +398,12 @@ test('5. la entrega aplica lo publicado con la MISMA regla y solo toca la tabla 
   expect(gen.match(/[^_]CONFIG\.licenciaturas/g) ?? []).toHaveLength(0)
   expect(gen).toContain('const deConfig = (CONFIG_TS.licenciaturas?.modalidades || []).find((x) => x && x.id === m.id)')
   expect(gen).toContain('const PUEDE_PUBLICAR_LIC = bloqueLicEditable(CONFIG_TS.licenciaturas)')
-  expect(gen).toContain(".replace(/^\\uFEFF/, '')")
-  // Un .env.local en CRLF también se lee, y hay salida a sabiendas.
-  expect(gen).toContain('split(/\\r?\\n/)')
+  // Un .env.local con BOM o en CRLF también se lee (Bloque E2, #197: la lectura
+  // vive en env-local.mjs y el generador la usa para todo), y hay salida a sabiendas.
+  const envLocal = leer('scripts/entrega/env-local.mjs')
+  expect(envLocal).toContain(".replace(/^\\uFEFF/, '')")
+  expect(envLocal).toContain('split(/\\r?\\n/)')
+  expect(gen).toContain('return leerEnvLocalDe(RAIZ)')
   expect(gen).toContain("soloConfig: flag('solo-config'),")
   expect(leer('scripts/entrega/publicado.mjs')).toContain(".from('site_config').select('data').eq('id', 1).maybeSingle()")
   // D12 revierte la decisión 14 de la Fase 2 (decisión 17): TODO lo publicado llega al papel,
