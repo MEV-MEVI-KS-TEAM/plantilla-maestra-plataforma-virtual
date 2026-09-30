@@ -93,12 +93,21 @@ Editar SOLO este archivo: src/lib/config.ts
    Ajustar nombres de materias según el cliente después de sembrar.
    Resultado esperado: 25 materias, 266 preguntas (240 universales + 26 del demo;
    lo avisa el propio `setup.sql`), 592 del quiz semanal.
-4. **Admin** → `scripts/create-admin.sql` está **comentado entero** (líneas
-   17-31, bloque `/* … */`): es plantilla de referencia, no un script
+4. **Admin** → `scripts/create-admin.sql` está **comentado entero** (todo
+   el archivo es comentario): es plantilla de referencia, no un script
    ejecutable — correrlo es un no-op. El admin se crea así: Supabase
    Dashboard → Authentication → Add user (con el correo del admin del
-   cliente) y luego `UPDATE public.usuarios SET rol = 'admin' WHERE email =
-   '…';` (como documenta `scripts/README.md:85-89`)
+   cliente y «Auto Confirm User») y luego, en el SQL Editor (equivale a la
+   TAREA 5 de PROMPTS-MAESTROS; la misma receta está en `scripts/README.md`):
+   ```sql
+   INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+   SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+     FROM auth.users WHERE email = lower(btrim('<correo del admin>'))
+   ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+     nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos
+   RETURNING id, email, nombre, apellidos, rol;
+   ```
+   Como el admin se crea después del esquema, el trigger `handle_new_user` ya le creó su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el encabezado del panel y la bitácora muestran el correo del admin. Debe devolver **1 fila** con rol `admin` y el nombre (en psql además sale `INSERT 0 1`); 0 filas = ese correo no está en Auth (la receta ya ignora mayúsculas y espacios). Un apóstrofo en el nombre va doble (`O''Higgins`).
 5. **Módulo Cursos y Diplomados** → ejecutar `scripts/migracion-cursos-diplomados.sql`
    (crea 5 tablas `curso_*` + el bucket privado `cursos`). Corre DESPUÉS de schema.sql.
    Si las políticas de storage fallan por ownership, crearlas desde la UI

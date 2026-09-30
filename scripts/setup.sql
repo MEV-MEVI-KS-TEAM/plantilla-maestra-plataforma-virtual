@@ -3,11 +3,9 @@
 --
 -- Prerequisito: schema.sql ya aplicado en la BD.
 --
--- Uso desde la raíz del proyecto:
---   psql "$DATABASE_URL" -f scripts/setup.sql
---
--- O desde el directorio scripts/:
---   psql "$DATABASE_URL" -f setup.sql
+-- Uso SIEMPRE desde el directorio scripts/ (los \i resuelven las rutas
+-- contra el directorio de trabajo; desde la raíz falla con "No such file"):
+--   cd scripts && psql "$DATABASE_URL" -f setup.sql
 --
 -- Orden de ejecución (respeta dependencias FK):
 --   1. seed-contenido-ivs.sql                    — INSERT materias/meses/semanas base
@@ -19,7 +17,7 @@
 --   5. seed-preguntas-evaluaciones-universal.sql — 265 INSERT de preguntas reales (canónico, cierra Bug C)
 --
 -- Pasos manuales POSTERIORES a este script:
---   - create-admin.sql            — Crear usuario administrador (requiere UUID real)
+--   - Crear el admin: Auth > Add user + receta de SETUP.md, Paso 3 punto 4 (create-admin.sql está comentado entero)
 --   - node scripts/update-videos.mjs   — Poblar video_url via YouTube API
 -- ============================================================
 
@@ -82,7 +80,7 @@
 \echo '============================================================'
 \echo 'Setup completo. Próximos pasos:'
 \echo '  1. Edita src/lib/config.ts con los datos del cliente'
-\echo '  2. Ejecuta create-admin.sql manualmente (requiere UUID real)'
+\echo '  2. Crea el admin: Auth > Add user y SETUP.md, Paso 3 punto 4 (TAREA 5)'
 \echo '  3. node scripts/update-videos.mjs --nivel demo   (videos demo)'
 \echo '  4. node scripts/update-videos.mjs                (todos los videos)'
 \echo '============================================================'

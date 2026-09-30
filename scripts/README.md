@@ -20,7 +20,7 @@ export CLIENT_DB_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase
 #    ⚠️ setup.sql (paso 3) usa `\i` con rutas relativas: hay que correr psql
 #    PARADO DENTRO de scripts/, nunca desde la raíz del repo — `psql ... -f
 #    scripts/setup.sql` desde la raíz falla con "No such file or directory"
-#    (ver SETUP.md:63-67).
+#    (ver SETUP.md, Paso 3 punto 3).
 cd scripts
 psql "$CLIENT_DB_URL" -f schema.sql
 
@@ -171,11 +171,18 @@ SELECT COUNT(*) FROM (
    psql "$CLIENT_DB_URL" -f migracion-cursos-diplomados.sql
 ```
 5. Aplicar `supabase/migrations/*.sql` en orden cronológico (desde la raíz del repo)
-6. Crear admin desde Supabase Dashboard → Authentication → Add user
-7. Marcar usuario como admin:
+6. Crear admin desde Supabase Dashboard → Authentication → Add user → Create new user, con «Auto Confirm User»
+7. Marcar usuario como admin, con nombre (equivale a la TAREA 5 de PROMPTS-MAESTROS):
 ```sql
-   UPDATE public.usuarios SET rol = 'admin' WHERE email = 'admin@cliente.com';
+   INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+   SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+     FROM auth.users WHERE email = lower(btrim('<correo del admin>'))
+   ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+     nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos
+   RETURNING id, email, nombre, apellidos, rol;
 ```
+   Como el admin se crea después del esquema, el trigger `handle_new_user` ya le creó su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el encabezado del panel y la bitácora muestran el correo del admin. Debe devolver **1 fila** con rol `admin` y el nombre (en psql además sale `INSERT 0 1`); 0 filas = ese correo no está en Auth (la receta ya ignora mayúsculas y espacios). Un apóstrofo en el nombre va doble (`O''Higgins`).
+
 8. Configurar Auth: desactivar "Confirm email" en Authentication → Providers → Email
 9. Verificar con `scripts/post-setup-check.sql` (desde la raíz del repo; ver
    `SETUP.md` paso 8) — reporta ✅/❌ por check
