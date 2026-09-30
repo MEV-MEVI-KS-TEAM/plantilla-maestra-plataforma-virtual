@@ -24,7 +24,8 @@ export function leerEnvLocal(raiz) {
   const env = rutaEnvLocal(raiz)
   if (!fs.existsSync(env)) return null
   return Object.fromEntries(fs.readFileSync(env, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)
-    .map(l => l.match(/^\s*([A-Z0-9_]+)\s*=(.*)$/)).filter(Boolean)
+    // Un CR de más (\r\r\n, o un \r suelto al final) no tumba la línea.
+    .map(l => l.replace(/\r+$/, '').match(/^\s*([A-Z0-9_]+)\s*=(.*)$/)).filter(Boolean)
     .map(m => [m[1], m[2].trim().replace(/^["']|["']$/g, '')]))
 }
 
