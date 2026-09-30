@@ -47,7 +47,7 @@ import { validarOverrides } from '@/lib/site-config-validacion'
 import { SITE_CONFIG_SIN_MIGRAR } from '@/lib/site-config-errores'
 import { campoPorClave } from '@/lib/site-config-campos'
 import { SUBTITULO_EDITOR, TEXTO_CONFIRMA_RESTAURAR, confirmacionDePrecios } from '@/lib/site-config-textos'
-import { conservarNegocioDelBorrador } from '@/lib/site-config-restaurar'
+import { conservarNegocioDelBorrador, verificarConservados } from '@/lib/site-config-restaurar'
 import { whatsappComoSeVera } from '@/lib/contacto-ui'
 import { esSemanal } from '@/lib/periodicidad'
 import type { TokensColores } from '@/lib/site-config-paletas'
@@ -365,20 +365,24 @@ export default function PersonalizarPage() {
       }
       // #279: la API conserva los datos del negocio (contacto, precios,
       // planes, FAQ…) y el editor parte de lo que quedó publicado. Lo que el
-      // admin tecleó en campos del negocio y aún no publica se vuelve a poner
-      // encima (el modal promete que NO cambia); el diseño del borrador sí se va.
+      // admin CAMBIÓ en campos del negocio y aún no publica (lo que difiere de
+      // lo que cargó) se vuelve a poner encima: el modal promete que NO cambia.
+      // El diseño del borrador sí se va.
       const conservados = (data.overrides ?? {}) as SiteConfigOverrides
+      const borrador = conservarNegocioDelBorrador(conservados, overrides, overridesBase)
       setMerged(data.merged as ConfigEditable)
-      setOverrides((borrador) => conservarNegocioDelBorrador(conservados, borrador))
+      setOverrides(borrador)
       setOverridesBase(conservados)
       setClaveConError(null)
       setPublicado(true)
-      const pendiente = data.pendiente as { error?: unknown; clave?: unknown } | null | undefined
-      if (pendiente && typeof pendiente.error === 'string') {
-        // Un dato del negocio conservado que hoy no pasa la validación (#279):
-        // se señala su campo para que el siguiente «Publicar» no lo rechace a ciegas.
+      // Un dato del negocio que hoy no pasa la validación (#279: se conserva
+      // igual) se señala con su campo para que el siguiente «Publicar» no lo
+      // rechace a ciegas. Se mira el borrador que queda en el editor, no solo
+      // lo publicado: si el admin ya lo corrigió sin publicar, no hay aviso.
+      const pendiente = verificarConservados(borrador, mergeSiteConfig(CONFIG, {}))
+      if (pendiente) {
         showToast(`Tu diseño volvió al original, pero falta corregir un dato: ${pendiente.error}`, 'error', 8000)
-        if (typeof pendiente.clave === 'string') irAlCampo(pendiente.clave)
+        if (pendiente.clave) irAlCampo(pendiente.clave)
       } else {
         showToast('Tu página volvió al diseño original. Tus datos del negocio no cambiaron.', 'success')
       }
@@ -387,7 +391,7 @@ export default function PersonalizarPage() {
     } finally {
       setRestaurando(false)
     }
-  }, [showToast, irAlCampo])
+  }, [overrides, overridesBase, showToast, irAlCampo])
 
   // ─── Datos derivados para la vista previa ──────────────────────────────────
 

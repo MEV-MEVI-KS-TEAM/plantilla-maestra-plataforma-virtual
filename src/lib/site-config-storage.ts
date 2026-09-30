@@ -46,10 +46,11 @@ export async function borrarLogoSiEsDelBucket(admin: SupabaseClient, url: unknow
 
 /**
  * «Restaurar diseño original» (#279): borra de la RAÍZ del bucket los logos que
- * la fila (releída después de restaurar) ya no referencia y cuyo nombre marca
- * una subida anterior a `antesDeMs` (la ruta resta un margen: ver
- * `MARGEN_LOGOS_MS`). Nada más: otros objetos, subcarpetas, un logo que la
- * fila siga usando o uno recién subido se dejan (ver `logosABorrar`).
+ * la fila (releída después de restaurar) ya no referencia y que, o se subieron
+ * antes de `antesDeMs` (la ruta resta un margen: ver `MARGEN_LOGOS_MS`), o la
+ * fila de antes de restaurar (`previa`) ya usaba. Nada más: otros objetos,
+ * subcarpetas, un logo que la fila siga usando o uno recién subido que nadie
+ * había aplicado se dejan (ver `logosABorrar`).
  *
  * Primero lista TODO (paginado de a 1000) y después borra, para que el borrado
  * no mueva las páginas mientras se recorren. Un fallo se registra y no se
@@ -60,12 +61,18 @@ export async function borrarLogosSinReferencia(
   admin: SupabaseClient,
   fila: Record<string, unknown>,
   antesDeMs: number,
+  previa: Record<string, unknown> | null = null,
 ): Promise<void> {
-  const referenciados = new Set<string>()
-  for (const clave of CLAVES_LOGO_BRANDING) {
-    const path = pathDesdeUrlPublica(fila[clave])
-    if (path) referenciados.add(path)
+  const paths = (f: Record<string, unknown> | null) => {
+    const s = new Set<string>()
+    for (const clave of CLAVES_LOGO_BRANDING) {
+      const path = pathDesdeUrlPublica(f?.[clave])
+      if (path) s.add(path)
+    }
+    return s
   }
+  const referenciados = paths(fila)
+  const previos = paths(previa)
 
   const nombres: string[] = []
   for (let offset = 0; offset < 100000; offset += 1000) {
@@ -82,7 +89,7 @@ export async function borrarLogosSinReferencia(
     if (entries.length < 1000) break
   }
 
-  const aBorrar = logosABorrar(nombres, referenciados, antesDeMs)
+  const aBorrar = logosABorrar(nombres, referenciados, antesDeMs, previos)
   for (let i = 0; i < aBorrar.length; i += 1000) {
     const lote = aBorrar.slice(i, i + 1000)
     const { error } = await admin.storage.from(BUCKET_BRANDING).remove(lote)

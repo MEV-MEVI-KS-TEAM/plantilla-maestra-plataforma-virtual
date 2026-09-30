@@ -13,10 +13,12 @@
  *            /api/admin/configuracion/logo, que es quien sube y borra el
  *            archivo. Mandarlas no falla; la respuesta lo avisa.
  *   DELETE → «Restaurar diseño original» (#279): quita de la fila SOLO las
- *            claves de diseño (logos, colores, textos de la landing) y
- *            conserva los datos del negocio (nombre, contacto, redes, precios,
- *            planes, tipo de cambio). Borra del bucket solo los logos que la
- *            fila ya no referencia. Solo ADMIN.
+ *            claves de diseño (logos, colores y los títulos, kickers, botones y
+ *            frases de venta de la landing) y conserva los datos del negocio
+ *            (nombre, contacto, redes, precios, planes, tipo de cambio) y el
+ *            contenido con datos de la escuela (FAQ, testimonios, cifras,
+ *            pasos, respaldos, carreras, ciudad, CCT). Borra del bucket solo
+ *            los logos que la fila ya no referencia. Solo ADMIN.
  *
  * ESCRITURA SOLO CON SERVICE ROLE. La tabla no tiene política de INSERT/UPDATE
  * para `authenticated` a propósito (ver la migración): la única vía de
@@ -246,9 +248,11 @@ export async function PUT(request: NextRequest) {
 }
 
 // ─── DELETE /api/admin/configuracion — restaurar el DISEÑO ───────────────────
-// #279 (decisión de Kevin): regresa SOLO el diseño (logos, colores, textos de
-// la landing) y CONSERVA los datos del negocio con su valor publicado (nombre,
-// contacto, redes, precios, planes, tipo de cambio). Ver site-config-restaurar.ts.
+// #279 (decisión de Kevin): regresa SOLO el diseño (logos, colores y los
+// títulos y frases de venta de la landing) y CONSERVA con su valor publicado
+// los datos del negocio (nombre, contacto, redes, precios, planes, tipo de
+// cambio) y el contenido con datos de la escuela (FAQ, testimonios, cifras,
+// pasos…). La partición vive en site-config-restaurar.ts.
 export async function DELETE() {
   try {
     const auth = await autorizar(true)
@@ -265,12 +269,14 @@ export async function DELETE() {
     revalidateSiteConfig()
     // Se relee la fila: lo que quedó en la BD manda (un PUT o un logo de otra
     // pestaña pudo escribir en medio). Los logos que se conservan son los que
-    // ella referencia y los subidos en los últimos minutos (pueden estar a medio
-    // aplicar). Si la relectura falla, el bucket no se toca: un huérfano es
-    // preferible a borrar un logo que alguien acaba de poner.
+    // ella referencia y los subidos en los últimos minutos que la fila previa
+    // no usaba (pueden estar a medio aplicar). Si la relectura falla, el
+    // bucket no se toca: un huérfano es preferible a borrar un logo que
+    // alguien acaba de poner.
     const actual = await leerFila(admin).catch(() => null)
     const fila = actual && esObjetoPlano(actual.data) ? actual.data : null
-    if (fila) await borrarLogosSinReferencia(admin, fila, inicio - MARGEN_LOGOS_MS)
+    const usados = previa && esObjetoPlano(previa.data) ? previa.data : null
+    if (fila) await borrarLogosSinReferencia(admin, fila, inicio - MARGEN_LOGOS_MS, usados)
 
     // Lo mismo que devolvería el GET: recortado a la lista blanca.
     const overrides = recortarOverrides(fila ?? restaurada, DEFAULTS())

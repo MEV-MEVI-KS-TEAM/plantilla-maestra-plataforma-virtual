@@ -1160,7 +1160,7 @@ if (!flag('solo-pdf')) {
   // sin pedirnos nada, y en una escuela sin WhatsApp es además el camino para
   // encender sus propios botones: callarlo le cuesta su canal principal.
   L.push('🎨 TU PÁGINA LA CAMBIAS TÚ',
-    `Desde «Personalizar mi página» en tu panel (${URL_BASE}/admin/configuracion) cambias tus textos, tu eslogan, tus colores y tu logo, y se publican en unos segundos. «Restaurar diseño original» devuelve tu logo, tus colores y los títulos y frases de tu página a como se te entregaron (tu nombre, tu eslogan, tu WhatsApp, tu correo y tus precios no cambian), así que puedes probar sin miedo.`, '')
+    `Desde «Personalizar mi página» en tu panel (${URL_BASE}/admin/configuracion) cambias tus textos, tu eslogan, tus colores y tu logo, y se publican en unos segundos. «Restaurar diseño original» devuelve tu logo, tus colores y los títulos y frases de tu página a como se te entregaron (tu nombre, tu eslogan, tu WhatsApp, tu correo y tus precios no cambian; cada campo tiene además su propio «Restaurar»), así que puedes probar sin miedo.`, '')
   if (SIN_WHATSAPP) {
     L.push('⭐ LO PRIMERO QUE TE RECOMIENDO HACER',
       'Tu página se entregó *sin botones de WhatsApp* porque no tenemos tu número, y preferimos no publicar uno que no lleve a ningún lado.',

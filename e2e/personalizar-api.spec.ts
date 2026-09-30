@@ -278,6 +278,10 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
         `[beforeAll] DELETE /api/admin/configuracion devolvió ${limpieza.status()}: ${(await limpieza.text()).slice(0, 300)}`,
       )
     }
+    // El DELETE respeta MARGEN_LOGOS_MS: un logo de menos de 5 min (una corrida
+    // anterior interrumpida) sobreviviría y b6 contaría objetos de más.
+    const restosIniciales = await objetosBranding('logo-')
+    if (restosIniciales.length > 0) await s.storage.from(BUCKET).remove(restosIniciales)
 
     // ── Defaults del cliente (nada se hardcodea del config de la plantilla) ──
     const g = await json<RespuestaGet>(await admin.get('/api/admin/configuracion'))
@@ -709,7 +713,7 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
   // ══════════════════════════════════════════════════════════════════════════
   // d — "Restaurar diseño original" (#279: solo el diseño)
   // ══════════════════════════════════════════════════════════════════════════
-  test('d — el DELETE regresa solo el diseño: conserva WhatsApp, correo y precios, y borra los logos viejos sin referencia', async () => {
+  test('d — el DELETE regresa solo el diseño: conserva WhatsApp, correo y precios, y borra los logos que ya nadie referencia', async () => {
     // Dos esperas de hasta 30 s por la purga de la landing.
     test.setTimeout(180_000)
 
@@ -733,17 +737,24 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     // Sin esto, «el título se fue» de abajo pasaría aunque nunca hubiera llegado.
     await esperarHtml(anonimo, '/', TITULO_D, true)
 
-    // Un logo huérfano VIEJO (su nombre marca una subida de 1970) y los de b6,
-    // subidos hace segundos. El DELETE borra el viejo; a los recientes los
-    // protege el margen (MARGEN_LOGOS_MS: una subida en curso fija su nombre
-    // antes de escribir la fila) y los quita el afterAll.
+    // Tres clases de logo en el bucket: un huérfano VIEJO (su nombre marca una
+    // subida de 1970), uno RECIENTE que nadie aplicó (como una subida a medio
+    // camino) y los de b6 que la fila usa. El DELETE borra el viejo y los que la
+    // fila usaba; al reciente sin aplicar lo protege el margen (MARGEN_LOGOS_MS)
+    // y lo quita el afterAll.
     const HUERFANO = 'logo-claro-1000.png'
-    const { error: subir } = await svc()
-      .storage.from(BUCKET)
-      .upload(HUERFANO, PNG_1X1, { contentType: 'image/png', upsert: true })
-    expect(subir, `No se pudo subir el huérfano de prueba: ${subir?.message}`).toBeNull()
-    const recientes = (await objetosBranding('logo-')).filter((n) => n !== HUERFANO)
-    const corte = Date.now() - 4 * 60 * 1000 // un minuto de holgura contra el margen de 5
+    const A_MEDIO_CAMINO = `logo-oscuro-${Date.now()}.png`
+    for (const nombre of [HUERFANO, A_MEDIO_CAMINO]) {
+      const { error: subir } = await svc()
+        .storage.from(BUCKET)
+        .upload(nombre, PNG_1X1, { contentType: 'image/png', upsert: true })
+      expect(subir, `No se pudo subir ${nombre}: ${subir?.message}`).toBeNull()
+    }
+    const enLaFila = (await dataEnBD()) as Record<string, unknown>
+    const usados = ['logo', 'logoOscuro']
+      .map((c) => String(enLaFila[c] ?? '').split('/').pop() ?? '')
+      .filter((n) => n.startsWith('logo-'))
+    expect(usados.length, 'b6 dejó al menos un logo en la fila').toBeGreaterThan(0)
 
     const res = await admin.delete('/api/admin/configuracion')
     const del = await json<{ ok: true; merged: ConfigEditable; overrides: Record<string, unknown>; pendiente: unknown }>(res)
@@ -774,19 +785,20 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     expect(enBD).not.toHaveProperty('colores')
     expect(enBD).not.toHaveProperty('logo')
 
-    // Del bucket se va el logo viejo que ya nadie referencia; los recientes se quedan.
+    // Del bucket se van el huérfano viejo y los logos que la fila usaba; el
+    // reciente que nadie aplicó se queda.
     await expect
-      .poll(async () => (await objetosBranding('logo-')).includes(HUERFANO), {
-        message: 'Restaurar el diseño original borra los logos viejos que ya nadie referencia',
+      .poll(async () => {
+        const quedan = await objetosBranding('logo-')
+        return [HUERFANO, ...usados].filter((n) => quedan.includes(n))
+      }, {
+        message: 'Restaurar el diseño original borra los logos que ya nadie referencia',
         timeout: 15_000,
         intervals: [500],
       })
-      .toBe(false)
-    const despues = await objetosBranding('logo-')
-    for (const nombre of recientes) {
-      const ts = Number(/-(\d+)\./.exec(nombre)?.[1] ?? 0)
-      if (ts > corte) expect(despues, `«${nombre}» se subió hace menos de 5 min: se queda`).toContain(nombre)
-    }
+      .toEqual([])
+    expect(await objetosBranding('logo-'), 'Una subida de hace segundos que nadie aplicó se queda')
+      .toContain(A_MEDIO_CAMINO)
 
     // Y el GET lo confirma.
     const get = await json<RespuestaGet>(await admin.get('/api/admin/configuracion'))

@@ -84,7 +84,8 @@ test('4. ningún texto promete lo que la plataforma no hace', () => {
   expect(TEXTO_CONFIRMA_RESTAURAR).toContain('el logo, los colores y los títulos y frases')
   expect(TEXTO_CONFIRMA_RESTAURAR).toContain('diseño original')
   for (const dato of ['nombre', 'lema', 'WhatsApp', 'correo', 'redes', 'precios', 'planes',
-    'preguntas frecuentes', 'testimonios', 'cifras', 'links de cobro']) {
+    'preguntas frecuentes', 'testimonios', 'cifras', 'pasos de inscripción', 'respaldos', 'carreras',
+    'links de cobro']) {
     expect(TEXTO_CONFIRMA_RESTAURAR).toContain(dato)
   }
   expect(TEXTO_CONFIRMA_RESTAURAR).toContain('NO cambian')

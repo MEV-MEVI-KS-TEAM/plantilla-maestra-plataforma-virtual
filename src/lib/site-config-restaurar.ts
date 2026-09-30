@@ -25,8 +25,9 @@
  * Favicon (archivo estático), fuentes (next/font), estilo de la landing
  * (config.ts), orden de las secciones (fijo en el JSX) y links de cobro
  * (config.ts) no se editan desde el panel ni viven en site_config: Restaurar
- * no los toca. Horarios y dirección no existen como dato en la plantilla; si
- * el cliente los escribió, está en el contenido que se conserva (p. ej. la FAQ).
+ * no los toca. Horarios y dirección no existen como dato: si el cliente los
+ * escribió en el contenido que se conserva (p. ej. la FAQ), se quedan; en un
+ * título o una frase de venta, esa frase vuelve a la de fábrica.
  *
  * Módulo sin red ni Supabase para poder probarlo solo: lo usan la ruta
  * DELETE /api/admin/configuracion (fila, logos, `pendiente`) y el editor
@@ -34,7 +35,7 @@
  */
 import type { ClaveEditable, SiteConfig, SiteConfigOverrides } from '@/lib/site-config-core'
 import { validarOverrides } from '@/lib/site-config-validacion'
-import { prepararParaPublicar } from '@/lib/site-config-editor'
+import { mismoContenido, prepararParaPublicar } from '@/lib/site-config-editor'
 
 /** DISEÑO: lo que Restaurar regresa al de fábrica (config.ts de la escuela). */
 export const CLAVES_DISENO = [
@@ -224,21 +225,32 @@ export function restaurarDiseno(data: unknown): ObjetoPlano {
 }
 
 /**
- * El borrador del editor DESPUÉS de restaurar: lo conservado en la fila, con
- * los datos del negocio tal como el admin los tiene en su borrador (tecleados y
- * sin publicar, o quitados con el «Restaurar» de su campo). Sin esto, restaurar
+ * El borrador del editor DESPUÉS de restaurar: lo conservado en la fila, más
+ * los datos del negocio que el admin cambió en su borrador y aún no publica
+ * (tecleados, o quitados con el «Restaurar» de su campo). Sin esto, restaurar
  * descartaba en silencio un WhatsApp o un precio escrito y no publicado,
  * justo después de que el modal promete que NO cambian. El diseño del borrador
  * sí se descarta: eso es lo que se restauró.
+ *
+ * Fusión a tres bandas contra `base` (lo publicado que el editor cargó): solo
+ * cuenta como cambio del admin la ruta donde el borrador difiere de `base`. En
+ * las demás manda lo conservado en la fila, que puede ser MÁS NUEVO que lo que
+ * esta pestaña cargó (otra pestaña u otro admin publicó en medio); tomar el
+ * borrador completo reinyectaba esos valores viejos y el siguiente «Publicar»
+ * los devolvía a la fila.
  */
 export function conservarNegocioDelBorrador(
   conservados: SiteConfigOverrides,
   borrador: SiteConfigOverrides,
+  base: SiteConfigOverrides,
 ): SiteConfigOverrides {
   const salida = copiaJson((conservados ?? {}) as ObjetoPlano)
   const fuente = (borrador ?? {}) as ObjetoPlano
+  const cargado = (base ?? {}) as ObjetoPlano
   for (const ruta of CLAVES_NEGOCIO) {
     const b = leerRuta(fuente, ruta)
+    const c = leerRuta(cargado, ruta)
+    if (b.hay === c.hay && (!b.hay || mismoContenido(b.valor, c.valor))) continue
     if (b.hay) ponerRuta(salida, ruta, b.valor)
     else quitarRuta(salida, ruta)
   }
@@ -264,8 +276,9 @@ export function verificarConservados(
 /**
  * Un logo subido poco antes de restaurar puede estar a medio aplicar (la ruta
  * de subida fija el nombre, sube el archivo y después escribe la fila). Los de
- * los últimos minutos se dejan: un huérfano en el bucket es preferible a una
- * landing apuntando a un archivo borrado.
+ * los últimos minutos se dejan, salvo los que la fila de ANTES de restaurar ya
+ * referenciaba (esos ya estaban aplicados): un huérfano en el bucket es
+ * preferible a una landing apuntando a un archivo borrado.
  */
 export const MARGEN_LOGOS_MS = 5 * 60 * 1000
 
@@ -277,16 +290,19 @@ const RE_OBJETO_LOGO = /^logo-(claro|oscuro)-(\d+)\.[a-z0-9]+$/
 
 /**
  * Qué objetos de la RAÍZ del bucket `branding` borrar al restaurar: solo los
- * logos (lo único que es diseño ahí) que la fila ya no referencia y cuyo nombre
- * marca una subida anterior a `antesDeMs`. Cualquier otro objeto se deja.
+ * logos (lo único que es diseño ahí) que la fila ya no referencia y que, o bien
+ * su nombre marca una subida anterior a `antesDeMs`, o bien la fila de antes de
+ * restaurar los usaba (`previos`: ya estaban aplicados, el margen no los
+ * protege de nada). Cualquier otro objeto se deja.
  */
 export function logosABorrar(
   nombresEnRaiz: ReadonlyArray<string>,
   referenciados: ReadonlySet<string>,
   antesDeMs: number,
+  previos: ReadonlySet<string> = new Set(),
 ): string[] {
   return nombresEnRaiz.filter((n) => {
     const m = RE_OBJETO_LOGO.exec(n)
-    return m !== null && Number(m[2]) < antesDeMs && !referenciados.has(n)
+    return m !== null && !referenciados.has(n) && (Number(m[2]) < antesDeMs || previos.has(n))
   })
 }

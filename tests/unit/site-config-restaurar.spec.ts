@@ -225,24 +225,48 @@ test('8. un dato del negocio conservado que no pasa la validación queda como `p
 
 // ─── 4. El borrador del editor ───────────────────────────────────────────────
 
-test('9. tras restaurar, el borrador conserva lo tecleado en campos del negocio y suelta el diseño', () => {
+test('9. tras restaurar, el borrador conserva lo que el admin CAMBIÓ en campos del negocio y suelta el diseño', () => {
+  // Lo que la pestaña cargó (publicado en ese momento).
+  const base = {
+    whatsapp: '525511223344',
+    precios: { inscripcion: 700 },
+    redes: { facebook: 'https://facebook.com/a' },
+    colores: { primario: '#222222' },
+    landing: { hero_titulo: 'x' },
+  } as unknown as SiteConfigOverrides
   const conservados = { whatsapp: '525511223344', precios: { inscripcion: 700 }, redes: { facebook: 'https://facebook.com/a' } } as SiteConfigOverrides
   const borrador = {
     whatsapp: '523312345678', // tecleado y sin publicar → se queda
     redes: { facebook: 'https://facebook.com/a' },
     // precios.inscripcion quitado con el «Restaurar» del campo → también sin precio
     colores: { primario: '#111111' }, // diseño en el borrador → se va
-    landing: { hero_titulo: 'x', faq_items: [{ q: 'q', a: 'a' }] },
+    landing: { hero_titulo: 'x', faq_items: [{ q: 'q', a: 'a' }] }, // FAQ nueva sin publicar → se queda
   } as unknown as SiteConfigOverrides
-  const r = conservarNegocioDelBorrador(conservados, borrador) as Obj
+  const r = conservarNegocioDelBorrador(conservados, borrador, base) as Obj
   expect(r.whatsapp).toBe('523312345678')
   expect(r).not.toHaveProperty('precios')
   expect(r).not.toHaveProperty('colores')
   expect(r.landing).toEqual({ faq_items: [{ q: 'q', a: 'a' }] })
   expect(r.redes).toEqual({ facebook: 'https://facebook.com/a' })
   // Sin nada sin publicar, el borrador queda idéntico a lo conservado.
-  expect(conservarNegocioDelBorrador(conservados, conservados)).toEqual(conservados)
-  expect(conservarNegocioDelBorrador({}, {})).toEqual({})
+  expect(conservarNegocioDelBorrador(conservados, conservados, conservados)).toEqual(conservados)
+  expect(conservarNegocioDelBorrador({}, {}, {})).toEqual({})
+})
+
+test('9b. una pestaña desfasada no reinyecta valores viejos: lo que el admin no tocó sigue lo conservado', () => {
+  // La pestaña cargó WhatsApp viejo y sin Facebook; otra pestaña publicó después
+  // WhatsApp nuevo, Facebook y una inscripción nueva. El admin no tocó nada.
+  const base = { whatsapp: '5211111', precios: { inscripcion: 1500 } } as SiteConfigOverrides
+  const borrador = { whatsapp: '5211111', precios: { inscripcion: 1500 }, colores: { primario: '#111111' } } as unknown as SiteConfigOverrides
+  const conservados = {
+    whatsapp: '5212222',
+    precios: { inscripcion: 1800 },
+    redes: { facebook: 'https://facebook.com/nuevo' },
+  } as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(conservados, borrador, base)).toEqual(conservados)
+  // Si el admin sí cambió uno (el correo), solo ese se pone encima.
+  const conCorreo = { ...borrador, contactoEmail: 'nuevo@escuela.test' } as SiteConfigOverrides
+  expect(conservarNegocioDelBorrador(conservados, conCorreo, base)).toEqual({ ...conservados, contactoEmail: 'nuevo@escuela.test' })
 })
 
 // ─── 5. Bucket branding ──────────────────────────────────────────────────────
@@ -265,6 +289,14 @@ test('10. solo se borran logos sin referencia y subidos antes del corte', () => 
   ])
   expect(logosABorrar([], new Set(), corte)).toEqual([])
   expect(MARGEN_LOGOS_MS).toBeGreaterThanOrEqual(60_000)
+  // Uno reciente que la fila de ANTES usaba ya estaba aplicado: el margen no lo protege.
+  expect(logosABorrar(nombres, new Set(['logo-claro-900002.png']), corte, new Set(['logo-claro-1000001.png']))).toEqual([
+    'logo-claro-900000.png',
+    'logo-oscuro-900001.jpg',
+    'logo-claro-1000001.png',
+  ])
+  // …pero si la fila de DESPUÉS lo vuelve a referenciar, se queda.
+  expect(logosABorrar(['logo-claro-1000001.png'], new Set(['logo-claro-1000001.png']), corte, new Set(['logo-claro-1000001.png']))).toEqual([])
 })
 
 function adminFalso(paginas: Array<Array<{ name: string; id: string | null }>>, opciones: { errorLista?: boolean; errorBorrar?: boolean } = {}) {
@@ -308,6 +340,16 @@ test('11. borrarLogosSinReferencia: pagina, ignora carpetas, respeta la referenc
   expect(borrados.flat()).not.toContain('logo-oscuro-1500.png')
 })
 
+test('11b. borrarLogosSinReferencia: el logo reciente que la fila previa usaba sí se borra', async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://qa279.supabase.co'
+  const reciente = `logo-claro-${Date.now()}.png`
+  const aMedioCamino = `logo-oscuro-${Date.now()}.png`
+  const { admin, borrados } = adminFalso([[{ name: reciente, id: 'a' }, { name: aMedioCamino, id: 'b' }]])
+  const previa = { logo: `https://qa279.supabase.co/storage/v1/object/public/branding/${reciente}` }
+  await borrarLogosSinReferencia(admin, {}, Date.now() - MARGEN_LOGOS_MS, previa)
+  expect(borrados).toEqual([[reciente]])
+})
+
 test('12. borrarLogosSinReferencia: si no puede listar, no borra; si no puede borrar, no lanza', async () => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://qa279.supabase.co'
   const sinLista = adminFalso([[{ name: 'logo-claro-1.png', id: 'a' }]], { errorLista: true })
@@ -324,7 +366,8 @@ test('13. el DELETE restaura solo el diseño y ya no vacía la fila ni el bucket
   const ruta = leer('src/app/api/admin/configuracion/route.ts')
   const del = ruta.slice(ruta.indexOf('export async function DELETE'))
   expect(del).toContain('restaurarDiseno(previa?.data)')
-  expect(del).toContain('borrarLogosSinReferencia(admin, fila, inicio - MARGEN_LOGOS_MS)')
+  expect(del).toContain('borrarLogosSinReferencia(admin, fila, inicio - MARGEN_LOGOS_MS, usados)')
+  expect(del).toContain('previa && esObjetoPlano(previa.data) ? previa.data : null')
   expect(del).toContain('if (fila) await borrarLogosSinReferencia')
   expect(del).toContain('verificarConservados(overrides')
   expect(del).not.toContain('guardarFila(admin, {}')
@@ -334,12 +377,15 @@ test('13. el DELETE restaura solo el diseño y ya no vacía la fila ni el bucket
 test('14. tras restaurar, el editor parte de lo conservado y le pone encima el negocio sin publicar', () => {
   const pagina = leer('src/app/(dashboard)/admin/configuracion/page.tsx')
   const ini = pagina.indexOf('const restaurarDisenoOriginal')
-  const fin = pagina.indexOf('}, [showToast, irAlCampo])', ini)
+  const fin = pagina.indexOf('}, [overrides, overridesBase, showToast, irAlCampo])', ini)
   expect(ini).toBeGreaterThan(-1)
   expect(fin).toBeGreaterThan(ini)
   const bloque = pagina.slice(ini, fin)
-  expect(bloque).toContain('conservarNegocioDelBorrador(conservados, borrador)')
+  expect(bloque).toContain('conservarNegocioDelBorrador(conservados, overrides, overridesBase)')
+  expect(bloque).toContain('setOverrides(borrador)')
   expect(bloque).toContain('setOverridesBase(conservados)')
+  // El aviso se calcula sobre el borrador que queda, no solo sobre lo publicado.
+  expect(bloque).toContain('verificarConservados(borrador, mergeSiteConfig(CONFIG, {}))')
   expect(bloque).not.toContain('setOverrides({})')
   expect(bloque).not.toContain('setOverridesBase({})')
 })
@@ -351,4 +397,5 @@ test('15. el PDF y el mensaje de entrega ya no prometen que Restaurar regresa to
   const msg = leer('scripts/entrega/generar-entrega.mjs')
   expect(msg).not.toContain('devuelve todo a como se te entregó')
   expect(msg).toContain('tus precios no cambian')
+  expect(msg).toContain('cada campo tiene además su propio «Restaurar»')
 })

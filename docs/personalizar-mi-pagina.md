@@ -161,14 +161,17 @@ con su valor publicado. La partición vive en `src/lib/site-config-restaurar.ts`
 - Favicon (archivo estático), fuentes (`next/font`), estilo de la landing (`config.ts`), orden de las
   secciones (fijo en el JSX) y links de cobro (`config.ts`) no se editan desde el panel ni viven en
   `site_config`: Restaurar no los toca. Horarios y dirección no existen como dato: si el cliente los
-  escribió, están en el contenido que se conserva (p. ej. la FAQ).
+  escribió en el contenido que se conserva (p. ej. la FAQ), se quedan; en un título o una frase de
+  venta, esa frase vuelve a la de fábrica.
 
 Primero se escribe la fila; después se relee y se borran del bucket `branding` **solo los logos**
-que ella ya no referencia y que se subieron hace más de 5 minutos (`MARGEN_LOGOS_MS`: una subida en
-curso no pierde su archivo); si la relectura falla, el bucket no se toca. Nada más. El editor parte
-de lo conservado y vuelve a poner encima lo que el admin tecleó en campos del negocio sin publicar.
+que ella ya no referencia y que, o la fila de antes de restaurar ya usaba, o se subieron hace más de
+5 minutos (`MARGEN_LOGOS_MS`: una subida en curso no pierde su archivo); si la relectura falla, el
+bucket no se toca. Nada más. El editor parte de lo conservado y vuelve a poner encima lo que el admin
+CAMBIÓ en campos del negocio y no ha publicado (fusión a tres bandas contra lo que cargó: un valor
+que otra pestaña publicó en medio no se pisa con el viejo).
 Si un dato del negocio conservado no pasa la validación de hoy, la respuesta trae `pendiente` y el
-editor lleva al admin a ese campo (si el campo no se dibuja —p. ej. la certificación con
+editor (que valida el borrador que le queda, por si el admin ya lo corrigió) lleva al admin a ese campo (si el campo no se dibuja —p. ej. la certificación con
 `ofreceCertificacion: false`—, solo queda la receta SQL de la Nota 265 del PLAYBOOK de mev-tools).
 Para regresar un dato del negocio a `config.ts`, cada campo o plan tiene su propio **"Restaurar"**.
 
@@ -176,8 +179,8 @@ A mano, si hiciera falta un reset TOTAL (con permiso de Kevin; borra también el
 `UPDATE public.site_config SET data = '{}'::jsonb WHERE id = 1;`, borrar los objetos del bucket
 desde el Dashboard y después forzar una petición al sitio para regenerar la landing (el SQL no
 purga la caché de Next; eso solo lo hace la API). Para quitar solo el diseño a mano, se borran las
-claves de diseño una por una; **nunca** `data - 'landing'` entero, porque `landing.cct` y
-`landing.ciudad` son del negocio.
+claves de diseño una por una; **nunca** `data - 'landing'` entero, porque `landing` también guarda
+datos del negocio (CCT, ciudad, FAQ, testimonios, cifras, pasos).
 
 ## 6. Decisiones de diseño que no hay que "arreglar"
 

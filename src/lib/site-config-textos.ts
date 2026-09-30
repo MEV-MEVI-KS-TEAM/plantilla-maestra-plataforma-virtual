@@ -140,7 +140,7 @@ export function confirmacionDePrecios({
  * site-config-restaurar.ts). Los links de cobro no viven en site_config.
  */
 export const TEXTO_CONFIRMA_RESTAURAR =
-  'Se regresan el logo, los colores y los títulos y frases de tu página al diseño original. NO cambian tu nombre, tu lema, tu WhatsApp, tu correo, tus redes, tus precios, tus planes, tus preguntas frecuentes, tus testimonios ni tus cifras, y tampoco los links de cobro, los pagos ni los calendarios ya generados. ¿Continuar?'
+  'Se regresan el logo, los colores y los títulos y frases de venta de tu página al diseño original. NO cambian tu nombre, tu lema, tu WhatsApp, tu correo, tus redes, tus precios, tus planes ni el contenido con datos de tu escuela (preguntas frecuentes, testimonios, cifras, pasos de inscripción, respaldos y carreras), y tampoco los links de cobro, los pagos ni los calendarios ya generados. ¿Continuar?'
 
 /** Ayuda bajo los planes de una escuela SEMANAL (pestaña Precios). */
 export const AYUDA_CUOTA_SEMANAL =

@@ -277,6 +277,10 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
         `[beforeAll] DELETE /api/admin/configuracion devolvió ${limpieza.status()}: ${(await limpieza.text()).slice(0, 300)}`,
       )
     }
+    // El DELETE respeta MARGEN_LOGOS_MS: un logo de menos de 5 min (una corrida
+    // anterior interrumpida) sobreviviría a la pizarra limpia.
+    const restosIniciales = await objetosBranding('logo-')
+    if (restosIniciales.length > 0) await svc().storage.from(BUCKET).remove(restosIniciales)
 
     // ── Defaults del cliente: nada de esta suite se hardcodea de la plantilla ──
     const g = await json<RespuestaGet>(await adminApi.get('/api/admin/configuracion'))
@@ -674,6 +678,10 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     // Se recarga para partir de lo PUBLICADO, no del estado en memoria de c5.
     await editor.goto('/admin/configuracion')
     await expect(editor.getByRole('heading', { name: 'Personalizar mi página' })).toBeVisible()
+    // El logo de c8 que la fila usa ANTES de restaurar (su archivo debe salir del bucket).
+    const antesDeRestaurar = await json<RespuestaGet>(await adminApi.get('/api/admin/configuracion'))
+    const logoDeC8 = String(antesDeRestaurar.overrides.logo ?? '').split('/').pop() ?? ''
+    expect(logoDeC8, 'c8 dejó un logo publicado').toMatch(/^logo-claro-\d+\./)
 
     await editor.getByRole('button', { name: 'Restaurar diseño original' }).click()
 
@@ -694,15 +702,27 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await editor.getByRole('tab', { name: 'Textos de mi página' }).click()
     await expect(editor.getByLabel('Título del hero', { exact: true })).toHaveValue(HERO_DEFAULT)
 
-    // El logo de c8 también se fue: la tarjeta vuelve a fábrica y la fila ya no
-    // lo referencia. Sus bytes se quedan en el bucket porque se subieron hace
-    // menos de MARGEN_LOGOS_MS (los quita el afterAll); que el DELETE borre los
-    // logos VIEJOS sin referencia lo prueba el caso d de personalizar-api.
+    // El logo de c8 también se fue: la tarjeta vuelve a fábrica, la fila ya no
+    // lo referencia y su archivo sale del bucket (la fila previa lo usaba: el
+    // margen de MARGEN_LOGOS_MS no lo protege).
     await editor.getByRole('tab', { name: 'Identidad' }).click()
     await expect(editor.getByText('Personalizado', { exact: true })).toHaveCount(0)
     const trasRestaurar = await json<RespuestaGet>(await adminApi.get('/api/admin/configuracion'))
     expect(trasRestaurar.overrides.logo, 'La fila ya no tiene logo').toBeUndefined()
     expect(trasRestaurar.overrides.logoOscuro, 'Ni logo oscuro').toBeUndefined()
+    await expect.poll(async () => (await objetosBranding('logo-')).includes(logoDeC8), {
+      message: 'Restaurar debe borrar del bucket el logo que la fila usaba',
+      timeout: 15_000,
+      intervals: [500],
+    }).toBe(false)
+    // #279: en el SERVIDOR (no solo en el borrador del editor) siguen los precios de c5…
+    expect(trasRestaurar.merged.precios.inscripcion, 'La fila conserva la inscripción').toBe(INSCRIPCION_QA)
+    expect(
+      trasRestaurar.merged.modalidades.find((m) => m.id === PLAN_3M.id)?.mensualidad,
+      'La fila conserva la mensualidad del plan',
+    ).toBe(MENSUALIDAD_QA)
+    // …y el editor quedó sincronizado con lo publicado (nada que publicar).
+    await expect(editor.getByText('Cambios sin publicar')).toHaveCount(0)
 
     // #279: los precios que publicó c5 son datos del negocio y se CONSERVAN.
     await editor.getByRole('tab', { name: 'Precios' }).click()
