@@ -78,9 +78,18 @@ export default function MateriaPage() {
   const guiaRef = useRef<HTMLDivElement>(null)
   const [guardandoProgreso, setGuardandoProgreso] = useState(false)
 
+  // El examen final ya acreditado: la tarjeta "¿Qué sigue?" no debe invitar a
+  // presentarlo otra vez (TICKET-2026-09-22-01). Se exige que TODAS las
+  // evaluaciones activas estén aprobadas, igual que la pestaña Examen.
+  // Con el examen aprobado, la pestaña Examen va directo al resultado en vez
+  // de a la guía «Prepárate para el examen».
+  const examenAprobado = materia
+    ? (materia.evaluaciones ?? []).length > 0 && (materia.evaluaciones ?? []).every(ev => ev.aprobada)
+    : false
+
   useEffect(() => {
-    if (tab === 'examen') setMostrarGuia(true)
-  }, [tab])
+    if (tab === 'examen') setMostrarGuia(!examenAprobado)
+  }, [tab, examenAprobado])
 
   // Tiempo real de estudio sobre la semana abierta (Bug 89 / issue #54 F2)
   const { descargar: descargarTiempo } = useTiempoEstudio(semanaSeleccionada)
@@ -462,10 +471,12 @@ export default function MateriaPage() {
                     <span style={{ fontSize: '2.5rem', lineHeight: 1 }}>🎯</span>
                     <div className="space-y-1">
                       <h3 className="text-base font-bold" style={{ color: '#F1F5F9' }}>
-                        ¡Materia completada!
+                        {examenAprobado ? '¡Materia aprobada!' : '¡Materia completada!'}
                       </h3>
                       <p className="text-sm" style={{ color: '#94A3B8' }}>
-                        Ya puedes presentar tu examen final
+                        {examenAprobado
+                          ? 'Ya acreditaste el examen final de esta materia'
+                          : 'Ya puedes presentar tu examen final'}
                       </p>
                     </div>
                     <button
@@ -475,7 +486,7 @@ export default function MateriaPage() {
                       onMouseEnter={e => { e.currentTarget.style.background = CONFIG.colores.acento }}
                       onMouseLeave={e => { e.currentTarget.style.background = CONFIG.colores.primario }}
                     >
-                      Ir al examen →
+                      {examenAprobado ? 'Ver mi calificación →' : 'Ir al examen →'}
                     </button>
                     <p className="text-xs" style={{ color: '#475569' }}>— o —</p>
                     <p className="text-xs leading-relaxed" style={{ color: '#64748B' }}>
