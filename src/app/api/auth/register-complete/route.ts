@@ -13,6 +13,7 @@ import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
 import { modalidadDeRegistro, exigeCursoEnRegistro, errorDePlanDeRegistro } from '@/lib/registro-reglas'
 import { catalogoDeRegistro } from '@/lib/niveles'
+import { MENSAJE_PERSONAL_NO_SE_REGISTRA, esRolAlumno } from '@/lib/admin-alumno'
 
 export async function POST(request: Request) {
   try {
@@ -104,6 +105,24 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient()
+
+    // ── #187 / #263: una cuenta de PERSONAL no se registra como alumno ────────
+    // El upsert de abajo pone rol 'alumno'. Con la sesión de un admin o de un
+    // secretario (un POST a mano: la UI no llega aquí con sesión de personal)
+    // se degradaba él mismo a alumno, y si era el último admin la escuela se
+    // quedaba sin panel. El rol se lee de la BD, antes de escribir nada.
+    const { data: cuentaPrevia, error: errCuenta } = await admin
+      .from('usuarios')
+      .select('rol')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (errCuenta) {
+      console.error('[register-complete] no se pudo leer la cuenta:', errCuenta.message)
+      return Response.json({ error: 'No se pudo verificar la cuenta. Intenta de nuevo.' }, { status: 500 })
+    }
+    if (cuentaPrevia && !esRolAlumno((cuentaPrevia as { rol?: unknown }).rol)) {
+      return Response.json({ error: MENSAJE_PERSONAL_NO_SE_REGISTRA }, { status: 403 })
+    }
 
     // ── Curso o diplomado elegido en el registro ─────────────────────────────
     // ⚠️ NO se confía del cliente el id que manda: se valida contra los cursos

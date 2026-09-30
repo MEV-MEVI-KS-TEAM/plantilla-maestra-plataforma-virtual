@@ -11,12 +11,14 @@ import { rebotaConSesion, updateSession } from '@/lib/supabase/middleware'
  * del admin se quedaba sin «Curso o diplomado».
  */
 
-test('la regla: landing, catálogo y APIs no rebotan; login y compañía sí', () => {
-  for (const r of ['/api/catalogo-publico', '/api/validar/MEV-2026-0001', '/', '/diplomados', '/diplomados/abc']) {
+test('la regla: landing, catálogo, APIs y /validar no rebotan; login y compañía sí', () => {
+  for (const r of ['/api/catalogo-publico', '/api/validar/MEV-2026-0001', '/', '/diplomados', '/diplomados/abc',
+    // Bug 230 (#187): la constancia manda a verificar en /validar, y quien la abre suele tener sesión.
+    '/validar', '/validar/MEV-2026-0001']) {
     expect(rebotaConSesion(r), r).toBe(false)
   }
   for (const r of ['/login', '/register', '/forgot-password', '/reset-password',
-    '/aviso-de-privacidad', '/terminos-y-condiciones', '/validar']) {
+    '/aviso-de-privacidad', '/terminos-y-condiciones', '/validarX', '/validar-otra-cosa']) {
     expect(rebotaConSesion(r), r).toBe(true)
   }
 })
@@ -65,6 +67,14 @@ test.describe('updateSession con sesión de admin', () => {
 
   test('/api/catalogo-publico y /api/validar pasan a la ruta (no 307 al panel)', async () => {
     for (const ruta of ['/api/catalogo-publico', '/api/validar/MEV-2026-0001']) {
+      const res = await updateSession(peticionConSesion(ruta))
+      expect(res.headers.get('location'), ruta).toBeNull()
+      expect(res.status, ruta).toBe(200)
+    }
+  })
+
+  test('/validar con sesión se queda en la página (Bug 230): no 307 al panel', async () => {
+    for (const ruta of ['/validar', '/validar/MEV-2026-0001']) {
       const res = await updateSession(peticionConSesion(ruta))
       expect(res.headers.get('location'), ruta).toBeNull()
       expect(res.status, ruta).toBe(200)

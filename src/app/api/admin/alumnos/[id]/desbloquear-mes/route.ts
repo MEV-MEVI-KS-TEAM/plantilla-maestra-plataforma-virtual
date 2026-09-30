@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { getMesesByModalidad } from '@/lib/modalidades'
 import {
   AVISO_CAMBIO_EN_MEDIO, errorRpcMes, leerCuerpoMes, sinRpcMes, type FilaMoverMes,
@@ -32,11 +33,16 @@ export async function POST(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    // #187: esta ruta es de ALUMNOS. Sobre personal (admin o secretario) o sobre
+    // uno mismo → 403, con el rol leído de la BD y ANTES de escribir nada.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
+
     // ── Obtener alumno ────────────────────────────────────────────────────────
     const { data: alumno, error: fetchError } = await admin
       .from('alumnos')
       .select('id, meses_desbloqueados, modalidad, nivel')
-      .eq('id', params.id)
+      .eq('id', objetivo.alumno.id)
       .single()
 
     if (fetchError || !alumno) {
@@ -71,7 +77,7 @@ export async function POST(
     // Candado de fila, idempotente por operacion_id, 409 (PT409) si el alumno
     // cambió en medio, y el evento en la bitácora con nombre y rol.
     const { data, error: rpcError } = await admin.rpc('alumno_mover_mes', {
-      p_alumno_id:    params.id,
+      p_alumno_id:    objetivo.alumno.id,
       p_accion:       'abrir',
       p_antes:        antes,
       p_tope:         duracion,
@@ -94,7 +100,7 @@ export async function POST(
       const { data: filas, error: updateError } = await admin
         .from('alumnos')
         .update({ meses_desbloqueados: nuevoMes })
-        .eq('id', params.id)
+        .eq('id', objetivo.alumno.id)
         .eq('meses_desbloqueados', antes)
         .select('id')
       if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })

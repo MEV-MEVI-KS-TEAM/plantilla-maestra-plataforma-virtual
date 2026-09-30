@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 
 export async function POST(
   request: NextRequest,
@@ -29,20 +30,17 @@ export async function POST(
       return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
     }
 
-    const { data: alumno, error: alumnoError } = await supabase
-      .from('alumnos')
-      .select('id')
-      .eq('id', params.id)
-      .single()
-
-    if (alumnoError || !alumno) {
-      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 })
-    }
+    // #187: SOLO cuentas de alumno. Antes bastaba con una fila en `alumnos`, y
+    // un admin ascendido desde alumno (o una fila fabricada por PostgREST) la
+    // tiene: cualquier admin le ponía contraseña y entraba como él. Sobre
+    // personal o sobre uno mismo → 403 (la propia se cambia en «Mi cuenta»).
+    const admin = createAdminClient()
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
     // IVS: alumnos.id = auth.users.id
-    const admin = createAdminClient()
     const { error: updateError } = await admin.auth.admin.updateUserById(
-      (alumno as { id: string }).id,
+      objetivo.alumno.id,
       { password: newPassword }
     )
 

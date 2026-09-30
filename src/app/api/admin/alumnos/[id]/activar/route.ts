@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 
 export async function PATCH(
   request: NextRequest,
@@ -19,10 +20,14 @@ export async function PATCH(
     const activo: boolean = typeof body.activo === 'boolean' ? body.activo : true
 
     const admin = createAdminClient()
+    // #187: esta ruta es de ALUMNOS. Sobre personal (admin o secretario) o sobre
+    // uno mismo → 403, con el rol leído de la BD y ANTES de escribir nada.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
     const { error } = await admin
       .from('alumnos')
       .update({ activo })
-      .eq('id', params.id)
+      .eq('id', objetivo.alumno.id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

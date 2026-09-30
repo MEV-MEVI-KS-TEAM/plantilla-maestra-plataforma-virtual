@@ -15,11 +15,17 @@ import { destinoSiEsRutaDePagoAjena } from '@/lib/periodicidad'
  *   Redirigirla le entregaba el HTML del panel a un fetch que espera JSON:
  *   /admin/alumnos pide el catálogo a /api/catalogo-publico y, con la sesión
  *   del admin, se quedaba sin la opción «Curso o diplomado» (#211).
+ * - /validar (Bug 230, #187): la constancia le dice al alumno que la verifique
+ *   en «la página /validar de este sitio», y quien la abre suele tener sesión
+ *   (el propio alumno, o el admin que la emitió). Rebotarlo a su panel dejaba
+ *   la página inservible justo para quien la necesita. Prefijo exacto:
+ *   /validar y /validar/<folio>, no /validarX.
  */
 export function rebotaConSesion(pathname: string): boolean {
   if (pathname === '/') return false
   if (pathname.startsWith('/diplomados')) return false
   if (pathname.startsWith('/api/')) return false
+  if (pathname === '/validar' || pathname.startsWith('/validar/')) return false
   return true
 }
 

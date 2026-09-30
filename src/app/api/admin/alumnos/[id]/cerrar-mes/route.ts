@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { getMateriasPorMesByModalidad, getMateriasPorMesLicenciatura } from '@/lib/modalidades'
 import { rangoMateriasDelMes } from '@/lib/acceso-materias'
 import {
@@ -54,7 +55,12 @@ export async function POST(
     // ── Admin client con service role (bypassa RLS) ───────────────────────────
     const admin = createAdminClient()
 
-    const alumnoId = params.id
+    // #187: esta ruta es de ALUMNOS. Sobre personal (admin o secretario) o sobre
+    // uno mismo → 403, con el rol leído de la BD y ANTES de escribir nada.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
+
+    const alumnoId = objetivo.alumno.id
 
     // ── Obtener alumno ────────────────────────────────────────────────────────
     const { data: alumnoData, error: alumnoErr } = await admin

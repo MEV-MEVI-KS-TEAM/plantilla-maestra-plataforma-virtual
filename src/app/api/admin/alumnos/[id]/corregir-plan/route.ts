@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { validarCorreccionPlan, mensajeCandado } from '@/lib/corregir-plan'
 import { getSiteConfig } from '@/lib/site-config'
 
@@ -35,8 +36,12 @@ export async function POST(
     const { nivel, carrera, modalidad } = validacion.plan
 
     const admin = createAdminClient()
+    // #187: esta ruta es de ALUMNOS. Sobre personal (admin o secretario) o sobre
+    // uno mismo → 403, con el rol leído de la BD y ANTES de escribir nada.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
     const { data, error } = await admin.rpc('corregir_plan_estudio', {
-      p_alumno:    params.id,
+      p_alumno:    objetivo.alumno.id,
       p_nivel:     nivel,
       p_carrera:   carrera,
       p_modalidad: modalidad,
