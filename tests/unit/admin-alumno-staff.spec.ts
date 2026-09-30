@@ -436,6 +436,9 @@ test('17. la lista de alumnos no incluye personal (en sus TRES intentos), el con
   expect(pendientes).not.toContain(".eq('usuarios.rol'")
   const respaldo = pendientes.slice(pendientes.indexOf('if (error) {'))
   expect(respaldo).toContain(".select('id', { count: 'exact', head: true })")
+  // el respaldo cuenta lo MISMO que antes (no pagados y no contactados), no todos
+  expect(respaldo).toContain(".eq('inscripcion_pagada', false)")
+  expect(respaldo).toContain(".eq('contactado_whatsapp', false)")
   expect(respaldo).toContain('return NextResponse.json({ count: previo.count ?? 0 })')
   const cursoGet = handlers(leer('src/app/api/admin/cursos/[id]/route.ts')).find(([m]) => m === 'GET')![1]
   expect(cursoGet).toContain(".select('id, nombre, apellidos, email, rol')")
