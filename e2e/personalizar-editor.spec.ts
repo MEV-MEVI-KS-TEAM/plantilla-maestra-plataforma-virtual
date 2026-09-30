@@ -20,8 +20,9 @@
  * llegarían vivos a la publicación de c5. Por eso la página se crea en
  * `beforeAll` y se comparte, y por eso el describe es `.serial`.
  *
- * ⚠️ DESTRUCTIVA, igual que la suite de API: deja `site_config.data = {}` y
- * VACÍA el bucket `branding` para partir de una pizarra limpia. La fila se
+ * ⚠️ DESTRUCTIVA, igual que la suite de API: deja `site_config.data = {}`
+ * (upsert con el service role) y BORRA los logos del bucket `branding` (DELETE
+ * del admin) para partir de una pizarra limpia. La fila se
  * guarda en `beforeAll` y se repone en `afterAll` (los BYTES de un logo que
  * estuviera en el bucket no se pueden restaurar). Corre SOLO contra la base de
  * QA. Ver e2e/README-QA.md.
@@ -261,15 +262,18 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     anonApi = await apiRequest.newContext({ baseURL: BASE_URL })
 
     // ── Pizarra limpia (mismo procedimiento que personalizar-api.spec.ts) ──
+    // Desde #279 el DELETE conserva los datos del negocio: primero se vacía la
+    // fila con el service role y después el DELETE purga la caché y borra los
+    // logos viejos del bucket.
     filaOriginal = await filaEnBD()
+    const { error: vaciar } = await svc()
+      .from('site_config')
+      .upsert({ id: 1, data: {}, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    if (vaciar) throw new Error(`[beforeAll] no se pudo vaciar site_config: ${vaciar.message}`)
     const limpieza = await adminApi.delete('/api/admin/configuracion')
     if (!limpieza.ok()) {
-      const { error: upErr } = await svc()
-        .from('site_config')
-        .upsert({ id: 1, data: {}, updated_at: new Date().toISOString() }, { onConflict: 'id' })
       throw new Error(
-        `[beforeAll] DELETE /api/admin/configuracion devolvió ${limpieza.status()}: ${(await limpieza.text()).slice(0, 300)}` +
-          (upErr ? ` (y el upsert de respaldo falló: ${upErr.message})` : ''),
+        `[beforeAll] DELETE /api/admin/configuracion devolvió ${limpieza.status()}: ${(await limpieza.text()).slice(0, 300)}`,
       )
     }
 
@@ -296,9 +300,9 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
   })
 
   test.afterAll(async () => {
-    // ORDEN: primero el DELETE (vacía bucket + PURGA la caché), después se
-    // repone la fila con el service role. Al revés el DELETE borraría lo
-    // restaurado.
+    // ORDEN: primero el DELETE (borra los logos de la prueba y PURGA la caché),
+    // después se repone la fila COMPLETA con el service role. Al revés el
+    // DELETE quitaría el diseño recién repuesto.
     try {
       await adminApi.delete('/api/admin/configuracion')
     } catch { /* el servidor puede haberse caído: se limpia igual abajo */ }
@@ -663,7 +667,7 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
   // ══════════════════════════════════════════════════════════════════════════
   // d-ui — Restaurar el diseño original desde el editor
   // ══════════════════════════════════════════════════════════════════════════
-  test('d-ui — "Restaurar diseño original" devuelve paleta, textos, logo y landing a fábrica', async ({
+  test('d-ui — "Restaurar diseño original" devuelve paleta, textos, logo y landing a fábrica, y conserva los precios', async ({
     browser,
   }) => {
     // Se recarga para partir de lo PUBLICADO, no del estado en memoria de c5.
@@ -689,19 +693,29 @@ test.describe.serial('Personalizar mi página — editor (F5)', () => {
     await editor.getByRole('tab', { name: 'Textos de mi página' }).click()
     await expect(editor.getByLabel('Título del hero', { exact: true })).toHaveValue(HERO_DEFAULT)
 
-    // El logo de c8 también se fue: la tarjeta vuelve a fábrica y el bucket queda vacío.
+    // El logo de c8 también se fue: la tarjeta vuelve a fábrica y sus archivos
+    // salen del bucket (ya nadie los referencia).
     await editor.getByRole('tab', { name: 'Identidad' }).click()
     await expect(editor.getByText('Personalizado', { exact: true })).toHaveCount(0)
     await expect.poll(async () => await objetosBranding('logo-'), {
-      message: 'Restaurar debe vaciar el bucket branding',
+      message: 'Restaurar debe borrar los logos del bucket branding',
       timeout: 15_000,
       intervals: [500],
     }).toEqual([])
+
+    // #279: los precios que publicó c5 son datos del negocio y se CONSERVAN.
+    await editor.getByRole('tab', { name: 'Precios' }).click()
+    await expect(editor.getByLabel(/^Inscripción( general)?$/)).toHaveValue(String(INSCRIPCION_QA))
+    await expect(
+      editor.locator(`#${idDeCampo(`modalidades.${PLAN_3M.id}`)}`).getByLabel(/^Mensualidad( general)?$/),
+    ).toHaveValue(String(MENSUALIDAD_QA))
 
     // ── La página pública también, sin redeploy ──
     await esperarHtml(anonApi, '/', TEXTO_HERO_QA, false)
     await esperarHtml(anonApi, '/', HERO_DEFAULT, true)
     await esperarHtml(anonApi, '/', 'logo-claro-', false)
+    // …y sigue anunciando la mensualidad EDITADA, no la de config.ts.
+    await esperarHtml(anonApi, '/', fmt(MENSUALIDAD_QA), true)
 
     const ctxAnon = await browser.newContext({ baseURL: BASE_URL, viewport: VIEWPORT, storageState: SIN_SESION })
     const anon = await ctxAnon.newPage()

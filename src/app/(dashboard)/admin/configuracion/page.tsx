@@ -12,7 +12,9 @@
  *
  *   GET /api/admin/configuracion  →  defaults + overrides + merged
  *        defaults  = config.ts del cliente. Es el fallback de TODO campo sin
- *                    override y lo que se ve al pulsar "Restaurar".
+ *                    override y lo que se ve al pulsar el "Restaurar" de un
+ *                    campo. «Restaurar diseño original» (#279) solo regresa el
+ *                    DISEÑO a esto: los datos del negocio quedan publicados.
  *        overrides = el BORRADOR editable (`overrides` en el estado). Es
  *                    exactamente lo que se manda de vuelta en el PUT.
  *        merged    = lo publicado. Aquí solo se usa para los LOGOS, que el PUT
@@ -360,18 +362,29 @@ export default function PersonalizarPage() {
         )
         return
       }
+      // #279: la API conserva los datos del negocio (contacto, precios,
+      // planes…): el editor sigue mostrando lo que quedó publicado.
+      const conservados = (data.overrides ?? {}) as SiteConfigOverrides
       setMerged(data.merged as ConfigEditable)
-      setOverrides({})
-      setOverridesBase({})
+      setOverrides(conservados)
+      setOverridesBase(conservados)
       setClaveConError(null)
       setPublicado(true)
-      showToast('Tu página volvió al diseño original', 'success')
+      const pendiente = data.pendiente as { error?: unknown; clave?: unknown } | null | undefined
+      if (pendiente && typeof pendiente.error === 'string') {
+        // Un dato del negocio conservado que hoy no pasa la validación (#279):
+        // se señala su campo para que el siguiente «Publicar» no lo rechace a ciegas.
+        showToast(`Tu diseño volvió al original, pero falta corregir un dato: ${pendiente.error}`, 'error', 8000)
+        if (typeof pendiente.clave === 'string') irAlCampo(pendiente.clave)
+      } else {
+        showToast('Tu página volvió al diseño original', 'success')
+      }
     } catch {
       showToast('No se pudo restaurar el diseño', 'error')
     } finally {
       setRestaurando(false)
     }
-  }, [showToast])
+  }, [showToast, irAlCampo])
 
   // ─── Datos derivados para la vista previa ──────────────────────────────────
 

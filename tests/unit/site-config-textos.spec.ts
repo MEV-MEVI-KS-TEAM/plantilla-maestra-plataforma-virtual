@@ -79,9 +79,16 @@ test('4. ningún texto promete lo que la plataforma no hace', () => {
     expect(t).not.toContain('conserva la cuota con la que se inscribió')
     expect(t).not.toContain('diseño de la plantilla')
   }
-  // Restaurar vuelve al config.ts DE LA ESCUELA, y dice qué revierte.
-  expect(TEXTO_CONFIRMA_RESTAURAR).toContain('precios, planes apagados y tipo de cambio')
-  expect(TEXTO_CONFIRMA_RESTAURAR).toContain('volverán a como se entregaron')
+  // #279 (Kevin): Restaurar regresa SOLO el diseño al config.ts de la escuela
+  // y dice qué NO cambia. Ya no puede anunciar que revierte precios o planes.
+  expect(TEXTO_CONFIRMA_RESTAURAR).toContain('el logo, los colores y los textos')
+  expect(TEXTO_CONFIRMA_RESTAURAR).toContain('diseño original')
+  for (const dato of ['WhatsApp', 'correo', 'precios', 'planes', 'links de cobro']) {
+    expect(TEXTO_CONFIRMA_RESTAURAR).toContain(dato)
+  }
+  expect(TEXTO_CONFIRMA_RESTAURAR).toContain('NO cambian')
+  expect(TEXTO_CONFIRMA_RESTAURAR).not.toContain('Se borrarán todos tus cambios')
+  expect(TEXTO_CONFIRMA_RESTAURAR).not.toContain('volverán a como se entregaron')
   expect(TEXTO_CONFIRMA_RESTAURAR.endsWith('¿Continuar?')).toBe(true)
 })
 

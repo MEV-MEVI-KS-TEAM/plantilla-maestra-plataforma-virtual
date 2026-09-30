@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { removeFolder } from '@/lib/storage-comun'
 import { normalizarOrigen, pathDesdeUrlBranding } from '@/lib/site-config-validacion'
+import { CLAVES_LOGO_BRANDING, logosABorrar } from '@/lib/site-config-restaurar'
 
 export const BUCKET_BRANDING = 'branding'
 
@@ -45,8 +46,54 @@ export async function borrarLogoSiEsDelBucket(admin: SupabaseClient, url: unknow
 }
 
 /**
- * Vacía el bucket entero (raíz + cualquier subcarpeta). Se usa al restaurar
- * los defaults: la fila queda en `{}` y ningún logo subido se referencia ya.
+ * «Restaurar diseño original» (#279): borra de la RAÍZ del bucket los logos que
+ * la fila (releída después de restaurar) ya no referencia y que se subieron
+ * antes de `antesDeMs`. Nada más: otros objetos, subcarpetas, un logo que la
+ * fila siga usando o uno recién subido se dejan (ver `logosABorrar`).
+ *
+ * Primero lista TODO (paginado de a 1000) y después borra, para que el borrado
+ * no mueva las páginas mientras se recorren. Un fallo se registra y no se
+ * propaga: la fila ya quedó restaurada y un huérfano en el bucket es
+ * preferible a un 500 después de un guardado exitoso.
+ */
+export async function borrarLogosSinReferencia(
+  admin: SupabaseClient,
+  fila: Record<string, unknown>,
+  antesDeMs: number,
+): Promise<void> {
+  const referenciados = new Set<string>()
+  for (const clave of CLAVES_LOGO_BRANDING) {
+    const path = pathDesdeUrlPublica(fila[clave])
+    if (path) referenciados.add(path)
+  }
+
+  const nombres: string[] = []
+  for (let offset = 0; offset < 100000; offset += 1000) {
+    const { data: entries, error } = await admin.storage
+      .from(BUCKET_BRANDING)
+      .list('', { limit: 1000, offset })
+    if (error) {
+      console.error('[branding] no se pudo listar el bucket:', error.message)
+      return
+    }
+    if (!entries || entries.length === 0) break
+    // Los archivos reales traen id; las carpetas virtuales traen id null.
+    for (const entry of entries) if (entry.id) nombres.push(entry.name)
+    if (entries.length < 1000) break
+  }
+
+  const aBorrar = logosABorrar(nombres, referenciados, antesDeMs)
+  for (let i = 0; i < aBorrar.length; i += 1000) {
+    const lote = aBorrar.slice(i, i + 1000)
+    const { error } = await admin.storage.from(BUCKET_BRANDING).remove(lote)
+    if (error) console.error('[branding] no se pudieron borrar logos viejos:', error.message)
+  }
+}
+
+/**
+ * Vacía el bucket entero (raíz + cualquier subcarpeta). Ya NO lo usa
+ * «Restaurar diseño original» (desde #279 solo se borran los logos sin
+ * referencia, con `borrarLogosSinReferencia`); queda para limpiezas manuales.
  *
  * Misma mecánica que `removeFolder` de storage-comun.ts pero sobre la RAÍZ:
  * `list('')` pagina de a 1000 y aquí se va borrando lo listado, así que se

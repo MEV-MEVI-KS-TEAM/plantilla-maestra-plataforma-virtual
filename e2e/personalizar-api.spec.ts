@@ -13,10 +13,11 @@
  *   ALUMNO      → sesión acuñada aquí (no debe ver ni tocar nada)
  *   ANÓNIMO     → contexto sin cookies
  *
- * ⚠️ DESTRUCTIVA: deja `site_config.data = {}` y VACÍA el bucket `branding`
- * para partir de una pizarra limpia. La fila se guarda en `beforeAll` y se
- * restaura en `afterAll`, pero los BYTES de un logo que estuviera en el bucket
- * no se pueden restaurar. Es la misma premisa que el resto de la suite
+ * ⚠️ DESTRUCTIVA: deja `site_config.data = {}` (upsert con el service role) y
+ * BORRA los logos del bucket `branding` (DELETE del admin) para partir de una
+ * pizarra limpia. La fila se guarda en `beforeAll` y se restaura en
+ * `afterAll`, pero los BYTES de un logo que estuviera en el bucket no se
+ * pueden restaurar. Es la misma premisa que el resto de la suite
  * (globalSetup ya cambia la contraseña del alumno y borra cursos): corre
  * SOLO contra la base de QA. Ver e2e/README-QA.md.
  *
@@ -86,6 +87,7 @@ interface ModalidadEditable {
 
 interface ConfigEditable {
   nombre: string
+  whatsapp: string
   logo: string
   logoOscuro: string
   colores: Record<string, string>
@@ -261,17 +263,18 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
 
     // ── Pizarra limpia ──
     filaOriginal = await filaEnBD()
-    // El DELETE del admin hace las tres cosas de golpe: data = {}, bucket vacío
-    // y purga de la caché de getSiteConfig(). Si fallara (cliente sin migración,
-    // sesión caducada), se deja al menos la fila en {} con el service role.
+    // Desde #279 el DELETE («Restaurar diseño original») CONSERVA los datos del
+    // negocio: ya no deja la fila en {}. Por eso primero se vacía la fila con el
+    // service role y DESPUÉS el DELETE, que purga la caché de getSiteConfig() y
+    // borra los logos viejos del bucket (sobre una fila vacía escribe {}).
+    const { error: vaciar } = await s
+      .from('site_config')
+      .upsert({ id: 1, data: {}, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    if (vaciar) throw new Error(`[beforeAll] no se pudo vaciar site_config: ${vaciar.message}`)
     const limpieza = await admin.delete('/api/admin/configuracion')
     if (!limpieza.ok()) {
-      const { error: upErr } = await s
-        .from('site_config')
-        .upsert({ id: 1, data: {}, updated_at: new Date().toISOString() }, { onConflict: 'id' })
       throw new Error(
-        `[beforeAll] DELETE /api/admin/configuracion devolvió ${limpieza.status()}: ${(await limpieza.text()).slice(0, 300)}` +
-          (upErr ? ` (y el upsert de respaldo falló: ${upErr.message})` : ''),
+        `[beforeAll] DELETE /api/admin/configuracion devolvió ${limpieza.status()}: ${(await limpieza.text()).slice(0, 300)}`,
       )
     }
 
@@ -290,10 +293,10 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
   })
 
   test.afterAll(async () => {
-    // ORDEN: primero el DELETE (vacía bucket + PURGA la caché), después se
-    // repone la fila con el service role. Al revés el DELETE borraría lo
-    // restaurado. Como la purga deja el tag vacío, la siguiente lectura de
-    // getSiteConfig() ya ve la fila repuesta.
+    // ORDEN: primero el DELETE (borra los logos de la prueba y PURGA la caché),
+    // después se repone la fila COMPLETA con el service role. Al revés el
+    // DELETE quitaría el diseño recién repuesto. Como la purga deja el tag
+    // vacío, la siguiente lectura de getSiteConfig() ya ve la fila repuesta.
     try {
       await admin.delete('/api/admin/configuracion')
     } catch { /* el servidor puede haberse caído: se limpia igual abajo */ }
@@ -703,22 +706,62 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
   })
 
   // ══════════════════════════════════════════════════════════════════════════
-  // d — "Restaurar diseño original"
+  // d — "Restaurar diseño original" (#279: solo el diseño)
   // ══════════════════════════════════════════════════════════════════════════
-  test('d — el DELETE restaura los defaults, vacía la fila y limpia el bucket', async () => {
+  test('d — el DELETE regresa solo el diseño: conserva WhatsApp, correo y precios, y borra los logos', async () => {
+    // Dos esperas de hasta 30 s por la purga de la landing.
+    test.setTimeout(180_000)
+
+    // Diseño + negocio publicados juntos (el logo de b6 sigue en la fila: el
+    // PUT no toca los logos).
+    const TITULO_D = `Diseño QA d ${Date.now()}`
+    const INSCRIPCION_D = Number(DEFAULTS.precios.inscripcion) + 7
+    const put = await admin.put('/api/admin/configuracion', {
+      data: {
+        landing: { hero_titulo: TITULO_D },
+        colores: { primario: '#123456' },
+        whatsapp: '3312345678',
+        contactoTelefono: '3312345678',
+        whatsappDisplay: '33 1234 5678',
+        contactoEmail: 'informes@qa-restaurar.test',
+        precios: { inscripcion: INSCRIPCION_D },
+      },
+    })
+    expect(put.status(), `PUT diseño + negocio → 200 (${(await put.text()).slice(0, 200)})`).toBe(200)
+
     const res = await admin.delete('/api/admin/configuracion')
-    const del = await json<{ ok: true; merged: ConfigEditable; overrides: Record<string, unknown> }>(res)
+    const del = await json<{ ok: true; merged: ConfigEditable; overrides: Record<string, unknown>; pendiente: unknown }>(res)
     expect(res.status(), `DELETE /api/admin/configuracion → 200 (${JSON.stringify(del.overrides)})`).toBe(200)
+    expect(del.pendiente, 'Lo conservado se puede volver a publicar').toBeNull()
 
-    expect(del.overrides, 'Sin overrides tras restaurar').toEqual({})
-    expect(del.merged.nombre, 'El nombre vuelve al de config.ts').toBe(DEFAULTS.nombre)
-    expect(del.merged, 'El merge completo debe ser idéntico a los defaults').toEqual(DEFAULTS)
-    expect(del.merged.logo, 'Y el logo vuelve al del repo').toBe(DEFAULTS.logo)
+    // Negocio: se conserva con su valor publicado.
+    expect(del.overrides.whatsapp, 'El WhatsApp se conserva').toBe('523312345678')
+    expect(del.overrides.whatsappUrl, 'Y su enlace').toBe('https://wa.me/523312345678')
+    expect(del.overrides.contactoEmail, 'El correo público se conserva').toBe('informes@qa-restaurar.test')
+    expect((del.overrides.precios as Record<string, unknown> | undefined)?.inscripcion, 'El precio se conserva')
+      .toBe(INSCRIPCION_D)
+    // Diseño: vuelve al de config.ts.
+    for (const clave of ['logo', 'logoOscuro', 'colores']) {
+      expect(del.overrides, `«${clave}» se va al restaurar`).not.toHaveProperty(clave)
+    }
+    expect((del.overrides.landing as Record<string, unknown> | undefined)?.hero_titulo, 'El título se va').toBeUndefined()
+    expect(del.merged.logo, 'El logo vuelve al del repo').toBe(DEFAULTS.logo)
+    expect(del.merged.colores.primario, 'El color vuelve al de fábrica').toBe(DEFAULTS.colores.primario)
+    expect(del.merged.landing.hero_titulo, 'El título vuelve al de fábrica').toBe(DEFAULTS.landing.hero_titulo)
+    expect(del.merged.whatsapp).toBe('523312345678')
+    expect(del.merged.precios.inscripcion).toBe(INSCRIPCION_D)
 
-    expect(await dataEnBD(), 'La fila queda en {}').toEqual({})
+    // La fila en la BD dice lo mismo.
+    const enBD = (await dataEnBD()) as Record<string, unknown>
+    expect(enBD.whatsapp).toBe('523312345678')
+    expect(enBD.contactoEmail).toBe('informes@qa-restaurar.test')
+    expect(enBD).not.toHaveProperty('colores')
+    expect(enBD).not.toHaveProperty('logo')
+
+    // Del bucket se van los logos (ya nadie los referencia); nada más.
     await expect
-      .poll(async () => await objetosBranding(), {
-        message: 'Restaurar el diseño original vacía el bucket branding (ya nadie referencia esos logos)',
+      .poll(async () => await objetosBranding('logo-'), {
+        message: 'Restaurar el diseño original borra los logos que ya nadie referencia',
         timeout: 15_000,
         intervals: [500],
       })
@@ -726,8 +769,12 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
 
     // Y el GET lo confirma.
     const get = await json<RespuestaGet>(await admin.get('/api/admin/configuracion'))
-    expect(get.overrides).toEqual({})
-    expect(get.merged).toEqual(get.defaults)
+    expect(get.overrides).toEqual(del.overrides)
+    expect(get.merged).toEqual(del.merged)
+
+    // En la landing pública: el título de prueba se fue y el WhatsApp EDITADO sigue.
+    await esperarHtml(anonimo, '/', TITULO_D, false)
+    await esperarHtml(anonimo, '/', 'href="https://wa.me/523312345678', true)
   })
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -780,7 +827,8 @@ test.describe.serial('Personalizar mi página — API (F4)', () => {
     await expect(page.getByRole('heading', { name: TITULO })).toBeVisible()
     await page.screenshot({ path: SHOT('personalizar-landing-titulo-vivo'), fullPage: true })
 
-    // ── Restaurar: el título desaparece igual de rápido ──
+    // ── Restaurar: el título (diseño) desaparece igual de rápido. La
+    // mensualidad QA (negocio) se CONSERVA (#279); la repone el afterAll. ──
     const resDel = await admin.delete('/api/admin/configuracion')
     expect(resDel.status(), 'DELETE tras la prueba de frescura → 200').toBe(200)
     await esperarHtml(anonimo, '/', TITULO, false)

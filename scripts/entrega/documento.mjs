@@ -429,9 +429,10 @@ ${ul([
     `Los precios y los planes que se anuncian en la página y en el registro (el precio de cada curso se cambia en su ficha, en ${menu})`,
   ])}
 <div class="note"><b>Publicar y volver atrás</b><p>Cada cambio se guarda cuando
-pulsas <b>Publicar cambios</b>, y <b>Restaurar diseño original</b> devuelve la
-página exactamente a como se te entregó. Nada de lo que pruebes es
-irreversible.</p></div>
+pulsas <b>Publicar cambios</b>. <b>Restaurar diseño original</b> devuelve tu
+logo, tus colores y tus textos a como se te entregaron; tu WhatsApp, tu correo,
+tus redes y tus precios se quedan como los dejaste (cada campo tiene además su
+propio <b>Restaurar</b>). Nada de lo que pruebes es irreversible.</p></div>
 ${d.sinWhatsApp ? `<div class="note"><b>⭐ Tu WhatsApp, en cuanto lo captures</b>
 <p>Tu página se entrega <b>sin botones de WhatsApp</b> a propósito: no nos diste
 un número y preferimos no publicar uno que no lleve a ninguna parte. En cuanto

@@ -12,8 +12,11 @@
  *            (ver CLAVES_LOGO): esas dos claves solo las cambia
  *            /api/admin/configuracion/logo, que es quien sube y borra el
  *            archivo. Mandarlas no falla; la respuesta lo avisa.
- *   DELETE → vuelve a los defaults: vacía el bucket de logos (ya nadie los
- *            referencia) y deja `data = {}`. Solo ADMIN.
+ *   DELETE → «Restaurar diseño original» (#279): quita de la fila SOLO las
+ *            claves de diseño (logos, colores, textos de la landing) y
+ *            conserva los datos del negocio (nombre, contacto, redes, precios,
+ *            planes, tipo de cambio). Borra del bucket solo los logos que la
+ *            fila ya no referencia. Solo ADMIN.
  *
  * ESCRITURA SOLO CON SERVICE ROLE. La tabla no tiene política de INSERT/UPDATE
  * para `authenticated` a propósito (ver la migración): la única vía de
@@ -35,7 +38,9 @@ import { verifyAdmin, verifyStaff, getUserRol } from '@/lib/supabase/verify-admi
 import { CONFIG } from '@/lib/config'
 import { mergeSiteConfig, revalidateSiteConfig } from '@/lib/site-config'
 import { recortarAEditables, recortarOverrides, validarOverrides } from '@/lib/site-config-validacion'
-import { limpiarBucketBranding } from '@/lib/site-config-storage'
+import { borrarLogosSinReferencia } from '@/lib/site-config-storage'
+import { restaurarDiseno } from '@/lib/site-config-restaurar'
+import { prepararParaPublicar } from '@/lib/site-config-editor'
 import {
   MENSAJE_SITE_CONFIG_SIN_MIGRAR,
   SITE_CONFIG_SIN_MIGRAR,
@@ -241,24 +246,45 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// ─── DELETE /api/admin/configuracion — restaurar defaults ────────────────────
+// ─── DELETE /api/admin/configuracion — restaurar el DISEÑO ───────────────────
+// #279 (decisión de Kevin): regresa SOLO el diseño (logos, colores, textos de
+// la landing) y CONSERVA los datos del negocio con su valor publicado (nombre,
+// contacto, redes, precios, planes, tipo de cambio). Ver site-config-restaurar.ts.
 export async function DELETE() {
   try {
     const auth = await autorizar(true)
     if (auth.denied) return auth.denied
 
+    const inicio = Date.now()
     const admin = createAdminClient()
+    const fila = await leerFila(admin)
+    const restaurada = restaurarDiseno(fila?.data)
     // Primero la fila (es lo que decide qué se ve), después los archivos: si
     // el borrado del bucket fallara a medias, quedarían huérfanos que nadie
     // referencia, no una landing apuntando a un logo que ya no existe.
-    await guardarFila(admin, {}, auth.user.id)
+    await guardarFila(admin, restaurada, auth.user.id)
     revalidateSiteConfig()
-    await limpiarBucketBranding(admin)
+    // Los logos que se conservan son los que referencia la fila RELEÍDA (un
+    // logo que otra pestaña subió mientras tanto ya estaría ahí) y los subidos
+    // después de `inicio`, que tampoco se tocan.
+    const actual = await leerFila(admin).catch(() => null)
+    const referencia = actual && esObjetoPlano(actual.data) ? actual.data : restaurada
+    await borrarLogosSinReferencia(admin, referencia, inicio)
 
+    // Lo mismo que devolvería el GET: recortado a la lista blanca.
+    const overrides = recortarOverrides(restaurada, DEFAULTS())
+    // Restaurar ya no es la «válvula de escape» de un dato del negocio que no
+    // pasa la validación de hoy (p. ej. escrito a mano en la fila): se conserva
+    // (regla de Kevin), pero se avisa cuál es para que el admin lo corrija en su
+    // campo; si no, el siguiente «Publicar cambios» lo rechazaría sin decir por qué.
+    const verificacion = validarOverrides(prepararParaPublicar(overrides), DEFAULTS(), {
+      origenStorage: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    })
     return NextResponse.json({
       ok: true,
-      merged: recortarAEditables(DEFAULTS()),
-      overrides: {},
+      merged: recortarAEditables(mergeSiteConfig(CONFIG, overrides)),
+      overrides,
+      pendiente: verificacion.ok ? null : { error: verificacion.error, clave: verificacion.clave ?? null },
     })
   } catch (e) {
     console.error('[configuracion]', e)
