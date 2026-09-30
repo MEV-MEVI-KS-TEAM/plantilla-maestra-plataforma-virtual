@@ -144,6 +144,30 @@ export async function cargarAlumnoObjetivo(
   }
 }
 
+/**
+ * Lo mismo para las rutas que reciben el id de una FILA del alumno (una
+ * inscripción a un curso, un documento) en lugar del suyo: se lee su
+ * `alumno_id` con el cliente de servicio y se aplica la misma regla. Sin fila
+ * (o un id que no es UUID) → 404 con el mensaje de esa fila.
+ */
+export async function cargarAlumnoDeFila(
+  admin: SupabaseClient,
+  tabla: 'curso_inscripciones' | 'documentos_alumno',
+  filaId: string,
+  actorId: string,
+  mensajeNoEncontrada: string,
+): Promise<ObjetivoCargado> {
+  const { data, error } = await admin.from(tabla).select('alumno_id').eq('id', filaId).maybeSingle()
+  if (error?.code === '22P02' || (!error && !data)) return { ok: false, status: 404, error: mensajeNoEncontrada }
+  if (error) {
+    console.error(`[admin-alumno] no se pudo leer ${tabla}:`, error.message)
+    return { ok: false, status: 500, error: MENSAJE_SIN_VERIFICAR }
+  }
+  const alumnoId = (data as { alumno_id?: unknown }).alumno_id
+  if (typeof alumnoId !== 'string' || !alumnoId) return { ok: false, status: 404, error: mensajeNoEncontrada }
+  return cargarAlumnoObjetivo(admin, alumnoId, actorId)
+}
+
 /** La respuesta HTTP de un objetivo que no pasa la regla. */
 export function respuestaObjetivo(r: { status: number; error: string }): NextResponse {
   return NextResponse.json({ error: r.error }, { status: r.status })

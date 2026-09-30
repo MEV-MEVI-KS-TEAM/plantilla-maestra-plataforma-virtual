@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import {
   buildDocEstadoUpdates,
@@ -101,20 +102,23 @@ export async function PATCH(
     }
 
     const admin = createAdminClient()
+    // #187: documentos de ALUMNOS. Sobre personal (o uno mismo) → 403.
+    const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
     const { nuevo, legacy } = buildDocEstadoUpdates(estado, comentario ?? null)
 
     let { error } = await admin
       .from('documentos_alumno')
       .update(nuevo)
       .eq('id', documentoId)
-      .eq('alumno_id', params.id)
+      .eq('alumno_id', objetivo.alumno.id)
 
     if (error) {
       const second = await admin
         .from('documentos_alumno')
         .update(legacy)
         .eq('id', documentoId)
-        .eq('alumno_id', params.id)
+        .eq('alumno_id', objetivo.alumno.id)
       error = second.error
     }
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { cargarAlumnoDeFila, respuestaObjetivo } from '@/lib/admin-alumno'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONFIG } from '@/lib/config'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
@@ -35,6 +37,11 @@ export async function POST(
     // D20b: admin o secretario (la función lo vuelve a comprobar con es_staff()).
     const denied = await verifyStaff(supabase, user.id)
     if (denied) return denied
+
+    // #187: la inscripción es de un ALUMNO. Sobre la de personal (o la propia)
+    // → 403, con el rol leído de la BD, antes de la RPC.
+    const objetivo = await cargarAlumnoDeFila(createAdminClient(), 'curso_inscripciones', params.id, user.id, 'Inscripción no encontrada')
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
     const { data, error } = await supabase.rpc('curso_emitir_constancia', {
       p_inscripcion_id: params.id,

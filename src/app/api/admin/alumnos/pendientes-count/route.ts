@@ -22,11 +22,14 @@ export async function GET() {
 
     const admin = createAdminClient()
 
+    // #187: el mismo criterio que la lista: el personal con fila en `alumnos` no
+    // cuenta como pendiente (no sale en la lista ni se puede marcar contactado).
     const { count, error } = await admin
       .from('alumnos')
-      .select('id', { count: 'exact', head: true })
+      .select('id, usuarios!inner(rol)', { count: 'exact', head: true })
       .eq('inscripcion_pagada', false)
       .eq('contactado_whatsapp', false)
+      .eq('usuarios.rol', 'alumno')
 
     if (error) {
       console.error('[GET /api/admin/alumnos/pendientes-count]', error)

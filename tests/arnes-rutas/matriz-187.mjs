@@ -5,8 +5,13 @@
  *   node tests/arnes-rutas/matriz-187.mjs            → JSON con cada caso
  *   ARNES_RAIZ=<otro árbol> node …/matriz-187.mjs     → la misma matriz sobre otro código
  *
- * Por cada caso devuelve el status, el error y TODAS las escrituras y
+ * Por cada caso devuelve el status, el error y TODAS las escrituras, RPC y
  * operaciones de Auth que hizo la ruta (la bitácora del Supabase falso).
+ *
+ * Dos clases de ruta:
+ *   - por ALUMNO: el id del alumno llega en el path o en el cuerpo;
+ *   - por FILA: llega el id de una inscripción a un curso o de un documento, y
+ *     la ruta resuelve de quién es.
  */
 import { RAIZ } from './hooks.mjs'
 import { crearEscenario, metodosDesconocidos } from './supabase-falso.mjs'
@@ -24,6 +29,16 @@ export const ID = {
   huerfano: '99999999-0000-4000-8000-000000000009',
   alumnoNuevo: '88888888-0000-4000-8000-000000000008',
 }
+const CURSO = '77777777-0000-4000-8000-000000000007'
+
+/** Una inscripción y un documento por cuenta: el id de la fila se deriva del de la cuenta. */
+const FILA = {}
+for (const id of Object.values(ID)) {
+  FILA[id] = {
+    ins: `12345678-${id.slice(9, 13)}-4000-8000-${id.slice(-12)}`,
+    doc: `87654321-${id.slice(9, 13)}-4000-8000-${id.slice(-12)}`,
+  }
+}
 
 function bdInicial() {
   const u = (id, rol, email) => ({ id, rol, email, nombre: `Nombre ${email}`, apellidos: 'Prueba', telefono: '5500000000' })
@@ -32,15 +47,24 @@ function bdInicial() {
     meses_desbloqueados: 1, activo: true, inscripcion_pagada: false, contactado_whatsapp: false,
     created_at: '2026-09-01T00:00:00Z',
   })
+  const cuentas = [
+    u(ID.adminA, 'admin', 'a@qa.mx'), u(ID.adminB, 'admin', 'b@qa.mx'),
+    u(ID.secretarioS, 'secretario', 's@qa.mx'), u(ID.secretarioT, 'secretario', 't@qa.mx'),
+    u(ID.alumnoX, 'alumno', 'x@qa.mx'), u(ID.adminConFila, 'admin', 'h@qa.mx'),
+    u(ID.huerfano, 'alumno', 'o@qa.mx'), u(ID.alumnoNuevo, 'alumno', 'n@qa.mx'),
+  ]
+  // Toda cuenta tiene una inscripción y un documento: así la ruta por FILA
+  // siempre encuentra la fila y lo que decide es de QUIÉN es.
   return {
-    usuarios: [
-      u(ID.adminA, 'admin', 'a@qa.mx'), u(ID.adminB, 'admin', 'b@qa.mx'),
-      u(ID.secretarioS, 'secretario', 's@qa.mx'), u(ID.secretarioT, 'secretario', 't@qa.mx'),
-      u(ID.alumnoX, 'alumno', 'x@qa.mx'), u(ID.adminConFila, 'admin', 'h@qa.mx'),
-      u(ID.huerfano, 'alumno', 'o@qa.mx'), u(ID.alumnoNuevo, 'alumno', 'n@qa.mx'),
-    ],
+    usuarios: cuentas,
     // El admin «con fila» es el drift: ascendido desde alumno, o una fila fabricada por PostgREST.
     alumnos: [alumno(ID.alumnoX), alumno(ID.adminConFila)],
+    cursos: [{ id: CURSO, nombre: 'Curso QA', estado: 'publicado', precio_inscripcion: 2490, precio_mensualidad: 0 }],
+    curso_inscripciones: cuentas.map((c) => ({ id: FILA[c.id].ins, curso_id: CURSO, alumno_id: c.id, estado: 'activa', meses_desbloqueados: 1 })),
+    documentos_alumno: cuentas.map((c) => ({ id: FILA[c.id].doc, alumno_id: c.id, tipo: 'acta', estado: 'pendiente' })),
+    curso_constancias: [],
+    pagos: [],
+    calendario_pagos: [],
     site_config: [],
   }
 }
@@ -49,6 +73,7 @@ function cuentasAuth(bd) {
   return bd.usuarios.map((u) => ({ id: u.id, email: u.email }))
 }
 
+const FILA_RPC = { data: [{ acceso_total: true, meses_desbloqueados: 2, mes: 2, folio: 'QA-1', ok: true, pago_id: 'x', abierto: true }], error: null }
 const RPC = {
   alumno_mover_mes: (args) => ({
     data: [{ meses_antes: 1, meses_ahora: args.p_accion === 'abrir' ? 2 : 0, mes_movido: args.p_accion === 'abrir' ? 2 : 1,
@@ -57,42 +82,78 @@ const RPC = {
   }),
   corregir_plan_estudio: () => ({ data: { ok: true, matricula: 'QA-0001', notas_borradas: 0 }, error: null }),
   candado_corregir_plan: () => ({ data: null, error: null }),
+  registrar_cuota_semanal: () => ({ data: [{ ok: true, pago_id: 'p1' }], error: null }),
+  curso_inscribir: () => FILA_RPC,
+  curso_abrir_mes: () => FILA_RPC,
+  curso_cerrar_mes: () => FILA_RPC,
+  curso_abrir_todo: () => FILA_RPC,
+  curso_quitar_acceso_total: () => FILA_RPC,
+  curso_activar_segun_ficha: () => FILA_RPC,
+  curso_emitir_constancia: () => ({ data: [{ folio: 'QA-2026-0001', emitida: true }], error: null }),
+  curso_cobrar: () => ({ data: [{ pago_id: 'x', abierto: false, meses_desbloqueados: 1, acceso_total: false }], error: null }),
+  curso_cambiar_estado: () => FILA_RPC,
 }
 
 const A = 'src/app/api/admin/alumnos/[id]'
-/** [nombre, archivo, método, query, cuerpo, quién puede (admin | staff)] */
+const PAGO_ID = '5a5a5a5a-0000-4000-8000-00000000005a'
+
+/**
+ * Cada ruta: nombre, archivo, método, quién puede (admin | staff), clase (alumno | fila)
+ * y cómo se arma la petición para un objetivo `t` ({ id, canon }).
+ */
 export const RUTAS = [
-  ['DELETE [id] (desactivar)', `${A}/route.ts`, 'DELETE', '', null, 'admin'],
-  ['DELETE [id]?definitivo=true', `${A}/route.ts`, 'DELETE', '?definitivo=true', null, 'admin'],
-  ['PUT [id] (activo)', `${A}/route.ts`, 'PUT', '', { activo: false }, 'admin'],
-  ['PATCH [id] (contactado)', `${A}/route.ts`, 'PATCH', '', { contactado_whatsapp: true }, 'staff'],
-  ['GET [id] (ficha)', `${A}/route.ts`, 'GET', '', null, 'staff'],
-  ['PATCH [id]/datos', `${A}/datos/route.ts`, 'PATCH', '', { nombre: 'Cambiado', email: 'nuevo-correo@qa.mx' }, 'admin'],
-  ['POST [id]/reset-password', `${A}/reset-password/route.ts`, 'POST', '', { newPassword: 'secreta-nueva-123' }, 'admin'],
-  ['PATCH [id]/activar', `${A}/activar/route.ts`, 'PATCH', '', { activo: true }, 'admin'],
-  ['PUT [id]/notas', `${A}/notas/route.ts`, 'PUT', '', { notas: 'nota de QA' }, 'admin'],
-  ['PATCH [id]/inscripcion', `${A}/inscripcion/route.ts`, 'PATCH', '', {}, 'admin'],
-  ['POST [id]/desbloquear-mes', `${A}/desbloquear-mes/route.ts`, 'POST', '', {}, 'staff'],
-  ['POST [id]/cerrar-mes', `${A}/cerrar-mes/route.ts`, 'POST', '', {}, 'staff'],
-  ['POST [id]/corregir-plan', `${A}/corregir-plan/route.ts`, 'POST', '', { nivel: 'secundaria', modalidad: '6_meses' }, 'admin'],
+  // ── por ALUMNO: /api/admin/alumnos/[id]/** ──
+  { n: 'DELETE [id] (desactivar)', f: `${A}/route.ts`, m: 'DELETE', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id } }) },
+  { n: 'DELETE [id]?definitivo=true', f: `${A}/route.ts`, m: 'DELETE', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, query: '?definitivo=true' }) },
+  { n: 'PUT [id] (activo)', f: `${A}/route.ts`, m: 'PUT', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { activo: false } }) },
+  { n: 'PATCH [id] (contactado)', f: `${A}/route.ts`, m: 'PATCH', q: 'staff', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { contactado_whatsapp: true } }) },
+  { n: 'GET [id] (ficha)', f: `${A}/route.ts`, m: 'GET', q: 'staff', c: 'alumno', arma: (t) => ({ params: { id: t.id } }) },
+  { n: 'PATCH [id]/datos', f: `${A}/datos/route.ts`, m: 'PATCH', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { nombre: 'Cambiado', email: 'nuevo-correo@qa.mx' } }) },
+  { n: 'POST [id]/reset-password', f: `${A}/reset-password/route.ts`, m: 'POST', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { newPassword: 'secreta-nueva-123' } }) },
+  { n: 'PATCH [id]/activar', f: `${A}/activar/route.ts`, m: 'PATCH', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { activo: true } }) },
+  { n: 'PUT [id]/notas', f: `${A}/notas/route.ts`, m: 'PUT', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { notas: 'nota de QA' } }) },
+  { n: 'PATCH [id]/inscripcion', f: `${A}/inscripcion/route.ts`, m: 'PATCH', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: {} }) },
+  { n: 'POST [id]/desbloquear-mes', f: `${A}/desbloquear-mes/route.ts`, m: 'POST', q: 'staff', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: {} }) },
+  { n: 'POST [id]/cerrar-mes', f: `${A}/cerrar-mes/route.ts`, m: 'POST', q: 'staff', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: {} }) },
+  { n: 'POST [id]/corregir-plan', f: `${A}/corregir-plan/route.ts`, m: 'POST', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { nivel: 'secundaria', modalidad: '6_meses' } }) },
+  // ── por ALUMNO, fuera de alumnos/[id] ──
+  { n: 'POST /api/admin/pagos', f: 'src/app/api/admin/pagos/route.ts', m: 'POST', q: 'staff', c: 'alumno', arma: (t) => ({ params: {}, body: { alumno_id: t.id, monto: 100, metodo_pago: 'EFECTIVO', concepto: 'mensualidad' } }) },
+  { n: 'POST /api/admin/cobranza/[alumnoId]', f: 'src/app/api/admin/cobranza/[alumnoId]/route.ts', m: 'POST', q: 'staff', c: 'alumno', arma: (t) => ({ params: { alumnoId: t.id }, body: { accion: 'pagar', numero_semana: 1, metodo_pago: 'EFECTIVO' } }) },
+  { n: 'POST /api/admin/cursos/[id]/inscripciones', f: 'src/app/api/admin/cursos/[id]/inscripciones/route.ts', m: 'POST', q: 'staff', c: 'alumno', arma: (t) => ({ params: { id: CURSO }, body: { alumno_id: t.id } }) },
+  { n: 'DELETE /api/admin/cursos/[id]/inscripciones/[alumnoId]', f: 'src/app/api/admin/cursos/[id]/inscripciones/[alumnoId]/route.ts', m: 'DELETE', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: CURSO, alumnoId: t.id } }) },
+  { n: 'PATCH /api/admin/documentos/[id]', f: 'src/app/api/admin/documentos/[id]/route.ts', m: 'PATCH', q: 'admin', c: 'alumno', arma: (t) => ({ params: { id: t.id }, body: { documentoId: FILA[t.canon]?.doc ?? t.id, estado: 'aprobado' } }) },
+  // ── por FILA: una inscripción a un curso o un documento ──
+  { n: 'PATCH /api/admin/inscripciones/[id]', f: 'src/app/api/admin/inscripciones/[id]/route.ts', m: 'PATCH', q: 'admin', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { fecha_inscripcion: '2026-09-01' } }) },
+  { n: 'POST inscripciones/[id]/abrir-mes', f: 'src/app/api/admin/inscripciones/[id]/abrir-mes/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { meses_esperados: 1 } }) },
+  { n: 'POST inscripciones/[id]/abrir-todo', f: 'src/app/api/admin/inscripciones/[id]/abrir-todo/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: {} }) },
+  { n: 'POST inscripciones/[id]/activar', f: 'src/app/api/admin/inscripciones/[id]/activar/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { regla_esperada: 'mes1' } }) },
+  { n: 'POST inscripciones/[id]/cerrar-mes', f: 'src/app/api/admin/inscripciones/[id]/cerrar-mes/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { meses_esperados: 1 } }) },
+  { n: 'POST inscripciones/[id]/constancia', f: 'src/app/api/admin/inscripciones/[id]/constancia/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: {} }) },
+  { n: 'POST inscripciones/[id]/pago', f: 'src/app/api/admin/inscripciones/[id]/pago/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { pago_id: PAGO_ID, concepto: 'curso_mensualidad', monto: 100, metodo_pago: 'EFECTIVO' } }) },
+  { n: 'POST inscripciones/[id]/quitar-acceso-total', f: 'src/app/api/admin/inscripciones/[id]/quitar-acceso-total/route.ts', m: 'POST', q: 'staff', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].ins }, body: { motivo: 'QA' } }) },
+  { n: 'PUT /api/admin/documentos/[id]/verificar', f: 'src/app/api/admin/documentos/[id]/verificar/route.ts', m: 'PUT', q: 'admin', c: 'fila', arma: (t) => ({ params: { id: FILA[t.canon].doc }, body: { estado: 'aprobado' } }) },
 ]
 
 const ACTORES = { admin: ID.adminA, secretario: ID.secretarioS }
 
-/** Los objetivos: [etiqueta, id (como llega en el path), clase esperada] */
-function objetivosDe(actor) {
+/** Los objetivos: [etiqueta, id tal como llega, id canónico, clase esperada]. */
+function objetivosDe(actor, claseRuta) {
   const yo = ACTORES[actor]
+  const base = [
+    ['alumno', ID.alumnoX, ID.alumnoX, 'alumno'],
+    ['admin B', ID.adminB, ID.adminB, 'personal'],
+    ['secretario T', ID.secretarioT, ID.secretarioT, 'personal'],
+    ['admin con fila en alumnos', ID.adminConFila, ID.adminConFila, 'personal'],
+    ['él mismo', yo, yo, 'personal'],
+    ['cuenta huérfana (alumno sin fila)', ID.huerfano, ID.huerfano, 'huerfano'],
+  ]
+  if (claseRuta === 'fila') return base
   return [
-    ['alumno', ID.alumnoX, 'alumno'],
-    ['alumno (UUID en MAYÚSCULAS)', ID.alumnoX.toUpperCase(), 'alumno'],
-    ['admin B', ID.adminB, 'personal'],
-    ['secretario T', ID.secretarioT, 'personal'],
-    ['admin con fila en alumnos', ID.adminConFila, 'personal'],
-    ['admin B (UUID en MAYÚSCULAS)', ID.adminB.toUpperCase(), 'personal'],
-    ['él mismo', yo, 'personal'],
-    ['él mismo (UUID en MAYÚSCULAS)', yo.toUpperCase(), 'personal'],
-    ['él mismo ({llaves} sin guiones)', `{${yo.replace(/-/g, '')}}`, 'personal'],
-    ['cuenta huérfana (alumno sin fila)', ID.huerfano, 'huerfano'],
+    ...base,
+    ['alumno (UUID en MAYÚSCULAS)', ID.alumnoX.toUpperCase(), ID.alumnoX, 'alumno'],
+    ['admin B (UUID en MAYÚSCULAS)', ID.adminB.toUpperCase(), ID.adminB, 'personal'],
+    ['él mismo (UUID en MAYÚSCULAS)', yo.toUpperCase(), yo, 'personal'],
+    ['él mismo ({llaves} sin guiones)', `{${yo.replace(/-/g, '')}}`, yo, 'personal'],
   ]
 }
 
@@ -104,23 +165,25 @@ async function modulo(rel) {
 }
 
 const ESCRITURAS = new Set(['update', 'delete', 'insert', 'upsert', 'rpc', 'auth.updateUserById', 'auth.deleteUser', 'auth.createUser', 'storage.remove', 'storage.upload'])
+// Lecturas que las rutas hacen por RPC y que no escriben nada.
+const RPC_DE_LECTURA = new Set(['candado_corregir_plan'])
 
-async function ejecutar({ rel, metodo, query, cuerpo, actorId, idPath }) {
+async function ejecutar({ rel, metodo, actorId, params, body, query = '' }) {
   const bd = bdInicial()
   const esc = crearEscenario({ bd, auth: cuentasAuth(bd), actorId, rpc: RPC })
   globalThis.__arnes = esc
   const mod = await modulo(rel)
   const handler = mod[metodo]
   if (typeof handler !== 'function') return { status: 'SIN-HANDLER' }
-  const url = `http://localhost/api/x/${encodeURIComponent(idPath)}${query}`
+  const url = `http://localhost/api/x${query}`
   const init = { method: metodo }
-  if (cuerpo !== null && metodo !== 'GET') {
-    init.body = JSON.stringify(cuerpo)
+  if (body !== undefined && body !== null && metodo !== 'GET') {
+    init.body = JSON.stringify(body)
     init.headers = { 'content-type': 'application/json' }
   }
   let res
   try {
-    res = await handler(new NextRequest(url, init), { params: { id: idPath } })
+    res = await handler(new NextRequest(url, init), { params })
   } catch (e) {
     return { status: 'EXCEPCION', error: String(e?.message ?? e), escrituras: esc.bitacora.filter((b) => ESCRITURAS.has(b.op)) }
   }
@@ -129,17 +192,18 @@ async function ejecutar({ rel, metodo, query, cuerpo, actorId, idPath }) {
   return {
     status: res.status,
     error: json && typeof json.error === 'string' ? json.error : null,
-    escrituras: esc.bitacora.filter((b) => ESCRITURAS.has(b.op)),
+    escrituras: esc.bitacora.filter((b) => ESCRITURAS.has(b.op) && !(b.op === 'rpc' && RPC_DE_LECTURA.has(b.nombre))),
   }
 }
 
 export async function correrMatriz() {
   const casos = []
-  for (const [nombre, rel, metodo, query, cuerpo, quien] of RUTAS) {
+  for (const r of RUTAS) {
     for (const actor of Object.keys(ACTORES)) {
-      for (const [etiqueta, idPath, clase] of objetivosDe(actor)) {
-        const r = await ejecutar({ rel, metodo, query, cuerpo, actorId: ACTORES[actor], idPath })
-        casos.push({ ruta: nombre, quien, actor, objetivo: etiqueta, clase, ...r })
+      for (const [etiqueta, id, canon, clase] of objetivosDe(actor, r.c)) {
+        const { params, body, query } = r.arma({ id, canon })
+        const x = await ejecutar({ rel: r.f, metodo: r.m, actorId: ACTORES[actor], params, body, query })
+        casos.push({ ruta: r.n, quien: r.q, claseRuta: r.c, actor, objetivo: etiqueta, clase, ...x })
       }
     }
   }
@@ -149,14 +213,13 @@ export async function correrMatriz() {
     ['secretario se registra como alumno', ID.secretarioS, 'personal'],
     ['alumno nuevo (fila del trigger, sin alumnos)', ID.alumnoNuevo, 'alumno'],
   ]) {
-    const r = await ejecutar({
-      rel: 'src/app/api/auth/register-complete/route.ts', metodo: 'POST', query: '',
-      cuerpo: { nombre: 'QA', apellidos: 'Registro', telefono: '5511111111', nivel: 'secundaria', modalidad: '3_meses' },
-      actorId, idPath: actorId,
+    const x = await ejecutar({
+      rel: 'src/app/api/auth/register-complete/route.ts', metodo: 'POST', actorId, params: {},
+      body: { nombre: 'QA', apellidos: 'Registro', telefono: '5511111111', nivel: 'secundaria', modalidad: '3_meses' },
     })
-    casos.push({ ruta: 'POST /api/auth/register-complete', quien: 'sesion', actor: etiqueta, objetivo: 'su propia cuenta', clase, ...r })
+    casos.push({ ruta: 'POST /api/auth/register-complete', quien: 'sesion', claseRuta: 'sesion', actor: etiqueta, objetivo: 'su propia cuenta', clase, ...x })
   }
-  return { raiz: RAIZ, casos, metodosDesconocidos: metodosDesconocidos() }
+  return { raiz: RAIZ, rutas: RUTAS.map((r) => ({ n: r.n, q: r.q, c: r.c })), casos, metodosDesconocidos: metodosDesconocidos() }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

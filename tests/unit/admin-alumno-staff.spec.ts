@@ -4,7 +4,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   MENSAJE_A_SI_MISMO, MENSAJE_NO_ENCONTRADO, MENSAJE_SIN_VERIFICAR, MENSAJE_SOLO_ALUMNOS,
-  cargarAlumnoObjetivo, esRolAlumno, mismaCuenta, uuidCanonico, veredictoObjetivoAlumno,
+  cargarAlumnoDeFila, cargarAlumnoObjetivo, esRolAlumno, mismaCuenta, uuidCanonico, veredictoObjetivoAlumno,
 } from '@/lib/admin-alumno'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -18,8 +18,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  *   2. la MATRIZ: los route.ts reales ejecutados en Node puro contra un
  *      Supabase falso (tests/arnes-rutas), ruta × actor × objetivo, con la
  *      bitácora de TODO lo que se escribió;
- *   3. guardianes de código: todo handler que escribe bajo /api/admin/alumnos/[id]
- *      llama a la guarda antes de su primera escritura.
+ *   3. guardianes de código: todo handler que escribe sobre un alumno (bajo
+ *      /api/admin/alumnos/[id], y pagos, cobranza, cursos, inscripciones y
+ *      documentos) llama a la guarda antes de su primera escritura o RPC.
  */
 
 const RAIZ = process.cwd()
@@ -112,15 +113,41 @@ test('5. cargarAlumnoObjetivo: uno mismo → 403 SIN leer; 22P02 → 404; otro e
   expect(await cargarAlumnoObjetivo(personal.cliente, B, A)).toEqual({ ok: false, status: 403, error: MENSAJE_SOLO_ALUMNOS })
 })
 
+test('5b. cargarAlumnoDeFila: sin fila o id no UUID → 404 con el mensaje de la fila; error → 500; con fila aplica la misma regla', async () => {
+  const sinFila = clienteDe({ curso_inscripciones: { data: null, error: null } })
+  expect(await cargarAlumnoDeFila(sinFila.cliente, 'curso_inscripciones', B, A, 'Inscripción no encontrada'))
+    .toEqual({ ok: false, status: 404, error: 'Inscripción no encontrada' })
+  const noUuid = clienteDe({ documentos_alumno: { data: null, error: { code: '22P02', message: 'x' } } })
+  expect(await cargarAlumnoDeFila(noUuid.cliente, 'documentos_alumno', 'zz', A, 'Documento no encontrado'))
+    .toEqual({ ok: false, status: 404, error: 'Documento no encontrado' })
+  const caida = clienteDe({ curso_inscripciones: { data: null, error: { code: '57014', message: 'timeout' } } })
+  expect(await cargarAlumnoDeFila(caida.cliente, 'curso_inscripciones', B, A, 'x'))
+    .toEqual({ ok: false, status: 500, error: MENSAJE_SIN_VERIFICAR })
+  // La fila es de uno mismo: 403 sin leer la cuenta.
+  const propia = clienteDe({ curso_inscripciones: { data: { alumno_id: A.toUpperCase() }, error: null } })
+  expect(await cargarAlumnoDeFila(propia.cliente, 'curso_inscripciones', B, A, 'x'))
+    .toEqual({ ok: false, status: 403, error: MENSAJE_A_SI_MISMO })
+  expect(propia.lecturas).toEqual(['curso_inscripciones'])
+  // La fila es de personal: 403.
+  const dePersonal = clienteDe({
+    curso_inscripciones: { data: { alumno_id: B }, error: null },
+    usuarios: { data: { id: B, rol: 'secretario' }, error: null },
+    alumnos: { data: { id: B }, error: null },
+  })
+  expect(await cargarAlumnoDeFila(dePersonal.cliente, 'curso_inscripciones', 'fila', A, 'x'))
+    .toEqual({ ok: false, status: 403, error: MENSAJE_SOLO_ALUMNOS })
+})
+
 // ── 2. La matriz con los route.ts reales ──────────────────────────────────────
 
 type Escritura = { op: string; tabla?: string; ids?: string[]; id?: string; campos?: string[] }
-type Caso = { ruta: string; quien: string; actor: string; objetivo: string; clase: string; status: number | string; error: string | null; escrituras: Escritura[] }
+type Caso = { ruta: string; quien: string; claseRuta: string; actor: string; objetivo: string; clase: string; status: number | string; error: string | null; escrituras: Escritura[] }
+type Ruta = { n: string; q: string; c: string }
 
 const [mayor, menor] = process.versions.node.split('.').map(Number)
 const nodeSirve = mayor > 23 || (mayor === 23 && menor >= 6)
 
-let matriz: { casos: Caso[]; metodosDesconocidos: string[] } | null = null
+let matriz: { casos: Caso[]; rutas: Ruta[]; metodosDesconocidos: string[] } | null = null
 function correrMatriz() {
   if (!matriz) {
     const salida = execFileSync(process.execPath, ['tests/arnes-rutas/matriz-187.mjs'], {
@@ -131,6 +158,17 @@ function correrMatriz() {
   return matriz!
 }
 
+const RUTAS_ESPERADAS = [
+  'DELETE [id] (desactivar)', 'DELETE [id]?definitivo=true', 'PUT [id] (activo)', 'PATCH [id] (contactado)', 'GET [id] (ficha)',
+  'PATCH [id]/datos', 'POST [id]/reset-password', 'PATCH [id]/activar', 'PUT [id]/notas', 'PATCH [id]/inscripcion',
+  'POST [id]/desbloquear-mes', 'POST [id]/cerrar-mes', 'POST [id]/corregir-plan',
+  'POST /api/admin/pagos', 'POST /api/admin/cobranza/[alumnoId]', 'POST /api/admin/cursos/[id]/inscripciones',
+  'DELETE /api/admin/cursos/[id]/inscripciones/[alumnoId]', 'PATCH /api/admin/documentos/[id]',
+  'PATCH /api/admin/inscripciones/[id]', 'POST inscripciones/[id]/abrir-mes', 'POST inscripciones/[id]/abrir-todo',
+  'POST inscripciones/[id]/activar', 'POST inscripciones/[id]/cerrar-mes', 'POST inscripciones/[id]/constancia',
+  'POST inscripciones/[id]/pago', 'POST inscripciones/[id]/quitar-acceso-total', 'PUT /api/admin/documentos/[id]/verificar',
+]
+
 /** Escrituras que de verdad tocaron algo (un update de 0 filas no cuenta). */
 function efectivas(c: Caso): Escritura[] {
   return (c.escrituras ?? []).filter((e) => !(['update', 'delete', 'insert', 'upsert'].includes(e.op) && !(e.ids ?? []).length))
@@ -140,10 +178,15 @@ test.describe('matriz ruta × actor × objetivo (route.ts reales, Supabase falso
   test.skip(!nodeSirve, `hace falta Node ≥ 23.6 (type stripping + module.registerHooks); hay ${process.versions.node}`)
   test.describe.configure({ mode: 'serial' })
 
-  test('6. el arnés cubre las 13 rutas × 2 actores × 10 objetivos + register-complete, sin métodos desconocidos', () => {
+  test('6. el arnés cubre las 27 rutas de gestión de alumnos × 2 actores × sus objetivos + register-complete', () => {
     const m = correrMatriz()
     expect(m.metodosDesconocidos).toEqual([])
-    expect(m.casos.length).toBe(13 * 2 * 10 + 3)
+    expect(m.rutas.map((r) => r.n)).toEqual(RUTAS_ESPERADAS)
+    const porAlumno = m.rutas.filter((r) => r.c === 'alumno').length
+    const porFila = m.rutas.filter((r) => r.c === 'fila').length
+    expect([porAlumno, porFila]).toEqual([18, 9])
+    // 10 objetivos por ruta de alumno (con las formas raras del UUID), 6 por ruta de fila.
+    expect(m.casos.length).toBe(porAlumno * 2 * 10 + porFila * 2 * 6 + 3)
     expect(m.casos.filter((c) => c.status === 'EXCEPCION' || c.status === 'SIN-HANDLER')).toEqual([])
   })
 
@@ -156,7 +199,7 @@ test.describe('matriz ruta × actor × objetivo (route.ts reales, Supabase falso
 
   test('8. sobre un ALUMNO: quien tiene permiso pasa (2xx) y escribe; quien no, 403 sin escribir', () => {
     const casos = correrMatriz().casos.filter((c) => c.clase === 'alumno' && c.quien !== 'sesion')
-    expect(casos.length).toBe(13 * 2 * 2)
+    expect(casos.length).toBe(18 * 2 * 2 + 9 * 2)
     for (const c of casos) {
       const permitido = c.quien === 'staff' || c.actor === 'admin'
       if (permitido) {
@@ -236,25 +279,67 @@ function handlers(fuente: string): Array<[string, string]> {
 
 const ESCRITURA = /\.(update|delete|insert|upsert|rpc)\(|auth\.admin\.|\.storage\./
 const GUARDA = 'await cargarAlumnoObjetivo(admin, params.id, user.id)'
+const GUARDA_CUALQUIERA = /await cargarAlumno(Objetivo|DeFila)\(/
 
-test('13. guardián: TODO handler que escribe bajo /api/admin/alumnos/[id] llama a la guarda antes de su primera escritura', () => {
+/** Las rutas de gestión de alumnos FUERA de /api/admin/alumnos/[id]. */
+const OTRAS = [
+  'src/app/api/admin/pagos/route.ts',
+  'src/app/api/admin/cobranza/[alumnoId]/route.ts',
+  'src/app/api/admin/cursos/[id]/inscripciones/route.ts',
+  'src/app/api/admin/cursos/[id]/inscripciones/[alumnoId]/route.ts',
+  ...rutasBajo('src/app/api/admin/inscripciones/[id]'),
+  'src/app/api/admin/documentos/[id]/route.ts',
+  'src/app/api/admin/documentos/[id]/verificar/route.ts',
+]
+
+/**
+ * La ÚNICA escritura que puede ir antes de la guarda: «Asignar a todos los
+ * alumnos activos» (curso_inscribir_todos) no tiene un alumno objetivo; la
+ * función elige a los alumnos en SQL. Queda como pendiente de la capa SQL.
+ */
+function primeraEscrituraGuardable(cuerpo: string): number {
+  const sinMasiva = cuerpo.replace(/supabase\.rpc\('curso_inscribir_todos'/, "supabase.XXX('curso_inscribir_todos'")
+  return sinMasiva.search(ESCRITURA)
+}
+
+test('13. guardián: TODO handler que escribe sobre un alumno llama a la guarda antes de su primera escritura o RPC', () => {
   const faltan: string[] = []
   let conGuarda = 0
-  for (const archivo of rutasBajo(DIR)) {
+  for (const archivo of [...rutasBajo(DIR), ...OTRAS]) {
     for (const [metodo, cuerpo] of handlers(leer(archivo))) {
-      const primera = cuerpo.search(ESCRITURA)
+      // Los GET solo leen (URLs firmadas, RPC de lectura); la ficha la cubre la prueba 14.
+      if (metodo === 'GET') continue
+      const primera = primeraEscrituraGuardable(cuerpo)
       if (primera < 0) continue
-      const g = cuerpo.indexOf(GUARDA)
+      const g = cuerpo.search(GUARDA_CUALQUIERA)
       if (g < 0 || g > primera) faltan.push(`${archivo} ${metodo}`)
       else {
         conGuarda++
         // y lo que no pasa la guarda sale antes de seguir
-        expect(cuerpo.slice(g, g + 200), `${archivo} ${metodo}`).toContain('if (!objetivo.ok) return respuestaObjetivo(objetivo)')
+        expect(cuerpo.slice(g, g + 260), `${archivo} ${metodo}`).toContain('if (!objetivo.ok) return respuestaObjetivo(objetivo)')
       }
     }
   }
   expect(faltan).toEqual([])
-  expect(conGuarda).toBe(12)
+  // 11 bajo alumnos/[id] (sin el GET de la ficha) + pagos, cobranza, cursos (2),
+  // inscripciones (8) y documentos (2).
+  expect(conGuarda).toBe(11 + 14)
+})
+
+test('13b. en todo el API, cualquier handler que reciba un alumno por id y escriba, está en el inventario guardado', () => {
+  // Detector grueso: rutas que leen alumno_id del cuerpo o alumnoId del path y escriben.
+  const sospechosas: string[] = []
+  const todas = rutasBajo('src/app/api')
+  const guardadas = new Set([...rutasBajo(DIR), ...OTRAS])
+  for (const archivo of todas) {
+    if (guardadas.has(archivo)) continue
+    for (const [metodo, cuerpo] of handlers(leer(archivo))) {
+      if (metodo === 'GET') continue
+      const recibeAlumno = /params\.alumnoId|body\.alumno_id|\{\s*alumno_id\b[^}]*\}\s*=\s*body/.test(cuerpo)
+      if (recibeAlumno && primeraEscrituraGuardable(cuerpo) >= 0) sospechosas.push(`${archivo} ${metodo}`)
+    }
+  }
+  expect(sospechosas).toEqual([])
 })
 
 test('14. la ficha (GET [id]) también pasa por la guarda: el secretario no lee por ahí a un admin', () => {
@@ -264,8 +349,8 @@ test('14. la ficha (GET [id]) también pasa por la guarda: el secretario no lee 
   expect(g).toBeLessThan(get.indexOf(".from('alumnos')"))
 })
 
-test('15. después de la guarda las escrituras usan el id DE LA BD, no el del path', () => {
-  for (const archivo of rutasBajo(DIR)) {
+test('15. después de la guarda las escrituras usan el id DE LA BD, no el que llegó', () => {
+  for (const archivo of [...rutasBajo(DIR), 'src/app/api/admin/documentos/[id]/route.ts']) {
     for (const [metodo, cuerpo] of handlers(leer(archivo))) {
       const g = cuerpo.indexOf(GUARDA)
       if (g < 0) continue
@@ -274,6 +359,16 @@ test('15. después de la guarda las escrituras usan el id DE LA BD, no el del pa
       if (metodo !== 'GET') expect(despues, `${archivo} ${metodo}`).not.toContain('params.id')
     }
   }
+  for (const archivo of ['src/app/api/admin/cobranza/[alumnoId]/route.ts', 'src/app/api/admin/cursos/[id]/inscripciones/[alumnoId]/route.ts']) {
+    const cuerpo = handlers(leer(archivo)).find(([m]) => m !== 'GET')![1]
+    const g = cuerpo.indexOf('await cargarAlumnoObjetivo(admin, params.alumnoId, user.id)')
+    expect(g, archivo).toBeGreaterThan(0)
+    expect(cuerpo.slice(g + 60), archivo).not.toContain('params.alumnoId')
+  }
+  const pagos = handlers(leer('src/app/api/admin/pagos/route.ts')).find(([m]) => m === 'POST')![1]
+  expect(pagos).toContain('alumno_id: objetivo.alumno.id,')
+  const cursos = handlers(leer('src/app/api/admin/cursos/[id]/inscripciones/route.ts')).find(([m]) => m === 'POST')![1]
+  expect(cursos).toContain('p_alumno_id: objetivo.alumno.id,')
 })
 
 test('16. register-complete lee el rol de la sesión y corta con 403 ANTES del upsert que pone rol alumno', () => {
@@ -287,12 +382,20 @@ test('16. register-complete lee el rol de la sesión y corta con 403 ANTES del u
   expect(r.slice(corta, corta + 200)).toContain('status: 403')
 })
 
-test('17. la lista de alumnos no incluye personal y la ficha muestra el motivo del servidor', () => {
+test('17. la lista de alumnos no incluye personal (en sus TRES intentos), el contador de pendientes tampoco, y la ficha muestra el motivo', () => {
   const lista = sinComentarios(leer('src/app/api/admin/alumnos/route.ts'))
   const get = lista.slice(lista.indexOf('export async function GET'))
   expect(get).toMatch(/usuarios!inner\([^)]*\brol\b[^)]*\)/)
   expect(get).toContain('esRolAlumno(u?.rol)')
   expect(get.indexOf('const soloAlumnos')).toBeLessThan(get.indexOf('const result = soloAlumnos.map('))
+  // intento 2 (esquema antiguo) y fallback
+  expect(get).toMatch(/usuarios!alumnos_usuario_id_fkey\([^)]*\brol\b[^)]*\)/)
+  expect(get).toContain('return !u || esRolAlumno(u.rol)')
+  expect(get).toContain(".select('nombre, apellidos, email, foto_url, telefono, rol')")
+  expect(get).toContain('if (u && !esRolAlumno((u as { rol?: unknown }).rol)) continue')
+  const pendientes = sinComentarios(leer('src/app/api/admin/alumnos/pendientes-count/route.ts'))
+  expect(pendientes).toContain(".select('id, usuarios!inner(rol)', { count: 'exact', head: true })")
+  expect(pendientes).toContain(".eq('usuarios.rol', 'alumno')")
   const ficha = leer('src/app/(dashboard)/admin/alumnos/[id]/page.tsx')
   expect(ficha).toContain("typeof motivo?.error === 'string' ? motivo.error : 'Alumno no encontrado'")
 })

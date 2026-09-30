@@ -30,6 +30,7 @@
  */
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONFIG } from '@/lib/config'
@@ -77,6 +78,10 @@ export async function POST(req: Request, { params }: { params: { alumnoId: strin
     if (soloAdmin) return soloAdmin
   }
   const admin = createAdminClient()
+  // #187: el calendario es de un ALUMNO. Sobre personal (o uno mismo) → 403,
+  // con el rol leído de la BD, antes de pagar, condonar o regenerar.
+  const objetivo = await cargarAlumnoObjetivo(admin, params.alumnoId, user.id)
+  if (!objetivo.ok) return respuestaObjetivo(objetivo)
 
   if (accion === 'pagar') {
     // La moneda y el tipo de cambio SOLO se escriben si la escuela no cobra en
@@ -90,7 +95,7 @@ export async function POST(req: Request, { params }: { params: { alumnoId: strin
       : {}
 
     const { data, error } = await admin.rpc('registrar_cuota_semanal', {
-      p_alumno_id:      params.alumnoId,
+      p_alumno_id:      objetivo.alumno.id,
       p_numero_semana:  Number(body.numero_semana),
       p_metodo_pago:    String(body.metodo_pago ?? 'EFECTIVO'),
       p_registrado_por: user.id,
@@ -108,7 +113,7 @@ export async function POST(req: Request, { params }: { params: { alumnoId: strin
 
   if (accion === 'condonar') {
     const { error } = await admin.rpc('condonar_semana', {
-      p_alumno_id:     params.alumnoId,
+      p_alumno_id:     objetivo.alumno.id,
       p_numero_semana: Number(body.numero_semana),
       p_actor:         user.id,
       p_motivo:        body.motivo ? String(body.motivo) : null,
@@ -121,7 +126,7 @@ export async function POST(req: Request, { params }: { params: { alumnoId: strin
   if (accion === 'regenerar') {
     await sincronizarPlanSemanal(admin)
     const { data, error } = await admin.rpc('generar_calendario_por_nivel', {
-      p_alumno_id:    params.alumnoId,
+      p_alumno_id:    objetivo.alumno.id,
       ...(body.fecha_inicio ? { p_fecha_inicio: String(body.fecha_inicio) } : {}),
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -143,7 +148,7 @@ export async function POST(req: Request, { params }: { params: { alumnoId: strin
       return NextResponse.json({ error: 'La cuota semanal debe ser mayor que cero.' }, { status: 400 })
     }
     const { data, error } = await admin.rpc('generar_calendario_pagos', {
-      p_alumno_id: params.alumnoId,
+      p_alumno_id: objetivo.alumno.id,
       p_semanas:   semanas,
       p_cuota:     cuota,
       ...(body.fecha_inicio ? { p_fecha_inicio: String(body.fecha_inicio) } : {}),

@@ -188,8 +188,10 @@ test('5. las tres puertas del ADMIN asignan con la regla; el registro público n
   expect(ruta).toContain("supabase.rpc('curso_inscribir',")
   expect(ruta).toContain("supabase.rpc('curso_inscribir_todos',")
   // Asignar va SIEMPRE por la función SQL con la sesión. El cliente admin solo LEE la
-  // ficha del curso (D7b: con la sesión del secretario la RLS de `cursos` la ocultaba).
-  expect(ruta.match(/createAdminClient\(\)/g)?.length).toBe(2)
+  // ficha del curso (D7b: con la sesión del secretario la RLS de `cursos` la ocultaba)
+  // y, desde #187, la cuenta del alumno objetivo (la guarda «solo alumnos»).
+  expect(ruta.match(/createAdminClient\(\)/g)?.length).toBe(3)
+  expect(ruta.match(/cargarAlumnoObjetivo\(createAdminClient\(\), alumnoId, user\.id\)/g)?.length).toBe(1)
   expect(ruta.match(/createAdminClient\(\)\s*\.from\('cursos'\)\.select\(/g)?.length).toBe(2)
   expect(ruta).not.toMatch(/createAdminClient\(\)\s*\.(rpc|from\('curso_inscripciones'\))/)
   expect(ruta).not.toMatch(/\.insert\(/)

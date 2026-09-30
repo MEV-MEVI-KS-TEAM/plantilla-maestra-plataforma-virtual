@@ -76,8 +76,8 @@ class Consulta {
   range(a, b) { this.limite = b - a + 1; return this }
   single() { this.modo = 'single'; return this }
   maybeSingle() { this.modo = 'maybe'; return this }
-  update(v) { this.op = 'update'; this.valores = v; return this }
-  delete() { this.op = 'delete'; return this }
+  update(v, o) { this.op = 'update'; this.valores = v; this.opcionesEscritura = o ?? {}; return this }
+  delete(o) { this.op = 'delete'; this.opcionesEscritura = o ?? {}; return this }
   insert(v) { this.op = 'insert'; this.valores = v; return this }
   upsert(v, o) { this.op = 'upsert'; this.valores = v; this.opcionesUpsert = o ?? {}; return this }
 
@@ -100,11 +100,13 @@ class Consulta {
       for (const f of tocadas) Object.assign(f, copia(this.valores))
       this.bitacora.push({ cliente: this.cliente, op: 'update', tabla: this.tabla, ids: tocadas.map((f) => f.id), valores: copia(this.valores) })
       data = this.devolver ? copia(tocadas) : null
+      if (this.opcionesEscritura?.count && !this.devolver && !this.modo) return { data: null, error: null, count: tocadas.length }
     } else if (this.op === 'delete') {
       const borrar = this.filas()
       this.bd[this.tabla] = tabla.filter((f) => !borrar.includes(f))
       this.bitacora.push({ cliente: this.cliente, op: 'delete', tabla: this.tabla, ids: borrar.map((f) => f.id) })
       data = this.devolver ? copia(borrar) : null
+      if (this.opcionesEscritura?.count && !this.devolver && !this.modo) return { data: null, error: null, count: borrar.length }
     } else {
       const lista = Array.isArray(this.valores) ? this.valores : [this.valores]
       const clave = this.opcionesUpsert.onConflict ?? 'id'

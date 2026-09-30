@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 // D7b (decisión 6): asignar —una o a todos— es del staff; la función SQL decide igual.
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { errorDeRpcCurso } from '@/lib/cursos/inscripciones'
@@ -110,9 +111,14 @@ export async function POST(
     const alumnoId = body.alumno_id as string | undefined
     if (!alumnoId) return NextResponse.json({ error: 'alumno_id es requerido' }, { status: 400 })
 
+    // #187: solo se asigna a cuentas de ALUMNO (no a personal ni a uno mismo),
+    // con el rol leído de la BD, antes de la RPC.
+    const objetivo = await cargarAlumnoObjetivo(createAdminClient(), alumnoId, user.id)
+    if (!objetivo.ok) return respuestaObjetivo(objetivo)
+
     const { data, error } = await supabase.rpc('curso_inscribir', {
       p_curso_id: params.id,
-      p_alumno_id: alumnoId,
+      p_alumno_id: objetivo.alumno.id,
     })
     if (error) {
       // 23505 = ya estaba asignado (409), P0002 = curso o alumno inexistente (404).
