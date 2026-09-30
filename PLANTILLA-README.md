@@ -98,15 +98,15 @@ En Supabase → **Authentication → Users** → Invite User:
 - Luego en **SQL Editor**:
 
 ```sql
-INSERT INTO public.usuarios (id, email, nombre_completo, rol, activo)
-VALUES (
-  'UUID-del-usuario-creado',
-  'admin@escuela.mx',
-  'Nombre del Administrador',
-  'ADMIN',
-  true
-);
+INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+  FROM auth.users WHERE email = '<correo del admin>'
+ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+  nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos;
 ```
+
+El trigger `handle_new_user` ya le creó al admin su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el panel y la bitácora muestran el correo del admin. Debe responder `INSERT 0 1`; `INSERT 0 0` = ese correo no está en Auth. Un apóstrofo en el nombre va doble (`O''Higgins`). El rol va en minúsculas: el CHECK de `usuarios.rol` solo acepta
+`alumno`, `admin` y `secretario` (`usuarios` no tiene `nombre_completo` ni `activo`).
 
 ---
 

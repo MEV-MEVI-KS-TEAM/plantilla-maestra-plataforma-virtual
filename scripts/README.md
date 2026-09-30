@@ -172,10 +172,15 @@ SELECT COUNT(*) FROM (
 ```
 5. Aplicar `supabase/migrations/*.sql` en orden cronológico (desde la raíz del repo)
 6. Crear admin desde Supabase Dashboard → Authentication → Add user
-7. Marcar usuario como admin:
+7. Marcar usuario como admin (con nombre: TAREA 5 de PROMPTS-MAESTROS):
 ```sql
-   UPDATE public.usuarios SET rol = 'admin' WHERE email = 'admin@cliente.com';
+   INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+   SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+     FROM auth.users WHERE email = '<correo del admin>'
+   ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+     nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos;
 ```
+   El trigger `handle_new_user` ya le creó al admin su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el panel y la bitácora muestran el correo del admin. Debe responder `INSERT 0 1`; `INSERT 0 0` = ese correo no está en Auth. Un apóstrofo en el nombre va doble (`O''Higgins`).
 8. Configurar Auth: desactivar "Confirm email" en Authentication → Providers → Email
 9. Verificar con `scripts/post-setup-check.sql` (desde la raíz del repo; ver
    `SETUP.md` paso 8) — reporta ✅/❌ por check

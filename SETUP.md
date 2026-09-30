@@ -97,8 +97,16 @@ Editar SOLO este archivo: src/lib/config.ts
    17-31, bloque `/* … */`): es plantilla de referencia, no un script
    ejecutable — correrlo es un no-op. El admin se crea así: Supabase
    Dashboard → Authentication → Add user (con el correo del admin del
-   cliente) y luego `UPDATE public.usuarios SET rol = 'admin' WHERE email =
-   '…';` (como documenta `scripts/README.md:85-89`)
+   cliente y «Auto Confirm User») y luego, en el SQL Editor (es la TAREA 5
+   de PROMPTS-MAESTROS; la misma receta está en `scripts/README.md`):
+   ```sql
+   INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+   SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+     FROM auth.users WHERE email = '<correo del admin>'
+   ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+     nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos;
+   ```
+   El trigger `handle_new_user` ya le creó al admin su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el panel y la bitácora muestran el correo del admin. Debe responder `INSERT 0 1`; `INSERT 0 0` = ese correo no está en Auth. Un apóstrofo en el nombre va doble (`O''Higgins`).
 5. **Módulo Cursos y Diplomados** → ejecutar `scripts/migracion-cursos-diplomados.sql`
    (crea 5 tablas `curso_*` + el bucket privado `cursos`). Corre DESPUÉS de schema.sql.
    Si las políticas de storage fallan por ownership, crearlas desde la UI

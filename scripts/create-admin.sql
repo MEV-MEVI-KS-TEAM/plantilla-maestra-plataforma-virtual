@@ -11,7 +11,16 @@
 --   - Nombre del admin si lo deseas
 -- ============================================================
 
--- Ejemplo: enlazar perfil en public.usuarios con rol ADMIN
+-- Recomendado (TAREA 5 de PROMPTS-MAESTROS; no hace falta copiar el UUID):
+--   INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+--   SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+--     FROM auth.users WHERE email = '<correo del admin>'
+--   ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+--     nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos;
+-- El trigger handle_new_user ya creó la fila (rol 'alumno', nombre vacío): por
+-- eso se pisan también nombre y apellidos.
+--
+-- Ejemplo por UUID: enlazar perfil en public.usuarios con rol admin
 -- (el usuario DEBE existir ya en auth.users)
 
 /*

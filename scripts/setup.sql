@@ -82,7 +82,7 @@
 \echo '============================================================'
 \echo 'Setup completo. Próximos pasos:'
 \echo '  1. Edita src/lib/config.ts con los datos del cliente'
-\echo '  2. Ejecuta create-admin.sql manualmente (requiere UUID real)'
+\echo '  2. Crea el admin: Auth > Add user y SETUP.md, Paso 3 punto 4 (TAREA 5)'
 \echo '  3. node scripts/update-videos.mjs --nivel demo   (videos demo)'
 \echo '  4. node scripts/update-videos.mjs                (todos los videos)'
 \echo '============================================================'

@@ -40,9 +40,15 @@
 ### Paso 4: Crear usuario admin
 - En Supabase → Authentication → Add User → Create new user
 - Email y password del admin del cliente
-- Copiar el UUID
-- En SQL Editor (rol en minúsculas — el CHECK de usuarios.rol solo acepta 'alumno' | 'admin' | 'secretario'):
-  INSERT INTO usuarios (id, email, nombre, rol) VALUES ('UUID', 'email', 'nombre', 'admin') ON CONFLICT (id) DO UPDATE SET rol = 'admin';
+- En SQL Editor (rol en minúsculas — el CHECK de usuarios.rol solo acepta 'alumno' | 'admin' | 'secretario'; no hace falta copiar el UUID):
+```sql
+INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
+SELECT id, email, 'Administrador', '<Nombre de la escuela>', 'admin'
+  FROM auth.users WHERE email = '<correo del admin>'
+ON CONFLICT (id) DO UPDATE SET rol = 'admin', email = EXCLUDED.email,
+  nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos;
+```
+- El trigger `handle_new_user` ya le creó al admin su fila en `usuarios` (rol `alumno`, nombre vacío): por eso se pisan también nombre y apellidos. Sin nombre, el panel y la bitácora muestran el correo del admin. Debe responder `INSERT 0 1`; `INSERT 0 0` = ese correo no está en Auth. Un apóstrofo en el nombre va doble (`O''Higgins`).
 - Las cuentas de staff adicionales (admin o secretario) se crean después desde la app en /admin/usuarios
 
 ### Paso 5: Crear planes de estudio
