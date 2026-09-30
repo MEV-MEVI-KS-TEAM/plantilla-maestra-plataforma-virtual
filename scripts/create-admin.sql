@@ -26,15 +26,16 @@ INSERT INTO public.usuarios (id, email, nombre, apellidos, rol)
 VALUES (
   '00000000-0000-0000-0000-000000000000',  -- ← UUID real de auth.users
   'admin@cliente.com',
-  'Admin',
-  'Sistema',
+  'Administrador',
+  '<Nombre de la escuela>',
   'admin'
 )
 ON CONFLICT (id) DO UPDATE SET
   rol = 'admin',
   email = EXCLUDED.email,
   nombre = EXCLUDED.nombre,
-  apellidos = EXCLUDED.apellidos;
+  apellidos = EXCLUDED.apellidos
+RETURNING id, email, nombre, apellidos, rol;
 */
 
 -- Nota: no insertar directamente en auth.users desde SQL sin el flujo

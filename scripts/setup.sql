@@ -3,11 +3,9 @@
 --
 -- Prerequisito: schema.sql ya aplicado en la BD.
 --
--- Uso desde la raíz del proyecto:
---   psql "$DATABASE_URL" -f scripts/setup.sql
---
--- O desde el directorio scripts/:
---   psql "$DATABASE_URL" -f setup.sql
+-- Uso SIEMPRE desde el directorio scripts/ (los \i resuelven las rutas
+-- contra el directorio de trabajo; desde la raíz falla con "No such file"):
+--   cd scripts && psql "$DATABASE_URL" -f setup.sql
 --
 -- Orden de ejecución (respeta dependencias FK):
 --   1. seed-contenido-ivs.sql                    — INSERT materias/meses/semanas base
