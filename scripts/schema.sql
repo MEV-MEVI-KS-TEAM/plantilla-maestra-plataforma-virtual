@@ -1621,8 +1621,10 @@ CREATE TABLE IF NOT EXISTS public.pagos (
   -- antes de #198. El tipo de cambio se guarda POR PAGO para que actualizarlo
   -- desde el panel no reescriba los recibos ya emitidos. Ver la migración
   -- 20260910120000_moneda_pago.sql (retrofit de clientes ya desplegados).
-  moneda               TEXT NOT NULL DEFAULT 'MXN' CHECK (moneda ~ '^[A-Z]{3}$'),
-  tipo_cambio_aplicado NUMERIC(10,4) CHECK (tipo_cambio_aplicado IS NULL OR tipo_cambio_aplicado > 0)
+  moneda               TEXT NOT NULL DEFAULT 'MXN'
+                       CONSTRAINT pagos_moneda_iso CHECK (moneda ~ '^[A-Z]{3}$'),
+  tipo_cambio_aplicado NUMERIC(10,4)
+                       CONSTRAINT pagos_tipo_cambio_positivo CHECK (tipo_cambio_aplicado IS NULL OR tipo_cambio_aplicado > 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pagos_alumno     ON public.pagos (alumno_id);

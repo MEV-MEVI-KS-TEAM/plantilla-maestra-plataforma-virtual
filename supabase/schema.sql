@@ -1,6 +1,14 @@
 -- ============================================================
 --  IVS VIRTUAL — SCHEMA COMPLETO
 --  Ejecutar en Supabase SQL Editor (en orden)
+--
+--  Bloque E3 (29-sep-2026): este archivo solo = aplicar TODAS las migraciones de
+--  supabase/migrations, salvo el módulo Cursos (scripts/migracion-cursos-
+--  diplomados.sql y sus migraciones). Con las migraciones encima acaba en la
+--  misma base que scripts/schema.sql. Lo prueba
+--  scripts/verificar-schema/comparar-instaladores.mjs (Postgres local) y lo
+--  vigila tests/unit/e3-instaladores-equivalentes.spec.ts: si agregas una
+--  migración, refléjala aquí.
 -- ============================================================
 
 -- ── EXTENSIONES ────────────────────────────────────────────
@@ -19,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
   telefono    TEXT,
   foto_url    TEXT,
   rol         TEXT        NOT NULL DEFAULT 'alumno'
-                          CHECK (rol IN ('alumno', 'admin', 'secretario')),
+                          CONSTRAINT usuarios_rol_check CHECK (rol IN ('alumno', 'admin', 'secretario')),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -63,13 +71,34 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
   -- CHECK es estrictamente permisivo: ningún dato existente deja de ser válido.
   -- Debe coincidir con supabase/migrations/20260730120000_b1_fundacion_solo_cursos.sql
   nivel                TEXT        CHECK (nivel IN ('secundaria', 'preparatoria', 'licenciatura', 'diplomado')),
-  modalidad            TEXT        CHECK (modalidad IN ('6_meses', '3_meses')),
+  -- Bloque E3: el CHECK tal como lo deja 20260925120000_licenciatura_plan_6_meses.sql
+  -- (los planes de licenciatura de 20260812120000 más '6_meses_lic', Bug 121), en
+  -- el orden en que esa migración lo escribe. Antes solo admitía 3 y 6 meses: una
+  -- base instalada con este archivo no podía dar de alta a un alumno de licenciatura.
+  modalidad            TEXT        CONSTRAINT alumnos_modalidad_check CHECK (modalidad IS NULL OR modalidad IN (
+                                     '12_meses', '18_meses', '24_meses', '36_meses',
+                                     '3_meses', '6_meses', '6_meses_lic', '9_meses')),
+  -- Slug de la carrera (CONFIG.licenciaturas.carreras[].slug). Solo licenciatura;
+  -- NULL en el resto. Espejo de 20260812120000_licenciaturas.sql (Bloque E3).
+  carrera              TEXT,
   es_sindicalizado     BOOLEAN     NOT NULL DEFAULT false,
   sindicato            TEXT,
   inscripcion_pagada   BOOLEAN     NOT NULL DEFAULT false,
   meses_desbloqueados  INTEGER     NOT NULL DEFAULT 0,
+  -- Expresión COMPLETA, la misma de scripts/schema.sql (Bloque E3): con la de
+  -- antes (3 o 6) un alumno de licenciatura en 12_meses quedaba con duración 6.
   duracion_meses       INTEGER     GENERATED ALWAYS AS (
-                          CASE modalidad WHEN '3_meses' THEN 3 ELSE 6 END
+                          CASE modalidad
+                            WHEN '3_meses'     THEN 3
+                            WHEN '6_meses'     THEN 6
+                            WHEN '6_meses_lic' THEN 6
+                            WHEN '9_meses'     THEN 9
+                            WHEN '12_meses'    THEN 12
+                            WHEN '18_meses'    THEN 18
+                            WHEN '24_meses'    THEN 24
+                            WHEN '36_meses'    THEN 36
+                            ELSE 6
+                          END
                         ) STORED,
   fecha_inscripcion    TIMESTAMPTZ,
   fecha_inicio         TIMESTAMPTZ,
@@ -79,6 +108,10 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
   -- (src/lib/cursos/oferta.ts), no un UUID de `cursos`: hay clientes que
   -- venden varios cursos como paquete único.
   curso_solicitado     TEXT,
+  -- Control Escolar ya contactó por WhatsApp al alumno pendiente de pago.
+  -- Espejo de 20260403150000_alumnos_contactado_whatsapp.sql (Bloque E3): sin
+  -- ella el listado de /admin/alumnos falla y el contador de pendientes da 0.
+  contactado_whatsapp  BOOLEAN     NOT NULL DEFAULT false,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -96,8 +129,15 @@ CREATE TABLE IF NOT EXISTS public.materias (
   icono       TEXT,
   color       TEXT,
   activa      BOOLEAN     NOT NULL DEFAULT true,
+  -- Licenciaturas (20260812120000, Bloque E3): la carrera de la materia y el
+  -- plan con el que se sembró. `modalidad` es metadato del seed: NO filtrar el
+  -- catálogo del alumno por ella.
+  carrera     TEXT,
+  modalidad   TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_materias_carrera
+  ON public.materias (carrera) WHERE carrera IS NOT NULL;
 
 -- ── MESES_CONTENIDO ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.meses_contenido (
@@ -320,8 +360,10 @@ CREATE TABLE IF NOT EXISTS public.pagos (
   -- antes de #198. El tipo de cambio se guarda POR PAGO para que actualizarlo
   -- desde el panel no reescriba los recibos ya emitidos. Ver la migración
   -- 20260910120000_moneda_pago.sql (retrofit de clientes ya desplegados).
-  moneda               TEXT NOT NULL DEFAULT 'MXN' CHECK (moneda ~ '^[A-Z]{3}$'),
-  tipo_cambio_aplicado NUMERIC(10,4) CHECK (tipo_cambio_aplicado IS NULL OR tipo_cambio_aplicado > 0)
+  moneda               TEXT NOT NULL DEFAULT 'MXN'
+                       CONSTRAINT pagos_moneda_iso CHECK (moneda ~ '^[A-Z]{3}$'),
+  tipo_cambio_aplicado NUMERIC(10,4)
+                       CONSTRAINT pagos_tipo_cambio_positivo CHECK (tipo_cambio_aplicado IS NULL OR tipo_cambio_aplicado > 0)
 );
 
 
@@ -505,34 +547,50 @@ ALTER TABLE public.documentos_alumno     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.constancias           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pagos                 ENABLE ROW LEVEL SECURITY;
 
--- Helper: detectar si el usuario autenticado es admin
+-- Helper: detectar si el usuario autenticado es admin.
+-- Bloque E3 (#253): IGUAL a supabase/migrations/20260729121000_fix_s2_es_admin.sql
+-- (S2): plpgsql, LOWER(rol) y search_path fijo. Antes este archivo traía la
+-- versión previa (LANGUAGE sql, rol = 'admin' exacto, sin search_path) y una
+-- base instalada solo con él fallaba los preflights de C3b en adelante.
 CREATE OR REPLACE FUNCTION public.es_admin()
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT EXISTS (
+BEGIN
+  RETURN EXISTS (
     SELECT 1 FROM public.usuarios
-     WHERE id = auth.uid() AND rol = 'admin'
+     WHERE id = auth.uid()
+       AND LOWER(rol) = 'admin'
   );
+END;
 $$;
 
 -- Helper: detectar si el usuario autenticado es staff (admin O secretario).
 -- Lo usan las funciones del personal (cursos, constancias, cobranza por la API).
 -- Desde D22c ya no abre por PostgREST la lectura de usuarios ni de pagos ajenos
 -- (propio o es_admin(), con techo RESTRICTIVE). es_admin() para todo lo demás.
+-- Bloque E3 (#253): igual a la S2, como es_admin().
 CREATE OR REPLACE FUNCTION public.es_staff()
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT EXISTS (
+BEGIN
+  RETURN EXISTS (
     SELECT 1 FROM public.usuarios
-     WHERE id = auth.uid() AND rol IN ('admin', 'secretario')
+     WHERE id = auth.uid()
+       AND LOWER(rol) IN ('admin', 'secretario')
   );
+END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.es_admin() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.es_staff() TO anon, authenticated;
 
 -- ── POLÍTICAS: USUARIOS ──────────────────────────────────────
 CREATE POLICY "usuarios: ver propio perfil"
@@ -838,6 +896,39 @@ CREATE INDEX IF NOT EXISTS idx_preguntas_activa         ON public.preguntas (eva
 CREATE INDEX IF NOT EXISTS idx_semana_materiales_semana ON public.semana_materiales (semana_id);
 CREATE INDEX IF NOT EXISTS idx_pagos_alumno             ON public.pagos (alumno_id);
 CREATE INDEX IF NOT EXISTS idx_pagos_created_at         ON public.pagos (created_at DESC);
+-- 20260717120000_pagos_fecha_pago.sql (Bloque E3): los reportes filtran por fecha_pago.
+CREATE INDEX IF NOT EXISTS idx_pagos_fecha_pago         ON public.pagos (fecha_pago DESC);
+
+-- ── UNIQUE que necesitan los seeds y la app (Bloque E3) ─────
+-- preguntas (evaluacion_id, pregunta), Bug 33: las 265 preguntas de
+-- seed-preguntas-evaluaciones-universal.sql entran con
+-- ON CONFLICT (evaluacion_id, pregunta). Sin este UNIQUE, sembrar sobre una base
+-- instalada con este archivo fallaba con 42P10. Mismo bloque que scripts/schema.sql.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'preguntas_evaluacion_pregunta_unique'
+  ) THEN
+    ALTER TABLE public.preguntas
+      ADD CONSTRAINT preguntas_evaluacion_pregunta_unique
+      UNIQUE (evaluacion_id, pregunta);
+  END IF;
+END $$;
+
+-- documentos_alumno (alumno_id, tipo_documento): la subida de «Mis documentos»
+-- hace upsert con onConflict 'alumno_id,tipo_documento'
+-- (src/app/api/alumno/documentos/route.ts). Hasta hoy solo lo creaba
+-- scripts/setup.sql, y la línea Solo-Cursos puede no correrlo.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'documentos_alumno_alumno_tipo_unique'
+  ) THEN
+    ALTER TABLE public.documentos_alumno
+      ADD CONSTRAINT documentos_alumno_alumno_tipo_unique
+      UNIQUE (alumno_id, tipo_documento);
+  END IF;
+END $$;
 
 
 -- ============================================================
@@ -845,23 +936,30 @@ CREATE INDEX IF NOT EXISTS idx_pagos_created_at         ON public.pagos (created
 --  (Ejecutar en SQL Editor de Supabase o desde el Dashboard)
 -- ============================================================
 
--- NOTA CLIENTES NUEVOS: estos 6 buckets son necesarios desde el día 1.
--- ('cursos' NO está aquí a propósito: es del módulo opcional de Diplomados y
---  vive en scripts/migracion-cursos-diplomados.sql, que solo se aplica a los
---  clientes que lo contratan.)
+-- NOTA CLIENTES NUEVOS: estos 5 buckets son necesarios desde el día 1, y con
+-- 'cursos' son los 6 que usa la app (Bloque E3: se contaron en el código, ver
+-- scripts/verificar-schema/README.md). 'cursos' NO está aquí a propósito: es
+-- del módulo opcional de Diplomados y vive en
+-- scripts/migracion-cursos-diplomados.sql.
+-- 'avatars' (Bug 103): el nombre que usa src/app/api/alumno/avatar/route.ts.
+-- Antes aquí se creaba 'avatares' (que nadie usa) y el avatar del alumno iba a
+-- un bucket que no existía. Público porque la ruta guarda getPublicUrl; escribe
+-- solo el servidor (service role), así que no lleva políticas.
+-- 'constancias' ya no se crea: las constancias se generan al vuelo y ningún
+-- código lee ni escribe ese bucket.
 -- 'recibos' guarda los PDF de recibo de pago (Fase 3 Panel Admin Unificado);
 -- son archivos pequeños, de ahí el límite de 2MB.
+-- Lo mismo para una base ya instalada: 20260929120000_e3_buckets_de_la_app.sql.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
-  ('avatares',    'avatares',    true,  5242880,   ARRAY['image/jpeg','image/png','image/webp']),
+  ('avatars',     'avatars',     true,  5242880,   ARRAY['image/jpeg','image/png','image/webp']),
   ('documentos',  'documentos',  false, 10485760,  ARRAY['image/jpeg','image/png','application/pdf']),
-  ('constancias', 'constancias', false, 10485760,  ARRAY['application/pdf','image/jpeg','image/png']),
   ('recibos',     'recibos',     false, 2097152,   ARRAY['application/pdf']),
   -- F2: PDF de material por semana. Privado y SIN lectura para el alumno: se
   -- sirve por GET /api/material/[id], que comprueba el acceso en TypeScript.
   ('materias',    'materias',    false, 10485760,  ARRAY['application/pdf']),
   -- F1 "Personalizar mi página": el logo que sube el admin. PÚBLICO porque la
-  -- landing lo pinta con <img src> sin sesión (como 'avatares'); 2 MB y solo
+  -- landing lo pinta con <img src> sin sesión (como 'avatars'); 2 MB y solo
   -- imágenes porque es un logo. Escritura solo service role, vía la API.
   -- SIN 'image/svg+xml' aunque el editor acepte SVG a la ENTRADA: la API lo
   -- rasteriza a PNG antes de subir (FORMATO_SALIDA en
@@ -871,19 +969,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Políticas de Storage
--- Avatares: lectura pública, escritura propia
-CREATE POLICY "avatares: lectura pública"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'avatares');
-
-CREATE POLICY "avatares: subir propio"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'avatares' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
-
-CREATE POLICY "avatares: actualizar propio"
-  ON storage.objects FOR UPDATE
-  USING (bucket_id = 'avatares' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
-
+-- (avatars no lleva: es público y solo escribe el servidor.)
 -- Documentos: solo el dueño y admins
 CREATE POLICY "documentos: ver propio"
   ON storage.objects FOR SELECT
@@ -918,20 +1004,6 @@ CREATE POLICY "materias: solo admin actualiza"
 CREATE POLICY "materias: solo admin borra"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'materias' AND public.es_admin());
-
--- Constancias: solo el dueño y admins
-CREATE POLICY "constancias: ver propio"
-  ON storage.objects FOR SELECT
-  USING (
-    bucket_id = 'constancias' AND (
-      auth.uid()::TEXT = (storage.foldername(name))[1]
-      OR public.es_admin()
-    )
-  );
-
-CREATE POLICY "constancias: admin sube"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'constancias' AND public.es_admin());
 
 -- Recibos de pago: el dueño (alumno) y el staff pueden verlos;
 -- solo el staff los sube (en la práctica los genera el servidor con
@@ -983,14 +1055,18 @@ ON CONFLICT DO NOTHING;
 -- SECURITY DEFINER + STABLE evita recursión infinita en RLS policies.
 -- =============================================================
 
+-- Bloque E3: la misma definición que scripts/schema.sql (los dos instaladores
+-- acaban en la misma base; lo comprueba scripts/verificar-schema/).
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
 SET search_path = public
 AS $$
-  SELECT public.es_admin();
+BEGIN
+  RETURN public.es_admin();
+END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
@@ -1292,7 +1368,7 @@ CREATE TABLE IF NOT EXISTS public.alumno_plan_eventos (
   id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   alumno_id          UUID        NOT NULL REFERENCES public.alumnos(id) ON DELETE CASCADE,
   tipo               TEXT        NOT NULL DEFAULT 'correccion_plan'
-                                 CHECK (tipo IN ('correccion_plan')),
+                                 CONSTRAINT alumno_plan_eventos_tipo_check CHECK (tipo IN ('correccion_plan')),
   nivel_antes        TEXT,
   carrera_antes      TEXT,
   modalidad_antes    TEXT,
@@ -1485,6 +1561,528 @@ REVOKE EXECUTE ON FUNCTION public.candado_corregir_plan(uuid)                   
 REVOKE EXECUTE ON FUNCTION public.corregir_plan_estudio(uuid, text, text, text, uuid)  FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.candado_corregir_plan(uuid)                          TO service_role;
 GRANT  EXECUTE ON FUNCTION public.corregir_plan_estudio(uuid, text, text, text, uuid)  TO service_role;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- PERIODICIDAD SEMANAL (reflejo de supabase/migrations/20260910130000_periodicidad_semanal.sql)
+--
+-- Copia LITERAL del bloque de scripts/schema.sql (Bloque E3): sin él, una base
+-- instalada con este archivo (Solo-Cursos, `supabase db reset`) nacía sin el
+-- calendario, D22b no tenía nada que cerrar y D22c se saltaba K4 y K6. Que los
+-- dos instaladores acaben iguales lo comprueba scripts/verificar-schema/ y lo
+-- vigila tests/unit/guardian-schema-onboarding.spec.ts.
+--
+-- INERTE en una escuela mensual (el default): la tabla queda vacía y ninguna
+-- de estas funciones se invoca.
+--
+-- Va AL FINAL porque referencia public.alumnos, public.pagos, public.ajustes y
+-- public.es_staff(), que se crean más arriba.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── 1. pagos: la semana que cubre este pago ─────────────────────────────────
+ALTER TABLE public.pagos
+  ADD COLUMN IF NOT EXISTS numero_semana INTEGER
+  CHECK (numero_semana IS NULL OR numero_semana > 0);
+
+COMMENT ON COLUMN public.pagos.numero_semana IS
+  'Semana del calendario que cubre este pago (concepto cuota_semanal). NULL en todos los demás conceptos.';
+
+CREATE INDEX IF NOT EXISTS idx_pagos_alumno_semana
+  ON public.pagos (alumno_id, numero_semana);
+
+-- ── 2. calendario_pagos: una fila por semana por alumno ─────────────────────
+CREATE TABLE IF NOT EXISTS public.calendario_pagos (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumno_id         UUID NOT NULL REFERENCES public.alumnos(id) ON DELETE CASCADE,
+  numero_semana     INTEGER NOT NULL CHECK (numero_semana > 0),
+  total_semanas     INTEGER NOT NULL CHECK (total_semanas > 0),
+  fecha_vencimiento DATE NOT NULL,
+  -- El monto se CONGELA al generar el calendario. Si el admin sube la cuota
+  -- desde "Personalizar mi página", las semanas ya generadas conservan la suya:
+  -- el alumno se inscribió a un precio y un cambio de tarifa no reescribe deuda
+  -- ya firmada. La cuota nueva rige para quien se inscriba después.
+  monto             NUMERIC(10,2) NOT NULL CHECK (monto > 0),
+  -- 'vencido' se DERIVA (pendiente + fecha_vencimiento < hoy); no se persiste,
+  -- así no hace falta un cron y nunca queda desactualizado.
+  estado            TEXT NOT NULL DEFAULT 'pendiente'
+                    CHECK (estado IN ('pendiente', 'pagado', 'vencido', 'condonado')),
+  pago_id           UUID REFERENCES public.pagos(id) ON DELETE SET NULL,
+  condonado_por     UUID REFERENCES auth.users(id),
+  condonado_motivo  TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT calendario_pagos_alumno_semana_key UNIQUE (alumno_id, numero_semana)
+);
+
+COMMENT ON TABLE public.calendario_pagos IS
+  'Calendario de cuotas semanales por alumno. Vacía en las escuelas de cobro mensual (periodicidad por default).';
+
+CREATE INDEX IF NOT EXISTS idx_calendario_pagos_alumno
+  ON public.calendario_pagos (alumno_id, numero_semana);
+CREATE INDEX IF NOT EXISTS idx_calendario_pagos_pendientes
+  ON public.calendario_pagos (fecha_vencimiento) WHERE estado = 'pendiente';
+
+ALTER TABLE public.calendario_pagos ENABLE ROW LEVEL SECURITY;
+
+-- Lectura: el alumno ve SOLO su calendario; el staff ve todos. Sin
+-- autorreferencia en el USING (Bug 16): es_staff() es SECURITY DEFINER STABLE.
+DROP POLICY IF EXISTS "calendario_pagos: ver propio" ON public.calendario_pagos;
+CREATE POLICY "calendario_pagos: ver propio" ON public.calendario_pagos
+  FOR SELECT USING (alumno_id = auth.uid() OR public.es_staff());
+
+-- Escritura: NADIE con sesión de usuario. Solo las funciones SECURITY DEFINER
+-- de abajo (con guardia de rol) y el service_role del servidor.
+REVOKE ALL    ON public.calendario_pagos FROM anon;
+-- TRUNCATE entra en el GRANT ALL de fábrica de Supabase y NO respeta RLS.
+-- PostgREST no lo expone, pero se revoca igual: vaciar esta tabla borraría el
+-- calendario de cobro de toda la escuela.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.calendario_pagos FROM authenticated;
+GRANT  SELECT ON public.calendario_pagos TO authenticated;
+GRANT  ALL    ON public.calendario_pagos TO service_role;
+
+-- ⚠️ Este bloque debe correr DESPUÉS de los GRANT genéricos del esquema. Si
+-- alguien recrea `public` a mano (DROP SCHEMA + volver a pasar este archivo),
+-- hay que restaurar antes los privilegios de fábrica de Supabase o la aplicación
+-- entera responde "permission denied": esta plantilla protege con RLS, no
+-- quitando privilegios. Re-ejecutar este archivo sobre un esquema que ya existe
+-- NO necesita ese DROP — el `CREATE SCHEMA IF NOT EXISTS` de arriba lo deja
+-- pasar y los GRANT de fábrica siguen en su sitio.
+
+-- ── 3. Guardia común: ¿quién puede escribir el calendario? ──────────────────
+-- Permitido: (a) el service_role del servidor, (b) un usuario con rol admin,
+-- (c) una conexión directa a la BD (psql como postgres, sin claims de
+-- PostgREST). El SECRETARIO y el ALUMNO reciben 42501: estas funciones son
+-- SECURITY DEFINER y sin esta guardia podrían reescribir los pagos de otro.
+-- D22b: antes pasaba es_staff(), y el secretario condonaba, regeneraba o fijaba
+-- un plan a medida llamando /rest/v1/rpc/… con su sesión. Ahora, además, las
+-- cuatro funciones de abajo tienen EXECUTE solo para service_role: la app las
+-- llama siempre con él (el secretario cobra por /api/admin/cobranza, que revisa
+-- su rol antes). Esta guardia es la segunda capa, por si vuelve un GRANT viejo.
+CREATE OR REPLACE FUNCTION public.calendario_pagos_autorizado()
+RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_claims text := current_setting('request.jwt.claims', true);
+  v_role   text;
+BEGIN
+  IF v_claims IS NULL OR v_claims = '' THEN
+    RETURN TRUE;                              -- conexión directa (psql / migraciones)
+  END IF;
+  v_role := (v_claims::jsonb ->> 'role');
+  IF v_role = 'service_role' THEN RETURN TRUE; END IF;
+  RETURN public.es_admin();                   -- D22b: con sesión, solo el admin
+END;
+$$;
+REVOKE ALL ON FUNCTION public.calendario_pagos_autorizado() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.calendario_pagos_autorizado() TO authenticated, service_role;
+
+-- ── 4. generar_calendario_pagos(): N semanas desde la fecha de inicio ───────
+--
+-- ⚠️ ESTA FIRMA RECIBE EL PLAN, y eso es DELIBERADO: es la del ALTA MANUAL, la
+-- que usa el admin para un alumno con un plan a medida que no está en el
+-- catálogo (CAU #200 gestiona así sus planes de 2 y 4 meses). El admin teclea
+-- las semanas y la cuota porque ese es justo el caso de uso.
+--
+-- 🛑 El flujo AUTOMÁTICO del registro NO debe usar esta: usa
+-- generar_calendario_por_nivel(), que no recibe cifras. Ver el aviso de ahí.
+--
+-- Regenerable: borra las semanas PENDIENTES y VENCIDAS y las vuelve a crear con
+-- las fechas nuevas; las pagadas o condonadas se conservan tal cual.
+CREATE OR REPLACE FUNCTION public.generar_calendario_pagos(
+  p_alumno_id    UUID,
+  p_semanas      INTEGER,
+  p_cuota        NUMERIC,
+  p_fecha_inicio DATE DEFAULT CURRENT_DATE
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_i     INTEGER;
+  v_total INTEGER;
+BEGIN
+  IF NOT public.calendario_pagos_autorizado() THEN
+    RAISE EXCEPTION 'permiso denegado: solo el personal administrativo genera calendarios'
+      USING ERRCODE = '42501';
+  END IF;
+  IF p_alumno_id IS NULL THEN
+    RAISE EXCEPTION 'alumno_id requerido';
+  END IF;
+  IF p_semanas IS NULL OR p_semanas < 1 OR p_semanas > 104 THEN
+    RAISE EXCEPTION 'semanas fuera de rango: % (1..104)', p_semanas;
+  END IF;
+  IF p_cuota IS NULL OR p_cuota <= 0 THEN
+    RAISE EXCEPTION 'cuota semanal inválida: %', p_cuota;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.alumnos WHERE id = p_alumno_id) THEN
+    RAISE EXCEPTION 'Alumno % no encontrado', p_alumno_id;
+  END IF;
+
+  DELETE FROM public.calendario_pagos
+   WHERE alumno_id = p_alumno_id
+     AND estado IN ('pendiente', 'vencido');
+
+  FOR v_i IN 1..p_semanas LOOP
+    INSERT INTO public.calendario_pagos
+      (alumno_id, numero_semana, total_semanas, fecha_vencimiento, monto, estado)
+    VALUES
+      (p_alumno_id, v_i, p_semanas, p_fecha_inicio + ((v_i - 1) * 7), p_cuota, 'pendiente')
+    ON CONFLICT (alumno_id, numero_semana) DO UPDATE
+      SET total_semanas = EXCLUDED.total_semanas,   -- semanas ya pagadas: solo se alinea el total
+          updated_at    = NOW();
+  END LOOP;
+
+  -- Semanas pagadas/condonadas por encima del nuevo total se conservan: son
+  -- dinero real. Solo se ajusta el total para el resumen.
+  UPDATE public.calendario_pagos
+     SET total_semanas = GREATEST(p_semanas, numero_semana), updated_at = NOW()
+   WHERE alumno_id = p_alumno_id AND numero_semana > p_semanas;
+
+  SELECT COUNT(*) INTO v_total FROM public.calendario_pagos WHERE alumno_id = p_alumno_id;
+  RETURN v_total;
+END;
+$function$;
+
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.generar_calendario_pagos(UUID, INTEGER, NUMERIC, DATE) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.generar_calendario_pagos(UUID, INTEGER, NUMERIC, DATE) TO service_role;
+
+-- ── 4b. generar_calendario_por_nivel(): el plan lo decide la BD ─────────────
+--
+-- 🛑 NO RECIBE EL PLAN, y esa es toda la razón de que exista. Lee el NIVEL REAL
+-- del alumno en `alumnos` y saca las semanas y la cuota de `public.ajustes`.
+--
+-- ⚠️ POR QUÉ. En EDUHCO #197 una primera versión SÍ los recibía como argumentos
+-- (validando el nivel, pero confiando en las cifras). Una llamada con los
+-- valores cruzados le generó a un alumno de preparatoria un calendario de 12
+-- semanas en vez de 24 —$3,000 menos— SIN NINGÚN ERROR. La guardia de rol
+-- impedía que lo hiciera un alumno, no que lo hiciera un servidor mal
+-- configurado. Con el plan en la BD no hay parámetro que falsificar.
+--
+-- Y por eso la firma vieja se ELIMINA abajo en vez de dejarla obsoleta:
+-- mientras exista, sigue siendo invocable.
+--
+-- `ajustes` es el mismo puente config.ts → BD que ya usa el prefijo de
+-- matrícula. La fuente de verdad sigue siendo `src/lib/config.ts`;
+-- `sincronizarPlanSemanal()` lo refleja aquí antes de cada alta.
+--
+-- 🛑 Aquí NO se siembra ningún plan de fábrica. Un valor por defecto sería el
+-- plan de OTRA escuela: si la sincronización no ha corrido, esto debe fallar
+-- ruidosamente, no cobrar cifras inventadas.
+DROP FUNCTION IF EXISTS public.generar_calendario_por_nivel(UUID, INTEGER, NUMERIC, INTEGER, NUMERIC, DATE);
+
+CREATE OR REPLACE FUNCTION public.generar_calendario_por_nivel(
+  p_alumno_id    UUID,
+  p_fecha_inicio DATE DEFAULT CURRENT_DATE
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_nivel   TEXT;
+  v_semanas INTEGER;
+  v_cuota   NUMERIC;
+BEGIN
+  IF NOT public.calendario_pagos_autorizado() THEN
+    RAISE EXCEPTION 'permiso denegado: solo el personal administrativo genera calendarios'
+      USING ERRCODE = '42501';
+  END IF;
+
+  SELECT nivel INTO v_nivel FROM public.alumnos WHERE id = p_alumno_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Alumno % no encontrado', p_alumno_id;
+  END IF;
+  IF v_nivel IS NULL OR btrim(v_nivel) = '' THEN
+    RETURN 0;                     -- alumno solo de curso: no lleva calendario
+  END IF;
+
+  -- Clave por nivel, no un IF/ELSIF cerrado: una escuela que mañana venda
+  -- 'bachillerato' no obliga a tocar este SQL.
+  SELECT valor::INTEGER INTO v_semanas
+    FROM public.ajustes WHERE clave = 'plan_semanas_' || v_nivel;
+  SELECT valor::NUMERIC INTO v_cuota
+    FROM public.ajustes WHERE clave = 'plan_cuota_' || v_nivel;
+
+  -- Sin plan declarado para este nivel NO es un error: es un nivel que no lleva
+  -- calendario semanal (licenciatura y diplomado no lo llevan ni en las
+  -- escuelas semanales). Devolver 0 y seguir.
+  IF v_semanas IS NULL AND v_cuota IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  -- Media configuración SÍ es un error: alguien sincronizó a medias y el alumno
+  -- se quedaría sin calendario o con uno gratis, en silencio.
+  IF v_semanas IS NULL OR v_cuota IS NULL THEN
+    RAISE EXCEPTION 'El plan semanal de % está incompleto en public.ajustes (semanas=%, cuota=%)',
+      v_nivel, v_semanas, v_cuota;
+  END IF;
+
+  RETURN public.generar_calendario_pagos(p_alumno_id, v_semanas, v_cuota, p_fecha_inicio);
+END;
+$function$;
+
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.generar_calendario_por_nivel(UUID, DATE) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.generar_calendario_por_nivel(UUID, DATE) TO service_role;
+
+-- ── 5. registrar_cuota_semanal(): cobra UNA semana (pago real + calendario) ─
+-- `p_moneda` y `p_tipo_cambio` los pasa el servidor SOLO si la escuela no cobra
+-- en pesos, igual que hace /api/admin/pagos: con NULL la fila toma el default
+-- 'MXN' de la tabla y el recibo sale como en toda la flota.
+CREATE OR REPLACE FUNCTION public.registrar_cuota_semanal(
+  p_alumno_id      UUID,
+  p_numero_semana  INTEGER,
+  p_metodo_pago    TEXT,
+  p_registrado_por UUID,
+  p_referencia     TEXT DEFAULT NULL,
+  p_fecha_pago     DATE DEFAULT CURRENT_DATE,
+  p_monto          NUMERIC DEFAULT NULL,
+  p_moneda         TEXT DEFAULT NULL,
+  p_tipo_cambio    NUMERIC DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_cal   public.calendario_pagos%ROWTYPE;
+  v_pago  UUID;
+BEGIN
+  -- D22c (K4): quien llama fija p_registrado_por, p_monto y p_fecha_pago, así que
+  -- solo el servidor la invoca (service_role, después de verifyStaff en
+  -- /api/admin/cobranza) o una conexión directa. Con sesión de usuario, 42501
+  -- aunque un GRANT viejo le devuelva EXECUTE a authenticated.
+  IF COALESCE(current_setting('request.jwt.claims', true), '') <> ''
+     AND (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'permiso denegado: registrar_cuota_semanal solo la llama el servidor'
+      USING ERRCODE = '42501';
+  END IF;
+  IF NOT public.calendario_pagos_autorizado() THEN
+    RAISE EXCEPTION 'permiso denegado: solo el personal administrativo registra cuotas'
+      USING ERRCODE = '42501';
+  END IF;
+  IF p_metodo_pago IS NULL OR upper(p_metodo_pago) NOT IN ('EFECTIVO','TRANSFERENCIA','TARJETA','OTRO') THEN
+    RAISE EXCEPTION 'Método de pago inválido: %', p_metodo_pago;
+  END IF;
+
+  SELECT * INTO v_cal
+    FROM public.calendario_pagos
+   WHERE alumno_id = p_alumno_id AND numero_semana = p_numero_semana
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La semana % no existe en el calendario de este alumno', p_numero_semana;
+  END IF;
+  IF v_cal.estado = 'pagado' THEN
+    RAISE EXCEPTION 'La semana % ya está pagada', p_numero_semana;
+  END IF;
+
+  INSERT INTO public.pagos
+    (alumno_id, monto, concepto, numero_semana, metodo_pago, referencia,
+     registrado_por, fecha_pago, moneda, tipo_cambio_aplicado)
+  VALUES
+    (p_alumno_id, COALESCE(p_monto, v_cal.monto), 'cuota_semanal', p_numero_semana,
+     upper(p_metodo_pago), NULLIF(btrim(p_referencia), ''), p_registrado_por,
+     COALESCE(p_fecha_pago, CURRENT_DATE),
+     COALESCE(NULLIF(btrim(p_moneda), ''), 'MXN'), p_tipo_cambio)
+  RETURNING id INTO v_pago;
+
+  UPDATE public.calendario_pagos
+     SET estado = 'pagado', pago_id = v_pago,
+         condonado_por = NULL, condonado_motivo = NULL,
+         updated_at = NOW()
+   WHERE id = v_cal.id;
+
+  RETURN v_pago;
+END;
+$function$;
+
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.registrar_cuota_semanal(UUID, INTEGER, TEXT, UUID, TEXT, DATE, NUMERIC, TEXT, NUMERIC) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.registrar_cuota_semanal(UUID, INTEGER, TEXT, UUID, TEXT, DATE, NUMERIC, TEXT, NUMERIC) TO service_role;
+
+-- ── 6. condonar_semana(): perdona (o des-perdona) una semana ────────────────
+CREATE OR REPLACE FUNCTION public.condonar_semana(
+  p_alumno_id     UUID,
+  p_numero_semana INTEGER,
+  p_actor         UUID,
+  p_motivo        TEXT DEFAULT NULL,
+  p_condonar      BOOLEAN DEFAULT TRUE
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_estado TEXT;
+BEGIN
+  IF NOT public.calendario_pagos_autorizado() THEN
+    RAISE EXCEPTION 'permiso denegado' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT estado INTO v_estado
+    FROM public.calendario_pagos
+   WHERE alumno_id = p_alumno_id AND numero_semana = p_numero_semana
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La semana % no existe en el calendario de este alumno', p_numero_semana;
+  END IF;
+  -- Condonar una semana ya pagada sería borrar dinero que entró: para eso se
+  -- borra el pago, y el trigger de abajo devuelve la semana a pendiente.
+  IF v_estado = 'pagado' THEN
+    RAISE EXCEPTION 'La semana % ya está pagada; no se puede condonar', p_numero_semana;
+  END IF;
+
+  IF p_condonar THEN
+    UPDATE public.calendario_pagos
+       SET estado = 'condonado', condonado_por = p_actor,
+           condonado_motivo = NULLIF(btrim(p_motivo), ''), updated_at = NOW()
+     WHERE alumno_id = p_alumno_id AND numero_semana = p_numero_semana;
+  ELSE
+    UPDATE public.calendario_pagos
+       SET estado = 'pendiente', condonado_por = NULL, condonado_motivo = NULL, updated_at = NOW()
+     WHERE alumno_id = p_alumno_id AND numero_semana = p_numero_semana;
+  END IF;
+END;
+$function$;
+
+-- D22b: solo el servidor (service_role). Nada de la app la llama con sesión.
+REVOKE ALL ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOLEAN) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.condonar_semana(UUID, INTEGER, UUID, TEXT, BOOLEAN) TO service_role;
+
+-- ── 7. Borrar un pago de cuota devuelve la semana a 'pendiente' ─────────────
+-- El FK pago_id ya está en NULL cuando corre este trigger (ON DELETE SET NULL
+-- actúa antes), así que se localiza por alumno + semana, no por pago_id.
+-- D22c (K6): y SOLO si la semana no está ligada a OTRO pago que sigue vivo
+-- (pago_id IS NULL tras el SET NULL, o el propio OLD.id). Sin esto, borrar un
+-- pago suelto de la misma semana devolvía a 'pendiente' una semana pagada.
+CREATE OR REPLACE FUNCTION public.calendario_pagos_revertir_al_borrar()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF OLD.concepto = 'cuota_semanal' AND OLD.numero_semana IS NOT NULL THEN
+    UPDATE public.calendario_pagos
+       SET estado = 'pendiente', pago_id = NULL, updated_at = NOW()
+     WHERE alumno_id = OLD.alumno_id
+       AND numero_semana = OLD.numero_semana
+       AND estado = 'pagado'
+       AND (pago_id IS NULL OR pago_id = OLD.id);   -- D22c (K6)
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_calendario_pagos_revertir ON public.pagos;
+CREATE TRIGGER trg_calendario_pagos_revertir
+  AFTER DELETE ON public.pagos
+  FOR EACH ROW EXECUTE FUNCTION public.calendario_pagos_revertir_al_borrar();
+
+-- ── 8. estado_cuenta_semanal(): resumen por alumno para "Cobranza" ──────────
+-- HECHOS, no conclusiones: "vencidas" = semanas pendientes cuya fecha de
+-- vencimiento ya pasó. El sistema no distingue un pago sin capturar de una
+-- cortesía, así que no dice "moroso": dice cuántas semanas van sin registrar.
+--
+-- ⚠️ La fecha se toma en America/Mexico_City, no en UTC: a las 18:00 de México
+-- ya es el día siguiente en UTC y media escuela aparecería vencida una noche
+-- antes de tiempo.
+--
+-- Devuelve TODOS los alumnos activos del programa, tengan o no calendario: los
+-- que no lo tienen son justo a quienes hay que generárselo, y filtrarlos los
+-- volvería invisibles en la única pantalla donde se arregla.
+DROP FUNCTION IF EXISTS public.estado_cuenta_semanal();
+CREATE OR REPLACE FUNCTION public.estado_cuenta_semanal()
+RETURNS TABLE (
+  alumno_id            uuid,
+  nombre               text,
+  apellidos            text,
+  email                text,
+  telefono             text,
+  matricula            text,
+  nivel                text,
+  modalidad            text,
+  inscripcion_pagada   boolean,
+  semanas_total        integer,
+  semanas_pagadas      integer,
+  semanas_condonadas   integer,
+  semanas_vencidas     integer,
+  semanas_pendientes   integer,
+  monto_pagado         numeric,
+  monto_vencido        numeric,
+  saldo_pendiente      numeric,
+  proxima_semana       integer,
+  proxima_fecha        date,
+  fecha_ultimo_pago    date
+)
+LANGUAGE sql STABLE
+SET search_path = public
+AS $function$
+  WITH hoy AS (
+    SELECT (now() AT TIME ZONE 'America/Mexico_City')::date AS d
+  ),
+  cal AS (
+    SELECT c.alumno_id,
+           MAX(c.total_semanas)::integer AS semanas_total,
+           COUNT(*) FILTER (WHERE c.estado = 'pagado')::integer    AS semanas_pagadas,
+           COUNT(*) FILTER (WHERE c.estado = 'condonado')::integer AS semanas_condonadas,
+           COUNT(*) FILTER (WHERE c.estado = 'pendiente' AND c.fecha_vencimiento <  hoy.d)::integer AS semanas_vencidas,
+           COUNT(*) FILTER (WHERE c.estado = 'pendiente' AND c.fecha_vencimiento >= hoy.d)::integer AS semanas_pendientes,
+           COALESCE(SUM(c.monto) FILTER (WHERE c.estado = 'pagado'), 0)::numeric AS monto_pagado,
+           COALESCE(SUM(c.monto) FILTER (WHERE c.estado = 'pendiente' AND c.fecha_vencimiento < hoy.d), 0)::numeric AS monto_vencido,
+           COALESCE(SUM(c.monto) FILTER (WHERE c.estado = 'pendiente'), 0)::numeric AS saldo_pendiente,
+           MIN(c.numero_semana) FILTER (WHERE c.estado = 'pendiente')::integer AS proxima_semana,
+           MIN(c.fecha_vencimiento) FILTER (WHERE c.estado = 'pendiente') AS proxima_fecha
+      FROM public.calendario_pagos c, hoy
+     GROUP BY c.alumno_id
+  ),
+  up AS (
+    -- Último pago DEL PROGRAMA. Los `curso_*` son del módulo de Cursos y un
+    -- diplomado recién pagado haría parecer al día a quien debe seis semanas.
+    SELECT p.alumno_id, MAX(p.fecha_pago) AS fecha_ultimo_pago
+      FROM public.pagos p
+     WHERE p.concepto IS NULL OR p.concepto NOT LIKE 'curso%'
+     GROUP BY p.alumno_id
+  )
+  SELECT a.id,
+         u.nombre, u.apellidos, u.email, u.telefono,
+         a.matricula, a.nivel, a.modalidad, a.inscripcion_pagada,
+         COALESCE(cal.semanas_total, 0),
+         COALESCE(cal.semanas_pagadas, 0),
+         COALESCE(cal.semanas_condonadas, 0),
+         COALESCE(cal.semanas_vencidas, 0),
+         COALESCE(cal.semanas_pendientes, 0),
+         COALESCE(cal.monto_pagado, 0),
+         COALESCE(cal.monto_vencido, 0),
+         COALESCE(cal.saldo_pendiente, 0),
+         cal.proxima_semana,
+         cal.proxima_fecha,
+         up.fecha_ultimo_pago
+    FROM public.alumnos a
+    JOIN public.usuarios u ON u.id = a.id
+    LEFT JOIN cal ON cal.alumno_id = a.id
+    LEFT JOIN up  ON up.alumno_id  = a.id
+   WHERE a.activo = true
+     -- Un alumno de diplomado no lleva calendario semanal: su ritmo lo fija el
+     -- curso. Se excluye por lo que NO es, para no hardcodear la lista de
+     -- niveles de una escuela concreta.
+     AND a.nivel IS DISTINCT FROM 'diplomado'
+   ORDER BY COALESCE(cal.semanas_vencidas, 0) DESC,
+            COALESCE(cal.monto_vencido, 0) DESC,
+            u.nombre, u.apellidos;
+$function$;
+
+-- Solo el servidor: la vista de cobranza es de toda la escuela.
+REVOKE EXECUTE ON FUNCTION public.estado_cuenta_semanal() FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.estado_cuenta_semanal() TO service_role;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- BITÁCORA DE MESES DEL PROGRAMA (reflejo de

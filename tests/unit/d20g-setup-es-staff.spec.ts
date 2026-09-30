@@ -56,13 +56,14 @@ test('2. rol_secretario otorga los mismos GRANT que S2', () => {
   expect(sinComentarios(leer(ROL))).toContain(grant)
 })
 
-test('3. ninguna migración ni scripts/schema.sql define es_admin()/es_staff() sin LOWER ni search_path', () => {
-  // supabase/schema.sql (instalador de Solo-Cursos) todavía trae las versiones
-  // previas a S2 y queda FUERA a propósito: SIEMPRE lo sigue el paso 7, que las
-  // reemplaza, y nada lo corre después.
+test('3. ninguna migración ni instalador define es_admin()/es_staff() sin LOWER ni search_path', () => {
+  // Bloque E3 (#253): supabase/schema.sql (instalador de Solo-Cursos) ya trae
+  // las de la S2 y entra en la cuenta; antes quedaba fuera porque traía las
+  // versiones previas y dependía del paso 7.
   const archivos = [
     ...readdirSync(join(process.cwd(), 'supabase', 'migrations')).filter(f => f.endsWith('.sql')).map(f => `supabase/migrations/${f}`),
     'scripts/schema.sql',
+    'supabase/schema.sql',
   ]
   const sinS2: string[] = []
   let vistas = 0
@@ -77,8 +78,8 @@ test('3. ninguna migración ni scripts/schema.sql define es_admin()/es_staff() s
     }
   }
   expect(sinS2).toEqual([])
-  // S2 (las dos) + rol_secretario (es_staff) + scripts/schema.sql (las dos).
-  expect(vistas).toBe(5)
+  // S2 (las dos) + rol_secretario (es_staff) + scripts/schema.sql (las dos) + supabase/schema.sql (las dos).
+  expect(vistas).toBe(7)
 })
 
 test('4. lo demás que toca rol_secretario ya es el estado final (scripts/schema.sql): nada que revertir', () => {

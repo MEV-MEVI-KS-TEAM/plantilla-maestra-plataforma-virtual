@@ -92,6 +92,14 @@ const OBJETOS_EXENTOS = new Set<string>([
   // es solo el storage.
   'branding: lectura abierta',
 
+  // Políticas del bucket `documentos` (Bloque E3,
+  // 20260929120000_e3_buckets_de_la_app.sql). Mismo racional que `materias` y
+  // `branding`: scripts/schema.sql no lleva storage. Ojo: sin esta línea el
+  // guardián igual pasaría, pero por un falso PASS de subcadena («documentos:
+  // ver propios» es la política de la TABLA documentos_alumno).
+  'documentos: ver propio',
+  'documentos: subir propio',
+
   // Techo de D22d sobre el banco del examen final de curso
   // (20260928170000_d22d_claves_solo_servidor.sql, dentro de un EXECUTE porque
   // la tabla solo existe con el módulo de Cursos). Mismo trato que el módulo:
