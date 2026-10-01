@@ -114,11 +114,14 @@ async function anexarCursoIngreso<T extends { id: string }>(
     const { data: cs } = await admin.from('cursos').select('id, modulos_por_mes, estado').in('id', idsCursos)
     for (const c of (cs ?? []) as { id: string; modulos_por_mes: number | null; estado: string | null }[]) cursos.set(c.id, c)
   }
-  // Los `orden` de sus módulos: «activado» exige ver al menos uno (orden < límite),
-  // el mismo eje que la RLS, no solo que la ventana sea > 0 (#204, base 1).
+  // Los `orden` de TODOS sus módulos: «activado» exige ver al menos uno (su
+  // posición < límite, #255), el mismo eje que la RLS, no solo que la ventana sea > 0.
   const ordenes = new Map<string, (number | null)[]>()
   if (idsCursos.length > 0) {
-    const { data: ms } = await admin.from('curso_modulos').select('curso_id, orden').in('curso_id', idsCursos)
+    const { data: ms, error: errMs } = await admin.from('curso_modulos').select('curso_id, orden').in('curso_id', idsCursos)
+    // Sin los módulos no se sabe qué ve: nadie sale «Activado» por un error de
+    // lectura (un `orden` sin definir no se ve nunca).
+    if (errMs) idsCursos.forEach(id => ordenes.set(id, [null]))
     for (const m of (ms ?? []) as { curso_id: string; orden: number | null }[]) {
       if (!ordenes.has(m.curso_id)) ordenes.set(m.curso_id, [])
       ordenes.get(m.curso_id)!.push(m.orden)

@@ -58,6 +58,7 @@ const EXCEPCIONES: Record<string, string> = {
   '20260927130000_d8_activar_segun_ficha.sql':     'módulo Cursos: aplicación aparte',
   '20260927140000_d16_curso_cobrar.sql':           'módulo Cursos: aplicación aparte',
   '20260928130000_d20b_constancia_staff.sql':      'módulo Cursos: aplicación aparte',
+  '20260930120000_fix255_ventana_por_posicion.sql': 'módulo Cursos: aplicación aparte (#255)',
   '20260730170000_b7_estado_cuenta_excluye_diplomado.sql': 'módulo Cursos: aplicación aparte',
   '20260730180000_b82_emision_manual_con_actor.sql':       'módulo Cursos: aplicación aparte',
   '20260810120000_curso_solicitado.sql': 'columna base ya reflejada; el resto es oferta de cursos',

@@ -106,7 +106,8 @@ test('4. lo demás que toca rol_secretario ya es el estado final (scripts/schema
 test('5. el guardián: CHECK 22 revisa LOWER, search_path y SECURITY DEFINER de las dos; SETUP lo nombra', () => {
   const check = leer('scripts/post-setup-check.sql')
   expect(check.indexOf('─── CHECK 22')).toBeGreaterThan(check.indexOf('─── CHECK 21'))
-  const c22 = check.slice(check.indexOf('─── CHECK 22'))
+  // Solo el CHECK 22 (hasta el 23): los de módulo que vengan después sí miran hay_cursos.
+  const c22 = check.slice(check.indexOf('─── CHECK 22'), check.indexOf('─── CHECK 23'))
   expect(c22).toContain("FROM unnest(ARRAY['es_admin()', 'es_staff()']) AS f")
   // El mismo patrón que el preflight de D7b: lo que el CHECK marca es lo que D7b rechaza.
   expect(c22).toContain("p.prosrc ~* 'lower\\s*\\(\\s*rol\\s*\\)'")

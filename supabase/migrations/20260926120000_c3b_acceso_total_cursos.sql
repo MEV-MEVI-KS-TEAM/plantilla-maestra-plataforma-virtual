@@ -41,6 +41,11 @@
 -- CHECK 15 de scripts/post-setup-check.sql comprueba el candado, abrir/cerrar
 -- mes, el reporte y el REVOKE.
 --
+-- Y RE-CORRER ESTA DESPUÉS DE #255 NO LE QUITA AL REPORTE LA POSICIÓN: si la base
+-- ya tiene 20260930120000_fix255_ventana_por_posicion.sql, su versión de
+-- reporte_curso_inscripciones se guarda al empezar y se restaura al final
+-- (CHECK 31).
+--
 -- IDEMPOTENTE Y RE-EJECUTABLE. En transacción. Requiere B1–B4 y B6.
 -- Aplicar por conexión directa o pooler en MODO SESIÓN (5432, NUNCA 6543).
 -- ============================================================================
@@ -97,6 +102,32 @@ BEGIN
   END IF;
 END
 $preflight$;
+
+-- ── #255 · re-correr esta migración NO devuelve el reporte al conteo crudo ──
+-- Si la base ya tiene #255 (20260930120000_fix255_ventana_por_posicion.sql), su
+-- reporte_curso_inscripciones (modulos_visibles por POSICIÓN, lo que el alumno
+-- ve) es el vigente y esta migración lo pisaría con el LEAST(techo, total), que
+-- en un curso en base 1 dice más de lo que el alumno ve. Se guarda aquí y se
+-- restaura al final de este archivo. Solo se guarda lo que de verdad es de #255
+-- (el cuerpo llama a curso_modulo_posicion, el criterio del CHECK 31) Y ya trae
+-- el acceso total (`acceso_total`, el criterio del CHECK 15): un reporte con la
+-- posición pero sin acceso total no se «conserva» encima del de C3b. Sin #255
+-- no hace nada.
+DROP TABLE IF EXISTS pg_temp.f255_vigentes;
+CREATE TEMP TABLE f255_vigentes AS
+SELECT pg_get_functiondef(p.oid) AS def
+  FROM pg_proc p
+ WHERE p.oid = to_regprocedure('public.reporte_curso_inscripciones()')
+   AND strpos(pg_get_functiondef(p.oid), 'curso_modulo_posicion') > 0
+   AND strpos(pg_get_functiondef(p.oid), 'acceso_total') > 0;
+DO $f255$
+BEGIN
+  IF to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM pg_temp.f255_vigentes) THEN
+    RAISE WARNING 'Esta base tiene #255, pero reporte_curso_inscripciones ya no trae su versión (una copia vieja o una corrida a medias): esta migración no la puede conservar. Al terminar, vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql.';
+  END IF;
+END
+$f255$;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -703,6 +734,23 @@ BEGIN
   END IF;
 END
 $d7b$;
+
+-- ── #255 · restaurar el reporte por posición (ver el inicio) ───────────────
+DO $f255$
+DECLARE
+  v_def TEXT;
+  v_n   INTEGER := 0;
+BEGIN
+  FOR v_def IN SELECT def FROM pg_temp.f255_vigentes LOOP
+    EXECUTE v_def;
+    v_n := v_n + 1;
+  END LOOP;
+  IF v_n > 0 THEN
+    RAISE NOTICE 'Esta base ya tiene #255 (ventana por posición): se conservó su reporte_curso_inscripciones.';
+  END IF;
+END
+$f255$;
+DROP TABLE IF EXISTS pg_temp.f255_vigentes;
 
 NOTIFY pgrst, 'reload schema';
 

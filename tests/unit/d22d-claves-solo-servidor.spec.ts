@@ -331,9 +331,9 @@ test('8. SETUP: fila 23 después de la 22, con «la app ANTES»; nota del paso 7
   const paso7 = setup.slice(setup.indexOf('7. **Parches de seguridad (obligatorios)**'), setup.indexOf('7bis.'))
   expect(paso7).toContain('después de 7bis corre su **fila 22**')
   expect(paso7).toContain('**Y en toda base, después de desplegar la app de D22d:** su **fila 23**')
-  // Bloque E3: SOLO-CURSOS lista la tabla 7bis completa (filas 1 a 23) y advierte la 23.
+  // Bloque E3: SOLO-CURSOS lista la tabla 7bis completa (filas 1 a 24 desde #255) y advierte la 23.
   const solo = leer('INSTRUCCIONES-SOLO-CURSOS.md')
-  expect(solo).toContain('| Tabla 7bis de `SETUP.md`, **filas 1 a 23, en orden** |')
+  expect(solo).toContain('| Tabla 7bis de `SETUP.md`, **filas 1 a 24, en orden** |')
   expect(solo).toContain(`| 23 | \`${MIG}\` (D22d) | 28, 29 y 30 |`)
   expect(solo).toContain('**Fila 23 (D22d): SOLO después de desplegar la app de D22d**')
   expect(readdirSync(join(raiz, DIR_MIG))).toContain(MIG)

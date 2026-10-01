@@ -49,9 +49,10 @@ test('2. paridad con el candado: motivo null ⇔ ve al menos un módulo (el eje 
     const inscripcion = { meses_desbloqueados: meses, estado: 'activa' }
     expect(motivoBloqueo({ inscripcion, curso: publicado, modulosTotales: 5 }) === null).toBe(limiteVentana(inscripcion, publicado) > 0)
   }
-  // Base 1 con un módulo por mes y 1 mes pagado: ventana 1, nada visible → espera, no «sin lecciones».
+  // Base 1 con un módulo por mes y 1 mes pagado: con la POSICIÓN (#255) ve su primer
+  // módulo (antes, con el `orden` crudo, no veía nada y el visor decía «espera»).
   const base1 = { inscripcion: { meses_desbloqueados: 1, estado: 'activa' }, curso: { modulos_por_mes: 1, estado: 'publicado' }, modulosTotales: 5, ordenes: [1, 2, 3, 4, 5] }
-  expect(motivoBloqueo(base1)).toBe('sin_apertura')
+  expect(motivoBloqueo(base1)).toBeNull()
 })
 
 test('3. el visor solo dice «no tiene lecciones» cuando de verdad no tiene', () => {
@@ -74,19 +75,20 @@ test('3. el visor solo dice «no tiene lecciones» cuando de verdad no tiene', (
   }
 })
 
-test('3b. la banda cuenta con el eje de la RLS (orden < límite) y no promete un mes que no se abre', () => {
+test('3b. la banda cuenta con el eje de la RLS (posición < límite, #255) y no promete un mes que no se abre', () => {
   // Base 0, 10 módulos, 2 por mes, 1 mes: ve 0-1, quedan 8, el siguiente con el mes 2.
   const base0 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   expect(modulosPorAbrir({ ordenes: base0, limite: 2, porMes: 2, tope: 5, estado: 'activa' })).toEqual({ bloqueados: 8, proximoMes: 2 })
-  // Base 1 (#204), 1 mes: la RLS muestra solo el orden 1 → quedan 9 (antes la banda decía 8).
+  // Base 1 (#204), 1 mes: con la posición (#255) la RLS muestra los dos primeros → quedan 8.
   const base1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   const insc = { meses_desbloqueados: 1, estado: 'activa' }
   const curso = { modulos_por_mes: 2, estado: 'publicado' }
   const lim = limiteVentana(insc, curso)
   const visibles = modulosVisibles(base1.map(orden => ({ orden })), insc, curso).length
-  expect(modulosPorAbrir({ ordenes: base1, limite: lim, porMes: 2, tope: 5, estado: 'activa' }).bloqueados).toBe(base1.length - visibles)
-  // Base 1 en el tope (5 meses): el orden 10 sigue oculto; la banda lo cuenta y NO promete el mes 6.
-  expect(modulosPorAbrir({ ordenes: base1, limite: 10, porMes: 2, tope: 5, estado: 'activa' })).toEqual({ bloqueados: 1, proximoMes: null })
+  expect(visibles).toBe(2)
+  expect(modulosPorAbrir({ ordenes: base1, limite: lim, porMes: 2, tope: 5, estado: 'activa' })).toEqual({ bloqueados: 8, proximoMes: 2 })
+  // Base 1 en el tope (5 meses): con la posición ya se ve el último (antes: «queda 1» para siempre).
+  expect(modulosPorAbrir({ ordenes: base1, limite: 10, porMes: 2, tope: 5, estado: 'activa' })).toEqual({ bloqueados: 0, proximoMes: null })
   // duracion_meses = 6 con 13 módulos: el mes 7 no se puede abrir.
   const trece = Array.from({ length: 13 }, (_, i) => i)
   expect(topeMeses(6, 13, 2)).toBe(6)
@@ -97,8 +99,9 @@ test('3b. la banda cuenta con el eje de la RLS (orden < límite) y no promete un
   expect(topeMeses(null, 11, 2)).toBe(6)
   expect(topeMeses(null, 10, 0)).toBe(0)
   expect(topeMeses(-3, 10, 2)).toBe(0)
-  // «Activado» exige ver al menos un módulo: base 1 con un módulo por mes y 1 mes no ve nada.
-  expect(hayModuloVisible(base1, 1)).toBe(false)
+  // «Activado» exige ver al menos un módulo: con la posición, base 1 con 1 mes ya ve el primero (#255).
+  expect(hayModuloVisible(base1, 1)).toBe(true)
+  expect(hayModuloVisible([null as unknown as number], 5)).toBe(false)
   expect(hayModuloVisible(base0, 1)).toBe(true)
   expect(hayModuloVisible(base0, 0)).toBe(false)
 })

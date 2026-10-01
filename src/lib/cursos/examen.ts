@@ -13,7 +13,7 @@
  *     alumno CONTESTÓ. Ver `calificar()`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { limiteVentana } from './acceso'
+import { cursoCompletoVisible, limiteVentana } from './acceso'
 import { conAccesoTotal } from './acceso-total'
 import type { CursoVentana, InscripcionVentana } from './acceso'
 import type {
@@ -110,10 +110,14 @@ export async function puedeVerCurso(
  * curso_examen_preguntas es solo-admin, y el service_role **bypasea RLS**. La
  * ventana de pago de la migración B2 no las protege: aquí el candado es esto.
  *
- * REGLA: el examen final exige el curso COMPLETO liberado — techo de la ventana
- * ≥ número de módulos. No se puede presentar el examen final de un diplomado
- * del que se pagó 1 de 6 meses. Con 0 módulos (un curso que es solo examen)
- * la condición se reduce a "al menos un mes pagado", que es lo razonable.
+ * REGLA: el examen final exige el curso COMPLETO a la vista — todos sus
+ * módulos, el último incluido, por debajo del techo de la ventana, con la
+ * MISMA posición que la RLS (`cursoCompletoVisible`, #255). Antes comparaba el
+ * techo con el CONTEO de módulos y la RLS con el `orden` crudo: en un curso
+ * sembrado en base 1 el examen se abría sin que el alumno viera el último
+ * módulo. No se puede presentar el examen final de un diplomado del que se
+ * pagó 1 de 6 meses. Con 0 módulos (un curso que es solo examen) la condición
+ * se reduce a "al menos un mes pagado", que es lo razonable.
  *
  * Falla cerrado: sin inscripción, suspendida, vencida o curso no publicado →
  * `limiteVentana` devuelve 0 y esto es false.
@@ -138,13 +142,16 @@ export async function puedeExamenFinal(
     .eq('id', cursoId)
     .maybeSingle()
 
-  const { count } = await admin
+  // Los `orden` de TODOS los módulos: la posición de cada uno depende de los
+  // demás. Sin respuesta (error) no hay curso que dar por visto: falla cerrado.
+  const { data: mods, error: errMods } = await admin
     .from('curso_modulos')
-    .select('id', { count: 'exact', head: true })
+    .select('orden')
     .eq('curso_id', cursoId)
+  if (errMods || !mods) return false
 
   const limite = limiteVentana(insc as InscripcionVentana, (curso ?? null) as CursoVentana | null)
-  return limite > 0 && limite >= (count ?? 0)
+  return cursoCompletoVisible((mods as { orden: number | null }[]).map(m => m.orden), limite)
 }
 
 /** Quita clave y explicación. Es la única forma en que una pregunta sale al cliente. */

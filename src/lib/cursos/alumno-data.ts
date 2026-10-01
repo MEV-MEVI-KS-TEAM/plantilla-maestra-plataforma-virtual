@@ -171,12 +171,16 @@ export async function resumenVentana(
     .eq('id', cursoId)
     .maybeSingle()
 
-  // Los `orden` y no solo el conteo: los bloqueados se cuentan con el mismo eje
-  // que la RLS (orden < límite), no con `totales − límite` (#204, base 1).
-  const { data: mods } = await admin
+  // Los `orden` de TODOS los módulos y no solo el conteo: los bloqueados se
+  // cuentan con el mismo eje que la RLS, la posición de cada módulo en el curso
+  // (#255), no con `totales − límite`.
+  const { data: mods, error: errMods } = await admin
     .from('curso_modulos')
     .select('orden')
     .eq('curso_id', cursoId)
+  // Sin los módulos no se sabe qué ve: sin banda (la UI no pinta nada) en vez de
+  // decirle «no tiene lecciones» por un error de lectura.
+  if (errMods) return null
 
   const inscripcion = insc as InscripcionVentana & { estado?: string | null }
   const cursoV = (curso ?? null) as (CursoVentana & { duracion_meses?: number | null }) | null

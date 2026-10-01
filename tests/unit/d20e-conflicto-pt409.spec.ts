@@ -51,7 +51,8 @@ test('3. la app traduce PT409 a 409 (y 40001, por compatibilidad)', () => {
 
 test('4. el guardián: CHECK 21 para toda base y la fila de SETUP', () => {
   const check = leer('scripts/post-setup-check.sql')
-  const c21 = check.slice(check.indexOf('CHECK 21'))
+  // Solo el CHECK 21 (hasta el 22): los de módulo que vengan después sí miran hay_cursos.
+  const c21 = check.slice(check.indexOf('CHECK 21'), check.indexOf('─── CHECK 22'))
   expect(c21).toContain("AND strpos(p.prosrc, 'ERRCODE = ''40001''') > 0")
   // Los mismos filtros que la migración: lo que el CHECK marca es lo que D20e arregla.
   expect(c21).toContain("AND p.prokind = 'f'")
