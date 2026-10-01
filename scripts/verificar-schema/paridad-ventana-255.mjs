@@ -277,6 +277,8 @@ for (const rel of ['supabase/migrations/20260730130000_b2_gate_ventana_cursos.sq
   if (!igual(D, foto('ventana_despues'))) falla(`re-correr ${path.basename(rel)} cambia lo que ven o el reporte`)
   const r15 = check('ventana_despues', 'Acceso total de cursos (C3b)')
   if (!r15.startsWith('✅')) falla(`re-correr ${path.basename(rel)} rompe el CHECK 15: ${r15}`)
+  const comentario = psql('ventana_despues', ['-tAc', "SELECT col_description('public.curso_modulos'::regclass, (SELECT attnum FROM pg_attribute WHERE attrelid = 'public.curso_modulos'::regclass AND attname = 'orden'))"])
+  if (!comentario.includes('curso_modulo_posicion')) falla(`re-correr ${path.basename(rel)} devuelve el comentario de curso_modulos.orden al \`orden\` crudo`)
 }
 console.log('== re-correr B2, B6 y C3b: revisado')
 for (const rel of ['supabase/migrations/20260730130000_b2_gate_ventana_cursos.sql', 'supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql']) {

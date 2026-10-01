@@ -122,6 +122,15 @@ SELECT pg_get_functiondef(p.oid) AS def
   FROM pg_proc p
  WHERE p.oid = to_regprocedure('public.curso_modulo_en_ventana(uuid)')
    AND strpos(pg_get_functiondef(p.oid), 'curso_modulo_posicion') > 0;
+-- …y el comentario de curso_modulos.orden, que este archivo reescribe más abajo
+-- con el texto del `orden` crudo.
+DROP TABLE IF EXISTS pg_temp.f255_comentario;
+CREATE TEMP TABLE f255_comentario AS
+SELECT col_description(a.attrelid, a.attnum) AS txt
+  FROM pg_attribute a
+ WHERE a.attrelid = to_regclass('public.curso_modulos')
+   AND a.attname = 'orden'
+   AND strpos(COALESCE(col_description(a.attrelid, a.attnum), ''), 'curso_modulo_posicion') > 0;
 DO $f255$
 BEGIN
   IF to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL
@@ -393,12 +402,16 @@ BEGIN
     EXECUTE v_def;
     v_n := v_n + 1;
   END LOOP;
+  FOR v_def IN SELECT txt FROM pg_temp.f255_comentario LOOP
+    EXECUTE format('COMMENT ON COLUMN public.curso_modulos.orden IS %L', v_def);
+  END LOOP;
   IF v_n > 0 THEN
     RAISE NOTICE 'Esta base ya tiene #255 (ventana por posición): se conservó su curso_modulo_en_ventana.';
   END IF;
 END
 $f255$;
 DROP TABLE IF EXISTS pg_temp.f255_vigentes;
+DROP TABLE IF EXISTS pg_temp.f255_comentario;
 
 COMMIT;
 

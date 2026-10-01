@@ -63,10 +63,14 @@ export async function GET(
     const { data: tope } = await admin.rpc('curso_tope_meses', { p_curso_id: i.curso_id as string })
 
     // Los `orden` de todos los módulos: lo que el alumno ve sale de su posición (#255).
-    const { data: mods } = await admin
+    const { data: mods, error: errMods } = await admin
       .from('curso_modulos')
       .select('orden')
       .eq('curso_id', i.curso_id as string)
+    if (errMods) {
+      console.error('[GET /api/admin/inscripciones/[id]] módulos', errMods)
+      return NextResponse.json({ error: 'No se pudieron leer los módulos del curso' }, { status: 500 })
+    }
     const ordenes = ((mods ?? []) as { orden: number | null }[]).map(m => m.orden)
     const modulosTotales = ordenes.length
 

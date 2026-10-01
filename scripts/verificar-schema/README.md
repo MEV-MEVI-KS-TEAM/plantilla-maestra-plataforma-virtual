@@ -120,10 +120,11 @@ un curso en borrador, uno con `duracion_meses` y uno sin módulos. Dentro va com
 3. lo que ve son exactamente las posiciones por debajo del techo, con un oráculo propio que no usa el TypeScript;
 4. con todo abierto (tope o acceso total) ve el curso completo, el último incluido;
 5. el reporte dice lo que ve, en inscripciones vigentes de cursos publicados;
-6. re-correr B2, B6 y C3b no revierte nada (Bug 239), una copia VIEJA de B2 o de C3b sí lo hace y el CHECK 31 lo ve, y volver a correr #255 lo repara.
+6. re-correr B2, B6 y C3b no revierte nada (Bug 239), ni siquiera el comentario de `curso_modulos.orden`; una copia VIEJA de B2 o de C3b sí lo revierte, el CHECK 31 lo ve y volver a correr #255 lo repara.
 
 Si todo pasa, escribe la foto en `tests/unit/fixtures/ventana-255.json` con el
-sha256 de la migración. `tests/unit/fix255-ventana-posicion.spec.ts` corre en
+sha256 de las cinco migraciones que deciden la ventana (B2, B3, B6, C3b y #255).
+Si cambia cualquiera de ellas, la prueba unitaria pide volver a correr el arnés. `tests/unit/fix255-ventana-posicion.spec.ts` corre en
 cada `pnpm test:unit` sin base de datos. Compara el TypeScript (`posicionesVentana`
 y compañía, en `src/lib/cursos/acceso.ts`) contra esa foto, módulo por módulo.
 Falla si la migración cambió y nadie volvió a correr el arnés.

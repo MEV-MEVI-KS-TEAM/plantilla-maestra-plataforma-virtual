@@ -107,12 +107,20 @@ export function posicionesVentana(ordenes: readonly (number | null | undefined)[
   })
 }
 
-/** Posición (ver `posicionesVentana`) de UN módulo, dados los `orden` de su curso. */
+/**
+ * Posición (ver `posicionesVentana`) de UN módulo, dados los `orden` de TODO su
+ * curso. FALLA CERRADO: si la lista no trae el `orden` del propio módulo, es una
+ * lista parcial (p. ej. ya filtrada por la RLS) y la posición sería falsa: se
+ * devuelve ORDEN_SIN_DEFINIR, que ningún límite alcanza.
+ */
 export function posicionEnCurso(
   orden: number | null | undefined,
   ordenesDelCurso: readonly (number | null | undefined)[]
 ): number {
-  return posicionesVentana([orden, ...ordenesDelCurso])[0]
+  const propio = resolverOrden({ orden })
+  const i = ordenesDelCurso.findIndex(o => resolverOrden({ orden: o }) === propio)
+  if (propio === ORDEN_SIN_DEFINIR || i < 0) return ORDEN_SIN_DEFINIR
+  return posicionesVentana(ordenesDelCurso)[i]
 }
 
 /**

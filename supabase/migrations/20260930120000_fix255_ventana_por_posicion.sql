@@ -93,17 +93,18 @@ BEGIN
 END
 $preflight$;
 
--- Nadie mueve módulos mientras se toma la foto de antes y se compara al final
--- (reordenar o borrar a la mitad daría una compuerta falsa). Solo bloquea
--- escrituras en curso_modulos, y solo lo que dura esta transacción.
-LOCK TABLE public.curso_modulos IN SHARE MODE;
+-- Nadie mueve módulos ni inscripciones mientras se toma la foto de antes y se
+-- compara al final (reordenar, borrar, abrir o cerrar un mes a la mitad daría
+-- una compuerta falsa). Solo bloquea ESCRITURAS en esas dos tablas, y solo lo
+-- que dura esta transacción (milisegundos); las lecturas siguen.
+LOCK TABLE public.curso_modulos, public.curso_inscripciones IN SHARE MODE;
 
 -- ── Foto ANTES (para la compuerta del paso 5) ───────────────────────────────
 -- Por inscripción: cuántos módulos ve hoy con la regla vieja (el `orden` crudo,
 -- el cuerpo de B2), con el mismo techo de siempre.
 DROP TABLE IF EXISTS pg_temp.f255_antes;
 CREATE TEMP TABLE f255_antes AS
-SELECT ci.id AS inscripcion_id,
+SELECT ci.id AS inscripcion_id, ci.curso_id,
        (SELECT count(*) FROM public.curso_modulos m
          WHERE m.curso_id = ci.curso_id
            AND COALESCE(m.orden, 2147483647) < public.curso_ventana_limite(ci.curso_id, ci.alumno_id))::int AS ve
@@ -281,8 +282,9 @@ CREATE INDEX IF NOT EXISTS idx_curso_modulos_curso_orden
 -- estaba. En una base sin inscripciones (un combo nuevo) no hay nada que comparar.
 DO $compuerta$
 DECLARE
-  v_menos INTEGER;
-  v_mas   INTEGER;
+  v_menos  INTEGER;
+  v_mas    INTEGER;
+  v_cursos TEXT;
 BEGIN
   WITH despues AS (
     SELECT ci.id AS inscripcion_id,
@@ -291,13 +293,15 @@ BEGIN
                AND public.curso_modulo_posicion(m.id) < public.curso_ventana_limite(ci.curso_id, ci.alumno_id))::int AS ve
       FROM public.curso_inscripciones ci
   )
-  SELECT count(*) FILTER (WHERE d.ve < a.ve), count(*) FILTER (WHERE d.ve > a.ve)
-    INTO v_menos, v_mas
+  SELECT count(*) FILTER (WHERE d.ve < a.ve), count(*) FILTER (WHERE d.ve > a.ve),
+         string_agg(DISTINCT c.nombre || ' (' || a.curso_id || ')', ', ') FILTER (WHERE d.ve < a.ve)
+    INTO v_menos, v_mas, v_cursos
     FROM pg_temp.f255_antes a
-    JOIN despues d USING (inscripcion_id);
+    JOIN despues d USING (inscripcion_id)
+    JOIN public.cursos c ON c.id = a.curso_id;
 
   IF v_menos > 0 THEN
-    RAISE EXCEPTION '#255: % inscripción(es) verían MENOS módulos que antes (¿un curso con `orden` negativo?). No se cambió nada: pásaselo a Kevin.', v_menos;
+    RAISE EXCEPTION '#255: % inscripción(es) verían MENOS módulos que antes, en: %. ¿Un `orden` negativo? Revísalo con: SELECT curso_id, min(orden) FROM curso_modulos GROUP BY 1 HAVING min(orden) < 0. No se cambió nada: pásaselo a Kevin.', v_menos, v_cursos;
   END IF;
   IF v_mas > 0 THEN
     RAISE NOTICE '#255: % inscripción(es) ven más módulos que con la regla vieja (el `orden` crudo): cursos en base 1 o con huecos.', v_mas;

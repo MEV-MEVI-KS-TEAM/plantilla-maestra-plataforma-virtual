@@ -143,6 +143,10 @@ test('4. posicionesVentana: «dense», base 0, NULL bloqueado', () => {
   expect(posicionesVentana([])).toEqual([])
   expect(posicionEnCurso(10, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).toBe(9)
   expect(posicionEnCurso(null, [0, 1])).toBe(ORDEN_SIN_DEFINIR)
+  // Lista parcial (sin el propio módulo, p. ej. ya filtrada por la RLS): falla cerrado.
+  expect(posicionEnCurso(9, [])).toBe(ORDEN_SIN_DEFINIR)
+  expect(posicionEnCurso(9, [0, 1])).toBe(ORDEN_SIN_DEFINIR)
+  expect(tieneAccesoModulo({ inscripcion: { meses_desbloqueados: 1, estado: 'activa' }, curso: { modulos_por_mes: 2, estado: 'publicado' }, modulo: { orden: 9 }, ordenesDelCurso: [] })).toBe(false)
   // Un orden NULL no se cuela ni con acceso total ni con la ventana abierta de par en par.
   expect(modulosVisibles([{ orden: 0 }, { orden: null }], { meses_desbloqueados: 1, estado: 'activa', acceso_total: true }, { modulos_por_mes: 2, estado: 'publicado' })).toHaveLength(1)
   // El mes de liberación va por posición: el último de un curso en base 1 sale en el mes 5, no en el 6.
@@ -193,8 +197,9 @@ test('6. la migración: posición dense, comparación ESTRICTA (nunca <=), compu
   // La compuerta: nadie ve menos o no se cambia nada.
   expect(sql).toMatch(/IF v_menos > 0 THEN\s+RAISE EXCEPTION/)
   // …y nadie mueve módulos entre la foto de antes y la compuerta.
-  expect(sql.indexOf('LOCK TABLE public.curso_modulos IN SHARE MODE;')).toBeGreaterThan(0)
-  expect(sql.indexOf('LOCK TABLE public.curso_modulos IN SHARE MODE;')).toBeLessThan(sql.indexOf('CREATE TEMP TABLE f255_antes'))
+  const candado = 'LOCK TABLE public.curso_modulos, public.curso_inscripciones IN SHARE MODE;'
+  expect(sql.indexOf(candado)).toBeGreaterThan(0)
+  expect(sql.indexOf(candado)).toBeLessThan(sql.indexOf('CREATE TEMP TABLE f255_antes'))
   // curso_modulo_posicion solo la ejecuta el service role (la ventana la llama como el dueño).
   expect(sql).toContain('REVOKE ALL ON FUNCTION public.curso_modulo_posicion(UUID) FROM PUBLIC;')
   expect(sql).toContain("REVOKE ALL ON FUNCTION public.curso_modulo_posicion(UUID) FROM authenticated")
