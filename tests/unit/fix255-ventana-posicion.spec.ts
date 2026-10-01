@@ -192,6 +192,9 @@ test('6. la migración: posición dense, comparación ESTRICTA (nunca <=), compu
   expect(reporte).not.toMatch(/LEAST\(/)
   // La compuerta: nadie ve menos o no se cambia nada.
   expect(sql).toMatch(/IF v_menos > 0 THEN\s+RAISE EXCEPTION/)
+  // …y nadie mueve módulos entre la foto de antes y la compuerta.
+  expect(sql.indexOf('LOCK TABLE public.curso_modulos IN SHARE MODE;')).toBeGreaterThan(0)
+  expect(sql.indexOf('LOCK TABLE public.curso_modulos IN SHARE MODE;')).toBeLessThan(sql.indexOf('CREATE TEMP TABLE f255_antes'))
   // curso_modulo_posicion solo la ejecuta el service role (la ventana la llama como el dueño).
   expect(sql).toContain('REVOKE ALL ON FUNCTION public.curso_modulo_posicion(UUID) FROM PUBLIC;')
   expect(sql).toContain("REVOKE ALL ON FUNCTION public.curso_modulo_posicion(UUID) FROM authenticated")
@@ -245,6 +248,11 @@ test('7. Bug 239: B2 y C3b conservan la versión de #255 al re-correrse; el CHEC
   expect(c31).toContain("'count(DISTINCT m2.orden)'")
   expect(c31).toContain('20260930120000_fix255_ventana_por_posicion.sql')
   expect(c31).toMatch(/❌ VENTANA VIEJA/)
+  // También el «<=» en la ventana, el SECURITY DEFINER y el EXECUTE de anon/authenticated.
+  expect(c31).toContain('OR crudas IS NOT NULL OR ventana_con_igual OR sin_definer IS NOT NULL')
+  expect(c31).toContain("strpos(pg_get_functiondef(to_regprocedure('public.curso_modulo_en_ventana(uuid)')), '<=') > 0")
+  expect(c31).toContain('p.prosecdef')
+  expect(c31).toContain("has_function_privilege('anon', 'public.curso_modulo_posicion(uuid)', 'EXECUTE')")
 })
 
 test('8. el espejo TS: un solo eje; nadie compara el `orden` crudo con el límite', () => {
