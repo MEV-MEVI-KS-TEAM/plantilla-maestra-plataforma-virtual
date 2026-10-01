@@ -48,6 +48,7 @@ const DE_CURSOS = new Set([
   '20260927130000_d8_activar_segun_ficha.sql',
   '20260927140000_d16_curso_cobrar.sql',
   '20260928130000_d20b_constancia_staff.sql',
+  '20260930120000_fix255_ventana_por_posicion.sql',
 ])
 // Objetos sueltos de migraciones mixtas que viven en tablas del módulo.
 const OBJETOS_DE_CURSOS = new Set(['curso_examen_preguntas: techo solo admin (D22d)'])

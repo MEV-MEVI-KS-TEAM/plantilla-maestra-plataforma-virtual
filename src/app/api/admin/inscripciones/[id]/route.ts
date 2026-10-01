@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { conAccesoTotal } from '@/lib/cursos/acceso-total'
+import { ORDEN_SIN_DEFINIR, contarVisibles } from '@/lib/cursos/acceso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin, verifyStaff } from '@/lib/supabase/verify-admin'
 import { cargarAlumnoDeFila, respuestaObjetivo } from '@/lib/admin-alumno'
@@ -61,10 +62,13 @@ export async function GET(
     // pantalla no pueda discrepar del servidor.
     const { data: tope } = await admin.rpc('curso_tope_meses', { p_curso_id: i.curso_id as string })
 
-    const { count: modulosTotales } = await admin
+    // Los `orden` de todos los módulos: lo que el alumno ve sale de su posición (#255).
+    const { data: mods } = await admin
       .from('curso_modulos')
-      .select('id', { count: 'exact', head: true })
+      .select('orden')
       .eq('curso_id', i.curso_id as string)
+    const ordenes = ((mods ?? []) as { orden: number | null }[]).map(m => m.orden)
+    const modulosTotales = ordenes.length
 
     const { data: pagos } = await admin
       .from('pagos')
@@ -112,10 +116,11 @@ export async function GET(
       },
       curso: curso ?? null,
       tope_meses: typeof tope === 'number' ? tope : null,
-      modulos_totales: modulosTotales ?? 0,
-      // Lo que el alumno ve HOY, con la misma aritmética del gate de B2 (y de
-      // reporte_curso_inscripciones): con acceso total, todos.
-      modulos_visibles: accesoTotal ? (modulosTotales ?? 0) : Math.min(meses * porMes, modulosTotales ?? 0),
+      modulos_totales: modulosTotales,
+      // Lo que el alumno ve con lo que tiene abierto: la posición de cada módulo
+      // contra el techo, la misma cuenta de reporte_curso_inscripciones (#255).
+      // Con acceso total, todos los que tienen `orden`.
+      modulos_visibles: contarVisibles(ordenes, accesoTotal ? ORDEN_SIN_DEFINIR : Math.max(meses * porMes, 0)),
       pagos: pagos ?? [],
     })
   } catch (err) {

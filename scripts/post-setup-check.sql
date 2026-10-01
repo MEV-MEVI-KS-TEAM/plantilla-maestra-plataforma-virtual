@@ -1048,3 +1048,45 @@ SELECT
     ELSE '✅ OK (intentos y respuestas del quiz solo por el servidor; cada quien lee los suyos)'
   END AS resultado
 FROM r;
+
+-- ─── CHECK 31: la ventana de cursos cuenta posiciones (#255) ─────────────────
+-- Solo aplica si la base tiene el módulo de cursos. La ventana abre un módulo si
+-- su POSICIÓN en el curso (cuántos `orden` distintos hay por debajo del suyo)
+-- queda por debajo del techo. Con la versión vieja (el `orden` crudo), un curso
+-- sembrado en base 1 abre un módulo menos por mes y el último puede no abrirse
+-- nunca, mientras el examen final sí se abre. Una copia vieja de B2 o de C3b (o
+-- una corrida a medias) puede devolver la ventana o el reporte a la versión
+-- cruda: por eso se revisan los cuerpos, no solo los nombres.
+WITH f255 AS (
+  SELECT
+    to_regclass('public.curso_modulos') IS NOT NULL AS hay_cursos,
+    to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL AS posicion,
+    CASE WHEN to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_modulo_posicion(uuid)')), 'count(DISTINCT m2.orden)') > 0
+         ELSE false END AS posicion_dense,
+    (SELECT string_agg(f, ', ' ORDER BY f)
+       FROM unnest(ARRAY['curso_modulo_en_ventana(uuid)', 'reporte_curso_inscripciones()']) AS f
+      WHERE to_regprocedure('public.' || f) IS NULL
+         OR strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'curso_modulo_posicion') = 0) AS crudas,
+    CASE WHEN to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL
+               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+         THEN has_function_privilege('authenticated', 'public.curso_modulo_posicion(uuid)', 'EXECUTE')
+         ELSE false END AS posicion_expuesta
+)
+SELECT
+  'Ventana de cursos por posición (#255)' AS check_name,
+  CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
+       ELSE 'curso_modulo_posicion ' || posicion::text || ' / dense ' || posicion_dense::text
+            || ' / con el orden crudo: ' || COALESCE(crudas, 'ninguna') || ' / posición expuesta ' || posicion_expuesta::text
+  END AS valor,
+  CASE
+    WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
+    WHEN NOT posicion
+      THEN '❌ FALTA → correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql (después de C3b): sin ella, un curso sembrado en base 1 abre un módulo menos por mes y el último puede no abrirse nunca'
+    WHEN NOT posicion_dense OR crudas IS NOT NULL
+      THEN '❌ VENTANA VIEJA (' || COALESCE(crudas, 'curso_modulo_posicion sin «dense»') || '): se corrió después una copia vieja o una corrida a medias de B2/B6/C3b → vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
+    WHEN posicion_expuesta
+      THEN '❌ curso_modulo_posicion ejecutable por authenticated → vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
+    ELSE '✅ OK (la ventana y el reporte cuentan la posición del módulo, «dense»)'
+  END AS resultado
+FROM f255;

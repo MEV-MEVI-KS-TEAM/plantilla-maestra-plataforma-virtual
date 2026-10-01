@@ -171,8 +171,9 @@ export async function resumenVentana(
     .eq('id', cursoId)
     .maybeSingle()
 
-  // Los `orden` y no solo el conteo: los bloqueados se cuentan con el mismo eje
-  // que la RLS (orden < límite), no con `totales − límite` (#204, base 1).
+  // Los `orden` de TODOS los módulos y no solo el conteo: los bloqueados se
+  // cuentan con el mismo eje que la RLS, la posición de cada módulo en el curso
+  // (#255), no con `totales − límite`.
   const { data: mods } = await admin
     .from('curso_modulos')
     .select('orden')

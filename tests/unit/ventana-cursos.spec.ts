@@ -43,7 +43,7 @@ test('1 mes con modulos_por_mes=2 → módulos 1 y 2, nunca el 3', () => {
 
   // El tercero (orden 2) queda fuera: la comparación es estricta porque `orden`
   // es 0-based.
-  expect(tieneAccesoModulo({ inscripcion: ACTIVA, curso: CURSO, modulo: { orden: 2 } })).toBe(false)
+  expect(tieneAccesoModulo({ inscripcion: ACTIVA, curso: CURSO, modulo: { orden: 2 }, ordenesDelCurso: [0, 1, 2, 3, 4] })).toBe(false)
 })
 
 test('la ventana crece por mes pagado, no por otra cosa', () => {
@@ -60,7 +60,7 @@ test('RATCHET: completar los módulos 1 y 2 NO revela el 3', () => {
 
   const visibles = modulosVisibles(conProgreso, ACTIVA, CURSO)
   expect(visibles.map(m => m.id)).toEqual(['m1', 'm2'])
-  expect(tieneAccesoModulo({ inscripcion: ACTIVA, curso: CURSO, modulo: conProgreso[2] })).toBe(false)
+  expect(tieneAccesoModulo({ inscripcion: ACTIVA, curso: CURSO, modulo: conProgreso[2], ordenesDelCurso: conProgreso.map(m => m.orden) })).toBe(false)
 })
 
 test('RATCHET: un módulo completado sigue ocupando su posición', () => {
@@ -86,7 +86,7 @@ test('orden NULL NO concede un módulo extra: va al final y queda bloqueado', ()
 test('orden NULL tampoco se cuela con la ventana abierta de par en par', () => {
   const generosa = { ...ACTIVA, meses_desbloqueados: 999 }
   // Ni siquiera un límite enorme lo alcanza: ORDEN_SIN_DEFINIR es MAX_SAFE_INTEGER.
-  expect(tieneAccesoModulo({ inscripcion: generosa, curso: CURSO, modulo: { orden: null } })).toBe(false)
+  expect(tieneAccesoModulo({ inscripcion: generosa, curso: CURSO, modulo: { orden: null }, ordenesDelCurso: [0, 1, null] })).toBe(false)
 })
 
 // ── Modo de falla 3: falla cerrado ──────────────────────────────────────────
@@ -129,7 +129,7 @@ test('datos faltantes → falla CERRADO, nunca pase libre', () => {
   expect(limiteVentana(ACTIVA, { ...CURSO, modulos_por_mes: 0 })).toBe(0)
   expect(limiteVentana({ ...ACTIVA, meses_desbloqueados: -5 }, CURSO)).toBe(0)
   // sin módulo
-  expect(tieneAccesoModulo({ inscripcion: ACTIVA, curso: CURSO, modulo: null })).toBe(false)
+  expect(tieneAccesoModulo({ inscripcion: ACTIVA, curso: CURSO, modulo: null, ordenesDelCurso: [] })).toBe(false)
 })
 
 test('curso no publicado → sin acceso aunque haya meses pagados', () => {
@@ -139,20 +139,20 @@ test('curso no publicado → sin acceso aunque haya meses pagados', () => {
 
 // ── Presentación ────────────────────────────────────────────────────────────
 
-test('mesDeLiberacion es 1-based y coincide con la ventana', () => {
-  expect(mesDeLiberacion({ orden: 0 }, CURSO)).toBe(1)
-  expect(mesDeLiberacion({ orden: 1 }, CURSO)).toBe(1)
-  expect(mesDeLiberacion({ orden: 2 }, CURSO)).toBe(2)
-  expect(mesDeLiberacion({ orden: 5 }, CURSO)).toBe(3)
-  expect(mesDeLiberacion({ orden: null }, CURSO)).toBeNull()
+test('mesDeLiberacion es 1-based, va por POSICIÓN (#255) y coincide con la ventana', () => {
+  expect(mesDeLiberacion(0, CURSO)).toBe(1)
+  expect(mesDeLiberacion(1, CURSO)).toBe(1)
+  expect(mesDeLiberacion(2, CURSO)).toBe(2)
+  expect(mesDeLiberacion(5, CURSO)).toBe(3)
+  expect(mesDeLiberacion(null, CURSO)).toBeNull()
 
   // Coherencia: un módulo es visible exactamente cuando su mes de liberación ya
   // está pagado. Si estas dos ideas divergen, la UI miente.
   for (let orden = 0; orden < 10; orden++) {
     for (let meses = 0; meses <= 5; meses++) {
       const insc = { ...ACTIVA, meses_desbloqueados: meses }
-      const visible = tieneAccesoModulo({ inscripcion: insc, curso: CURSO, modulo: { orden } })
-      expect(visible).toBe(mesDeLiberacion({ orden }, CURSO)! <= meses)
+      const visible = tieneAccesoModulo({ inscripcion: insc, curso: CURSO, modulo: { orden }, ordenesDelCurso: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] })
+      expect(visible).toBe(mesDeLiberacion(orden, CURSO)! <= meses)
     }
   }
 })

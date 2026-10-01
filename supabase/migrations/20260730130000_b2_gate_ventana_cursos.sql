@@ -43,6 +43,13 @@
 --   i en 0..n-1. Por eso la comparación es ESTRICTA (`<`):
 --     1 mes × 2 módulos/mes = límite 2 → orden 0 y 1 visibles, orden 2 bloqueado.
 --
+-- ⚠️ DESDE #255 (20260930120000_fix255_ventana_por_posicion.sql) la ventana NO
+--   compara el `orden` crudo: compara la POSICIÓN del módulo (cuántos `orden`
+--   distintos hay por debajo del suyo). Los seeds viejos escribieron base 1 y con
+--   el `orden` crudo cada mes abría uno menos y el último no se abría. El
+--   curso_modulo_en_ventana de este archivo es el ORIGINAL; si la base ya tiene
+--   #255, el prólogo y el epílogo de aquí abajo conservan la versión por posición.
+--
 -- IDEMPOTENTE Y RE-EJECUTABLE. No edita ninguna migración previa.
 --
 -- Aplicar por conexión directa (puerto 5432, NUNCA el pooler 6543).
@@ -100,6 +107,29 @@ BEGIN
   END IF;
 END
 $c3b$;
+
+-- ── #255 · re-correr esta migración NO devuelve la ventana al `orden` crudo ─
+-- Si la base ya tiene #255 (20260930120000_fix255_ventana_por_posicion.sql), su
+-- curso_modulo_en_ventana (la que cuenta POSICIONES) es la vigente y esta
+-- migración la pisaría con la que compara el `orden` crudo: los cursos en base 1
+-- volverían a abrir un módulo menos por mes. Se guarda aquí y se restaura al
+-- final de este archivo. Solo se guarda lo que de verdad es de #255 (el cuerpo
+-- llama a curso_modulo_posicion, el mismo criterio que el CHECK 31). Sin #255 no
+-- hace nada.
+DROP TABLE IF EXISTS pg_temp.f255_vigentes;
+CREATE TEMP TABLE f255_vigentes AS
+SELECT pg_get_functiondef(p.oid) AS def
+  FROM pg_proc p
+ WHERE p.oid = to_regprocedure('public.curso_modulo_en_ventana(uuid)')
+   AND strpos(pg_get_functiondef(p.oid), 'curso_modulo_posicion') > 0;
+DO $f255$
+BEGIN
+  IF to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM pg_temp.f255_vigentes) THEN
+    RAISE WARNING 'Esta base tiene #255, pero curso_modulo_en_ventana ya no trae su versión (una copia vieja o una corrida a medias): esta migración no la puede conservar. Al terminar, vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql.';
+  END IF;
+END
+$f255$;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -353,14 +383,32 @@ END
 $c3b$;
 DROP TABLE IF EXISTS pg_temp.c3b_vigentes;
 
+-- ── #255 · restaurar la ventana por posición (ver el inicio) ───────────────
+DO $f255$
+DECLARE
+  v_def TEXT;
+  v_n   INTEGER := 0;
+BEGIN
+  FOR v_def IN SELECT def FROM pg_temp.f255_vigentes LOOP
+    EXECUTE v_def;
+    v_n := v_n + 1;
+  END LOOP;
+  IF v_n > 0 THEN
+    RAISE NOTICE 'Esta base ya tiene #255 (ventana por posición): se conservó su curso_modulo_en_ventana.';
+  END IF;
+END
+$f255$;
+DROP TABLE IF EXISTS pg_temp.f255_vigentes;
+
 COMMIT;
 
 -- ── Verificación manual (no altera nada) ────────────────────────────────────
 -- 1) Techo de un alumno en un curso:
 --   SELECT public.curso_ventana_limite('<curso>','<alumno>');
--- 2) Módulos que ese alumno debería ver:
+-- 2) Módulos que ese alumno debería ver (con #255, por POSICIÓN):
 --   SELECT nombre, orden FROM public.curso_modulos
---    WHERE curso_id='<curso>' AND orden < public.curso_ventana_limite('<curso>','<alumno>')
+--    WHERE curso_id='<curso>'
+--      AND public.curso_modulo_posicion(id) < public.curso_ventana_limite('<curso>','<alumno>')
 --    ORDER BY orden;
 -- 3) Sin recursión (Bug 16) — debe salir vacío:
 --   SELECT c.relname, p.polname FROM pg_policy p
