@@ -4,6 +4,7 @@ import { Loader2, Save, Check, AlertCircle, Video } from 'lucide-react'
 import ApuntesEditor from './ApuntesEditor'
 import MaterialesPanel, { type Material } from './MaterialesPanel'
 import QuizEditor from './QuizEditor'
+import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
 import {
   TIEMPO_MIN, TIEMPO_MAX, TITULO_MAX, DESCRIPCION_MAX, URL_MAX,
   camposCambiados, type ValoresSemana, type CampoValor,
@@ -52,11 +53,20 @@ function inputStyle(cambiado: boolean): React.CSSProperties {
   }
 }
 
-/** Extrae el video ID de una URL youtube.com/watch?v=ID */
+/**
+ * ID de YouTube para la miniatura, o null si la URL no es de YouTube.
+ *
+ * ⚠️ Antes solo leía `?v=` (youtube.com/watch?v=ID). El enlace que da el botón
+ * «Compartir» de YouTube es `youtu.be/ID?si=…`, y con él la miniatura se
+ * quedaba en «Sin video» aunque el alumno sí lo veía (TICKET-2026-10-01-10,
+ * RHEMA: 9 de 600 URLs en su BD). Se reutiliza `parseVideoUrl`, que ya reconoce
+ * watch?v=, youtu.be, shorts, embed y live, con o sin `&t=`/`?si=`.
+ */
 function getYoutubeId(url: string): string | null {
-  if (!url) return null
-  const match = url.match(/[?&]v=([^&]+)/)
-  return match ? match[1] : null
+  const v = parseVideoUrl(url)
+  if (!v || v.provider !== 'youtube') return null
+  const m = v.embedUrl.match(/\/embed\/([A-Za-z0-9_-]{11})/)
+  return m ? m[1] : null
 }
 
 const VIDEOS = [

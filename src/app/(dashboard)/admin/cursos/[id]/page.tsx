@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, BookOpen, ClipboardCheck, Globe, Users } from 'lucide-react'
+import { ArrowLeft, BookOpen, ClipboardCheck, Eye, Globe, Users } from 'lucide-react'
 import { CursoDatosForm } from '@/components/admin/cursos/CursoDatosForm'
 import { ModulosEditor } from '@/components/admin/cursos/ModulosEditor'
 import { AlumnosTab } from '@/components/admin/cursos/AlumnosTab'
@@ -196,9 +196,27 @@ export default function EditorCursoPage() {
             onError={onError}
           />
           <div>
-            <h2 className="text-base font-bold mb-3" style={{ color: 'var(--color-primario)' }}>
-              Módulos y lecciones
-            </h2>
+            {/* Esta lista es la ESTRUCTURA (títulos). El texto de cada lección se
+                abre con el lápiz, y el curso completo como lo lee el alumno, con
+                «Ver como alumno». Ese botón vivía solo en la pestaña Publicación
+                y el admin creía que el curso no tenía contenido
+                (TICKET-2026-10-01-10, RHEMA). */}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+              <h2 className="text-base font-bold" style={{ color: 'var(--color-primario)' }}>
+                Módulos y lecciones
+              </h2>
+              <Link
+                href={`/cursos/${curso.id}?from=admin`}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold"
+                style={{ border: '1px solid rgba(27,48,104,0.25)', color: 'var(--color-primario)', background: '#fff' }}
+              >
+                <Eye className="w-4 h-4" />
+                Ver como alumno
+              </Link>
+            </div>
+            <p className="text-xs mb-3" style={{ color: '#6B7280' }}>
+              Aquí ves la estructura. Para leer o editar el contenido de una lección, usa el lápiz ✏️; para recorrer el curso como lo ve el alumno, «Ver como alumno».
+            </p>
             <ModulosEditor cursoId={curso.id} modulos={modulos} onChanged={onChanged} onError={onError} />
           </div>
         </div>
