@@ -109,14 +109,17 @@ $preflight$;
 -- ve) es el vigente y esta migración lo pisaría con el LEAST(techo, total), que
 -- en un curso en base 1 dice más de lo que el alumno ve. Se guarda aquí y se
 -- restaura al final de este archivo. Solo se guarda lo que de verdad es de #255
--- (el cuerpo llama a curso_modulo_posicion, el criterio del CHECK 31). Sin #255
+-- (el cuerpo llama a curso_modulo_posicion, el criterio del CHECK 31) Y ya trae
+-- el acceso total (`acceso_total`, el criterio del CHECK 15): un reporte con la
+-- posición pero sin acceso total no se «conserva» encima del de C3b. Sin #255
 -- no hace nada.
 DROP TABLE IF EXISTS pg_temp.f255_vigentes;
 CREATE TEMP TABLE f255_vigentes AS
 SELECT pg_get_functiondef(p.oid) AS def
   FROM pg_proc p
  WHERE p.oid = to_regprocedure('public.reporte_curso_inscripciones()')
-   AND strpos(pg_get_functiondef(p.oid), 'curso_modulo_posicion') > 0;
+   AND strpos(pg_get_functiondef(p.oid), 'curso_modulo_posicion') > 0
+   AND strpos(pg_get_functiondef(p.oid), 'acceso_total') > 0;
 DO $f255$
 BEGIN
   IF to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL

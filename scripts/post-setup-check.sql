@@ -1068,25 +1068,38 @@ WITH f255 AS (
        FROM unnest(ARRAY['curso_modulo_en_ventana(uuid)', 'reporte_curso_inscripciones()']) AS f
       WHERE to_regprocedure('public.' || f) IS NULL
          OR strpos(pg_get_functiondef(to_regprocedure('public.' || f)), 'curso_modulo_posicion') = 0) AS crudas,
+    -- La ventana compara ESTRICTO (`<`; `<=` regala un módulo por mes, Bug 238) y
+    -- las dos corren como el dueño (SECURITY DEFINER: sin eso la RLS se llama a
+    -- sí misma, Bug 16).
+    CASE WHEN to_regprocedure('public.curso_modulo_en_ventana(uuid)') IS NOT NULL
+         THEN strpos(pg_get_functiondef(to_regprocedure('public.curso_modulo_en_ventana(uuid)')), '<=') > 0
+         ELSE false END AS ventana_con_igual,
+    (SELECT string_agg(f, ', ' ORDER BY f)
+       FROM unnest(ARRAY['curso_modulo_en_ventana(uuid)', 'curso_modulo_posicion(uuid)']) AS f
+      WHERE to_regprocedure('public.' || f) IS NOT NULL
+        AND NOT (SELECT p.prosecdef FROM pg_proc p WHERE p.oid = to_regprocedure('public.' || f))) AS sin_definer,
     CASE WHEN to_regprocedure('public.curso_modulo_posicion(uuid)') IS NOT NULL
-               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
-         THEN has_function_privilege('authenticated', 'public.curso_modulo_posicion(uuid)', 'EXECUTE')
+         THEN (EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+                 AND has_function_privilege('authenticated', 'public.curso_modulo_posicion(uuid)', 'EXECUTE'))
+           OR (EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+                 AND has_function_privilege('anon', 'public.curso_modulo_posicion(uuid)', 'EXECUTE'))
          ELSE false END AS posicion_expuesta
 )
 SELECT
   'Ventana de cursos por posición (#255)' AS check_name,
   CASE WHEN NOT hay_cursos THEN 'sin módulo de cursos'
        ELSE 'curso_modulo_posicion ' || posicion::text || ' / dense ' || posicion_dense::text
-            || ' / con el orden crudo: ' || COALESCE(crudas, 'ninguna') || ' / posición expuesta ' || posicion_expuesta::text
+            || ' / con el orden crudo: ' || COALESCE(crudas, 'ninguna') || ' / con <= ' || ventana_con_igual::text
+            || ' / sin SECURITY DEFINER: ' || COALESCE(sin_definer, 'ninguna') || ' / posición expuesta ' || posicion_expuesta::text
   END AS valor,
   CASE
     WHEN NOT hay_cursos THEN '✅ OK (esta base no vende cursos)'
     WHEN NOT posicion
       THEN '❌ FALTA → correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql (después de C3b): sin ella, un curso sembrado en base 1 abre un módulo menos por mes y el último puede no abrirse nunca'
-    WHEN NOT posicion_dense OR crudas IS NOT NULL
-      THEN '❌ VENTANA VIEJA (' || COALESCE(crudas, 'curso_modulo_posicion sin «dense»') || '): se corrió después una copia vieja o una corrida a medias de B2/B6/C3b → vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
+    WHEN NOT posicion_dense OR crudas IS NOT NULL OR ventana_con_igual OR sin_definer IS NOT NULL
+      THEN '❌ VENTANA VIEJA (' || COALESCE(crudas, sin_definer || ' sin SECURITY DEFINER', CASE WHEN ventana_con_igual THEN 'la ventana compara con <=' END, 'curso_modulo_posicion sin «dense»') || '): se corrió después una copia vieja o una corrida a medias de B2/B6/C3b → vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
     WHEN posicion_expuesta
-      THEN '❌ curso_modulo_posicion ejecutable por authenticated → vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
+      THEN '❌ curso_modulo_posicion ejecutable por anon o authenticated → vuelve a correr supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
     ELSE '✅ OK (la ventana y el reporte cuentan la posición del módulo, «dense»)'
   END AS resultado
 FROM f255;

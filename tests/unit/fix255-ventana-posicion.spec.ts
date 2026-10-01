@@ -38,15 +38,23 @@ const sinComentariosSql = (s: string) => s.replace(/--.*$/gm, '')
 const sinComentariosTs = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 const MIG = 'supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
+// Las migraciones que deciden la ventana: si cambia cualquiera, la foto es vieja.
+const DE_LA_VENTANA = [
+  'supabase/migrations/20260730130000_b2_gate_ventana_cursos.sql',
+  'supabase/migrations/20260730140000_b3_abrir_mes_y_pagos_curso.sql',
+  'supabase/migrations/20260730160000_b6_reportes_por_vertical.sql',
+  'supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql',
+  MIG,
+]
 const SQL_MAX_INT = 2147483647
 
 interface Caso {
-  id: string; n: number; porMes: number; forma: string; precio: string; cursoEstado: string
+  id: string; n: number; porMes: number; duracion: number | null; forma: string; precio: string; cursoEstado: string
   ordenes: number[]; meses: number; accesoTotal: boolean; estado: string; vence: string | null
   limite: number; tope: number; reporte: number; reporteAntes: number; totales: number
   veAntes: number[]; ve: number[]
 }
-const FOTO = JSON.parse(leer('tests/unit/fixtures/ventana-255.json')) as { migracionSha256: string; casos: Caso[] }
+const FOTO = JSON.parse(leer('tests/unit/fixtures/ventana-255.json')) as { migracionSha256: string; deLaVentana: string[]; casos: Caso[] }
 const hoyMas = (d: number) => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10)
 const inscripcionDe = (c: Caso) => ({
   meses_desbloqueados: c.meses, estado: c.estado, acceso_total: c.accesoTotal,
@@ -55,12 +63,13 @@ const inscripcionDe = (c: Caso) => ({
 const cursoDe = (c: Caso) => ({ modulos_por_mes: c.porMes, estado: c.cursoEstado })
 const vigente = (c: Caso) => c.cursoEstado === 'publicado' && ['activa', 'completada'].includes(c.estado) && c.vence !== 'ayer'
 
-test('0. la foto SQL es de la migración vigente (si cambias la migración, vuelve a correr el arnés)', () => {
-  const sha = createHash('sha256').update(leer(MIG)).digest('hex')
+test('0. la foto SQL es de las migraciones vigentes de la ventana (si cambias una, vuelve a correr el arnés)', () => {
+  expect(FOTO.deLaVentana).toEqual(DE_LA_VENTANA)
+  const sha = createHash('sha256').update(DE_LA_VENTANA.map(leer).join('\n-- ──\n')).digest('hex')
   expect(FOTO.migracionSha256, 'corre scripts/verificar-schema/paridad-ventana-255.mjs').toBe(sha)
   // La matriz de 216 del diagnóstico está completa dentro de la foto.
   const sub = FOTO.casos.filter(c => ['base0', 'base1', 'hueco'].includes(c.forma)
-    && ['mensual', 'unico'].includes(c.precio) && c.cursoEstado === 'publicado' && !c.id.includes('|estados|'))
+    && ['mensual', 'unico'].includes(c.precio) && /\|r\d\|/.test(c.id))
   expect(sub.length).toBe(216)
   // …y antes de #255, 86 de esas 216 veían de menos (49 en base 1 y 37 con huecos).
   const malAntes = sub.filter(c => c.veAntes.length !== Math.min(c.accesoTotal ? c.n : c.limite, c.n))
@@ -90,9 +99,9 @@ test('1. PARIDAD TS↔SQL: el techo, lo que ve (módulo por módulo), el reporte
     expect(hayModuloVisible(c.ordenes, lim), c.id).toBe(c.n === 0 ? lim > 0 : c.ve.length > 0)
     if (c.n > 0) expect(motivoBloqueo({ inscripcion: insc, curso, modulosTotales: c.n, ordenes: c.ordenes }) === null, c.id).toBe(c.ve.length > 0)
     // La banda «Quedan N por abrir» cuenta los que no ve.
-    const banda = modulosPorAbrir({ ordenes: c.ordenes, limite: lim, porMes: c.porMes, tope: topeMeses(null, c.n, c.porMes), estado: c.estado })
+    const banda = modulosPorAbrir({ ordenes: c.ordenes, limite: lim, porMes: c.porMes, tope: topeMeses(c.duracion, c.n, c.porMes), estado: c.estado })
     expect(banda.bloqueados, c.id).toBe(c.n - c.ve.length)
-    expect(topeMeses(null, c.n, c.porMes), c.id).toBe(c.tope)
+    expect(topeMeses(c.duracion, c.n, c.porMes), c.id).toBe(c.tope)
   }
 })
 
@@ -109,12 +118,15 @@ test('2. NADIE ve menos que con bf7fd7f, y en base 0 nada cambia', () => {
 test('3. con todo abierto se ve el ÚLTIMO módulo; el examen nunca se abre sin él; el reporte dice lo que ve', () => {
   for (const c of FOTO.casos.filter(vigente)) {
     const lim = limiteVentana(inscripcionDe(c), cursoDe(c))
-    const ultimo = c.ordenes.indexOf(Math.max(...c.ordenes))
-    if (c.accesoTotal || c.meses >= c.tope) {
-      expect(c.ve.length, `${c.id}: con todo abierto`).toBe(c.n)
-      expect(c.ve, c.id).toContain(ultimo)
+    if (c.accesoTotal || c.meses >= c.tope) expect(c.ve.length, `${c.id}: con todo abierto`).toBe(c.n)
+    if (c.n > 0) {
+      const ultimo = c.ordenes.indexOf(Math.max(...c.ordenes))
+      if (c.accesoTotal || c.meses >= c.tope) expect(c.ve, c.id).toContain(ultimo)
+      if (cursoCompletoVisible(c.ordenes, lim)) expect(c.ve, `${c.id}: examen sin el último`).toContain(ultimo)
+    } else {
+      // Un curso sin módulos (solo examen): el examen pide la ventana abierta.
+      expect(cursoCompletoVisible(c.ordenes, lim), c.id).toBe(lim > 0)
     }
-    if (cursoCompletoVisible(c.ordenes, lim)) expect(c.ve, `${c.id}: examen sin el último`).toContain(ultimo)
     expect(c.reporte, `${c.id}: reporte vs lo que ve`).toBe(c.ve.length)
   }
   // Fuera de vigencia (suspendida, cancelada, vencida, borrador) no ve nada.
@@ -141,17 +153,18 @@ test('4. posicionesVentana: «dense», base 0, NULL bloqueado', () => {
 test('5. PROPIEDAD: con orden ≥ 0, la posición nunca pasa del orden (nadie ve menos), sobre 5000 cursos al azar', () => {
   let semilla = 255
   const azar = (k: number) => { semilla = (semilla * 1103515245 + 12345) % 2147483648; return semilla % k }
+  const malas: string[] = []
   for (let t = 0; t < 5000; t++) {
     const n = 1 + azar(14)
     const ordenes = Array.from({ length: n }, () => azar(20))
     const pos = posicionesVentana(ordenes)
-    for (let i = 0; i < n; i++) expect(pos[i]).toBeLessThanOrEqual(ordenes[i])
+    for (let i = 0; i < n; i++) if (pos[i] > ordenes[i]) malas.push(JSON.stringify({ ordenes, i }))
     for (let lim = 0; lim <= n + 2; lim++) {
-      const antes = ordenes.filter(o => o < lim).length
-      expect(contarVisibles(ordenes, lim)).toBeGreaterThanOrEqual(antes)
-      // Y con `orden` 0..N-1 seguidos (la convención), idéntico.
+      if (contarVisibles(ordenes, lim) < ordenes.filter(o => o < lim).length) malas.push(JSON.stringify({ ordenes, lim }))
     }
   }
+  expect(malas).toEqual([])
+  // Y con `orden` 0..N-1 seguidos (la convención), idéntico.
   for (let n = 0; n <= 15; n++) {
     const base0 = Array.from({ length: n }, (_, i) => i)
     expect(posicionesVentana(base0)).toEqual(base0)
@@ -188,6 +201,18 @@ test('6. la migración: posición dense, comparación ESTRICTA (nunca <=), compu
   const migs = readdirMigraciones()
   expect(migs[migs.length - 1]).toBe('20260930120000_fix255_ventana_por_posicion.sql')
 })
+
+function archivosTs(dir: string): string[] {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs')
+  const out: string[] = []
+  for (const e of fs.readdirSync(join(process.cwd(), dir), { withFileTypes: true })) {
+    const rel = `${dir}/${e.name}`
+    if (e.isDirectory()) out.push(...archivosTs(rel))
+    else if (/\.(ts|tsx)$/.test(e.name)) out.push(rel)
+  }
+  return out
+}
 
 function readdirMigraciones(): string[] {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -234,7 +259,12 @@ test('8. el espejo TS: un solo eje; nadie compara el `orden` crudo con el límit
   const insc = sinComentariosTs(leer('src/app/api/admin/inscripciones/[id]/route.ts'))
   expect(insc).toContain('modulos_visibles: contarVisibles(ordenes, accesoTotal ? ORDEN_SIN_DEFINIR : Math.max(meses * porMes, 0))')
   expect(insc).not.toMatch(/Math\.min\(meses \* porMes/)
-  for (const rel of ['src/lib/cursos/alumno-data.ts', 'src/app/api/admin/alumnos/route.ts', 'src/lib/cursos/examen.ts', 'src/app/api/admin/inscripciones/[id]/route.ts']) {
-    expect(sinComentariosTs(leer(rel)), rel).not.toMatch(/\.orden\s*<\s*\w*[lL]imite/)
+  // En TODO src/: nadie compara un `orden` (ni su resolución) con un límite.
+  for (const rel of archivosTs('src')) {
+    expect(sinComentariosTs(leer(rel)), rel).not.toMatch(/\.?orden\)?\s*<=?\s*\w*[lL]imite/)
+    expect(sinComentariosTs(leer(rel)), rel).not.toMatch(/Math\.min\(\s*meses\s*\*\s*porMes/)
   }
+  // Las lecturas de módulos que alimentan la posición fallan cerrado.
+  expect(sinComentariosTs(leer('src/lib/cursos/alumno-data.ts'))).toMatch(/if \(errMods\) return null/)
+  expect(sinComentariosTs(leer('src/app/api/admin/alumnos/route.ts'))).toMatch(/if \(errMs\) idsCursos\.forEach\(id => ordenes\.set\(id, \[null\]\)\)/)
 })

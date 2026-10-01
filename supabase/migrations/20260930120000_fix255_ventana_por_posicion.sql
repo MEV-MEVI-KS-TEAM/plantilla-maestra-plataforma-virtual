@@ -45,7 +45,10 @@
 --      políticas de curso_modulos, curso_lecciones y curso_progreso: heredan el
 --      cambio solas. Misma firma y mismos permisos.
 --   3. public.reporte_curso_inscripciones() — de B6/C3b. `modulos_visibles`
---      cuenta con la misma posición: el reporte dice lo que el alumno ve.
+--      cuenta con la misma posición. En una inscripción vigente de un curso
+--      publicado es lo que el alumno ve; como antes, no mira el estado ni el
+--      vencimiento (una suspendida sale con lo que tiene abierto).
+--   4. El comentario de la columna curso_modulos.orden.
 --   curso_ventana_limite (el techo), curso_tope_meses y las funciones de abrir,
 --   cerrar, asignar y cobrar NO cambian.
 --
@@ -89,6 +92,11 @@ BEGIN
   END IF;
 END
 $preflight$;
+
+-- Nadie mueve módulos mientras se toma la foto de antes y se compara al final
+-- (reordenar o borrar a la mitad daría una compuerta falsa). Solo bloquea
+-- escrituras en curso_modulos, y solo lo que dura esta transacción.
+LOCK TABLE public.curso_modulos IN SHARE MODE;
 
 -- ── Foto ANTES (para la compuerta del paso 5) ───────────────────────────────
 -- Por inscripción: cuántos módulos ve hoy con la regla vieja (el `orden` crudo,
@@ -166,7 +174,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   -- #255: la POSICIÓN del módulo (curso_modulo_posicion), no su `orden` crudo.
-  -- Comparación ESTRICTA: `<=` regalaría un módulo por mes (Bug 238).
+  -- Comparación ESTRICTA («menor que»): con «menor o igual» se regalaría un
+  -- módulo por mes (Bug 238). El CHECK 31 rechaza el símbolo en este cuerpo.
   SELECT EXISTS (
     SELECT 1
       FROM public.curso_modulos m
@@ -181,9 +190,11 @@ $$;
 -- 3) El reporte cuenta lo que el alumno ve
 -- ════════════════════════════════════════════════════════════════════════════
 -- Mismo cuerpo y firma que C3b. Solo cambia modulos_visibles: los módulos cuya
--- posición queda por debajo del techo de la inscripción (con acceso total,
--- 2147483647: todos los que tienen orden). Antes era LEAST(techo, total), que
--- en base 1 decía 10/10 cuando el alumno veía 9.
+-- posición queda por debajo de lo que la inscripción tiene abierto (con acceso
+-- total, 2147483647: todos los que tienen orden). Antes era LEAST(techo, total),
+-- que en base 1 decía 10/10 cuando el alumno veía 9. Como antes, no mira el
+-- estado ni el vencimiento: en una inscripción vigente de un curso publicado es
+-- exactamente lo que el alumno ve.
 CREATE OR REPLACE FUNCTION public.reporte_curso_inscripciones()
 RETURNS TABLE (
   inscripcion_id uuid,
@@ -245,6 +256,14 @@ END
 $grants_rep$;
 
 
+COMMENT ON COLUMN public.curso_modulos.orden IS
+  'Orden del módulo dentro del curso (la app escribe 0..N-1). La ventana de '
+  'pago NO lo compara crudo: usa la POSICIÓN (curso_modulo_posicion, #255), '
+  'así que base 1 o huecos ya no esconden módulos. NOT NULL a propósito — un '
+  'NULL aquí fue lo que en el módulo de materias regaló una unidad extra en 142 '
+  'clientes (divergencia ?? 0 vs ?? 9999).';
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- 4) Índice para la posición
 -- ════════════════════════════════════════════════════════════════════════════
@@ -281,7 +300,7 @@ BEGIN
     RAISE EXCEPTION '#255: % inscripción(es) verían MENOS módulos que antes (¿un curso con `orden` negativo?). No se cambió nada: pásaselo a Kevin.', v_menos;
   END IF;
   IF v_mas > 0 THEN
-    RAISE NOTICE '#255: % inscripción(es) ven ahora los módulos que les faltaban (cursos en base 1 o con huecos).', v_mas;
+    RAISE NOTICE '#255: % inscripción(es) ven más módulos que con la regla vieja (el `orden` crudo): cursos en base 1 o con huecos.', v_mas;
   END IF;
 END
 $compuerta$;

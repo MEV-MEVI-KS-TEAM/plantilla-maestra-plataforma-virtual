@@ -93,3 +93,59 @@ Cada vez que agregues una migración o toques un `schema.sql`. La parte estátic
 fuera del módulo Cursos está en `supabase/schema.sql`, los UNIQUE que usan los
 seeds y la app, la S2 y que los buckets que crean los instaladores sean
 exactamente los que usa el código.
+
+## Paridad de la ventana de cursos (#255)
+
+`paridad-ventana-255.mjs` contesta, con un Postgres de verdad: **¿la ventana por
+posición abre lo que debe, sin quitarle nada a nadie?** Usa el mismo cluster
+local desechable y `harness-supabase.sql`, y arma dos bases:
+
+| Base | Cómo se arma |
+|---|---|
+| `ventana_antes` | la cadena de `VENTANA_ANTES_REF` (por omisión `bf7fd7f`, el `main` anterior a #255), leída con `git show`: la ventana con el `orden` crudo |
+| `ventana_despues` | la cadena de este árbol: la ventana por posición «dense» |
+
+En las dos siembra la misma matriz con el flujo real: «Asignar» es
+`curso_inscribir` con la sesión del admin y «Abrir mes» es `curso_abrir_mes`. La
+matriz cruza 1, 2, 9, 10, 11 y 12 módulos, 1, 2 y N módulos por mes, `orden` en
+base 0, base 1, con huecos y repetidos, y tres tipos de cobro: mensual (mes 1,
+mitad y tope), «Pide informes» 0/0 (mes 1, mitad y tope) y pago único (acceso
+total). Agrega estados (suspendida, cancelada, completada, vencida), 0 meses y
+un curso en borrador, uno con `duracion_meses` y uno sin módulos. Dentro va completa la matriz de 216 del diagnóstico de
+#255. Por cada inscripción cuenta lo que el alumno ve con SU sesión (rol
+`authenticated`, RLS real) y exige:
+
+1. nadie ve menos que antes, comparando el conjunto de módulos y no solo la cuenta;
+2. en base 0 nada cambia;
+3. lo que ve son exactamente las posiciones por debajo del techo, con un oráculo propio que no usa el TypeScript;
+4. con todo abierto (tope o acceso total) ve el curso completo, el último incluido;
+5. el reporte dice lo que ve, en inscripciones vigentes de cursos publicados;
+6. re-correr B2, B6 y C3b no revierte nada (Bug 239), una copia VIEJA de B2 o de C3b sí lo hace y el CHECK 31 lo ve, y volver a correr #255 lo repara.
+
+Si todo pasa, escribe la foto en `tests/unit/fixtures/ventana-255.json` con el
+sha256 de la migración. `tests/unit/fix255-ventana-posicion.spec.ts` corre en
+cada `pnpm test:unit` sin base de datos. Compara el TypeScript (`posicionesVentana`
+y compañía, en `src/lib/cursos/acceso.ts`) contra esa foto, módulo por módulo.
+Falla si la migración cambió y nadie volvió a correr el arnés.
+
+```bash
+PG_BIN="/c/Program Files/PostgreSQL/18/bin" PGPORT=55440 node scripts/verificar-schema/paridad-ventana-255.mjs
+```
+
+Salida esperada (30 s aprox.):
+
+```
+armando ventana_antes (bf7fd7f, 45 migraciones)…
+armando ventana_despues (este árbol, 46 migraciones)…
+sembrados 223 cursos y 523 inscripciones en cada base
+== matriz: 523 inscripciones; 175 ven ahora lo que les faltaba; 0 falla(s)
+== re-correr B2, B6 y C3b: revisado
+== copias viejas de B2 y C3b: el CHECK 31 las ve y #255 las repara
+
+✔ ventana por posición verificada; foto en tests/unit/fixtures/ventana-255.json (523 casos)
+```
+
+Córrelo cada vez que toques la ventana de cursos: `curso_modulo_posicion`,
+`curso_modulo_en_ventana`, `curso_ventana_limite`, `reporte_curso_inscripciones`,
+B2, B6, C3b o `src/lib/cursos/acceso.ts`. Crea y borra `ventana_antes` y
+`ventana_despues`; con `VERIF_CONSERVAR=1` las deja para inspeccionarlas.

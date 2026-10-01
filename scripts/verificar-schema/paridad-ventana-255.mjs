@@ -45,6 +45,15 @@ const HOST = '127.0.0.1'
 const REF_ANTES = process.env.VENTANA_ANTES_REF || 'bf7fd7f'
 const MIG_255 = 'supabase/migrations/20260930120000_fix255_ventana_por_posicion.sql'
 const FOTO = path.join(RAIZ, 'tests/unit/fixtures/ventana-255.json')
+// La foto vale mientras no cambie ninguna de las migraciones que deciden la
+// ventana (techo, tope, reporte y posición). Misma lista en la prueba unitaria.
+const DE_LA_VENTANA = [
+  'supabase/migrations/20260730130000_b2_gate_ventana_cursos.sql',
+  'supabase/migrations/20260730140000_b3_abrir_mes_y_pagos_curso.sql',
+  'supabase/migrations/20260730160000_b6_reportes_por_vertical.sql',
+  'supabase/migrations/20260926120000_c3b_acceso_total_cursos.sql',
+  MIG_255,
+]
 
 if (!process.env.PG_BIN || !/^\d+$/.test(PUERTO)) {
   console.error('Falta PG_BIN (carpeta de psql) o PGPORT (puerto del cluster LOCAL desechable).')
@@ -99,11 +108,11 @@ const ADMIN = uuid('f255-admin')
 
 const cursos = []   // { id, n, pm, forma, precio, estado, ordenes, modulos: [{id, orden}] }
 const casos = []    // { id, curso, alumno, momento, meses, estadoFinal, vence }
-function curso(n, pm, forma, precio, estado = 'publicado', etiqueta = '') {
+function curso(n, pm, forma, precio, estado = 'publicado', etiqueta = '', duracion = null) {
   const id = uuid(`f255-curso-${n}-${pm}-${forma}-${precio}-${estado}-${etiqueta}`)
   const ordenes = Array.from({ length: n }, (_, i) => FORMAS[forma](i))
   const modulos = ordenes.map((orden, i) => ({ id: uuid(`${id}-m${i}`), orden }))
-  const c = { id, n, pm, forma, precio, estado, etiqueta, ordenes, modulos }
+  const c = { id, n, pm, forma, precio, estado, etiqueta, duracion, ordenes, modulos }
   cursos.push(c)
   return c
 }
@@ -139,7 +148,13 @@ for (const forma of ['base0', 'base1']) {
   caso(c, 'vigente-futura', { meses: 2, vence: 'futura' })
   const b = curso(10, 2, forma, 'mensual', 'borrador', 'borrador')
   caso(b, 'borrador', { directo: 5 })
+  // duracion_meses manda sobre el tope (6 meses × 2 = 12 ≥ 10 módulos).
+  const d = curso(10, 2, forma, 'mensual', 'publicado', 'duracion', 6)
+  caso(d, 'mes1', { meses: 1 })
+  caso(d, 'tope', { meses: 6 })
 }
+// Un curso sin módulos (solo examen).
+caso(curso(0, 2, 'base0', 'mensual', 'publicado', 'vacio'), 'mes1', { meses: 1 })
 
 function sqlSiembra() {
   const s = [
@@ -148,7 +163,7 @@ function sqlSiembra() {
   ]
   for (const c of cursos) {
     const [ins, men] = PRECIOS[c.precio]
-    s.push(`INSERT INTO public.cursos (id, nombre, tipo, estado, modulos_por_mes, precio_inscripcion, precio_mensualidad) VALUES ('${c.id}', 'C ${c.n}/${c.pm} ${c.forma} ${c.precio} ${c.estado}', 'curso', '${c.estado}', ${c.pm}, ${ins}, ${men});`)
+    s.push(`INSERT INTO public.cursos (id, nombre, tipo, estado, modulos_por_mes, precio_inscripcion, precio_mensualidad, duracion_meses) VALUES ('${c.id}', 'C ${c.n}/${c.pm} ${c.forma} ${c.precio} ${c.estado}', 'curso', '${c.estado}', ${c.pm}, ${ins}, ${men}, ${c.duracion ?? 'NULL'});`)
     for (const [i, m] of c.modulos.entries()) s.push(`INSERT INTO public.curso_modulos (id, curso_id, nombre, orden) VALUES ('${m.id}', '${c.id}', 'M${i + 1}', ${m.orden});`)
   }
   for (const k of casos) {
@@ -242,7 +257,7 @@ for (const k of casos) {
   if (VIGENTE(k, nd) && nd.reporte !== d.size) falla(`${k.id}: el reporte dice ${nd.reporte} y ve ${d.size}`)
   if (d.size > a.size) ganan++
   salida.push({
-    id: k.id, n: k.curso.n, porMes: k.curso.pm, forma: k.curso.forma, precio: k.curso.precio, cursoEstado: k.curso.estado,
+    id: k.id, n: k.curso.n, porMes: k.curso.pm, duracion: k.curso.duracion, forma: k.curso.forma, precio: k.curso.precio, cursoEstado: k.curso.estado,
     ordenes: k.curso.ordenes, meses: nd.meses, accesoTotal: nd.acceso_total, estado: nd.estado,
     vence: k.vence ?? null, limite: nd.limite, tope: nd.tope, reporte: nd.reporte, reporteAntes: na.reporte, totales: nd.totales,
     veAntes: idx(a), ve: idx(d),
@@ -285,11 +300,12 @@ if (fallas.length) {
   console.error(`\n✗ ${fallas.length} falla(s). No se escribió la foto.`)
   process.exit(1)
 }
-const sha = crypto.createHash('sha256').update(leerAhora(MIG_255).replace(/\r\n/g, '\n')).digest('hex')
+const sha = crypto.createHash('sha256').update(DE_LA_VENTANA.map((rel) => leerAhora(rel).replace(/\r\n/g, '\n')).join('\n-- ──\n')).digest('hex')
 fs.mkdirSync(path.dirname(FOTO), { recursive: true })
 fs.writeFileSync(FOTO, JSON.stringify({
   generado: `scripts/verificar-schema/paridad-ventana-255.mjs (antes = ${REF_ANTES})`,
   migracionSha256: sha,
+  deLaVentana: DE_LA_VENTANA,
   casos: salida,
 }, null, 0).replace(/\},\{/g, '},\n{') + '\n')
 console.log(`\n✔ ventana por posición verificada; foto en ${path.relative(RAIZ, FOTO)} (${salida.length} casos)`)

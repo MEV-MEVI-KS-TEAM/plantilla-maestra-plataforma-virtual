@@ -78,7 +78,7 @@ Igual que `SETUP.md`, **más el módulo de Cursos, que aquí no es opcional**:
 | Módulo de Cursos | `scripts/migracion-cursos-diplomados.sql` (bucket `cursos`) |
 | Examen final | `supabase/migrations/20260728120000_examen_final_cursos.sql` |
 | Parches de seguridad | los cuatro del paso 7 de `SETUP.md`: los tres `20260729*` y `20260924120000_usuarios_sin_insert_propio.sql` (en una instalación nueva S1, S2 y #185 ya vienen en `supabase/schema.sql`; en un cliente desplegado son el retrofit). Los vigilan los CHECK 22, 23 y 24 |
-| Tabla 7bis de `SETUP.md`, **filas 1 a 23, en orden** | ver la tabla de abajo |
+| Tabla 7bis de `SETUP.md`, **filas 1 a 24, en orden** | ver la tabla de abajo |
 
 La tabla 7bis completa, en el orden en que se corre (la misma de `SETUP.md`, paso
 7bis). En una base instalada con `supabase/schema.sql` las filas 1-6 y 18
@@ -110,6 +110,7 @@ lo del módulo y las demás son solo del módulo:
 | 21 | `20260928150000_d22b_cobranza_solo_admin.sql` (D22b) | 25 |
 | 22 | `20260928160000_d22c_postgrest_directo.sql` (D22c), **después** de las filas 2 y 9 | 26 y 27 |
 | 23 | `20260928170000_d22d_claves_solo_servidor.sql` (D22d) | 28, 29 y 30 |
+| 24 | `20260930120000_fix255_ventana_por_posicion.sql` (#255: la ventana cuenta la posición del módulo; un curso sembrado en base 1 ya no esconde el último) | 31 |
 
 > ⚠️ **Fila 23 (D22d): SOLO después de desplegar la app de D22d** (`main` con
 > el código de D22d-1 —plantilla `fe00225`— o posterior; verifícalo como dice el
@@ -286,7 +287,7 @@ Solo-Cursos la necesita.
 - [ ] `landing.mostrarCatalogoCursos: true` + los dos textos
 - [ ] `diploma.folioPrefijo` fijado **antes** de la primera constancia
 - [ ] Identidad, colores, logo y WhatsApp del cliente
-- [ ] Tabla 7bis aplicada, filas 1 a 23 (la 23 después de desplegar la app de D22d) y `post-setup-check.sql` con los CHECK 15-30 en ✅
+- [ ] Tabla 7bis aplicada, filas 1 a 24 (la 23 después de desplegar la app de D22d) y `post-setup-check.sql` con los CHECK 15-31 en ✅
 - [ ] Los 6 buckets (`SELECT id FROM storage.buckets ORDER BY id`)
 - [ ] El deploy de producción es la cabeza de `main` y trae el código de D22d-1 (`SETUP.md`, Paso 6, punto 5)
 - [ ] Al menos un diplomado **publicado**, con precios y ritmo
