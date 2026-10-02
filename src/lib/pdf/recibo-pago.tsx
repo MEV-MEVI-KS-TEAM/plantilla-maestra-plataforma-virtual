@@ -48,11 +48,18 @@ const fmtFecha = (fecha: string) => {
   return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Mexico_City' })
 }
 
+/**
+ * CIMA #251: domicilio de OFICINAS de la escuela, si lo declara (la flota es
+ * 100 % en línea y no lo tiene). Sale de CONFIG: nunca escrito a mano aquí.
+ */
+const DOMICILIO = ((CONFIG as { domicilio?: { completo?: string } }).domicilio?.completo ?? '').trim()
+const CORREO = String((CONFIG as { contactoEmail?: string; email?: string }).contactoEmail || CONFIG.email || '').trim()
+
 const styles = StyleSheet.create({
   page:      { padding: 40, fontSize: 11, fontFamily: 'Helvetica', color: '#111827' },
-  header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   logo:      { height: 40, objectFit: 'contain' },
-  escuela:   { fontSize: 16, fontFamily: 'Helvetica-Bold' },
+  escuela:   { fontSize: 16, fontFamily: 'Helvetica-Bold', maxWidth: 400 },
   tagline:   { fontSize: 9, color: '#6B7280', marginTop: 2 },
   divider:   { borderBottomWidth: 2, borderBottomColor: '#111827', marginVertical: 12 },
   titulo:    { fontSize: 13, fontFamily: 'Helvetica-Bold', letterSpacing: 1 },
@@ -109,6 +116,8 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
             <Text style={styles.escuela}>{cfg.nombreCompleto}</Text>
             {/* Sin WhatsApp, solo el sitio: nada de «· WhatsApp » con la palabra colgando. */}
             <Text style={styles.tagline}>{lineaContactoRecibo(CONFIG.urlBase, cfg)}</Text>
+            {DOMICILIO !== '' && <Text style={styles.tagline}>{DOMICILIO}</Text>}
+            {DOMICILIO !== '' && CORREO !== '' && <Text style={styles.tagline}>{CORREO}</Text>}
           </View>
           {/* Image de @react-pdf/renderer, no <img> de HTML: no acepta `alt`. */}
           {/* eslint-disable-next-line jsx-a11y/alt-text */}

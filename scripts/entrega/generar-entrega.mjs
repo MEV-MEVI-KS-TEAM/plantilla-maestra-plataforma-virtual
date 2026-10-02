@@ -207,6 +207,15 @@ fijarMoneda(CONFIG.moneda)
 const FOLIO_VERIFICABLE =
   String(CONFIG.landing?.validezOficial?.folio ?? '').trim() !== ''
 
+/**
+ * ¿La sección de validez de la página enseña documentos? Sin ellos (validez solo
+ * SEP México, sin el documento estadounidense: CIMA #251, «Internacional» en el
+ * nombre) el documento y el mensaje NO dicen «México y Estados Unidos» ni «dos
+ * documentos»: describen lo que la página de verdad enseña.
+ */
+const VALIDEZ_SOLO_SEP =
+  Array.isArray(CONFIG.landing?.validezOficial?.documentos) && CONFIG.landing.validezOficial.documentos.length === 0
+
 /* ── 2. Credenciales (fuera del repo) ────────────────────────────────────── */
 const rutaDatos = path.join(RAIZ, opt('datos', 'entrega.local.json'))
 if (!fs.existsSync(rutaDatos)) abortar(`No encuentro ${path.basename(rutaDatos)}`, [
@@ -847,6 +856,7 @@ const datos = {
   vendeIngreso: VENDE_INGRESO,
   validez: VALIDEZ,
   folioVerificable: FOLIO_VERIFICABLE,
+  validezDocumentos: VALIDEZ_SOLO_SEP ? 0 : 2,
   soporte: D.soporte || SOPORTE,
   tutoriales: [
     `Playlist completa: ${TUTORIALES.playlist}`,
@@ -873,7 +883,7 @@ const datos = {
     CURSOS_PUBLICADOS.length
       ? `Módulo de Cursos y Diplomados con ${CURSOS_PUBLICADOS.length} ${CURSOS_PUBLICADOS.length === 1 ? 'curso ya publicado' : 'cursos ya publicados'} y a la venta`
       : 'Módulo de Cursos y Diplomados listo para tu propio contenido',
-    VALIDEZ && 'Sección de Validez Oficial México + Estados Unidos',
+    VALIDEZ && (VALIDEZ_SOLO_SEP ? 'Sección de Validez Oficial ante la SEP' : 'Sección de Validez Oficial México + Estados Unidos'),
     'Panel de pagos, reportes y estado de cuenta',
   ].filter(Boolean),
   palabraInstitucion: D.palabraInstitucion || 'instituto',
@@ -886,7 +896,9 @@ const datos = {
     `Registro público de alumnos con matrícula automática (prefijo ${CONFIG.prefijoMatricula}-)`,
     'Desbloqueo progresivo del contenido, mes a mes, a tu ritmo de cobro',
     'Video, quiz semanal y examen final en cada materia',
-    VALIDEZ && (FOLIO_VERIFICABLE
+    VALIDEZ && (VALIDEZ_SOLO_SEP
+      ? 'Sección de Validez Oficial ante la SEP (México)'
+      : FOLIO_VERIFICABLE
       ? 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP'
       : 'Sección de Validez Oficial México + Estados Unidos, con los dos documentos oficiales que recibe el alumno'),
     'Módulo de pagos: recibo en PDF con tu marca y envío por WhatsApp',
@@ -941,7 +953,18 @@ const slug = (CONFIG.nombre || 'cliente').normalize('NFD').replace(/[\u0300-\u03
 const htmlPath = path.join(SALIDA, '.entrega.html')
 const pdfPath = path.join(SALIDA, `${slug}_Entrega_Oficial.pdf`)
 
-fs.writeFileSync(htmlPath, construirHTML(datos), 'utf8')
+/**
+ * 🛑 Candado final (regla 28b, CIMA #251): la entrega lleva SOLO el dominio
+ * final. Ningún host provisional (`*.vercel.app` y compañía) llega al PDF ni al
+ * mensaje, ni siquiera como «dirección temporal»: si aparece, se aborta.
+ */
+function sinHostProvisional(texto, que) {
+  const hit = HOSTS_PROVISIONALES.find(h => texto.toLowerCase().includes(h))
+  if (hit) abortar(`${que} contiene «${hit}»: la entrega lleva solo el dominio final (${URL_BASE}), nunca una dirección temporal.`)
+}
+const HTML_ENTREGA = construirHTML(datos)
+sinHostProvisional(HTML_ENTREGA, 'El PDF')
+fs.writeFileSync(htmlPath, HTML_ENTREGA, 'utf8')
 log('· Imprimiendo el PDF…')
 const { chromium } = await import('@playwright/test')
 const nav = await chromium.launch()
@@ -1136,7 +1159,9 @@ if (!flag('solo-pdf')) {
   // el visitante ve. Son parte de lo entregado y el cliente tiene que saber
   // que existen para poder enseñarlas.
   const publicas = [
-    VALIDEZ && (FOLIO_VERIFICABLE
+    VALIDEZ && (VALIDEZ_SOLO_SEP
+      ? `• Validez oficial ante la SEP en México: ${URL_BASE}/#validez`
+      : FOLIO_VERIFICABLE
       ? `• Validez oficial México y Estados Unidos, con folio verificable en el portal SIGED de la SEP: ${URL_BASE}/#validez`
       : `• Validez oficial México y Estados Unidos, con los dos documentos oficiales que recibe el alumno: ${URL_BASE}/#validez`),
     PAGINA_INSTITUCIONAL && `• Manifiesto de tu marca, con una demostración de un curso real que se prueba sin registro: ${URL_BASE}${PAGINA_INSTITUCIONAL}`,
@@ -1179,6 +1204,7 @@ if (!flag('solo-pdf')) {
   L.push('Cualquier duda, quedo al pendiente 🙌')
 
   const txt = path.join(SALIDA, 'ENTREGA-WHATSAPP.txt')
+  sinHostProvisional(L.join('\n'), 'El mensaje de WhatsApp')
   fs.writeFileSync(txt, L.join('\n'), 'utf8')
   log('✓ Mensaje → entrega/ENTREGA-WHATSAPP.txt')
   log('\n──────── copia desde aquí ────────\n')
