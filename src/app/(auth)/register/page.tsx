@@ -7,8 +7,9 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, Phone, User, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { planesPorNivel, getModalidadesLicenciatura } from '@/lib/modalidades'
-import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatura-utils'
+import { planesPorNivel, getModalidadesLicenciatura, getModalidadesDiplomado } from '@/lib/modalidades'
+import { getCarrerasLicenciatura, getCarrerasDiplomado, precioDiplomado, textosConocer } from '@/lib/licenciatura-utils'
+import { formatearMoneda } from '@/lib/moneda'
 import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
@@ -346,8 +347,10 @@ export default function RegisterPage() {
    * propia tabla, y de ella el panel solo publica PRECIOS (aquí no se pintan):
    * la lista de planes sigue siendo la de config.ts.
    */
+  // #222: licenciatura y diplomados CONOCER comparten riel pero NO
+  // planes: la licenciatura vende 6_meses_lic/12/18 y el diplomado 3/6 _dip.
   const planesDelNivel = esLicenciatura
-    ? getModalidadesLicenciatura()
+    ? (esDiplomadoLic ? getModalidadesDiplomado() : getModalidadesLicenciatura(null))
     : planesPorNivel(nivelDeOpcion(nivel), cfg.modalidades)
 
   /**
@@ -722,12 +725,12 @@ export default function RegisterPage() {
                 </div>
                 {esLicenciatura && (
                   <div>
-                    <Label text="Carrera" required />
+                    <Label text={esDiplomadoLic ? 'Diplomado' : 'Carrera'} required />
                     {/* Sin carrera el alumno entra y no ve NINGUNA materia: el
                         catálogo de licenciatura se filtra por ella. */}
                     <select value={carrera} onChange={e => setCarrera(e.target.value)}
                       style={selectStyle} onFocus={onFocus} onBlur={onBlur}>
-                      <option value="">Selecciona tu carrera…</option>
+                      <option value="">{esDiplomadoLic ? 'Selecciona tu diplomado…' : 'Selecciona tu carrera…'}</option>
                       {carrerasOfrecidas.map(c => (
                         <option key={c.slug} value={c.slug}>{c.nombre}</option>
                       ))}
@@ -735,6 +738,35 @@ export default function RegisterPage() {
                   </div>
                 )}
               </div>
+
+              {/* ─── Diplomado CONOCER elegido (#212, #222) ──────
+                  Pago único de la PREPARACIÓN (precio del programa, no el de la
+                  licenciatura) y, con el mismo peso, la evaluación oficial, que
+                  se paga aparte a la entidad acreditada. Textos del CONFIG. */}
+              {esDiplomadoLic && carrera && (() => {
+                const dip = carrerasOfrecidas.find(c => c.slug === carrera) as ({ estandar?: string } & (typeof carrerasOfrecidas)[number]) | undefined
+                const precio = precioDiplomado(carrera)
+                const txt = textosConocer()
+                const plan = planesDelNivel.find(m => m.id === modalidad)
+                const fila = 'flex items-baseline justify-between gap-4 text-sm'
+                return (
+                  <div className="mt-1 mb-2 rounded-xl px-4 py-3.5" aria-live="polite"
+                    style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
+                    <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-primario)' }}>
+                      {dip?.nombre}{plan ? ` · ${plan.label}` : ''}
+                    </p>
+                    <p className={fila} style={{ color: 'var(--color-texto)' }}>
+                      <span>Preparación · pago único</span><span className="font-bold">{precio > 0 ? formatearMoneda(precio, cfg) : 'Consúltalo'}</span>
+                    </p>
+                    <p className={fila} style={{ color: 'var(--color-texto)' }}>
+                      <span>Evaluación oficial · aparte</span><span className="font-bold">{txt?.costoEvaluacionEtiqueta ?? 'Con la entidad evaluadora'}</span>
+                    </p>
+                    <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-texto-secundario)' }}>
+                      Prepara para la evaluación{dip?.estandar ? ` en el estándar ${dip.estandar}` : ''}. La certificación la emite una entidad acreditada por CONOCER, con trámite y costo aparte.
+                    </p>
+                  </div>
+                )
+              })()}
 
               {/* ─── Curso de ingreso (opcional) ──────────────────────────
                   Producto de pago único, aparte del plan. Se puede llevar solo,

@@ -37,7 +37,7 @@
 
 import {
   ArrowRight, BookOpen, BookOpenCheck, Brain, Briefcase, CheckCircle2, Clock, Cpu, FileCheck2,
-  Gavel, GraduationCap, HeartPulse, Landmark, Mail, MessageCircle, Palette, Scale, Stethoscope,
+  Gavel, GraduationCap, HeartPulse, Landmark, Mail, MessageCircle, Monitor, Palette, Scale, Stethoscope,
   Users, type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -67,6 +67,9 @@ type Carrera = ReturnType<typeof getCarrerasLicenciatura>[number]
 const ICONOS: Record<string, LucideIcon> = {
   Users, BookOpen, GraduationCap, Scale, Gavel, Briefcase, Landmark, Palette, Cpu,
   Stethoscope, Brain, HeartPulse,
+  // Ingeniería en Sistemas con una PANTALLA, no con un chip (`Cpu`), para las
+  // escuelas que piden no ilustrar lo «tech» con circuitos (#254).
+  Monitor,
 }
 
 /**

@@ -14,6 +14,7 @@ import { getOfertaIngreso } from '@/lib/cursos/oferta'
 import { modalidadDeRegistro, exigeCursoEnRegistro, errorDePlanDeRegistro } from '@/lib/registro-reglas'
 import { catalogoDeRegistro } from '@/lib/niveles'
 import { MENSAJE_PERSONAL_NO_SE_REGISTRA, esRolAlumno } from '@/lib/admin-alumno'
+import { getModalidadesLicenciatura } from '@/lib/modalidades'
 
 export async function POST(request: Request) {
   try {
@@ -102,6 +103,19 @@ export async function POST(request: Request) {
         { error: 'Selecciona el curso o diplomado al que quieres inscribirte.' },
         { status: 400 },
       )
+    }
+
+    // Licenciatura / diplomado CONOCER del riel: carrera válida y un plan de SU
+    // tipo de programa (#212, #222). Con un '6_meses' de Prepa el
+    // alumno quedaría a 2 materias por mes; con un '3_meses_dip' la licenciatura
+    // no cubriría sus 32 materias, y con un '6_meses_lic' el diplomado tampoco.
+    if (!nivelForzado && nivel === 'licenciatura') {
+      if (!carrera) {
+        return Response.json({ error: 'Selecciona tu carrera o diplomado.' }, { status: 400 })
+      }
+      if (!modalidad || !getModalidadesLicenciatura(carrera).some(m => m.id === modalidad)) {
+        return Response.json({ error: 'Selecciona uno de los planes disponibles.' }, { status: 400 })
+      }
     }
 
     const admin = createAdminClient()

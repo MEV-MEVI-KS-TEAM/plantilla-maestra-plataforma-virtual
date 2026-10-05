@@ -592,6 +592,16 @@ export const CONFIG = {
       icono: string
       desc: string
       incluye: readonly string[]
+      /** Diplomado de preparación CONOCER montado en este riel (#212, #222, #254). */
+      esDiplomado?: boolean
+      /** Pago único del programa (diplomados). 🛑 No es `inscripcion` (la de licenciatura). */
+      precio?: { publico: number }
+      /** Estándar CONOCER (p. ej. 'EC0616') y su título oficial. */
+      estandar?: string
+      estandarTitulo?: string
+      /** Dónde se produce la evidencia práctica y qué NO cubre el diplomado. */
+      practica?: string
+      alcance?: string
     }>,
     modalidades: [
       { id: '6_meses_lic', label: 'Intensivo 6 meses', sublabel: '6 meses', meses: 6, mensualidad: 2500, activa: true, materiasPorMes: 5.34 },
@@ -605,8 +615,15 @@ export const CONFIG = {
       meses: number
       mensualidad: number
       activa: boolean
-      /** Ritmo de desbloqueo: materias nuevas por mes. */
+      /** Ritmo de desbloqueo: materias nuevas por mes. 0 = ceil(total / meses) por carrera. */
       materiasPorMes: number
+      /**
+       * Plan EXCLUSIVO de los diplomados CONOCER ('3_meses_dip' / '6_meses_dip',
+       * con `mensualidad: 0` = pago único). Un diplomado solo ve estos planes y
+       * una licenciatura nunca los ve (getModalidadesLicenciatura(carrera)).
+       * Requiere la migración 20260926120000_modalidades_diplomado.sql.
+       */
+      soloDiplomado?: boolean
     }>,
   },
 

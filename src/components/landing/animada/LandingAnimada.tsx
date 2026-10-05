@@ -70,6 +70,7 @@ import {
 } from './animacion'
 import { BOTON, CONTENEDOR, Encabezado, estiloBoton, sinFlecha } from './piezas'
 import { SeccionLicenciaturas } from './Licenciaturas'
+import { SeccionDiplomados, hayDiplomadosConocer } from './Diplomados'
 import {
   pluralEtiqueta, preguntasLicenciatura, resolverTextosLicenciaturas, textosAutoLicenciaturas, unirConO, varsLicenciatura,
   type OverridesLicenciaturasLanding,
@@ -263,6 +264,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const carrerasLic = getCarrerasLicenciatura()
   const planesLic = getDesglosesLicenciatura(config.licenciaturas)
   const hayLicenciaturas = carrerasLic.length > 0 && planesLic.length > 0
+  // Diplomados de preparación CONOCER (#212). #222: conviven con la
+  // licenciatura y van JUSTO DESPUÉS de ella, en el mismo lugar de la página.
+  const hayDiplomados = hayDiplomadosConocer()
   const etiquetaLic = hayLicenciaturas ? (carrerasLic.length > 1 ? pluralEtiqueta(getEtiquetaLicenciatura()) : getEtiquetaLicenciatura()) : ''
   const ritmosLic = hayLicenciaturas ? `${unirConO(planesLic.map(p => String(p.meses)))} meses` : ''
   /** «Secundaria y Preparatoria» · «Secundaria, Preparatoria y Licenciaturas». */
@@ -326,7 +330,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   /* ── Orden y colores de cada sección ─────────────────────────────────── */
   const presentes: Record<SeccionOpcional, boolean> = {
     dolor: L.dolor_items.length > 0,
-    licenciaturas: hayLicenciaturas,
+    licenciaturas: hayLicenciaturas || hayDiplomados,
     validez: validezActiva,
     transformacion: L.transformacion_sin.length > 0 || L.transformacion_con.length > 0,
     proceso: L.proceso_pasos.length > 0,
@@ -367,6 +371,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     { href: '#niveles', etiqueta: 'Niveles' },
     { href: '#planes', etiqueta: 'Planes' },
     ...(hayLicenciaturas ? [{ href: '#licenciaturas', etiqueta: 'Licenciaturas' }] : []),
+    ...(hayDiplomados ? [{ href: '#diplomados-conocer', etiqueta: 'Diplomados' }] : []),
     ...(validezActiva ? [{ href: '#validez', etiqueta: 'Validez oficial' }] : []),
     ...(presentes.faq ? [{ href: '#preguntas', etiqueta: 'Preguntas' }] : []),
     { href: '#contacto', etiqueta: 'Contacto' },
@@ -936,6 +941,17 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
         {hayLicenciaturas && textosLic && (
           <SeccionLicenciaturas t={tLic} tOscuro={tOscuro} fmt={dinero} canal={canal} variante={seccion('licenciaturas').variante} textos={textosLic} planes={planesLic} />
         )}
+
+        {/* ── DIPLOMADOS CONOCER — después de la licenciatura ──────────────
+            Con licenciatura, la cara clara CONTRARIA a la suya para que dos
+            secciones claras seguidas no se lean como una sola; sin ella, ocupa
+            su lugar tal cual (#212). Validez (oscuro) sigue detrás. */}
+        {hayDiplomados && (() => {
+          const vLic = seccion('licenciaturas').variante
+          const vDip = hayLicenciaturas ? (vLic === 'claro' ? 'suave' : 'claro') : vLic
+          const tDip = tokensDe(vDip, paleta)
+          return <SeccionDiplomados t={tDip} filete={tDip.decorativo} fmt={dinero} cta="Inscribirme a un diplomado" variante={vDip} />
+        })()}
 
         {/* ── 6. VALIDEZ OFICIAL MX + USA (oscuro) ────────────────────────────
             🛑 NINGÚN COLOR DE MARCA AQUÍ. Documentos, verificación y botones en
