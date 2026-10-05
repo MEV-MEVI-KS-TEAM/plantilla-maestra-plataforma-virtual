@@ -1,5 +1,6 @@
 'use client'
 
+import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, BookOpen, Lock, Clock, ChevronRight, LayoutGrid } from 'lucide-react'
@@ -20,6 +21,7 @@ interface ApiResponse {
   materias:            MateriaCard[]
   meses_desbloqueados: number
   nivel:               string
+  carrera?:            string | null
 }
 
 export default function MateriasPage() {
@@ -56,8 +58,9 @@ export default function MateriasPage() {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>Mis Materias</h2>
-          <p className="text-sm mt-0.5" style={{ color: '#64748B' }}>
-            {data?.nivel === 'preparatoria' ? 'Preparatoria' : data?.nivel === 'secundaria' ? 'Secundaria' : 'Plan de estudios'}
+          <p className="text-sm mt-0.5" style={{ color: 'var(--color-texto-secundario)' }}>
+            {/* Licenciatura o diplomado del riel: el nombre del programa (#212). */}
+            {data?.nivel === 'licenciatura' ? getPlanNombre(data?.nivel, data?.carrera) : data?.nivel === 'preparatoria' ? 'Preparatoria' : data?.nivel === 'secundaria' ? 'Secundaria' : 'Plan de estudios'}
             {' · '}Meses desbloqueados:{' '}
             <span className="font-semibold" style={{ color: 'var(--color-primario)' }}>{data?.meses_desbloqueados ?? 0}</span>
           </p>

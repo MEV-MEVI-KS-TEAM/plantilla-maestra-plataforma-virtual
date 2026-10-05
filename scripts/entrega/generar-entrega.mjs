@@ -647,13 +647,26 @@ if (CARRERAS.length) {
 
   for (const m of (LIC.modalidades || []).filter(planLicVendible)) {
     const r = deRuta.get(m.id)
+    // #222: con diplomados en el mismo riel, estos planes son solo de
+    // la licenciatura: se rotulan con ella, no con «Licenciaturas y Diplomados».
+    const lics = CARRERAS.filter(x => x.tipo !== 'diplomado')
     const nombre = r && rutasLic.length > 1
       ? `${r.nombre} — ${m.label || m.id}`
-      : CARRERAS.length === 1 ? `${CARRERAS[0].nombre} — ${m.label || m.id}`
-                              : `${ETIQUETA_PROGRAMAS} — ${m.label || m.id}`
+      : lics.length === 1 ? `${lics[0].nombre} — ${m.label || m.id}`
+                          : `${ETIQUETA_PROGRAMAS} — ${m.label || m.id}`
     modalidadesFilas.push([nombre, `${m.meses} meses`, `${mxn(m.mensualidad)}/mes`,
       ritmoDeApertura(m.materiasPorMes)])
   }
+
+  // Diplomados CONOCER de pago único con planes `soloDiplomado` en el mismo
+  // riel (#222): una fila por diplomado y plan, con su precio y su
+  // ritmo real (ceil(materias / meses)).
+  const planesDip = (LIC.modalidades || []).filter(x => x.activa !== false && x.soloDiplomado === true)
+  for (const c of CARRERAS.filter(x => x.tipo === 'diplomado' && x.precio?.publico))
+    for (const m of planesDip)
+      modalidadesFilas.push([`${c.nombre} — ${m.label || m.id}`, `${m.meses} meses`,
+        `Pago único de ${mxn(c.precio.publico)}`,
+        ritmoDeApertura(Math.ceil((Number(c.totalMaterias) || 0) / m.meses))])
 
   // Los diplomados llevan su plan y su precio en su propio bloque del config.
   const modsDip = (LIC.modalidadesDiplomado || []).filter(x => x.activa !== false)

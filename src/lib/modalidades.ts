@@ -137,6 +137,8 @@ type ModalidadBase = {
   mensualidad: number
   materiasPorMes: number
   activa?: boolean
+  /** #222: plan exclusivo de los diplomados CONOCER del riel. */
+  soloDiplomado?: boolean
 }
 
 type TablaLic = { activas?: boolean; modalidades?: readonly ModalidadBase[] } | undefined
@@ -149,15 +151,44 @@ function modalidadesLic(
 }
 
 /**
- * Modalidades de licenciatura activas, para los selectores de carrera.
- *
- * `lic`: la tabla EFECTIVA (`cfg.licenciaturas`, con los precios publicados del
- * Bloque B), para quien pinta una mensualidad. Sin ella, la de CONFIG: el
- * registro y las altas solo usan id y label, que no se publican. Los helpers
- * ACADÉMICOS de abajo siguen siempre sobre CONFIG (regla de alcance).
+ * ¿Esa carrera del riel es un diplomado CONOCER (`esDiplomado`)? Se lee del
+ * CONFIG directo para no importar licenciatura-utils (dependencia circular).
  */
-export function getModalidadesLicenciatura(lic?: unknown): readonly ModalidadBase[] {
-  return modalidadesLic(lic === undefined ? undefined : (lic as TablaLic)).filter(m => m.activa !== false)
+function carreraEsDiplomado(carrera: string | null | undefined): boolean {
+  const carreras = (CONFIG as { licenciaturas?: { carreras?: ReadonlyArray<{ slug: string; esDiplomado?: boolean }> } }).licenciaturas?.carreras ?? []
+  return carreras.some(c => c.slug === carrera && c.esDiplomado === true)
+}
+
+/**
+ * Modalidades activas del riel de licenciaturas, para los selectores de carrera.
+ *
+ * Dos formas de llamarla (#254 unifica la de la plantilla y la de #222):
+ *   · con un OBJETO (`cfg.licenciaturas`): la tabla EFECTIVA, con los precios
+ *     publicados del Bloque B, para quien pinta una mensualidad. Sin argumento,
+ *     la de CONFIG (el registro y las altas solo usan id y label).
+ *   · con una CARRERA (cadena o null): solo los planes de SU tipo de programa —
+ *     un diplomado CONOCER ve los `soloDiplomado` ('3_meses_dip'/'6_meses_dip') y
+ *     una licenciatura el resto ('6_meses_lic'/'12_meses'/'18_meses'). Una
+ *     escuela con un solo tipo de programa no cambia en nada.
+ * Los helpers ACADÉMICOS de abajo siguen siempre sobre CONFIG (regla de alcance).
+ */
+export function getModalidadesLicenciatura(licOCarrera?: unknown, carrera?: string | null): readonly ModalidadBase[] {
+  const esCarrera = typeof licOCarrera === 'string' || licOCarrera === null
+  const lic = esCarrera ? undefined : licOCarrera
+  const car = esCarrera ? (licOCarrera as string | null) : carrera
+  if (car === undefined) {
+    return modalidadesLic(lic === undefined ? undefined : (lic as TablaLic)).filter(m => m.activa !== false)
+  }
+  const dip = carreraEsDiplomado(car)
+  return modalidadesLic(lic === undefined ? undefined : (lic as TablaLic))
+    .filter(m => m.activa !== false && (m.soloDiplomado === true) === dip)
+}
+
+/** Planes de los diplomados CONOCER del riel (los `soloDiplomado`, o todos si ninguno lo declara). */
+export function getModalidadesDiplomado(): readonly ModalidadBase[] {
+  const activas = modalidadesLic().filter(m => m.activa !== false)
+  const propias = activas.filter(m => m.soloDiplomado === true)
+  return propias.length > 0 ? propias : activas
 }
 
 /**
@@ -452,7 +483,15 @@ export function getLabelByModalidad(
 ): string {
   if (!id) return ''
   const found = mods.find(m => m.id === id)
-  return found?.label ?? id
+  if (found) return found.label
+  // Modalidades del riel de licenciaturas (p. ej. '6_meses_dip' de los
+  // diplomados CONOCER, #212): sin esto el chip del alumno mostraba el id
+  // crudo (HTI #205 lo vio con '18_meses'). Solo con la tabla por defecto.
+  if (mods === CONFIG.modalidades) {
+    const lic = modalidadesLic().find(m => m.id === id)
+    if (lic) return lic.label
+  }
+  return id
 }
 
 /**

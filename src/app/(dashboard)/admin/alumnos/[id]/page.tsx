@@ -1554,7 +1554,7 @@ export default function AlumnoDetallePage() {
                   style={{ ...INPUT_STYLE, opacity: corregirForm.nivel ? 1 : 0.5 }}
                 >
                   <option value="">{corregirForm.nivel ? 'Selecciona modalidad...' : 'Primero elige nivel'}</option>
-                  {(corregirForm.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
+                  {(corregirForm.nivel === 'licenciatura' ? getModalidadesLicenciatura(corregirForm.carrera || null) : getModalidadesActivas(cfg.modalidades)).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
