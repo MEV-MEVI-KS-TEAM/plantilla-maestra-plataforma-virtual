@@ -496,6 +496,11 @@ export const CONFIG = {
   // es global, asi que prefijos distintos por curso darian numeraciones salteadas
   // dentro de cada prefijo — y un libro de folios con huecos no sirve para
   // verificar nada. B7 lo fija al provisionar.
+  // === FIRMANTE DE CONSTANCIA Y RECIBO (opcional, #254) ===
+  // Sin la clave: la constancia firma «Dirección Académica» sin nombre y el
+  // recibo no lleva firma (lo de siempre). Con ella, el nombre TAL CUAL lo dio la
+  // escuela (sin inventar apellidos) y su cargo:
+  //   firmante: { nombre: 'Nombre como lo da la escuela', cargo: 'Dirección' },
   diploma: {
     /** Prefijo del folio. Resultado: `${folioPrefijo}-00001`, `-00002`, ... */
     folioPrefijo: 'CONST',
