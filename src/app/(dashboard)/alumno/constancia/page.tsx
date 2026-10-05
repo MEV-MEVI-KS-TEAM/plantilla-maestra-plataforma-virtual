@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react'
 import { Loader2, Printer, Download } from 'lucide-react'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { CONFIG } from '@/lib/config'
+
+/**
+ * Firmante de la constancia (`CONFIG.firmante`, opcional — #254): nombre sobre el
+ * cargo. Sin la clave, «Dirección Académica» de fábrica y sin nombre.
+ */
+const FIRMANTE = (CONFIG as { firmante?: { nombre?: string; cargo?: string } }).firmante
 
 type Estado = 'Acreditada' | 'No acreditada' | 'Pendiente'
 
@@ -373,8 +380,11 @@ export default function ConstanciaPage() {
                 style={{ height: 110, width: 'auto', display: 'block', margin: '0 auto 2px' }}
               />
               <div style={{ width: 180, height: 1, background: '#cbd5e1', margin: '0 auto 8px' }} />
+              {FIRMANTE?.nombre?.trim() && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{FIRMANTE.nombre.trim()}</div>
+              )}
               <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', letterSpacing: '0.05em' }}>
-                Dirección Académica
+                {FIRMANTE?.cargo?.trim() || 'Dirección Académica'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 4 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
