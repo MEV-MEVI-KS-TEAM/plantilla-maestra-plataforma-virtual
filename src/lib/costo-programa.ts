@@ -75,7 +75,9 @@ export function costoProgramaAlumno(alumno: AlumnoPrograma, cfg: object): CostoP
   const label = typeof p.label === 'string' && p.label.trim() ? p.label.trim() : `${p.meses} meses`
   return {
     modalidadId: modalidad,
-    plan: label,
+    // La tarjeta «Tu programa» antepone «Plan»: con un label «Plan 18 meses» decía
+    // «Plan Plan 18 meses» (visto en #258 y #261). Se quita el «Plan» inicial.
+    plan: label.replace(/^plan\s+/i, ''),
     meses: p.meses,
     mensualidad: p.mensualidad,
     inscripcion,
