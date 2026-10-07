@@ -121,6 +121,36 @@ const PARA_QUIEN: Partial<Record<(typeof NIVELES)[number], string>> = {
   preparatoria: 'Para quien ya concluyó la secundaria.',
 }
 
+/**
+ * Opt-ins de la portada que no se editan desde el panel: claves OPCIONALES en la
+ * raíz de `CONFIG` (src/lib/config.ts). Se leen con un tipo opcional, así que una
+ * escuela sin estas claves compila y se ve exactamente igual que siempre.
+ */
+type ExtrasPortada = {
+  /**
+   * Tarjetas del hero LITERALES (EDUVA #264, 7-oct-2026). Sin la clave (o con un
+   * arreglo vacío), las de siempre: una por nivel con duración y «desde $Y/mes»
+   * CALCULADOS, más la de licenciaturas o «100% en línea». Para la escuela que no
+   * quiere que el primer golpe de vista sea «X meses · desde $Y».
+   *
+   *   tarjetasHero: [
+   *     { icono: 'libro',   titulo: 'Secundaria y preparatoria', detalle: 'Con validez oficial' },
+   *     { icono: 'laptop',  titulo: '100% en línea',             detalle: 'A tu ritmo, las 24 horas' },
+   *   ],
+   *
+   * `icono` es 'libro' (BookOpen, el de fábrica), 'birrete' (GraduationCap) o
+   * 'laptop' (Laptop). 🛑 El texto es literal: no anuncies servicios que el combo
+   * no incluye.
+   */
+  tarjetasHero?: ReadonlyArray<{ icono?: 'libro' | 'birrete' | 'laptop'; titulo: string; detalle: string }>
+}
+const EXTRAS = CONFIG as unknown as ExtrasPortada
+
+/** Ícono de cada tarjeta literal del hero (`tarjetasHero`). */
+const ICONO_TARJETA: Record<'libro' | 'birrete' | 'laptop', LucideIcon> = {
+  libro: BookOpen, birrete: GraduationCap, laptop: Laptop,
+}
+
 /* ─── Piezas ──────────────────────────────────────────────────────────────── */
 
 /**
@@ -389,7 +419,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
   // Tarjetas de la escena del hero: lo que vende, con precios y duraciones
   // CALCULADOS. 🛑 Ninguna ofrece servicios que el combo no incluye.
-  const tarjetasHero: Array<{ Icono: LucideIcon; titulo: string; detalle: string }> = [
+  // Con `tarjetasHero` en CONFIG (opt-in, ver ExtrasPortada) son LITERALES.
+  const tarjetasHero: Array<{ Icono: LucideIcon; titulo: string; detalle: string }> = EXTRAS.tarjetasHero?.length
+    ? EXTRAS.tarjetasHero.map(t => ({ Icono: ICONO_TARJETA[t.icono ?? 'libro'] ?? BookOpen, titulo: t.titulo, detalle: t.detalle }))
+    : [
     ...niveles.map(n => ({
       Icono: BookOpen,
       titulo: etiquetaNivel(n),
