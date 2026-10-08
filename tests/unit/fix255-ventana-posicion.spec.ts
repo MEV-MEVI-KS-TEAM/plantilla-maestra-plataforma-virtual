@@ -206,8 +206,10 @@ test('6. la migración: posición dense, comparación ESTRICTA (nunca <=), compu
   // Preflight sin casts constantes a regprocedure (#241).
   expect(sql).not.toMatch(/'::regprocedure/)
   // Nombre y fecha: después de todo lo que había y fuera del camino de #287.
+  // (Era la última; desde la R2 —20261008120000— va justo después de la última que había, E3.)
   const migs = readdirMigraciones()
-  expect(migs[migs.length - 1]).toBe('20260930120000_fix255_ventana_por_posicion.sql')
+  expect(migs.indexOf('20260930120000_fix255_ventana_por_posicion.sql')).toBe(migs.indexOf('20260929120000_e3_buckets_de_la_app.sql') + 1)
+  expect(migs.indexOf('20260929120000_e3_buckets_de_la_app.sql')).toBeGreaterThan(0)
 })
 
 function archivosTs(dir: string): string[] {
