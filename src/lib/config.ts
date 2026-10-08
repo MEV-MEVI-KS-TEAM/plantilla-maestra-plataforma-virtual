@@ -234,11 +234,12 @@ export const CONFIG = {
   // TIPOS_DIPLOMADO en src/app/(dashboard)/alumno/documentos/page.tsx) y son
   // las que mandan.
   //
-  // Y NO COINCIDEN: aquí figura «Acta de Nacimiento» y la app no la pide. Por
-  // eso no basta con enchufar esta lista a la pantalla — a las ~144 escuelas
-  // ya sembradas les aparecería de golpe un documento obligatorio nuevo, con
-  // alumnos a medio expediente. Unificarlas es un cambio de producto, no de
-  // config: hay que decidir primero cuál de las dos listas es la buena.
+  // Desde el soporte IVS del 7-oct-2026 (PLAYBOOK Bug 273) «Acta de Nacimiento»
+  // también está en TIPOS_SECUNDARIA y TIPOS_PREPA, como una tarjeta más, sin
+  // bloqueo. Con eso secundaria, preparatoria y licenciatura ya coinciden en
+  // CONTENIDO con la pantalla; solo difieren en el orden, en la etiqueta de la
+  // foto («fondo blanco») y en que aquí no hay diplomado. Enchufar esta lista a
+  // la pantalla sigue siendo un cambio de producto, no de config.
   //
   // Se mantiene, y se le agrega `licenciatura`, para que el día que se unifique
   // el catálogo esté completo y nadie tenga que reconstruirlo.
