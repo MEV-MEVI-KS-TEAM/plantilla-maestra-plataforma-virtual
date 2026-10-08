@@ -6,6 +6,7 @@ import { esSoloCursos } from '@/lib/modo'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { exigirSeccion } from '@/lib/permisos-panel'
+import { contarDocumentosPendientes } from '@/lib/admin/documentos-admin'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function getServiceClient() {
@@ -131,11 +132,11 @@ export default async function AdminDashboardPage() {
     .select('*', { count: 'exact', head: true })
     .gte('created_at', inicioMes.toISOString())
 
-  // Documentos pendientes (tabla IVS: documentos_alumno + verificado)
-  const { count: docsPendientes } = await supabase
-    .from('documentos_alumno')
-    .select('*', { count: 'exact', head: true })
-    .eq('verificado', false)
+  // Documentos pendientes de revisión: por `estado` donde existe (lo que pintan
+  // /admin/documentos y el expediente; en una base híbrida `verificado` se
+  // desfasa) y por `verificado = false` en el esquema canónico. Ver
+  // contarDocumentosPendientes.
+  const docsPendientes = await contarDocumentosPendientes(supabase)
 
   // Últimos 5 alumnos
   const { data: recientes } = await supabase

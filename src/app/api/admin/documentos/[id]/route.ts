@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import {
-  buildDocEstadoUpdates,
+  aplicarDocEstado,
   documentoStoragePath,
   mapDocumentoAlumnoRow,
   type DocEstadoAdmin,
@@ -105,22 +105,14 @@ export async function PATCH(
     // #187: documentos de ALUMNOS. Sobre personal (o uno mismo) → 403.
     const objetivo = await cargarAlumnoObjetivo(admin, params.id, user.id)
     if (!objetivo.ok) return respuestaObjetivo(objetivo)
-    const { nuevo, legacy } = buildDocEstadoUpdates(estado, comentario ?? null)
-
-    let { error } = await admin
-      .from('documentos_alumno')
-      .update(nuevo)
-      .eq('id', documentoId)
-      .eq('alumno_id', objetivo.alumno.id)
-
-    if (error) {
-      const second = await admin
+    // aprobado ⇒ verificado = true: híbrido → nuevo → legacy, y solo se pasa a la
+    // forma siguiente si la columna no existe (42703 / PGRST204). Ver aplicarDocEstado.
+    const { error } = await aplicarDocEstado(estado, comentario ?? null, payload =>
+      admin
         .from('documentos_alumno')
-        .update(legacy)
+        .update(payload)
         .eq('id', documentoId)
-        .eq('alumno_id', objetivo.alumno.id)
-      error = second.error
-    }
+        .eq('alumno_id', objetivo.alumno.id))
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoDeFila, respuestaObjetivo } from '@/lib/admin-alumno'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
-import { buildDocEstadoUpdates, type DocEstadoAdmin } from '@/lib/admin/documentos-admin'
+import { aplicarDocEstado, type DocEstadoAdmin } from '@/lib/admin/documentos-admin'
 
 /**
  * PUT /api/admin/documentos/[id]/verificar
@@ -35,20 +35,13 @@ export async function PUT(
     // #187: el documento es de un ALUMNO. Sobre el de personal (o el propio) → 403.
     const objetivo = await cargarAlumnoDeFila(admin, 'documentos_alumno', params.id, user.id, 'Documento no encontrado')
     if (!objetivo.ok) return respuestaObjetivo(objetivo)
-    const { nuevo, legacy } = buildDocEstadoUpdates(estado, comentario ?? null)
-
-    let { error } = await admin
-      .from('documentos_alumno')
-      .update(nuevo)
-      .eq('id', params.id)
-
-    if (error) {
-      const second = await admin
+    // aprobado ⇒ verificado = true: híbrido → nuevo → legacy, y solo se pasa a la
+    // forma siguiente si la columna no existe (42703 / PGRST204). Ver aplicarDocEstado.
+    const { error } = await aplicarDocEstado(estado, comentario ?? null, payload =>
+      admin
         .from('documentos_alumno')
-        .update(legacy)
-        .eq('id', params.id)
-      error = second.error
-    }
+        .update(payload)
+        .eq('id', params.id))
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
