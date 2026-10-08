@@ -18,6 +18,8 @@ const raiz = process.cwd()
 const leer = (p: string) =>
   readFileSync(join(raiz, p), 'utf8').replace(/\r\n/g, '\n')
 
+const sinComentarios = (s: string) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 const LIT = /'((?:[^']|'')*)'/g
 const literales = (s: string) => [...s.matchAll(LIT)].map(m => m[1].replace(/''/g, "'"))
 
@@ -27,7 +29,7 @@ test('el alumno de secundaria y de prepa ve «Acta de nacimiento» en sus docume
     const ini = page.indexOf(`const ${lista}`)
     expect(ini, lista).toBeGreaterThan(-1)
     const abre = page.indexOf('= [', ini)   // salta el `DocTipo[]` del tipo
-    const bloque = page.slice(abre, page.indexOf(']', abre))
+    const bloque = sinComentarios(page.slice(abre, page.indexOf(']', abre)))
     expect(bloque, lista).toContain("'acta_nacimiento'")
   }
   // y la API acepta el tipo que la pantalla ofrece
@@ -37,35 +39,44 @@ test('el alumno de secundaria y de prepa ve «Acta de nacimiento» en sus docume
 test('ninguna lección del seed queda cortada en un apóstrofo', () => {
   const seed = leer('scripts/seed-contenido-semanas.sql')
   const cortadas: string[] = []
-  for (const linea of seed.split('\n')) {
+  const lineas = seed.split('\n').filter(l => l.startsWith('UPDATE semanas'))
+  let revisadas = 0
+  for (const linea of lineas) {
     const m = linea.match(/^UPDATE semanas SET contenido = '((?:[^']|'')*)' WHERE titulo = '((?:[^']|'')*)'/)
     if (!m) continue
+    revisadas++
     const texto = m[1].replace(/''/g, "'")
     // Una cita que cierra («…es la paz.'») es legítima; un apóstrofo sin cierre de frase es el corte.
     if (/'$/.test(texto) && !/[.!?]'$/.test(texto)) cortadas.push(m[2].replace(/''/g, "'"))
   }
+  // Si el formato del seed cambia, la prueba no puede quedar en verde sin revisar nada.
+  expect(lineas.length).toBeGreaterThan(0)
+  expect(revisadas).toBe(lineas.length)
   expect(cortadas).toEqual([])
 })
 
 test('ninguna explicación del quiz nombra una opción distinta de su clave', () => {
   const seed = leer('scripts/seed-quiz-semanal-universal.sql')
   const contradicen: string[] = []
+  let filas = 0
   for (const linea of seed.split('\n')) {
     if (!/^\s*\(v_semana_id, '/.test(linea)) continue
-    // (v_semana_id, pregunta, a, b, c, d, clave, orden, explicacion)
+    // (v_semana_id, pregunta, a, b, c, d, clave, orden, explicacion) — opcion_d puede faltar
     const lits = literales(linea)
-    if (lits.length < 7) continue
+    expect(lits.length, `fila del quiz sin parsear: ${linea.slice(0, 80)}`).toBeGreaterThanOrEqual(6)
+    filas++
     const clave = lits[lits.length - 2].trim().toLowerCase()
     const explicacion = lits[lits.length - 1]
     // Letra MAYÚSCULA («option D», «opción B») o minúscula con paréntesis («inciso c)»):
     // así «la respuesta a la pregunta» o «la opción a seguir» no cuentan.
     const menciones = [
-      ...explicacion.matchAll(/(?:option|opción|opcion|inciso)\s+\(?([A-D])\)?(?![\wá-ú])/g),
-      ...explicacion.matchAll(/(?:option|opción|opcion|inciso)\s+([a-d])\)/g),
+      ...explicacion.matchAll(/(?:[Oo]ption|[Oo]pci[oó]n|[Ii]nciso)\s+\(?([A-D])\)?(?![\wá-ú])/g),
+      ...explicacion.matchAll(/(?:[Oo]ption|[Oo]pci[oó]n|[Ii]nciso)\s+([a-d])\)/g),
     ]
     for (const m of menciones) {
       if (m[1].toLowerCase() !== clave) contradicen.push(`${lits[0]} → clave ${clave}, explicación dice ${m[0]}`)
     }
   }
+  expect(filas).toBeGreaterThan(0)
   expect(contradicen).toEqual([])
 })

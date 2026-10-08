@@ -234,10 +234,12 @@ export const CONFIG = {
   // TIPOS_DIPLOMADO en src/app/(dashboard)/alumno/documentos/page.tsx) y son
   // las que mandan.
   //
-  // «Acta de Nacimiento» ya está también en TIPOS_SECUNDARIA y TIPOS_PREPA
-  // (soporte IVS 7-oct-2026: «no aparece el acta», PLAYBOOK Bug 273). Es una
-  // tarjeta más, sin bloqueo, igual que las demás. Aun así esta lista sigue sin
-  // leerse: unificarla con la pantalla es un cambio de producto, no de config.
+  // Desde el soporte IVS del 7-oct-2026 (PLAYBOOK Bug 273) «Acta de Nacimiento»
+  // también está en TIPOS_SECUNDARIA y TIPOS_PREPA, como una tarjeta más, sin
+  // bloqueo. Con eso secundaria, preparatoria y licenciatura ya coinciden en
+  // CONTENIDO con la pantalla; solo difieren en el orden, en la etiqueta de la
+  // foto («fondo blanco») y en que aquí no hay diplomado. Enchufar esta lista a
+  // la pantalla sigue siendo un cambio de producto, no de config.
   //
   // Se mantiene, y se le agrega `licenciatura`, para que el día que se unifique
   // el catálogo esté completo y nadie tenga que reconstruirlo.
