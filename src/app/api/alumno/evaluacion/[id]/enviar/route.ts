@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoAcceso, tieneAccesoEvaluacion } from '@/lib/acceso-materias'
-import { calificarEvaluacion, leerPreguntasEvaluacion } from '@/lib/evaluaciones/examen-mensual'
+import { calificarEvaluacion, leerPreguntasEvaluacion, validarEnvio } from '@/lib/evaluaciones/examen-mensual'
 
 export async function POST(
   request: NextRequest,
@@ -69,11 +69,7 @@ export async function POST(
       return NextResponse.json({ error: 'No tienes más intentos disponibles' }, { status: 400 })
     }
 
-    // Respuestas del alumno: índice numérico por pregunta_id. Lo que no sea un
-    // índice válido para ESA pregunta cuenta como no contestado.
-    const body = await request.json().catch(() => ({}))
-    const respuestasAlumno: Record<string, unknown> =
-      body && typeof body.respuestas === 'object' && body.respuestas !== null ? body.respuestas : {}
+    const body = await request.json().catch(() => null)
 
     // SIN filtro de `activa` a propósito: esto CALIFICA lo que el alumno ya
     // respondió. Si el admin archiva una pregunta con el examen abierto,
@@ -83,22 +79,26 @@ export async function POST(
       return NextResponse.json({ error: 'Error al obtener preguntas' }, { status: 500 })
     }
     const pregs = leidas.preguntas
+    if (!pregs.some(p => p.activa !== false)) {
+      return NextResponse.json({ error: 'Esta evaluación no tiene preguntas' }, { status: 409 })
+    }
     const numeroIntento = usados + 1
+
+    // R2 (soporte IVS, Bug 69): el envío se valida ANTES de calificar y de gastar
+    // el intento, y tiene que venir COMPLETO (todas las preguntas activas, ids de
+    // este examen, índices válidos). Un envío vacío era el oráculo; uno parcial,
+    // con 3 intentos, sacaba «bits» de la clave. La pantalla ya lo exigía.
+    const validado = validarEnvio(pregs, (body as { respuestas?: unknown } | null)?.respuestas)
+    if (!validado.ok) {
+      return NextResponse.json({ error: validado.error }, { status: 400 })
+    }
+    const respuestasAlumno: Record<string, unknown> = validado.respuestas
 
     // Primera pasada SIN revelar, solo para saber si aprobó. Se revela (✓/✗ y la
     // clave de lo contestado) solo si este envío CIERRA el examen: aprobó o era
     // su último intento (K-d2 + K-d3). Mientras pueda volver a presentar, ve su
     // puntaje y nada más.
     const previo = calificarEvaluacion(pregs, respuestasAlumno, { revelar: false })
-
-    // Un envío sin una sola respuesta válida no se califica ni consume intento:
-    // era el oráculo. Se valida ANTES de insertar el intento.
-    if (previo.contestadas === 0) {
-      return NextResponse.json(
-        { error: 'Contesta al menos una pregunta antes de enviar la evaluación.' },
-        { status: 400 }
-      )
-    }
 
     const revelar = previo.acreditado || numeroIntento >= ev.intentos_permitidos
     const { correctas, total: totalPregs, puntaje, acreditado, detalle } =
@@ -116,6 +116,11 @@ export async function POST(
       })
 
     if (intentoError) {
+      // 23505 = índice único (alumno, evaluación, numero_intento) de la R2: otro
+      // envío simultáneo ya registró este intento. Nada de un intento de regalo.
+      if (intentoError.code === '23505') {
+        return NextResponse.json({ error: 'Este intento ya se registró. Recarga la página.' }, { status: 409 })
+      }
       return NextResponse.json({ error: intentoError.message }, { status: 500 })
     }
 
@@ -161,9 +166,10 @@ export async function POST(
       }
     }
 
+    // Logros: con el service role (R2: el alumno ya no inserta logros_alumno por /rest/v1).
     // Logro: primer examen
     if (usados === 0) {
-      await supabase
+      await admin
         .from('logros_alumno')
         .upsert(
           { alumno_id: alumno.id, tipo_logro: 'primer_examen' },
@@ -173,7 +179,7 @@ export async function POST(
 
     // Logro: examen perfecto
     if (puntaje === 100) {
-      await supabase
+      await admin
         .from('logros_alumno')
         .upsert(
           { alumno_id: alumno.id, tipo_logro: 'examen_perfecto' },
@@ -227,7 +233,7 @@ export async function POST(
           const { data: hermanas } = await hermanasQuery
           const idsMes = [...new Set((hermanas ?? []).map(r => (r as { materia_id: string }).materia_id))]
           if (idsMes.length > 0 && idsMes.every(id => acreditadasSet.has(id))) {
-            await supabase.from('logros_alumno').upsert(
+            await adminLogros.from('logros_alumno').upsert(
               { alumno_id: alumno.id, tipo_logro: 'mes_completado' },
               { onConflict: 'alumno_id,tipo_logro', ignoreDuplicates: true })
           }
@@ -249,7 +255,7 @@ export async function POST(
 
         const { count: totalNivel } = await totalQuery
         if (totalNivel && acreditadasSet.size >= Math.ceil(totalNivel / 2)) {
-          await supabase.from('logros_alumno').upsert(
+          await adminLogros.from('logros_alumno').upsert(
             { alumno_id: alumno.id, tipo_logro: 'mitad_carrera' },
             { onConflict: 'alumno_id,tipo_logro', ignoreDuplicates: true })
         }

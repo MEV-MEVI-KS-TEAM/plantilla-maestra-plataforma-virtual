@@ -1,5 +1,8 @@
 -- Ejecutar en Supabase → SQL Editor
--- 1) Políticas RLS de logros_alumno (debes ver SELECT + INSERT alumno + ALL admin)
+-- 1) Políticas RLS de logros_alumno (debes ver SELECT propio + ALL admin + el techo
+--    RESTRICTIVE «logros: techo propio o admin (R2)». Desde la R2 (soporte IVS,
+--    8-oct-2026) ya NO hay INSERT del alumno: los logros los escribe el servidor
+--    con el service role; ver 20261008120000_r2_escritura_solo_servidor.sql)
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
 FROM pg_policies
 WHERE tablename = 'logros_alumno'

@@ -398,7 +398,7 @@ WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — C
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un número primo?', 'Un número siempre positivo mayor que 10', 'Un número que termina en 0', 'Un número divisible por 2', 'Un número divisible solo por 1 y por sí mismo', 'd', 2
+SELECT e.id, '¿Qué es un número primo?', 'Un número siempre positivo mayor que 10', 'Un número que termina en 0', 'Un número divisible por 2', 'Un número mayor que 1 divisible solo por 1 y por sí mismo', 'd', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1142,7 +1142,7 @@ WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué teorema relaciona los lados de un triángulo rectángulo?', 'Teorema de Thales', 'Teorema de Tales', 'Teorema de Euclides', 'Teorema de Pitágoras', 'd', 6
+SELECT e.id, '¿Qué teorema relaciona los lados de un triángulo rectángulo?', 'Teorema del valor medio', 'Teorema de Tales', 'Teorema de Bayes', 'Teorema de Pitágoras', 'd', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1202,7 +1202,7 @@ WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemática
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la regla de la cadena en derivación?', 'Una técnica para derivar funciones compuestas: [f(g(x))] = f(g(x))·g(x)', 'Una propiedad de las series numéricas', 'Una fórmula para calcular integrales', 'Una propiedad de los logaritmos', 'a', 6
+SELECT e.id, '¿Qué es la regla de la cadena en derivación?', 'Una técnica para derivar funciones compuestas: [f(g(x))]'' = f''(g(x))·g''(x)', 'Una propiedad de las series numéricas', 'Una fórmula para calcular integrales', 'Una propiedad de los logaritmos', 'a', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1214,13 +1214,13 @@ WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemática
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué indica que f(x) > 0 en un intervalo?', 'La función es creciente en ese intervalo', 'La función es constante en ese intervalo', 'La función tiene un mínimo en ese punto', 'La función decrece en ese intervalo', 'a', 8
+SELECT e.id, '¿Qué indica que f''(x) > 0 en un intervalo?', 'La función es creciente en ese intervalo', 'La función es constante en ese intervalo', 'La función tiene un mínimo en ese punto', 'La función decrece en ese intervalo', 'a', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si f(x) = 4x - 6, ¿en qué punto la función f(x) = 2x² - 6x tiene un mínimo?', 'x = 4', 'x = 6', 'x = 2', 'x = 1.5', 'd', 9
+SELECT e.id, 'Si f''(x) = 4x - 6, ¿en qué punto la función f(x) = 2x² - 6x tiene un mínimo?', 'x = 4', 'x = 6', 'x = 2', 'x = 1.5', 'd', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1484,7 +1484,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? Una persona con estilo de aprendizaje auditivo aprende mejor con diagramas y mapas mentales.', 'Verdadero', 'Falso', '—', '—', 'b', 2
+SELECT e.id, '¿Verdadero o Falso? Una persona con estilo de aprendizaje auditivo aprende mejor con diagramas y mapas mentales.', 'Verdadero', 'Falso', '', '', 'b', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1520,7 +1520,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? Subrayar todo el texto es una técnica de estudio muy efectiva.', 'Verdadero', 'Falso', '—', '—', 'b', 5
+SELECT e.id, '¿Verdadero o Falso? Subrayar todo el texto es una técnica de estudio muy efectiva.', 'Verdadero', 'Falso', '', '', 'b', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1562,7 +1562,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? Un hábito generalmente se forma después de 21-30 días de repetición consistente.', 'Verdadero', 'Falso', '—', '—', 'a', 8
+SELECT e.id, '¿Verdadero o Falso? En promedio, un hábito tarda unos dos meses de práctica diaria en volverse automático, y el plazo varía de persona a persona.', 'Verdadero', 'Falso', '', '', 'a', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1592,7 +1592,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? La técnica Feynman consiste en explicar un tema como si se lo enseñaras a un niño.', 'Verdadero', 'Falso', '—', '—', 'a', 11
+SELECT e.id, '¿Verdadero o Falso? La técnica Feynman consiste en explicar un tema como si se lo enseñaras a un niño.', 'Verdadero', 'Falso', '', '', 'a', 11
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1610,7 +1610,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? En la educación virtual, la responsabilidad del aprendizaje es 100% del alumno.', 'Verdadero', 'Falso', '—', '—', 'a', 14
+SELECT e.id, '¿Verdadero o Falso? En la educación virtual, la responsabilidad del aprendizaje es 100% del alumno.', 'Verdadero', 'Falso', '', '', 'a', 14
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;

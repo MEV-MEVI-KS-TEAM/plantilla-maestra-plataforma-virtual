@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { contarDocumentosPendientes } from '@/lib/admin/documentos-admin'
 
 /**
  * GET /api/admin/stats
@@ -24,7 +25,7 @@ export async function GET() {
       { count: totalAlumnos },
       { count: alumnosActivos },
       { count: pendientesPago },
-      { count: docsPendientes },
+      docsPendientes,
     ] = await Promise.all([
       admin.from('alumnos').select('*', { count: 'exact', head: true }),
       admin
@@ -35,10 +36,9 @@ export async function GET() {
         .from('alumnos')
         .select('*', { count: 'exact', head: true })
         .eq('inscripcion_pagada', false),
-      admin
-        .from('documentos_alumno')
-        .select('*', { count: 'exact', head: true })
-        .eq('verificado', false),
+      // Por `estado` donde existe y por `verificado` en el esquema canonico,
+      // igual que el dashboard (ver contarDocumentosPendientes).
+      contarDocumentosPendientes(admin),
     ])
 
     return NextResponse.json({

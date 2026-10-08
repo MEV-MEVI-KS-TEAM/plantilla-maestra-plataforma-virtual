@@ -1201,12 +1201,6 @@ CREATE POLICY "constancias: ver propias" ON public.constancias FOR SELECT USING 
 CREATE POLICY "documentos: admin gestiona" ON public.documentos_alumno USING (public.es_admin());
 
 --
--- Name: documentos_alumno documentos: subir propios; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "documentos: subir propios" ON public.documentos_alumno FOR INSERT WITH CHECK ((alumno_id = auth.uid()));
-
---
 -- Name: documentos_alumno documentos: ver propios; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1283,12 +1277,6 @@ ALTER TABLE public.intentos_evaluacion ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "logros: admin gestiona" ON public.logros_alumno USING (public.es_admin());
 
 --
--- Name: logros_alumno logros: insertar propios; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "logros: insertar propios" ON public.logros_alumno FOR INSERT WITH CHECK ((alumno_id = auth.uid()));
-
---
 -- Name: logros_alumno logros: ver propios; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1340,7 +1328,7 @@ CREATE POLICY "meses_contenido: lectura autenticados" ON public.meses_contenido 
 -- Name: notas_alumno notas: actualizar propias; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "notas: actualizar propias" ON public.notas_alumno FOR UPDATE USING ((alumno_id = auth.uid()));
+CREATE POLICY "notas: actualizar propias" ON public.notas_alumno FOR UPDATE USING ((alumno_id = auth.uid())) WITH CHECK ((alumno_id = auth.uid()));
 
 --
 -- Name: notas_alumno notas: gestionar propias; Type: POLICY; Schema: public; Owner: -
@@ -1383,22 +1371,10 @@ CREATE POLICY "preguntas: techo solo admin (D22d)" ON public.preguntas
   USING (public.es_admin()) WITH CHECK (public.es_admin());
 
 --
--- Name: progreso_semanas progreso: actualizar propio progreso; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "progreso: actualizar propio progreso" ON public.progreso_semanas FOR UPDATE USING ((alumno_id = auth.uid()));
-
---
 -- Name: progreso_semanas progreso: admin gestiona; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "progreso: admin gestiona" ON public.progreso_semanas USING (public.es_admin());
-
---
--- Name: progreso_semanas progreso: registrar propio progreso; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "progreso: registrar propio progreso" ON public.progreso_semanas FOR INSERT WITH CHECK ((alumno_id = auth.uid()));
 
 --
 -- Name: progreso_semanas progreso: ver propio progreso; Type: POLICY; Schema: public; Owner: -
@@ -1448,18 +1424,6 @@ DROP POLICY IF EXISTS "quiz_semana: techo solo admin (D22d)" ON public.quiz_sema
 CREATE POLICY "quiz_semana: techo solo admin (D22d)" ON public.quiz_semana
   AS RESTRICTIVE FOR ALL TO anon, authenticated
   USING (public.es_admin()) WITH CHECK (public.es_admin());
-
---
--- Name: racha_actividad racha: actualizar propia; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "racha: actualizar propia" ON public.racha_actividad FOR UPDATE USING ((alumno_id = auth.uid()));
-
---
--- Name: racha_actividad racha: insertar propia; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "racha: insertar propia" ON public.racha_actividad FOR INSERT WITH CHECK ((alumno_id = auth.uid()));
 
 --
 -- Name: racha_actividad racha: ver propia; Type: POLICY; Schema: public; Owner: -
@@ -1519,7 +1483,7 @@ ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
 -- Name: usuarios usuarios: actualizar propio perfil; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "usuarios: actualizar propio perfil" ON public.usuarios FOR UPDATE USING ((id = auth.uid()));
+CREATE POLICY "usuarios: actualizar propio perfil" ON public.usuarios FOR UPDATE USING ((id = auth.uid())) WITH CHECK ((id = auth.uid()));
 
 --
 -- Name: usuarios usuarios: admin puede insertar; Type: POLICY; Schema: public; Owner: -
@@ -2941,6 +2905,139 @@ DROP POLICY IF EXISTS "quiz_respuestas: techo propio o admin (D22d)" ON public.q
 CREATE POLICY "quiz_respuestas: techo propio o admin (D22d)" ON public.quiz_respuestas
   AS RESTRICTIVE FOR SELECT TO anon, authenticated
   USING (alumno_id = auth.uid() OR public.es_admin());
+
+-- ── R2 (soporte IVS, 8-oct-2026): lo que da avance, logros, calificación o ─────
+-- acceso solo lo escribe el servidor. Igual a
+-- supabase/migrations/20261008120000_r2_escritura_solo_servidor.sql (allí está el
+-- porqué de cada parte). Va AL FINAL: los GRANT de fábrica de Supabase llegan al
+-- crear cada tabla y el bloque recorre las que existen. Lo vigilan los CHECK 32,
+-- 33 y 34; lo prueba con RLS real scripts/verificar-schema/explotaciones-r2.mjs.
+DROP POLICY IF EXISTS "progreso: registrar propio progreso"  ON public.progreso_semanas;
+DROP POLICY IF EXISTS "progreso: actualizar propio progreso" ON public.progreso_semanas;
+DROP POLICY IF EXISTS "logros: insertar propios"             ON public.logros_alumno;
+DROP POLICY IF EXISTS "racha: insertar propia"               ON public.racha_actividad;
+DROP POLICY IF EXISTS "racha: actualizar propia"             ON public.racha_actividad;
+DROP POLICY IF EXISTS "documentos: subir propios"            ON public.documentos_alumno;
+
+DO $r2$
+DECLARE
+  r   RECORD;
+  v_t TEXT;
+BEGIN
+  -- Solo las escribe el servidor: sin INSERT/UPDATE/DELETE/TRUNCATE con sesión
+  -- (de tabla y de columna); el SELECT se queda y lo acota el techo de abajo.
+  FOREACH v_t IN ARRAY ARRAY['intentos_evaluacion', 'calificaciones', 'quiz_respuestas',
+                             'progreso_semanas', 'logros_alumno', 'racha_actividad',
+                             'alumnos', 'documentos_alumno', 'constancias'] LOOP
+    EXECUTE format('REVOKE ALL ON public.%I FROM anon, PUBLIC', v_t);
+    EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.%I FROM authenticated', v_t);
+    FOR r IN SELECT a.attname FROM pg_attribute a
+              WHERE a.attrelid = to_regclass('public.' || v_t) AND a.attnum > 0 AND NOT a.attisdropped LOOP
+      EXECUTE format('REVOKE INSERT (%1$I), UPDATE (%1$I) ON public.%2$I FROM anon, authenticated', r.attname, v_t);
+    END LOOP;
+    EXECUTE format('GRANT SELECT ON public.%I TO authenticated', v_t);
+    EXECUTE format('GRANT ALL ON public.%I TO service_role', v_t);
+  END LOOP;
+  -- Contenido: lo edita el panel con el service role.
+  FOREACH v_t IN ARRAY ARRAY['materias', 'meses_contenido', 'semanas', 'semana_materiales',
+                             'evaluaciones', 'glosario_materia', 'preguntas', 'quiz_semana'] LOOP
+    EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.%I FROM anon, authenticated', v_t);
+    FOR r IN SELECT a.attname FROM pg_attribute a
+              WHERE a.attrelid = to_regclass('public.' || v_t) AND a.attnum > 0 AND NOT a.attisdropped LOOP
+      EXECUTE format('REVOKE INSERT (%1$I), UPDATE (%1$I) ON public.%2$I FROM anon, authenticated', r.attname, v_t);
+    END LOOP;
+    EXECUTE format('GRANT ALL ON public.%I TO service_role', v_t);
+  END LOOP;
+  -- usuarios (Bug 52 + 220): sin INSERT/DELETE; UPDATE solo de las columnas de perfil.
+  FOR r IN SELECT a.attname FROM pg_attribute a
+            WHERE a.attrelid = 'public.usuarios'::regclass AND a.attnum > 0 AND NOT a.attisdropped LOOP
+    EXECUTE format('REVOKE INSERT (%1$I), UPDATE (%1$I) ON public.usuarios FROM anon, authenticated', r.attname);
+  END LOOP;
+  -- Las funciones de trigger no necesitan EXECUTE de quien escribe para dispararse.
+  FOR r IN SELECT p.oid::regprocedure AS fn FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.prorettype = 'trigger'::regtype LOOP
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon, authenticated', r.fn);
+  END LOOP;
+  -- anon no escribe en public (salvo el INSERT que una política TO anon pide a
+  -- propósito: keep_alive_log, Bug 46); nadie con sesión hace TRUNCATE.
+  FOR r IN
+    SELECT c.relname,
+           EXISTS (SELECT 1 FROM pg_policies p
+                    WHERE p.schemaname = 'public' AND p.tablename = c.relname
+                      AND p.permissive = 'PERMISSIVE' AND p.cmd IN ('INSERT', 'ALL')
+                      AND p.roles @> ARRAY['anon']::name[]) AS insert_anon
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+  LOOP
+    IF r.insert_anon THEN
+      EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES ON public.%I FROM anon', r.relname);
+    ELSE
+      EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES ON public.%I FROM anon', r.relname);
+    END IF;
+    EXECUTE format('REVOKE TRUNCATE, TRIGGER, REFERENCES ON public.%I FROM authenticated', r.relname);
+  END LOOP;
+END
+$r2$;
+
+REVOKE ALL ON public.usuarios FROM anon, PUBLIC;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.usuarios FROM authenticated;
+GRANT  UPDATE (nombre, apellidos, telefono, foto_url) ON public.usuarios TO authenticated;
+GRANT  SELECT ON public.usuarios TO authenticated;
+GRANT  ALL    ON public.usuarios TO service_role;
+
+-- notas_alumno: el alumno escribe SUS apuntes (no dan acceso ni calificación).
+REVOKE ALL ON public.notas_alumno FROM anon, PUBLIC;
+REVOKE DELETE, TRUNCATE ON public.notas_alumno FROM authenticated;
+GRANT  SELECT, INSERT, UPDATE ON public.notas_alumno TO authenticated;
+GRANT  ALL ON public.notas_alumno TO service_role;
+
+-- generar_matricula() solo la llama el trigger de alta (con el service role).
+REVOKE EXECUTE ON FUNCTION public.generar_matricula() FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.generar_matricula() TO service_role;
+
+-- Contra los envíos simultáneos: 4 POST al quiz (uno por opción) o dos envíos
+-- del último intento del examen. La app trata el 23505.
+CREATE UNIQUE INDEX IF NOT EXISTS quiz_respuestas_alumno_quiz_uniq
+  ON public.quiz_respuestas (alumno_id, quiz_id);
+CREATE UNIQUE INDEX IF NOT EXISTS intentos_evaluacion_alumno_eval_num_uniq
+  ON public.intentos_evaluacion (alumno_id, evaluacion_id, numero_intento);
+
+-- Techos RESTRICTIVE de lectura «propio o admin»: ninguna permisiva vieja o de
+-- drift ensancha lo que una sesión lee (intentos, quiz_respuestas y usuarios ya
+-- tienen los de D22c/D22d).
+DROP POLICY IF EXISTS "calificaciones: techo propio o admin (R2)" ON public.calificaciones;
+CREATE POLICY "calificaciones: techo propio o admin (R2)" ON public.calificaciones
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "progreso: techo propio o admin (R2)" ON public.progreso_semanas;
+CREATE POLICY "progreso: techo propio o admin (R2)" ON public.progreso_semanas
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "logros: techo propio o admin (R2)" ON public.logros_alumno;
+CREATE POLICY "logros: techo propio o admin (R2)" ON public.logros_alumno
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "racha: techo propio o admin (R2)" ON public.racha_actividad;
+CREATE POLICY "racha: techo propio o admin (R2)" ON public.racha_actividad
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "documentos: techo propio o admin (R2)" ON public.documentos_alumno;
+CREATE POLICY "documentos: techo propio o admin (R2)" ON public.documentos_alumno
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "constancias: techo propio o admin (R2)" ON public.constancias;
+CREATE POLICY "constancias: techo propio o admin (R2)" ON public.constancias
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "alumnos: techo propio o admin (R2)" ON public.alumnos;
+CREATE POLICY "alumnos: techo propio o admin (R2)" ON public.alumnos
+  AS RESTRICTIVE FOR SELECT TO anon, authenticated
+  USING (id = auth.uid() OR public.es_admin());
+DROP POLICY IF EXISTS "notas: techo propio o admin (R2)" ON public.notas_alumno;
+CREATE POLICY "notas: techo propio o admin (R2)" ON public.notas_alumno
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (alumno_id = auth.uid() OR public.es_admin())
+  WITH CHECK (alumno_id = auth.uid() OR public.es_admin());
 
 -- ── 9. PostgREST: recargar el schema cache ──────────────────────────────────
 -- Sin esto, las RPC nuevas responden PGRST202 ("function not found") hasta que

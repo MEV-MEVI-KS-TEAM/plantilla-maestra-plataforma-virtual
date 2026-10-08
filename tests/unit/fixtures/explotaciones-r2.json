@@ -1,0 +1,1574 @@
+{
+  "generado": "2026-10-08",
+  "refAntes": "260fb8a",
+  "migracionSha256": "8ff413dc691140033d97445bf6710a545e18d14afdfd0a8fae9d5ca173902635",
+  "explotaciones": [
+    {
+      "id": "a_intento_forjado",
+      "quien": "A"
+    },
+    {
+      "id": "a_calificacion_forjada",
+      "quien": "A"
+    },
+    {
+      "id": "a_calificacion_acreditada",
+      "quien": "A"
+    },
+    {
+      "id": "b_clave_examen",
+      "quien": "A"
+    },
+    {
+      "id": "b_clave_quiz",
+      "quien": "A"
+    },
+    {
+      "id": "b_clave_quiz_anon",
+      "quien": "anon"
+    },
+    {
+      "id": "d_quiz_carrera",
+      "quien": "service_role"
+    },
+    {
+      "id": "d_intento_doble",
+      "quien": "service_role"
+    },
+    {
+      "id": "e_quiz_respuesta_forjada",
+      "quien": "A"
+    },
+    {
+      "id": "e_progreso_insert",
+      "quien": "A"
+    },
+    {
+      "id": "e_progreso_update",
+      "quien": "A"
+    },
+    {
+      "id": "e_progreso_delete",
+      "quien": "A"
+    },
+    {
+      "id": "e_logro_insert",
+      "quien": "A"
+    },
+    {
+      "id": "e_racha_update",
+      "quien": "A"
+    },
+    {
+      "id": "e_racha_insert",
+      "quien": "B"
+    },
+    {
+      "id": "e_documento_autoaprobado",
+      "quien": "A"
+    },
+    {
+      "id": "e_documento_insert_verificado",
+      "quien": "A"
+    },
+    {
+      "id": "e_documento_delete",
+      "quien": "A"
+    },
+    {
+      "id": "e_constancia_forjada",
+      "quien": "A"
+    },
+    {
+      "id": "e_alumno_meses",
+      "quien": "A"
+    },
+    {
+      "id": "e_alumno_delete",
+      "quien": "A"
+    },
+    {
+      "id": "e_nota_ajena",
+      "quien": "A"
+    },
+    {
+      "id": "e_nota_delete",
+      "quien": "A"
+    },
+    {
+      "id": "e_lee_progreso_ajeno",
+      "quien": "A"
+    },
+    {
+      "id": "e_lee_constancia_ajena",
+      "quien": "A"
+    },
+    {
+      "id": "e_contenido_update",
+      "quien": "A"
+    },
+    {
+      "id": "f_usuario_rol",
+      "quien": "A"
+    },
+    {
+      "id": "f_usuario_insert",
+      "quien": "A"
+    },
+    {
+      "id": "f_usuario_delete",
+      "quien": "A"
+    },
+    {
+      "id": "h_matricula_anon",
+      "quien": "anon"
+    },
+    {
+      "id": "h_matricula_alumno",
+      "quien": "A"
+    },
+    {
+      "id": "i_anon_truncate",
+      "quien": "anon"
+    },
+    {
+      "id": "i_anon_insert_contenido",
+      "quien": "anon"
+    },
+    {
+      "id": "i_anon_delete_alumnos",
+      "quien": "anon"
+    },
+    {
+      "id": "i_alumno_truncate",
+      "quien": "A"
+    }
+  ],
+  "legitimas": [
+    {
+      "id": "servidor_marca_semana_y_racha",
+      "quien": "service_role",
+      "min": 1
+    },
+    {
+      "id": "servidor_logro",
+      "quien": "service_role",
+      "min": 1
+    },
+    {
+      "id": "servidor_intento_y_calificacion",
+      "quien": "service_role",
+      "min": 1
+    },
+    {
+      "id": "servidor_aprueba_documento",
+      "quien": "service_role",
+      "min": 1
+    },
+    {
+      "id": "servidor_alta_con_matricula",
+      "quien": "service_role",
+      "min": 1
+    },
+    {
+      "id": "alumno_lee_lo_suyo",
+      "quien": "A",
+      "min": 8
+    },
+    {
+      "id": "alumno_lee_el_banco_sin_clave",
+      "quien": "A",
+      "min": 0
+    },
+    {
+      "id": "alumno_escribe_su_nota",
+      "quien": "A",
+      "min": 1
+    },
+    {
+      "id": "alumno_edita_su_perfil",
+      "quien": "A",
+      "min": 1
+    },
+    {
+      "id": "admin_lee_todo",
+      "quien": "ADM",
+      "min": 4
+    },
+    {
+      "id": "admin_lee_el_banco",
+      "quien": "ADM",
+      "min": 1
+    },
+    {
+      "id": "anon_latido",
+      "quien": "anon",
+      "min": 1
+    }
+  ],
+  "bases": {
+    "antes": {
+      "explotaciones": {
+        "a_intento_forjado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table intentos_evaluacion\r"
+        },
+        "a_calificacion_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"calificaciones\"\r"
+        },
+        "a_calificacion_acreditada": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "b_clave_examen": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table preguntas\r"
+        },
+        "b_clave_quiz": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "b_clave_quiz_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "d_quiz_carrera": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "d_intento_doble": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "e_quiz_respuesta_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_respuestas\r"
+        },
+        "e_progreso_insert": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "e_progreso_update": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "e_progreso_delete": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_logro_insert": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "e_racha_update": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "e_racha_insert": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "e_documento_autoaprobado": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_documento_insert_verificado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_delete": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_constancia_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"constancias\"\r"
+        },
+        "e_alumno_meses": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_alumno_delete": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_nota_ajena": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"notas_alumno\"\r"
+        },
+        "e_nota_delete": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_lee_progreso_ajeno": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_lee_constancia_ajena": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_contenido_update": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "f_usuario_rol": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_delete": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "h_matricula_anon": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "h_matricula_alumno": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "i_anon_truncate": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        },
+        "i_anon_insert_contenido": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"materias\"\r"
+        },
+        "i_anon_delete_alumnos": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "i_alumno_truncate": {
+          "resultado": "PASA:1",
+          "detalle": ""
+        }
+      },
+      "legitimas": {
+        "servidor_marca_semana_y_racha": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_logro": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_intento_y_calificacion": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_aprueba_documento": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_alta_con_matricula": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_lo_suyo": {
+          "resultado": "PASA:8",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_el_banco_sin_clave": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_escribe_su_nota": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_edita_su_perfil": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_todo": {
+          "resultado": "PASA:5",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_el_banco": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "anon_latido": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        }
+      },
+      "checks": {
+        "Avance, logros y calificación solo los escribe el servidor (R2)": {
+          "ok": false,
+          "resultado": "❌ ESCRITURA CON SESIÓN (anon delete alumnos, anon insert alumnos, anon truncate alumnos, authenticated delete alumnos, authenticated insert alumnos, authenticated truncate alumnos, anon delete calificaciones, anon insert",
+          "valor": "escritura con sesión: anon delete alumnos, anon insert alumnos, anon truncate alumnos, authenticated delete alumnos, authenticated insert alumnos, authenticated truncate alumnos, anon delete calificaciones, anon insert calificaciones, anon truncate calificaciones, anon update calificaciones, authenticated delete calificaciones, authenticated insert calificaciones, authenticated truncate calificaci"
+        },
+        "Índices únicos contra envíos simultáneos (R2)": {
+          "ok": false,
+          "resultado": "❌ SIN ÍNDICE ÚNICO (quiz_respuestas (alumno_id, quiz_id), intentos_evaluacion (alumno_id, evaluacion_id, numero_intento)): 4 POST simultáneos al quiz dan la clave y dos envíos simultáneos del examen regalan un intento → ",
+          "valor": "intentos_evaluacion: NO / quiz_respuestas: NO"
+        },
+        "anon sin escritura en public; generar_matricula solo el servidor (R2)": {
+          "ok": false,
+          "resultado": "❌ ESCRITURA SIN SESIÓN (ajustes, alumno_plan_eventos, alumnos, calificaciones, constancias, curso_constancias, curso_examen_preguntas, curso_examen_resultados, curso_inscripcion_eventos, curso_inscripciones, curso_leccio",
+          "valor": "tablas con escritura de anon o TRUNCATE con sesión: ajustes, alumno_plan_eventos, alumnos, calificaciones, constancias, curso_constancias, curso_examen_preguntas, curso_examen_resultados, curso_inscripcion_eventos, curso_inscripciones, curso_lecciones, curso_modulos, curso_progreso, cursos, documentos_alumno, evaluaciones, glosario_materia, keep_alive_log, logros_alumno, materias, meses_contenido,"
+        }
+      },
+      "rolAltaConMetadataAdmin": "alumno"
+    },
+    "migrada": {
+      "explotaciones": {
+        "a_intento_forjado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table intentos_evaluacion\r"
+        },
+        "a_calificacion_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "a_calificacion_acreditada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "b_clave_examen": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table preguntas\r"
+        },
+        "b_clave_quiz": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "b_clave_quiz_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "d_quiz_carrera": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"quiz_respuestas_alumno_quiz_uniq\"\r"
+        },
+        "d_intento_doble": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"intentos_evaluacion_alumno_eval_num_uniq\"\r"
+        },
+        "e_quiz_respuesta_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_respuestas\r"
+        },
+        "e_progreso_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_logro_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table logros_alumno\r"
+        },
+        "e_racha_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_racha_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_documento_autoaprobado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_insert_verificado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_constancia_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table constancias\r"
+        },
+        "e_alumno_meses": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_alumno_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_nota_ajena": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"notas_alumno\"\r"
+        },
+        "e_nota_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        },
+        "e_lee_progreso_ajeno": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_lee_constancia_ajena": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_contenido_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table semanas\r"
+        },
+        "f_usuario_rol": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "h_matricula_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "h_matricula_alumno": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "i_anon_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "i_anon_insert_contenido": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table materias\r"
+        },
+        "i_anon_delete_alumnos": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "i_alumno_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        }
+      },
+      "legitimas": {
+        "servidor_marca_semana_y_racha": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_logro": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_intento_y_calificacion": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_aprueba_documento": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_alta_con_matricula": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_lo_suyo": {
+          "resultado": "PASA:8",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_el_banco_sin_clave": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_escribe_su_nota": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_edita_su_perfil": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_todo": {
+          "resultado": "PASA:5",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_el_banco": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "anon_latido": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        }
+      },
+      "checks": {
+        "Avance, logros y calificación solo los escribe el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (solo el servidor escribe avance, logros, calificación, documentos y contenido; cada quien lee lo suyo)",
+          "valor": "escritura con sesión: nadie / usuarios (insert, delete, id/email/rol): cerrado / notas (delete): cerrado / sin techo propio o admin: ninguna"
+        },
+        "Índices únicos contra envíos simultáneos (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (una respuesta por pregunta y un intento por número; la app responde con la primera guardada)",
+          "valor": "intentos_evaluacion: sí / quiz_respuestas: sí"
+        },
+        "anon sin escritura en public; generar_matricula solo el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (anon solo inserta donde una política TO anon lo pide; sin TRUNCATE con sesión; generar_matricula solo el servidor)",
+          "valor": "tablas con escritura de anon o TRUNCATE con sesión: ninguna / funciones ejecutables con sesión: ninguna"
+        }
+      },
+      "rolAltaConMetadataAdmin": "alumno"
+    },
+    "copia_vieja": {
+      "explotaciones": {
+        "a_intento_forjado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table intentos_evaluacion\r"
+        },
+        "a_calificacion_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "a_calificacion_acreditada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "b_clave_examen": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table preguntas\r"
+        },
+        "b_clave_quiz": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "b_clave_quiz_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "d_quiz_carrera": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"quiz_respuestas_alumno_quiz_uniq\"\r"
+        },
+        "d_intento_doble": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"intentos_evaluacion_alumno_eval_num_uniq\"\r"
+        },
+        "e_quiz_respuesta_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_respuestas\r"
+        },
+        "e_progreso_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_logro_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table logros_alumno\r"
+        },
+        "e_racha_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_racha_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_documento_autoaprobado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_insert_verificado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_constancia_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table constancias\r"
+        },
+        "e_alumno_meses": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_alumno_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_nota_ajena": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"notas_alumno\"\r"
+        },
+        "e_nota_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        },
+        "e_lee_progreso_ajeno": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_lee_constancia_ajena": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_contenido_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table semanas\r"
+        },
+        "f_usuario_rol": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "h_matricula_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "h_matricula_alumno": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "i_anon_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "i_anon_insert_contenido": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table materias\r"
+        },
+        "i_anon_delete_alumnos": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "i_alumno_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        }
+      },
+      "legitimas": {
+        "servidor_marca_semana_y_racha": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_logro": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_intento_y_calificacion": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_aprueba_documento": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_alta_con_matricula": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_lo_suyo": {
+          "resultado": "PASA:8",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_el_banco_sin_clave": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_escribe_su_nota": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_edita_su_perfil": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_todo": {
+          "resultado": "PASA:5",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_el_banco": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "anon_latido": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        }
+      },
+      "checks": {
+        "Avance, logros y calificación solo los escribe el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (solo el servidor escribe avance, logros, calificación, documentos y contenido; cada quien lee lo suyo)",
+          "valor": "escritura con sesión: nadie / usuarios (insert, delete, id/email/rol): cerrado / notas (delete): cerrado / sin techo propio o admin: ninguna / permisivas de escritura sin admin (inertes): logros_alumno → logros: insertar propios, racha_actividad → racha: actualizar propia, racha_actividad → racha: insertar propia"
+        },
+        "Índices únicos contra envíos simultáneos (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (una respuesta por pregunta y un intento por número; la app responde con la primera guardada)",
+          "valor": "intentos_evaluacion: sí / quiz_respuestas: sí"
+        },
+        "anon sin escritura en public; generar_matricula solo el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (anon solo inserta donde una política TO anon lo pide; sin TRUNCATE con sesión; generar_matricula solo el servidor)",
+          "valor": "tablas con escritura de anon o TRUNCATE con sesión: ninguna / funciones ejecutables con sesión: ninguna"
+        }
+      },
+      "rolAltaConMetadataAdmin": "alumno"
+    },
+    "despues": {
+      "explotaciones": {
+        "a_intento_forjado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table intentos_evaluacion\r"
+        },
+        "a_calificacion_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "a_calificacion_acreditada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "b_clave_examen": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table preguntas\r"
+        },
+        "b_clave_quiz": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "b_clave_quiz_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "d_quiz_carrera": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"quiz_respuestas_alumno_quiz_uniq\"\r"
+        },
+        "d_intento_doble": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"intentos_evaluacion_alumno_eval_num_uniq\"\r"
+        },
+        "e_quiz_respuesta_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_respuestas\r"
+        },
+        "e_progreso_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_logro_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table logros_alumno\r"
+        },
+        "e_racha_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_racha_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_documento_autoaprobado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_insert_verificado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_constancia_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table constancias\r"
+        },
+        "e_alumno_meses": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_alumno_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_nota_ajena": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"notas_alumno\"\r"
+        },
+        "e_nota_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        },
+        "e_lee_progreso_ajeno": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_lee_constancia_ajena": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_contenido_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table semanas\r"
+        },
+        "f_usuario_rol": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "h_matricula_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "h_matricula_alumno": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "i_anon_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "i_anon_insert_contenido": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table materias\r"
+        },
+        "i_anon_delete_alumnos": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "i_alumno_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        }
+      },
+      "legitimas": {
+        "servidor_marca_semana_y_racha": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_logro": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_intento_y_calificacion": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_aprueba_documento": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_alta_con_matricula": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_lo_suyo": {
+          "resultado": "PASA:8",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_el_banco_sin_clave": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_escribe_su_nota": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_edita_su_perfil": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_todo": {
+          "resultado": "PASA:5",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_el_banco": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "anon_latido": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        }
+      },
+      "checks": {
+        "Avance, logros y calificación solo los escribe el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (solo el servidor escribe avance, logros, calificación, documentos y contenido; cada quien lee lo suyo)",
+          "valor": "escritura con sesión: nadie / usuarios (insert, delete, id/email/rol): cerrado / notas (delete): cerrado / sin techo propio o admin: ninguna"
+        },
+        "Índices únicos contra envíos simultáneos (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (una respuesta por pregunta y un intento por número; la app responde con la primera guardada)",
+          "valor": "intentos_evaluacion: sí / quiz_respuestas: sí"
+        },
+        "anon sin escritura en public; generar_matricula solo el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (anon solo inserta donde una política TO anon lo pide; sin TRUNCATE con sesión; generar_matricula solo el servidor)",
+          "valor": "tablas con escritura de anon o TRUNCATE con sesión: ninguna / funciones ejecutables con sesión: ninguna"
+        }
+      },
+      "rolAltaConMetadataAdmin": "alumno"
+    },
+    "instalador": {
+      "explotaciones": {
+        "a_intento_forjado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table intentos_evaluacion\r"
+        },
+        "a_calificacion_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "a_calificacion_acreditada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "b_clave_examen": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table preguntas\r"
+        },
+        "b_clave_quiz": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "b_clave_quiz_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "d_quiz_carrera": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"quiz_respuestas_alumno_quiz_uniq\"\r"
+        },
+        "d_intento_doble": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"intentos_evaluacion_alumno_eval_num_uniq\"\r"
+        },
+        "e_quiz_respuesta_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_respuestas\r"
+        },
+        "e_progreso_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_logro_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table logros_alumno\r"
+        },
+        "e_racha_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_racha_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_documento_autoaprobado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_insert_verificado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_constancia_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table constancias\r"
+        },
+        "e_alumno_meses": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_alumno_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_nota_ajena": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"notas_alumno\"\r"
+        },
+        "e_nota_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        },
+        "e_lee_progreso_ajeno": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_lee_constancia_ajena": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_contenido_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table semanas\r"
+        },
+        "f_usuario_rol": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "h_matricula_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "h_matricula_alumno": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "i_anon_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "i_anon_insert_contenido": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table materias\r"
+        },
+        "i_anon_delete_alumnos": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "i_alumno_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        }
+      },
+      "legitimas": {
+        "servidor_marca_semana_y_racha": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_logro": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_intento_y_calificacion": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_aprueba_documento": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_alta_con_matricula": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_lo_suyo": {
+          "resultado": "PASA:8",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_el_banco_sin_clave": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_escribe_su_nota": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_edita_su_perfil": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_todo": {
+          "resultado": "PASA:5",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_el_banco": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "anon_latido": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        }
+      },
+      "checks": {
+        "Avance, logros y calificación solo los escribe el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (solo el servidor escribe avance, logros, calificación, documentos y contenido; cada quien lee lo suyo)",
+          "valor": "escritura con sesión: nadie / usuarios (insert, delete, id/email/rol): cerrado / notas (delete): cerrado / sin techo propio o admin: ninguna"
+        },
+        "Índices únicos contra envíos simultáneos (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (una respuesta por pregunta y un intento por número; la app responde con la primera guardada)",
+          "valor": "intentos_evaluacion: sí / quiz_respuestas: sí"
+        },
+        "anon sin escritura en public; generar_matricula solo el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (anon solo inserta donde una política TO anon lo pide; sin TRUNCATE con sesión; generar_matricula solo el servidor)",
+          "valor": "tablas con escritura de anon o TRUNCATE con sesión: ninguna / funciones ejecutables con sesión: ninguna"
+        }
+      },
+      "rolAltaConMetadataAdmin": "alumno"
+    },
+    "combo": {
+      "explotaciones": {
+        "a_intento_forjado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table intentos_evaluacion\r"
+        },
+        "a_calificacion_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "a_calificacion_acreditada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table calificaciones\r"
+        },
+        "b_clave_examen": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table preguntas\r"
+        },
+        "b_clave_quiz": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "b_clave_quiz_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_semana\r"
+        },
+        "d_quiz_carrera": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"quiz_respuestas_alumno_quiz_uniq\"\r"
+        },
+        "d_intento_doble": {
+          "resultado": "rechazado:23505",
+          "detalle": "duplicate key value violates unique constraint \"intentos_evaluacion_alumno_eval_num_uniq\"\r"
+        },
+        "e_quiz_respuesta_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table quiz_respuestas\r"
+        },
+        "e_progreso_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_progreso_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "e_logro_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table logros_alumno\r"
+        },
+        "e_racha_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_racha_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table racha_actividad\r"
+        },
+        "e_documento_autoaprobado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_insert_verificado": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_documento_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table documentos_alumno\r"
+        },
+        "e_constancia_forjada": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table constancias\r"
+        },
+        "e_alumno_meses": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_alumno_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "e_nota_ajena": {
+          "resultado": "rechazado:42501",
+          "detalle": "new row violates row-level security policy for table \"notas_alumno\"\r"
+        },
+        "e_nota_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        },
+        "e_lee_progreso_ajeno": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_lee_constancia_ajena": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": ""
+        },
+        "e_contenido_update": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table semanas\r"
+        },
+        "f_usuario_rol": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_insert": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "f_usuario_delete": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table usuarios\r"
+        },
+        "h_matricula_anon": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "h_matricula_alumno": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for function generar_matricula\r"
+        },
+        "i_anon_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table progreso_semanas\r"
+        },
+        "i_anon_insert_contenido": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table materias\r"
+        },
+        "i_anon_delete_alumnos": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table alumnos\r"
+        },
+        "i_alumno_truncate": {
+          "resultado": "rechazado:42501",
+          "detalle": "permission denied for table notas_alumno\r"
+        }
+      },
+      "legitimas": {
+        "servidor_marca_semana_y_racha": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_logro": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_intento_y_calificacion": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_aprueba_documento": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "servidor_alta_con_matricula": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_lo_suyo": {
+          "resultado": "PASA:8",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_lee_el_banco_sin_clave": {
+          "resultado": "sin efecto (0 filas)",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_escribe_su_nota": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "alumno_edita_su_perfil": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_todo": {
+          "resultado": "PASA:5",
+          "detalle": "",
+          "ok": true
+        },
+        "admin_lee_el_banco": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        },
+        "anon_latido": {
+          "resultado": "PASA:1",
+          "detalle": "",
+          "ok": true
+        }
+      },
+      "checks": {
+        "Avance, logros y calificación solo los escribe el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (solo el servidor escribe avance, logros, calificación, documentos y contenido; cada quien lee lo suyo)",
+          "valor": "escritura con sesión: nadie / usuarios (insert, delete, id/email/rol): cerrado / notas (delete): cerrado / sin techo propio o admin: ninguna"
+        },
+        "Índices únicos contra envíos simultáneos (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (una respuesta por pregunta y un intento por número; la app responde con la primera guardada)",
+          "valor": "intentos_evaluacion: sí / quiz_respuestas: sí"
+        },
+        "anon sin escritura en public; generar_matricula solo el servidor (R2)": {
+          "ok": true,
+          "resultado": "✅ OK (anon solo inserta donde una política TO anon lo pide; sin TRUNCATE con sesión; generar_matricula solo el servidor)",
+          "valor": "tablas con escritura de anon o TRUNCATE con sesión: ninguna / funciones ejecutables con sesión: ninguna"
+        }
+      },
+      "rolAltaConMetadataAdmin": "alumno"
+    }
+  },
+  "duplicados": {
+    "aborta": true,
+    "mensaje": "R2: quiz_respuestas tiene respuestas repetidas (alumno, pregunta) de los alumnos bc0d3fe5-5270-8eff-0240-c53788467a40. No se borra nada: depúralas a mano dejando la más antigua de cada pregunta (la que la app ya califica; ver el encabezado) y vuelve a correr esta.\r",
+    "filasQuiz": 2,
+    "sinCambios": true
+  },
+  "drift": {
+    "aborta": true,
+    "mensaje": "R2: 1 alumno(s) con alumnos.usuario_id distinto de alumnos.id (drift: alumnos.id no es auth.uid()). Los techos «propio o admin» los dejarían sin ver lo suyo. No se toca nada: esta base necesita su propia migración.\r",
+    "sinCambios": true
+  },
+  "latidoPublic": {
+    "latido": "PASA:1",
+    "checks": {
+      "Avance, logros y calificación solo los escribe el servidor (R2)": true,
+      "Índices únicos contra envíos simultáneos (R2)": true,
+      "anon sin escritura en public; generar_matricula solo el servidor (R2)": true
+    }
+  }
+}

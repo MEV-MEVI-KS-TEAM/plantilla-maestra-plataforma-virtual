@@ -113,7 +113,7 @@ BEGIN
 
     INSERT INTO public.preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES
       (v_eval_id, '¿Cuál es el resultado de resolver la ecuación 3x - 7 = 11?', 'x = 6', 'x = 2', 'x = 8', 'x = 4', 'a', 1),
-      (v_eval_id, '¿Qué es un número primo?', 'Un número siempre positivo mayor que 10', 'Un número que termina en 0', 'Un número divisible por 2', 'Un número divisible solo por 1 y por sí mismo', 'd', 2),
+      (v_eval_id, '¿Qué es un número primo?', 'Un número siempre positivo mayor que 10', 'Un número que termina en 0', 'Un número divisible por 2', 'Un número mayor que 1 divisible solo por 1 y por sí mismo', 'd', 2),
       (v_eval_id, '¿Cuál es el área de un triángulo con base 8 cm y altura 5 cm?', '20 cm²', '80 cm²', '40 cm²', '13 cm²', 'a', 3),
       (v_eval_id, '¿Qué propiedad matemática expresa a(b + c) = ab + ac?', 'Conmutativa', 'Asociativa', 'Transitiva', 'Distributiva', 'd', 4),
       (v_eval_id, '¿Cómo se expresa 0.75 como fracción en su mínima expresión?', '15/20', '75/100', '7/10', '3/4', 'd', 5),
@@ -687,7 +687,7 @@ BEGIN
       (v_eval_id, '¿Qué representa la "b" en la ecuación y = mx + b?', 'El punto máximo de la función', 'La intersección de la recta con el eje y', 'La pendiente de la recta', 'La variable independiente', 'b', 3),
       (v_eval_id, '¿Cuánto es sen(30°)?', '√2/2', '√3/2', '1/2', '1', 'c', 4),
       (v_eval_id, '¿Cuál es el valor de cos(90°)?', '1', '-1', '0', '√2/2', 'c', 5),
-      (v_eval_id, '¿Qué teorema relaciona los lados de un triángulo rectángulo?', 'Teorema de Thales', 'Teorema de Tales', 'Teorema de Euclides', 'Teorema de Pitágoras', 'd', 6),
+      (v_eval_id, '¿Qué teorema relaciona los lados de un triángulo rectángulo?', 'Teorema del valor medio', 'Teorema de Tales', 'Teorema de Bayes', 'Teorema de Pitágoras', 'd', 6),
       (v_eval_id, 'En una función exponencial f(x) = 2^x, ¿qué sucede cuando x tiende a infinito?', 'f(x) se mantiene constante', 'f(x) tiende a -1', 'f(x) tiende a infinito', 'f(x) tiende a 0', 'c', 7),
       (v_eval_id, '¿Cuál es el logaritmo natural de e?', '2', '1', 'e', '0', 'b', 8),
       (v_eval_id, 'Si se tiene un triángulo con ángulos 30°, 60° y 90°, ¿cómo se clasifica?', 'Escaleno obtuso', 'Equilátero', 'Isósceles acutángulo', 'Triángulo rectángulo especial', 'd', 9),
@@ -717,10 +717,10 @@ BEGIN
       (v_eval_id, '¿Cuál es la derivada de f(x) = x³?', 'x²', 'x⁴', '3x²', '3x', 'c', 3),
       (v_eval_id, '¿Qué es una integral definida?', 'La pendiente en un punto de la curva', 'El valor máximo de la función', 'El área bajo la curva de una función entre dos límites determinados', 'La antiderivada de una función indefinida', 'c', 4),
       (v_eval_id, '¿Cuánto es la derivada de f(x) = 5 (constante)?', '0', 'x', '1', '5', 'a', 5),
-      (v_eval_id, '¿Qué es la regla de la cadena en derivación?', 'Una técnica para derivar funciones compuestas: [f(g(x))] = f(g(x))·g(x)', 'Una propiedad de las series numéricas', 'Una fórmula para calcular integrales', 'Una propiedad de los logaritmos', 'a', 6),
+      (v_eval_id, '¿Qué es la regla de la cadena en derivación?', 'Una técnica para derivar funciones compuestas: [f(g(x))]'' = f''(g(x))·g''(x)', 'Una propiedad de las series numéricas', 'Una fórmula para calcular integrales', 'Una propiedad de los logaritmos', 'a', 6),
       (v_eval_id, '¿Cuál es el significado geométrico de la derivada en un punto?', 'La pendiente de la recta tangente a la curva en ese punto', 'La longitud del arco de curva', 'El radio de curvatura en ese punto', 'El área del triángulo formado', 'a', 7),
-      (v_eval_id, '¿Qué indica que f(x) > 0 en un intervalo?', 'La función es creciente en ese intervalo', 'La función es constante en ese intervalo', 'La función tiene un mínimo en ese punto', 'La función decrece en ese intervalo', 'a', 8),
-      (v_eval_id, 'Si f(x) = 4x - 6, ¿en qué punto la función f(x) = 2x² - 6x tiene un mínimo?', 'x = 4', 'x = 6', 'x = 2', 'x = 1.5', 'd', 9),
+      (v_eval_id, '¿Qué indica que f''(x) > 0 en un intervalo?', 'La función es creciente en ese intervalo', 'La función es constante en ese intervalo', 'La función tiene un mínimo en ese punto', 'La función decrece en ese intervalo', 'a', 8),
+      (v_eval_id, 'Si f''(x) = 4x - 6, ¿en qué punto la función f(x) = 2x² - 6x tiene un mínimo?', 'x = 4', 'x = 6', 'x = 2', 'x = 1.5', 'd', 9),
       (v_eval_id, '¿Por qué el cálculo integral es fundamental en física?', 'Permite calcular trabajo, energía, áreas de superficies y modelar fenómenos físicos continuos', 'Es exclusivo de termodinámica avanzada', 'Solo se usa para cálculos de velocidad', 'No se utiliza en física aplicada', 'a', 10);
   END IF;
 END $$;

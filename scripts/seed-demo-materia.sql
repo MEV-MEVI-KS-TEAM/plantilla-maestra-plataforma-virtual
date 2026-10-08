@@ -82,7 +82,7 @@ Estudiar en línea requiere más autodisciplina que el presencial. Nadie te va a
 - Señales: prefieres leer instrucciones, te gusta hacer notas, recuerdas lo que escribes.
 
 4. **Kinestésico:** Aprendes mejor haciendo: práctica, experimentación, movimiento, ejemplos reales.
-- Si eres kinestésico: resuelve ejercicios práticos, usa ejemplos de la vida real, muévete mientras estudias, enseña a otros.
+- Si eres kinestésico: resuelve ejercicios prácticos, usa ejemplos de la vida real, muévete mientras estudias, enseña a otros.
 - Señales: te cuesta estar quieto, aprendes haciendo, necesitas ejemplos concretos.
 
 **La mayoría somos una mezcla.** Probablemente tengas un estilo dominante y uno secundario.
@@ -217,7 +217,7 @@ Un hábito tiene 3 partes:
 2. Hazlo a la misma hora todos los días
 3. Prepara todo antes (material, espacio, agua)
 4. Nunca faltes dos días seguidos (un día malo es normal, dos es un patrón)
-5. Después de 21-30 días se vuelve automático
+5. Con la práctica diaria se vuelve cada vez más automático (en promedio tarda unos dos meses, y varía de persona a persona)
 
 **Mentalidad de crecimiento (Carol Dweck):**
 - Mentalidad fija: ''No soy bueno para matemáticas'' → te rindes
@@ -252,7 +252,7 @@ La inteligencia no es fija. Tu cerebro es como un músculo: entre más lo ejerci
 **Para concentración:**
 - Forest App: planta un árbol virtual que crece mientras no tocas el celular
 - Focus To-Do: combina Pomodoro con lista de tareas
-- Brain.fm: música diseñada para concentración
+- Brain.fm: música diseñada para concentración (de pago, con prueba gratuita)
 
 **Para crear contenido:**
 - Canva: diseño gráfico fácil (presentaciones, infografías)
@@ -288,7 +288,7 @@ Una buena meta debe ser:
 - Time-bound (Con plazo): ¿Para cuándo?
 
 MAL: ''Quiero terminar la prepa''
-BIEN: ''Voy a completar mi programa virtual de 6 meses aprobando todas las materias con mínimo 7.0 de promedio para diciembre de 2025''
+BIEN: ''Voy a completar mi programa virtual de 6 meses aprobando todas las materias con mínimo 7.0 de promedio para diciembre del próximo año''
 
 **Tu proyecto académico debe incluir:**
 
@@ -337,19 +337,19 @@ INSERT INTO public.evaluaciones (id, materia_id, mes_id, titulo, descripcion, ti
 -- ── 5. PREGUNTAS ─────────────────────────────────────────────────────────────
 INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES
 ('dd000001-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Cuál es la principal ventaja del estudio en línea?','Es más fácil que el presencial','Tiene flexibilidad de horarios y acceso 24/7','No tiene exámenes','No requiere estudiar','b',1),
-('dd000002-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? Una persona con estilo de aprendizaje auditivo aprende mejor con diagramas y mapas mentales.','Verdadero','Falso','—','—','b',2),
+('dd000002-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? Una persona con estilo de aprendizaje auditivo aprende mejor con diagramas y mapas mentales.','Verdadero','Falso','','','b',2),
 ('dd000003-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','La técnica Pomodoro consiste en estudiar bloques de:','10 minutos con 2 de descanso','25 minutos con 5 de descanso','45 minutos con 15 de descanso','60 minutos con 10 de descanso','b',3),
 ('dd000004-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Qué es el ''Active Recall'' (Recuerdo activo)?','Releer el material muchas veces','Cerrar el material e intentar recordar sin ver','Subrayar las ideas importantes','Copiar textualmente los apuntes','b',4),
-('dd000005-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? Subrayar todo el texto es una técnica de estudio muy efectiva.','Verdadero','Falso','—','—','b',5),
+('dd000005-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? Subrayar todo el texto es una técnica de estudio muy efectiva.','Verdadero','Falso','','','b',5),
 ('dd000006-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','En la Matriz de Eisenhower, una tarea IMPORTANTE pero NO URGENTE se debe:','Hacer inmediatamente','Planificar para después','Eliminar','Delegar a alguien más','b',6),
 ('dd000007-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Cuál es la diferencia entre motivación y disciplina?','Son lo mismo','La motivación te hace empezar, la disciplina te hace continuar','La disciplina es para el trabajo, la motivación para el estudio','La motivación es más importante que la disciplina','b',7),
-('dd000008-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? Un hábito generalmente se forma después de 21-30 días de repetición consistente.','Verdadero','Falso','—','—','a',8),
+('dd000008-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? En promedio, un hábito tarda unos dos meses de práctica diaria en volverse automático, y el plazo varía de persona a persona.','Verdadero','Falso','','','a',8),
 ('dd000009-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Qué es la ''mentalidad de crecimiento'' de Carol Dweck?','Creer que la inteligencia es fija y no cambia','Creer que puedes mejorar tus habilidades con esfuerzo y práctica','Pensar que solo los genios tienen éxito','Crecer físicamente durante la adolescencia','b',9),
 ('dd000010-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Qué herramienta usa tarjetas de memoria (flashcards) con repetición espaciada?','Google Docs','Canva','Anki','Trello','c',10),
-('dd000011-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? La técnica Feynman consiste en explicar un tema como si se lo enseñaras a un niño.','Verdadero','Falso','—','—','a',11),
+('dd000011-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? La técnica Feynman consiste en explicar un tema como si se lo enseñaras a un niño.','Verdadero','Falso','','','a',11),
 ('dd000012-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','Una meta SMART debe ser específica, medible, alcanzable, relevante y:','Total','Técnica','Con plazo definido (Time-bound)','Teórica','c',12),
 ('dd000013-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Cuál es el principal enemigo de la concentración al estudiar en línea?','Los libros','Las distracciones digitales (celular, redes sociales)','La falta de libros físicos','El horario de clases','b',13),
-('dd000014-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? En la educación virtual, la responsabilidad del aprendizaje es 100% del alumno.','Verdadero','Falso','—','—','a',14),
+('dd000014-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','¿Verdadero o Falso? En la educación virtual, la responsabilidad del aprendizaje es 100% del alumno.','Verdadero','Falso','','','a',14),
 ('dd000015-0000-4000-a000-000000000001','bb000000-0000-4000-a000-000000000001','Si un día no tienes ganas de estudiar, ¿qué es lo mejor que puedes hacer?','No estudiar y esperar a que regrese la motivación','Comprometerte a solo 5 minutos y empezar','Estudiar 4 horas para compensar','Dejar la materia para el mes siguiente','b',15)
 ON CONFLICT (id) DO NOTHING;
 

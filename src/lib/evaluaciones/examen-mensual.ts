@@ -33,6 +33,8 @@ export interface PreguntaEvaluacion {
   opcion_c: string
   opcion_d: string | null
   respuesta_correcta: string
+  /** La que el alumno ve mientras contesta (el GET sirve solo las activas). */
+  activa?: boolean | null
 }
 
 /** Lo único que ve el alumno mientras contesta (forma que consume EvaluacionClient). */
@@ -82,7 +84,7 @@ export async function leerPreguntasEvaluacion(
 ): Promise<{ preguntas: PreguntaEvaluacion[]; error: string | null }> {
   let q = admin
     .from('preguntas')
-    .select('id, orden, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta')
+    .select('id, orden, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, activa')
     .eq('evaluacion_id', evaluacionId)
   if (soloActivas) q = q.eq('activa', true)
   const { data, error } = await q.order('orden')
@@ -112,6 +114,42 @@ export function sanitizarPreguntaEvaluacion(p: PreguntaEvaluacion, i: number): P
 /** Índice de la respuesta del alumno si es válido para ESTA pregunta (entero dentro de sus opciones); si no, -1. */
 export function indiceValido(v: unknown, nOpciones: number): number {
   return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < nOpciones ? v : -1
+}
+
+/**
+ * Valida el envío ANTES de calificar y ANTES de gastar un intento (R2, soporte
+ * IVS 8-oct-2026, Bug 69). Rechaza —no recorta—:
+ *   * que `respuestas` no sea un objeto;
+ *   * un id que no es pregunta de ESTE examen;
+ *   * un valor que no es un índice entero dentro de las opciones de esa pregunta;
+ *   * un envío INCOMPLETO: tienen que venir TODAS las preguntas activas (las que
+ *     sirve el GET y exige la pantalla). Con envíos parciales y 3 intentos se
+ *     sacaban «bits» de la clave (contestar una sola, o cambiar una, y ver cuánto
+ *     se movía el puntaje); el envío vacío era el caso extremo.
+ * Una pregunta archivada a mitad del examen que el alumno sí contestó se acepta
+ * (y se califica); una archivada sin contestar no se exige.
+ */
+export function validarEnvio(
+  preguntas: PreguntaEvaluacion[],
+  respuestas: unknown,
+): { ok: true; respuestas: Record<string, number> } | { ok: false; error: string } {
+  if (!respuestas || typeof respuestas !== 'object' || Array.isArray(respuestas)) {
+    return { ok: false, error: 'Contesta todas las preguntas antes de enviar la evaluación.' }
+  }
+  const porId = new Map(preguntas.map(p => [p.id, p]))
+  const limpias: Record<string, number> = {}
+  for (const [id, v] of Object.entries(respuestas as Record<string, unknown>)) {
+    const p = porId.get(id)
+    if (!p) return { ok: false, error: 'Respuestas inválidas.' }
+    const idx = indiceValido(v, opcionesDe(p).length)
+    if (idx < 0) return { ok: false, error: 'Respuestas inválidas.' }
+    limpias[id] = idx
+  }
+  const faltan = preguntas.filter(p => p.activa !== false && limpias[p.id] === undefined).length
+  if (faltan > 0 || Object.keys(limpias).length === 0) {
+    return { ok: false, error: 'Contesta todas las preguntas antes de enviar la evaluación.' }
+  }
+  return { ok: true, respuestas: limpias }
 }
 
 /** Índice (0-3) de la clave; -1 si la fila trae algo que no es a/b/c/d. */

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoAcceso, tieneAccesoSemana } from '@/lib/acceso-materias'
 
 /** Tope por llamada: el heartbeat manda 1-5 min; más que esto es ruido o abuso. */
@@ -50,7 +51,11 @@ export async function POST(request: NextRequest) {
     if (!gate.encontrada) return NextResponse.json({ error: 'Semana no encontrada' }, { status: 404 })
     if (!gate.acceso)     return NextResponse.json({ error: 'No tienes acceso a este contenido' }, { status: 403 })
 
-    const { data: fila } = await supabase
+    // R2: la fila se lee y se actualiza con el service role DESPUÉS del gate; el
+    // alumno ya no tiene UPDATE de progreso_semanas por /rest/v1
+    // (20261008120000_r2_escritura_solo_servidor.sql).
+    const admin = createAdminClient()
+    const { data: fila } = await admin
       .from('progreso_semanas')
       .select('id, tiempo_visto_minutos')
       .eq('alumno_id', alumno.id)
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
     // flota. Para un contador de tiempo por alumno y semana, con el alumno
     // normalmente en una sola pestaña, la carrera es irrelevante y como mucho
     // pierde un minuto. No vale una migración.
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from('progreso_semanas')
       .update({ tiempo_visto_minutos: nuevo })
       .eq('id', (fila as { id: string }).id)
