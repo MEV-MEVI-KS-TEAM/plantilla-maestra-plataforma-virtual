@@ -82,7 +82,7 @@ Estudiar en línea requiere más autodisciplina que el presencial. Nadie te va a
 - Señales: prefieres leer instrucciones, te gusta hacer notas, recuerdas lo que escribes.
 
 4. **Kinestésico:** Aprendes mejor haciendo: práctica, experimentación, movimiento, ejemplos reales.
-- Si eres kinestésico: resuelve ejercicios práticos, usa ejemplos de la vida real, muévete mientras estudias, enseña a otros.
+- Si eres kinestésico: resuelve ejercicios prácticos, usa ejemplos de la vida real, muévete mientras estudias, enseña a otros.
 - Señales: te cuesta estar quieto, aprendes haciendo, necesitas ejemplos concretos.
 
 **La mayoría somos una mezcla.** Probablemente tengas un estilo dominante y uno secundario.
@@ -217,7 +217,7 @@ Un hábito tiene 3 partes:
 2. Hazlo a la misma hora todos los días
 3. Prepara todo antes (material, espacio, agua)
 4. Nunca faltes dos días seguidos (un día malo es normal, dos es un patrón)
-5. Después de 21-30 días se vuelve automático
+5. Con la práctica diaria se vuelve cada vez más automático (en promedio tarda unos dos meses, y varía de persona a persona)
 
 **Mentalidad de crecimiento (Carol Dweck):**
 - Mentalidad fija: ''No soy bueno para matemáticas'' → te rindes
@@ -252,7 +252,7 @@ La inteligencia no es fija. Tu cerebro es como un músculo: entre más lo ejerci
 **Para concentración:**
 - Forest App: planta un árbol virtual que crece mientras no tocas el celular
 - Focus To-Do: combina Pomodoro con lista de tareas
-- Brain.fm: música diseñada para concentración
+- Brain.fm: música diseñada para concentración (de pago, con prueba gratuita)
 
 **Para crear contenido:**
 - Canva: diseño gráfico fácil (presentaciones, infografías)
@@ -288,7 +288,7 @@ Una buena meta debe ser:
 - Time-bound (Con plazo): ¿Para cuándo?
 
 MAL: ''Quiero terminar la prepa''
-BIEN: ''Voy a completar mi programa virtual de 6 meses aprobando todas las materias con mínimo 7.0 de promedio para diciembre de 2025''
+BIEN: ''Voy a completar mi programa virtual de 6 meses aprobando todas las materias con mínimo 7.0 de promedio para diciembre del próximo año''
 
 **Tu proyecto académico debe incluir:**
 
