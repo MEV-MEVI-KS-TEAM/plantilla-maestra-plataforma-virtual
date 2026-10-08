@@ -258,6 +258,18 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Un pago de inscripción ES la inscripción pagada: sin esto el alumno seguía
+    // «sin pago de inscripción» en el panel aunque el pago quedara registrado
+    // (la bandera solo la ponía el botón «Marcar inscripción pagada»). Borrar el
+    // pago no la revierte, igual que no cierra meses (lib/pagos/borrar-pago.ts).
+    if (concepto === 'inscripcion') {
+      const { error: errInsc } = await admin
+        .from('alumnos')
+        .update({ inscripcion_pagada: true })
+        .eq('id', objetivo.alumno.id)
+      if (errInsc) console.error('[POST /api/admin/pagos] inscripcion_pagada:', errInsc.message)
+    }
+
     return NextResponse.json({ ok: true, pago }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/admin/pagos]', err)
