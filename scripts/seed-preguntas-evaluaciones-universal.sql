@@ -1484,7 +1484,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? Una persona con estilo de aprendizaje auditivo aprende mejor con diagramas y mapas mentales.', 'Verdadero', 'Falso', '—', '—', 'b', 2
+SELECT e.id, '¿Verdadero o Falso? Una persona con estilo de aprendizaje auditivo aprende mejor con diagramas y mapas mentales.', 'Verdadero', 'Falso', '', '', 'b', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1520,7 +1520,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? Subrayar todo el texto es una técnica de estudio muy efectiva.', 'Verdadero', 'Falso', '—', '—', 'b', 5
+SELECT e.id, '¿Verdadero o Falso? Subrayar todo el texto es una técnica de estudio muy efectiva.', 'Verdadero', 'Falso', '', '', 'b', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1562,7 +1562,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? Un hábito generalmente se forma después de 21-30 días de repetición consistente.', 'Verdadero', 'Falso', '—', '—', 'a', 8
+SELECT e.id, '¿Verdadero o Falso? En promedio, un hábito tarda unos dos meses de práctica diaria en volverse automático, y el plazo varía de persona a persona.', 'Verdadero', 'Falso', '', '', 'a', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1592,7 +1592,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? La técnica Feynman consiste en explicar un tema como si se lo enseñaras a un niño.', 'Verdadero', 'Falso', '—', '—', 'a', 11
+SELECT e.id, '¿Verdadero o Falso? La técnica Feynman consiste en explicar un tema como si se lo enseñaras a un niño.', 'Verdadero', 'Falso', '', '', 'a', 11
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
@@ -1610,7 +1610,7 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Verdadero o Falso? En la educación virtual, la responsabilidad del aprendizaje es 100% del alumno.', 'Verdadero', 'Falso', '—', '—', 'a', 14
+SELECT e.id, '¿Verdadero o Falso? En la educación virtual, la responsabilidad del aprendizaje es 100% del alumno.', 'Verdadero', 'Falso', '', '', 'a', 14
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutoría de Ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
