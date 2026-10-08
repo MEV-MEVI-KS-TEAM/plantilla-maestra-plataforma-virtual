@@ -1103,3 +1103,179 @@ SELECT
     ELSE '✅ OK (la ventana y el reporte cuentan la posición del módulo, «dense»)'
   END AS resultado
 FROM f255;
+
+-- ─── CHECK 32: progreso, logros, calificaciones y documentos solo los escribe el servidor (R2) ─
+-- Aplica a toda base. Ni anon ni authenticated INSERTAN, ACTUALIZAN, BORRAN ni
+-- hacen TRUNCATE (por privilegio de tabla ni de columna) en las tablas que dan
+-- avance, logros, calificación o acceso: intentos_evaluacion, calificaciones,
+-- quiz_respuestas, progreso_semanas, logros_alumno, racha_actividad, alumnos,
+-- documentos_alumno y constancias; tampoco en el contenido (materias, meses,
+-- semanas, materiales, evaluaciones, glosario y los dos bancos), que el panel
+-- edita con el service role. Con la sesión, un alumno se marcaba completa
+-- cualquier semana (la fila abre la siguiente en el roadmap), se insertaba
+-- logros y, con un GRANT de vuelta, se acreditaba o se aprobaba su documento.
+-- usuarios: sin INSERT ni DELETE y sin UPDATE de id, email ni rol (Bug 52/220).
+-- notas_alumno: el alumno escribe SUS apuntes, sin DELETE. La lectura: cada
+-- quien la suya, con un techo RESTRICTIVE «propio o admin» en cada tabla. Las
+-- permisivas de escritura sin admin que quedan (una copia vieja de
+-- 20260402140000) se listan como aviso: sin privilegio son inertes.
+WITH x AS (
+  SELECT t AS tabla, to_regclass('public.' || t) AS oid
+    FROM unnest(ARRAY['intentos_evaluacion', 'calificaciones', 'quiz_respuestas', 'progreso_semanas',
+                      'logros_alumno', 'racha_actividad', 'alumnos', 'documentos_alumno', 'constancias',
+                      'materias', 'meses_contenido', 'semanas', 'semana_materiales', 'evaluaciones',
+                      'glosario_materia', 'preguntas', 'quiz_semana']) AS t
+), escritura AS (
+  SELECT string_agg(ro.rol || ' ' || lower(pv.p) || ' ' || x.tabla, ', ' ORDER BY x.tabla, ro.rol, pv.p) AS abiertos
+    FROM x
+   CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) AS pv(p)
+   WHERE x.oid IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     AND (has_table_privilege(ro.rol, x.oid, pv.p)
+          OR (pv.p IN ('INSERT', 'UPDATE') AND has_any_column_privilege(ro.rol, x.oid, pv.p)))
+), usu AS (
+  SELECT to_regclass('public.usuarios') IS NOT NULL AND (
+           has_any_column_privilege('authenticated', 'public.usuarios', 'INSERT')
+        OR has_table_privilege('authenticated', 'public.usuarios', 'DELETE')
+        OR has_column_privilege('authenticated', 'public.usuarios', 'id', 'UPDATE')
+        OR has_column_privilege('authenticated', 'public.usuarios', 'email', 'UPDATE')
+        OR has_column_privilege('authenticated', 'public.usuarios', 'rol', 'UPDATE')
+        OR has_any_column_privilege('anon', 'public.usuarios', 'INSERT')
+        OR has_any_column_privilege('anon', 'public.usuarios', 'UPDATE')
+        OR has_table_privilege('anon', 'public.usuarios', 'DELETE')) AS abierto
+), notas AS (
+  SELECT to_regclass('public.notas_alumno') IS NOT NULL AND (
+           has_table_privilege('authenticated', 'public.notas_alumno', 'DELETE')
+        OR has_table_privilege('authenticated', 'public.notas_alumno', 'TRUNCATE')
+        OR has_any_column_privilege('anon', 'public.notas_alumno', 'INSERT')
+        OR has_any_column_privilege('anon', 'public.notas_alumno', 'UPDATE')
+        OR has_table_privilege('anon', 'public.notas_alumno', 'DELETE')) AS abierto
+), techos AS (
+  SELECT string_agg(t.tabla, ', ' ORDER BY t.tabla) AS faltan
+    FROM (VALUES ('calificaciones', 'alumno_id'), ('progreso_semanas', 'alumno_id'), ('logros_alumno', 'alumno_id'),
+                 ('racha_actividad', 'alumno_id'), ('documentos_alumno', 'alumno_id'), ('constancias', 'alumno_id'),
+                 ('alumnos', 'id'), ('notas_alumno', 'alumno_id')) AS t(tabla, col)
+   WHERE to_regclass('public.' || t.tabla) IS NOT NULL
+     AND (NOT COALESCE((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.' || t.tabla)), false)
+          OR NOT EXISTS (SELECT 1 FROM pg_policies p
+                          WHERE p.schemaname = 'public' AND p.tablename = t.tabla AND p.permissive = 'RESTRICTIVE'
+                            AND p.cmd IN ('ALL', 'SELECT')
+                            AND (p.roles @> ARRAY['anon', 'authenticated']::name[] OR p.roles @> ARRAY['public']::name[])
+                            AND lower(regexp_replace(coalesce(p.qual, ''), '[\s()]|public\.', '', 'g'))
+                                IN (t.col || '=auth.uidores_admin', t.col || '=auth.uid')))
+), inertes AS (
+  SELECT string_agg(tablename || ' → ' || policyname, ', ' ORDER BY tablename, policyname) AS lista
+    FROM pg_policies
+   WHERE schemaname = 'public' AND permissive = 'PERMISSIVE' AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL')
+     AND tablename IN ('intentos_evaluacion', 'calificaciones', 'quiz_respuestas', 'progreso_semanas',
+                       'logros_alumno', 'racha_actividad', 'alumnos', 'documentos_alumno', 'constancias')
+     AND coalesce(qual, with_check, '') !~* '(es_admin|is_admin)\s*\('
+), r AS (
+  SELECT (SELECT abiertos FROM escritura) AS abiertos, (SELECT abierto FROM usu) AS usuarios_abierto,
+         (SELECT abierto FROM notas) AS notas_abierto, (SELECT faltan FROM techos) AS sin_techo,
+         (SELECT lista FROM inertes) AS inertes,
+         (SELECT string_agg(tabla, ', ') FROM x WHERE oid IS NULL
+             AND tabla IN ('intentos_evaluacion', 'calificaciones', 'quiz_respuestas', 'progreso_semanas',
+                           'logros_alumno', 'racha_actividad', 'alumnos', 'documentos_alumno', 'constancias')) AS faltan
+)
+SELECT
+  'Avance, logros y calificación solo los escribe el servidor (R2)' AS check_name,
+  CASE WHEN faltan IS NOT NULL THEN 'faltan tablas: ' || faltan
+       ELSE 'escritura con sesión: ' || COALESCE(abiertos, 'nadie')
+         || ' / usuarios (insert, delete, id/email/rol): ' || CASE WHEN usuarios_abierto THEN 'ABIERTO' ELSE 'cerrado' END
+         || ' / notas (delete): ' || CASE WHEN notas_abierto THEN 'ABIERTO' ELSE 'cerrado' END
+         || ' / sin techo propio o admin: ' || COALESCE(sin_techo, 'ninguna')
+         || CASE WHEN inertes IS NOT NULL THEN ' / permisivas de escritura sin admin (inertes): ' || inertes ELSE '' END
+  END AS valor,
+  CASE
+    WHEN faltan IS NOT NULL
+      THEN '❌ FALTA la tabla ' || faltan || ' → corre scripts/schema.sql (o supabase/schema.sql) antes de este check'
+    WHEN abiertos IS NOT NULL OR usuarios_abierto OR notas_abierto
+      THEN '❌ ESCRITURA CON SESIÓN (' || COALESCE(abiertos, CASE WHEN usuarios_abierto THEN 'usuarios' ELSE 'notas_alumno' END)
+           || '): un alumno marca semanas, se da logros o, con la RLS como única capa, se acredita o se aprueba su documento por /rest/v1/… → primero despliega la app de la R2 y después corre supabase/migrations/20261008120000_r2_escritura_solo_servidor.sql (idempotente); si reapareció tras un GRANT amplio o un schema viejo, vuelve a correrla'
+    WHEN sin_techo IS NOT NULL
+      THEN '❌ SIN TECHO DE LECTURA (' || sin_techo || '): una permisiva vieja o de drift abriría lo de otros alumnos → corre supabase/migrations/20261008120000_r2_escritura_solo_servidor.sql (idempotente)'
+    ELSE '✅ OK (solo el servidor escribe avance, logros, calificación, documentos y contenido; cada quien lee lo suyo)'
+  END AS resultado
+FROM r;
+
+-- ─── CHECK 33: índices únicos contra envíos simultáneos (R2) ───────────────────
+-- Aplica a toda base. Sin un índice único (alumno_id, quiz_id) en
+-- quiz_respuestas, 4 POST simultáneos al quiz (uno por opción) se guardaban los
+-- 4 y cada uno recibía su veredicto: la clave por carrera. Sin uno en
+-- intentos_evaluacion (alumno_id, evaluacion_id, numero_intento), dos envíos
+-- simultáneos del último intento pasaban los dos. La app trata el 23505. La forma
+-- JSONB de quiz_respuestas (una fila por semana, sin quiz_id) no aplica.
+WITH idx AS (
+  SELECT x.tabla, x.cols, to_regclass('public.' || x.tabla) AS oid,
+         EXISTS (SELECT 1 FROM pg_attribute a
+                  WHERE a.attrelid = to_regclass('public.' || x.tabla) AND NOT a.attisdropped
+                    AND a.attname = x.cols[array_length(x.cols, 1)]) AS aplica,
+         EXISTS (SELECT 1 FROM pg_index i
+                  WHERE i.indrelid = to_regclass('public.' || x.tabla) AND i.indisunique AND i.indpred IS NULL
+                    AND (SELECT array_agg(a.attname::text ORDER BY a.attname::text)
+                           FROM pg_attribute a WHERE a.attrelid = i.indrelid AND a.attnum = ANY (i.indkey)) = x.cols) AS unico
+    FROM (VALUES ('quiz_respuestas', ARRAY['alumno_id', 'quiz_id']),
+                 ('intentos_evaluacion', ARRAY['alumno_id', 'evaluacion_id', 'numero_intento'])) AS x(tabla, cols)
+), r AS (
+  SELECT string_agg(tabla, ', ') FILTER (WHERE oid IS NULL) AS faltan,
+         string_agg(tabla || ' (' || array_to_string(cols, ', ') || ')', ', ') FILTER (WHERE oid IS NOT NULL AND aplica AND NOT unico) AS sin_indice,
+         string_agg(tabla || ': ' || CASE WHEN NOT aplica THEN 'no aplica' WHEN unico THEN 'sí' ELSE 'NO' END, ' / ' ORDER BY tabla)
+           FILTER (WHERE oid IS NOT NULL) AS txt
+    FROM idx
+)
+SELECT
+  'Índices únicos contra envíos simultáneos (R2)' AS check_name,
+  COALESCE(txt, '-') AS valor,
+  CASE
+    WHEN faltan IS NOT NULL
+      THEN '❌ FALTA la tabla ' || faltan || ' → corre scripts/schema.sql (o supabase/schema.sql) antes de este check'
+    WHEN sin_indice IS NOT NULL
+      THEN '❌ SIN ÍNDICE ÚNICO (' || sin_indice || '): 4 POST simultáneos al quiz dan la clave y dos envíos simultáneos del examen regalan un intento → corre supabase/migrations/20261008120000_r2_escritura_solo_servidor.sql (si aborta por duplicados, su encabezado dice cómo verlos; no borra nada)'
+    ELSE '✅ OK (una respuesta por pregunta y un intento por número; la app responde con la primera guardada)'
+  END AS resultado
+FROM r;
+
+-- ─── CHECK 34: anon sin escritura en public; funciones solo del servidor (R2) ─
+-- Aplica a toda base. anon no INSERTA, ACTUALIZA, BORRA ni hace TRUNCATE en
+-- ninguna tabla de public (salvo el INSERT que una política TO anon pide a
+-- propósito: keep_alive_log, Bug 46); nadie con sesión hace TRUNCATE (TRUNCATE no
+-- respeta la RLS). generar_matricula() (SECURITY DEFINER) no la ejecuta ninguna
+-- sesión por /rest/v1/rpc: daba el conteo de alumnos y el prefijo sin sesión. Las
+-- funciones de trigger no necesitan EXECUTE de quien escribe.
+WITH t AS (
+  SELECT string_agg(c.relname, ', ' ORDER BY c.relname) AS abiertas
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+     AND (has_table_privilege('anon', c.oid, 'UPDATE') OR has_table_privilege('anon', c.oid, 'DELETE')
+          OR has_table_privilege('anon', c.oid, 'TRUNCATE') OR has_table_privilege('authenticated', c.oid, 'TRUNCATE')
+          OR (has_table_privilege('anon', c.oid, 'INSERT')
+              AND NOT EXISTS (SELECT 1 FROM pg_policies p
+                               WHERE p.schemaname = 'public' AND p.tablename = c.relname
+                                 AND p.permissive = 'PERMISSIVE' AND p.cmd IN ('INSERT', 'ALL')
+                                 AND p.roles @> ARRAY['anon']::name[])))
+), f AS (
+  SELECT string_agg(DISTINCT p.oid::regprocedure::text, ', ') AS abiertas
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   CROSS JOIN unnest(ARRAY['anon', 'authenticated']) AS ro(rol)
+   WHERE n.nspname = 'public'
+     AND (p.proname = 'generar_matricula' OR p.prorettype = 'trigger'::regtype)
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ro.rol)
+     AND has_function_privilege(ro.rol, p.oid, 'EXECUTE')
+), r AS (
+  SELECT (SELECT abiertas FROM t) AS tablas, (SELECT abiertas FROM f) AS funciones
+)
+SELECT
+  'anon sin escritura en public; generar_matricula solo el servidor (R2)' AS check_name,
+  'tablas con escritura de anon o TRUNCATE con sesión: ' || COALESCE(tablas, 'ninguna')
+    || ' / funciones ejecutables con sesión: ' || COALESCE(funciones, 'ninguna') AS valor,
+  CASE
+    WHEN tablas IS NOT NULL OR funciones IS NOT NULL
+      THEN '❌ ' || CASE WHEN tablas IS NOT NULL THEN 'ESCRITURA SIN SESIÓN (' || tablas || ')' ELSE 'FUNCIONES ABIERTAS (' || funciones || ')' END
+           || ': los GRANT de fábrica de Supabase siguen ahí (la RLS como única capa; TRUNCATE ni eso) → corre supabase/migrations/20261008120000_r2_escritura_solo_servidor.sql (idempotente); una tabla nueva creada después la vuelve a abrir: córrela otra vez'
+    ELSE '✅ OK (anon solo inserta donde una política TO anon lo pide; sin TRUNCATE con sesión; generar_matricula solo el servidor)'
+  END AS resultado
+FROM r;

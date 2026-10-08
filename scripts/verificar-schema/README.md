@@ -150,3 +150,58 @@ Córrelo cada vez que toques la ventana de cursos: `curso_modulo_posicion`,
 `curso_modulo_en_ventana`, `curso_ventana_limite`, `reporte_curso_inscripciones`,
 B2, B6, C3b o `src/lib/cursos/acceso.ts`. Crea y borra `ventana_antes` y
 `ventana_despues`; con `VERIF_CONSERVAR=1` las deja para inspeccionarlas.
+
+## Explotaciones de la R2 con RLS real (soporte IVS, 8-oct-2026)
+
+`explotaciones-r2.mjs` contesta, con un Postgres de verdad: **¿lo que se cerró en
+IVS en la ronda 2 está cerrado en la plantilla, y la migración
+`20261008120000_r2_escritura_solo_servidor.sql` lo cierra en un cliente ya
+desplegado?** Usa el mismo cluster local desechable y `harness-supabase.sql` (más
+`ALTER ROLE service_role BYPASSRLS`, como en Supabase), y arma:
+
+| Base | Cómo se arma |
+|---|---|
+| `r2_antes` | la cadena de `R2_ANTES_REF` (por omisión `260fb8a`, el `main` anterior a la R2), leída con `git show` |
+| `r2_migrada` | `r2_antes` + la migración R2 de este árbol, **dos veces** (idempotente): un cliente ya desplegado que la corre |
+| `r2_copia_vieja` | `r2_migrada` + una copia vieja de `20260402140000` (recrea las políticas de escritura propia de logros y racha) |
+| `r2_despues` | la cadena de este árbol completa |
+| `r2_instalador` / `r2_combo` | `supabase/schema.sql` solo / `scripts/schema.sql` solo (clientes nuevos) |
+| `r2_duplicados` | `r2_antes` con dos respuestas del mismo alumno a la misma pregunta: la migración tiene que **abortar** sin borrar ni dejar nada a medias |
+
+En cada base siembra dos alumnos y un admin con el alta real (`auth.users` →
+`handle_new_user`, uno con `rol: 'admin'` en el metadata) y, con la sesión de un
+alumno (rol `authenticated`), sin sesión (`anon`) o con el service role, intenta
+dentro de `BEGIN … ROLLBACK` cada explotación de la auditoría (intento y
+calificación forjados, la clave de los bancos, la carrera del quiz y del último
+intento, progreso, logros, racha, documento autoaprobado, constancia, alumnos,
+notas, rol por UPDATE, `generar_matricula` por RPC, `TRUNCATE` con sesión…) y lo
+legítimo (el servidor marca la semana y el trigger mueve la racha, el alta asigna
+matrícula, el alumno lee lo suyo y escribe su nota y su perfil, el admin lee todo,
+el latido de `anon`). Corre además los CHECK 32, 33 y 34 de `post-setup-check.sql`.
+
+Exige: en `r2_antes` las explotaciones abiertas **pasan** (el arnés las ve) y los
+CHECK marcan ❌; en las demás ninguna pasa (`42501` por privilegio, no solo por la
+RLS; `23505` en las carreras), lo legítimo funciona y los tres CHECK dan ✅.
+Escribe la foto en `tests/unit/fixtures/explotaciones-r2.json` con el sha256 de la
+migración; `tests/unit/r2-escritura-solo-servidor.spec.ts` la lee en cada
+`pnpm test:unit` y falla si la migración cambió y nadie volvió a correr el arnés.
+
+```bash
+PG_BIN="/c/Program Files/PostgreSQL/18/bin" PGPORT=55440 node scripts/verificar-schema/explotaciones-r2.mjs
+```
+
+Salida esperada (1-2 min):
+
+```
+armando r2_antes (48 archivos)… 11 explotación(es) PASAN (d_quiz_carrera, …); legítimas rotas: ninguna; CHECK R2: ❌ ❌ ❌
+armando r2_migrada (50 archivos)… 0 explotación(es) PASAN; legítimas rotas: ninguna; CHECK R2: ✅ ✅ ✅
+…
+armando r2_duplicados… aborta: true; filas del quiz intactas: 2; nada aplicado a medias: true
+
+✔ R2 verificada con RLS real; foto en tests/unit/fixtures/explotaciones-r2.json
+```
+
+Prueba de mutación (8-oct-2026): quitar `progreso_semanas` de la lista del
+servidor en la migración hace que `r2_migrada` marque `e_progreso_insert PASA` y
+el CHECK 32 ❌ (en `r2_despues` no se ve porque el instalador ya trae la R2: por
+eso existe `r2_migrada`).
