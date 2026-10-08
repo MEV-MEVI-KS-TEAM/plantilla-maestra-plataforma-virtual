@@ -147,8 +147,12 @@ test('10. envío del mensual: aprobar cierra (409) antes de leer; revela solo al
   expect(t).toMatch(/admin\s*\.from\('intentos_evaluacion'\)\s*\.insert\(/)
   expect(t).not.toMatch(/supabase\s*\.from\('(preguntas|intentos_evaluacion)'\)/)
   expect(t).toContain('revision_completa: revelar,')
-  // El envío vacío sigue sin consumir intento, y se valida antes del INSERT.
-  expect(t.indexOf('if (previo.contestadas === 0)')).toBeLessThan(t.indexOf(".from('intentos_evaluacion')\n      .insert("))
+  // El envío vacío (y desde la R2, el parcial: soporte IVS 8-oct-2026) no consume
+  // intento: validarEnvio corre antes de calificar y antes del INSERT.
+  const iValida = t.indexOf('const validado = validarEnvio(pregs, ')
+  expect(iValida).toBeGreaterThan(0)
+  expect(iValida).toBeLessThan(t.indexOf('const previo = calificarEvaluacion('))
+  expect(iValida).toBeLessThan(t.indexOf(".from('intentos_evaluacion')\n      .insert("))
 })
 
 test('11. quiz: gate antes del service role; una pregunta de ESTA semana; sin defaults; nada de la clave', () => {

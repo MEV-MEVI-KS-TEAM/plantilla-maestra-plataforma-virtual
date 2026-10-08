@@ -80,6 +80,9 @@ async function leerRespuestasAlumno(
     .eq('alumno_id', alumnoId)
     .in('quiz_id', preguntaIds)
     .order('fecha', { ascending: true })
+    // Desempate determinista: dos filas con la misma `fecha` (envíos simultáneos
+    // en una base sin el índice único de la R2) resuelven siempre a la misma.
+    .order('id', { ascending: true })
   if (error) throw new Error(error.message)
   for (const a of data ?? []) {
     const r = a as { quiz_id: string; respuesta: unknown }
@@ -90,6 +93,11 @@ async function leerRespuestasAlumno(
   return { respuestas, forma: 'filas' }
 }
 
+type ErrorGuardar = { message: string; code?: string } | null
+
+/** 23505: el índice único (alumno_id, quiz_id) de la R2 — otra petición ya guardó esa respuesta. */
+const esRepetida = (e: ErrorGuardar) => e?.code === '23505'
+
 /** Guarda respuestas NUEVAS (las ya contestadas nunca se reemplazan). */
 async function guardarRespuestas(
   admin: SupabaseClient,
@@ -98,7 +106,7 @@ async function guardarRespuestas(
   forma: 'jsonb' | 'filas',
   previas: Record<string, number>,
   nuevas: { fila: QuizSemanaRow; idx: number }[],
-): Promise<{ error: string | null }> {
+): Promise<{ error: ErrorGuardar }> {
   if (nuevas.length === 0) return { error: null }
   if (forma === 'jsonb') {
     const respuestas: Record<string, number> = {}
@@ -108,7 +116,7 @@ async function guardarRespuestas(
       { alumno_id: alumnoId, semana_id: semanaId, respuestas, completado_en: new Date().toISOString() },
       { onConflict: 'alumno_id,semana_id', ignoreDuplicates: false },
     )
-    return { error: error?.message ?? null }
+    return { error: error ? { message: error.message, code: error.code } : null }
   }
   const { error } = await admin.from('quiz_respuestas').insert(
     nuevas.map(n => ({
@@ -119,7 +127,7 @@ async function guardarRespuestas(
       correcta: veredictoQuiz(n.fila, n.idx).correcta,
     })),
   )
-  return { error: error?.message ?? null }
+  return { error: error ? { message: error.message, code: error.code } : null }
 }
 
 /** Sesión + alumno + gate de la semana. Devuelve la respuesta de error o el alumno. */
@@ -229,8 +237,21 @@ export async function POST(
         return NextResponse.json({ ...veredictoQuiz(row, previas[row.id]), ya_respondida: true })
       }
       const g = await guardarRespuestas(admin, alumnoId, semanaId, forma, previas, [{ fila: row, idx }])
-      if (g.error) {
-        console.error('[quiz POST] guardar', g.error)
+      if (g.error && !esRepetida(g.error)) {
+        console.error('[quiz POST] guardar', g.error.message)
+        return NextResponse.json({ error: 'Error al guardar tu respuesta' }, { status: 500 })
+      }
+      // R2 (oráculo por carrera): 4 POST simultáneos, uno por opción, pasaban todos
+      // el candado de arriba y cada uno recibía SU veredicto. Ahora se responde
+      // SIEMPRE con la primera respuesta guardada: con el índice único las demás
+      // chocan (23505) y, en una base sin él, se relee la más antigua.
+      const { respuestas: guardadas } = await leerRespuestasAlumno(admin, alumnoId, semanaId, [row.id])
+      const ganadora = guardadas[row.id]
+      if (ganadora !== undefined && ganadora !== idx) {
+        return NextResponse.json({ ...veredictoQuiz(row, ganadora), ya_respondida: true })
+      }
+      if (ganadora === undefined) {
+        console.error('[quiz POST] la respuesta no quedó guardada', g.error?.message ?? '')
         return NextResponse.json({ error: 'Error al guardar tu respuesta' }, { status: 500 })
       }
       return NextResponse.json(veredictoQuiz(row, idx))
@@ -262,10 +283,16 @@ export async function POST(
       }
       const { respuestas: previas, forma } = await leerRespuestasAlumno(admin, alumnoId, semanaId, ids)
       const nuevas = validas.filter(v => previas[v.fila.id] === undefined)
-      const g = await guardarRespuestas(admin, alumnoId, semanaId, forma, previas, nuevas)
-      if (g.error) {
-        console.error('[quiz POST] guardar (compat)', g.error)
-        return NextResponse.json({ error: 'Error al guardar respuestas' }, { status: 500 })
+      // Forma de filas: una por una. Con el índice único de la R2, un 23505 en
+      // una fila (otra petición la guardó primero) no debe tirar las demás: un
+      // INSERT de varias filas es todo o nada.
+      const lotes = forma === 'filas' ? nuevas.map(n => [n]) : [nuevas]
+      for (const lote of lotes) {
+        const g = await guardarRespuestas(admin, alumnoId, semanaId, forma, previas, lote)
+        if (g.error && !esRepetida(g.error)) {
+          console.error('[quiz POST] guardar (compat)', g.error.message)
+          return NextResponse.json({ error: 'Error al guardar respuestas' }, { status: 500 })
+        }
       }
       return NextResponse.json({ ok: true })
     }

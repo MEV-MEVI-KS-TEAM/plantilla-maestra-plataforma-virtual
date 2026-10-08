@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoAcceso, tieneAccesoSemana } from '@/lib/acceso-materias'
 
 export async function POST(request: NextRequest) {
@@ -28,13 +29,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No tienes acceso a este contenido' }, { status: 403 })
     }
 
+    // ── R2 (soporte IVS, 8-oct-2026): progreso y logros los escribe SOLO el
+    // servidor, con el service role y DESPUÉS del gate de arriba. La migración
+    // 20261008120000_r2_escritura_solo_servidor.sql le quita al alumno el
+    // INSERT/UPDATE de progreso_semanas, logros_alumno y racha_actividad por
+    // /rest/v1: con su sesión se marcaba completa cualquier semana (también de
+    // meses no pagados), y la fila es la que abre la siguiente en el roadmap. La
+    // racha la sigue moviendo el trigger trg_actualizar_racha, que corre con los
+    // privilegios de quien inserta (aquí, el service role).
+    const admin = createAdminClient()
+
     // Verificar si ya existía el progreso
-    const { data: existente } = await supabase
+    const { data: existente } = await admin
       .from('progreso_semanas')
       .select('id, completada, fecha_completada')
       .eq('alumno_id', alumno.id)
       .eq('semana_id', semana_id)
-      .single()
+      .maybeSingle()
 
     const ya_existia = !!existente
 
@@ -49,7 +60,7 @@ export async function POST(request: NextRequest) {
     // lo disimulaba contando la EXISTENCIA de la fila, así que el hueco solo se
     // veía al querer construir un reporte encima.
     if (!ya_existia) {
-      const { error: insertError } = await supabase
+      const { error: insertError } = await admin
         .from('progreso_semanas')
         .upsert(
           {
@@ -75,7 +86,7 @@ export async function POST(request: NextRequest) {
       if (fila.completada !== true) parche.completada = true
 
       if (Object.keys(parche).length > 0) {
-        const { error: updateError } = await supabase
+        const { error: updateError } = await admin
           .from('progreso_semanas')
           .update(parche)
           .eq('id', fila.id)
@@ -89,14 +100,14 @@ export async function POST(request: NextRequest) {
     // ── Verificar logros ──────────────────────────────────────────────────────
 
     // Contar total de semanas completadas por el alumno
-    const { count: totalCompletadas } = await supabase
+    const { count: totalCompletadas } = await admin
       .from('progreso_semanas')
       .select('id', { count: 'exact', head: true })
       .eq('alumno_id', alumno.id)
 
     // Logro: primera semana completada
     if ((totalCompletadas ?? 0) === 1) {
-      await supabase
+      await admin
         .from('logros_alumno')
         .upsert(
           { alumno_id: alumno.id, tipo_logro: 'primera_semana' },
@@ -133,14 +144,14 @@ export async function POST(request: NextRequest) {
       const semanaIds  = ((semanasDeMateria ?? []) as { id: string }[]).map(s => s.id)
       const totalSemanas = semanaIds.length
 
-      const { count: completadasEnMateria } = await supabase
+      const { count: completadasEnMateria } = await admin
         .from('progreso_semanas')
         .select('id', { count: 'exact', head: true })
         .eq('alumno_id', alumno.id)
         .in('semana_id', semanaIds.length > 0 ? semanaIds : ['00000000-0000-0000-0000-000000000000'])
 
       if (totalSemanas > 0 && completadasEnMateria === totalSemanas) {
-        await supabase
+        await admin
           .from('logros_alumno')
           .upsert(
             { alumno_id: alumno.id, tipo_logro: 'materia_completada' },
@@ -158,7 +169,7 @@ export async function POST(request: NextRequest) {
     //
     // La racha real ya la mantiene el trigger de `progreso_semanas` sobre la tabla
     // `racha_actividad` (ver supabase/schema-02-funciones.sql). Aquí solo se lee.
-    const { data: racha } = await supabase
+    const { data: racha } = await admin
       .from('racha_actividad')
       .select('racha_actual')
       .eq('alumno_id', alumno.id)
@@ -167,7 +178,7 @@ export async function POST(request: NextRequest) {
     const diasRacha = (racha as { racha_actual?: number } | null)?.racha_actual ?? 1
 
     if (diasRacha >= 3) {
-      await supabase
+      await admin
         .from('logros_alumno')
         .upsert(
           { alumno_id: alumno.id, tipo_logro: 'racha_3_dias' },
@@ -175,7 +186,7 @@ export async function POST(request: NextRequest) {
         )
     }
     if (diasRacha >= 7) {
-      await supabase
+      await admin
         .from('logros_alumno')
         .upsert(
           { alumno_id: alumno.id, tipo_logro: 'racha_7_dias' },
