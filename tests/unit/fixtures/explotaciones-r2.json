@@ -1,7 +1,7 @@
 {
   "generado": "2026-10-08",
   "refAntes": "260fb8a",
-  "migracionSha256": "e3d4fcb7f1ea97272f24843c4b0e1403ddef841fd4e6a7b29a2a91ab194c711b",
+  "migracionSha256": "8ff413dc691140033d97445bf6710a545e18d14afdfd0a8fae9d5ca173902635",
   "explotaciones": [
     {
       "id": "a_intento_forjado",
@@ -1557,5 +1557,18 @@
     "mensaje": "R2: quiz_respuestas tiene respuestas repetidas (alumno, pregunta) de los alumnos bc0d3fe5-5270-8eff-0240-c53788467a40. No se borra nada: depúralas a mano dejando la más antigua de cada pregunta (la que la app ya califica; ver el encabezado) y vuelve a correr esta.\r",
     "filasQuiz": 2,
     "sinCambios": true
+  },
+  "drift": {
+    "aborta": true,
+    "mensaje": "R2: 1 alumno(s) con alumnos.usuario_id distinto de alumnos.id (drift: alumnos.id no es auth.uid()). Los techos «propio o admin» los dejarían sin ver lo suyo. No se toca nada: esta base necesita su propia migración.\r",
+    "sinCambios": true
+  },
+  "latidoPublic": {
+    "latido": "PASA:1",
+    "checks": {
+      "Avance, logros y calificación solo los escribe el servidor (R2)": true,
+      "Índices únicos contra envíos simultáneos (R2)": true,
+      "anon sin escritura en public; generar_matricula solo el servidor (R2)": true
+    }
   }
 }

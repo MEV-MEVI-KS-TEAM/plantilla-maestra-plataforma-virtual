@@ -291,6 +291,44 @@ INSERT INTO public.quiz_respuestas (alumno_id, quiz_id, respuesta, correcta, fec
   if (!process.env.VERIF_CONSERVAR) psql('postgres', ['-c', `DROP DATABASE IF EXISTS ${db}`])
 }
 
+// ── Drift de alumnos (puente usuario_id, alumnos.id ≠ auth.uid()): la migración ABORTA ──
+{
+  const db = 'r2_drift'
+  process.stdout.write(`armando ${db}… `)
+  psql('postgres', ['-c', `DROP DATABASE IF EXISTS ${db}`])
+  psql('postgres', ['-c', `CREATE DATABASE ${db}`])
+  psql(db, [], { entrada: HARNESS })
+  for (const [rel, leerVersion] of cadenaAntes) psql(db, [], { entrada: leerVersion(rel), cwd: rel.startsWith('scripts/') ? path.join(RAIZ, 'scripts') : RAIZ })
+  psql(db, [], { entrada: SIEMBRA + `
+ALTER TABLE public.alumnos ADD COLUMN usuario_id UUID;
+UPDATE public.alumnos SET usuario_id = id WHERE id = '${B}';
+UPDATE public.alumnos SET usuario_id = '${uuid('r2-drift-auth')}' WHERE id = '${A}';` })
+  const r = correr(db, [], { entrada: leerAhora(MIG_R2) })
+  const sigueAbierto = filas(psql(db, ['-tAc', `SELECT has_table_privilege('authenticated', 'public.progreso_semanas', 'INSERT')`]))[0] === 't'
+  salida.drift = { aborta: r.status !== 0, mensaje: ((r.stderr || '').match(/ERROR:\s+([^\n]*)/) || [])[1] || '', sinCambios: sigueAbierto }
+  console.log(`aborta: ${salida.drift.aborta}; nada aplicado a medias: ${sigueAbierto}`)
+  if (!process.env.VERIF_CONSERVAR) psql('postgres', ['-c', `DROP DATABASE IF EXISTS ${db}`])
+}
+
+// ── Latido con la política TO public (DDL de rescate a mano, Bug 65): anon sigue insertando ──
+{
+  const db = 'r2_latido_public'
+  process.stdout.write(`armando ${db}… `)
+  psql('postgres', ['-c', `DROP DATABASE IF EXISTS ${db}`])
+  psql('postgres', ['-c', `CREATE DATABASE ${db}`])
+  psql(db, [], { entrada: HARNESS })
+  for (const [rel, leerVersion] of cadenaAntes) psql(db, [], { entrada: leerVersion(rel), cwd: rel.startsWith('scripts/') ? path.join(RAIZ, 'scripts') : RAIZ })
+  psql(db, [], { entrada: SIEMBRA + `
+DROP POLICY IF EXISTS keep_alive_anon_insert ON public.keep_alive_log;
+CREATE POLICY keep_alive_public_insert ON public.keep_alive_log FOR INSERT WITH CHECK (true);` })
+  psql(db, [], { entrada: leerAhora(MIG_R2) })
+  const latido = intentar(db, 'anon', dml(`INSERT INTO public.keep_alive_log (source) VALUES ('r2')`))
+  const ck = checks(db)
+  salida.latidoPublic = { latido: latido.resultado, checks: Object.fromEntries(Object.entries(ck).map(([k, v]) => [k, v.ok])) }
+  console.log(`latido de anon: ${latido.resultado}; CHECK R2: ${Object.values(ck).map(c => c.ok ? '✅' : '❌').join(' ')}`)
+  if (!process.env.VERIF_CONSERVAR) psql('postgres', ['-c', `DROP DATABASE IF EXISTS ${db}`])
+}
+
 fs.mkdirSync(path.dirname(FOTO), { recursive: true })
 fs.writeFileSync(FOTO, JSON.stringify(salida, null, 2) + '\n')
 
@@ -306,6 +344,13 @@ for (const nombre of ['migrada', 'copia_vieja', 'despues', 'instalador', 'combo'
 if (Object.keys(salida.bases.despues.checks).length !== 3) { console.log('✘ no se encontraron los 3 CHECK R2'); fallas++ }
 if (!(salida.duplicados.aborta && salida.duplicados.filasQuiz === 2 && salida.duplicados.sinCambios)) {
   console.log(`✘ con duplicados la migración debía abortar sin borrar ni aplicar nada: ${JSON.stringify(salida.duplicados)}`); fallas++
+}
+if (!(salida.drift.aborta && salida.drift.sinCambios && /alumnos\.usuario_id distinto/.test(salida.drift.mensaje))) {
+  console.log(`✘ con drift de alumnos (usuario_id ≠ id) la migración debía abortar sin aplicar nada: ${JSON.stringify(salida.drift)}`); fallas++
+}
+if (!(salida.latidoPublic.latido === 'PASA:1' && Object.values(salida.latidoPublic.checks).length === 3
+      && Object.values(salida.latidoPublic.checks).every(Boolean))) {
+  console.log(`✘ con la política del latido TO public, anon debía seguir insertando y los CHECK R2 en ✅: ${JSON.stringify(salida.latidoPublic)}`); fallas++
 }
 console.log(fallas ? `\n✘ ${fallas} falla(s); foto en ${path.relative(RAIZ, FOTO)}` : `\n✔ R2 verificada con RLS real; foto en ${path.relative(RAIZ, FOTO)}`)
 process.exit(fallas ? 1 : 0)

@@ -66,6 +66,10 @@
 -- (5432), nunca el pooler 6543 (Bug 228). Lo prueba con RLS real
 -- scripts/verificar-schema/explotaciones-r2.mjs.
 --
+-- SI ABORTA POR DRIFT DE ALUMNOS (alumnos.usuario_id ≠ alumnos.id, p. ej. EDVEX):
+-- esa base no es de la plantilla tal cual; sus techos tendrían que ir por el
+-- puente usuario_id. No la fuerces.
+--
 -- SI ABORTA POR DUPLICADOS (quiz_respuestas o intentos_evaluacion): NO se borra
 -- nada de alumnos aquí. Para verlos:
 --   SELECT alumno_id, quiz_id, count(*) FROM public.quiz_respuestas
@@ -112,6 +116,17 @@ BEGIN
    WHERE to_regclass('public.' || x) IS NULL;
   IF v_malas IS NOT NULL THEN
     RAISE EXCEPTION 'R2: faltan tablas base (%) → corre primero scripts/schema.sql (o supabase/schema.sql)', v_malas;
+  END IF;
+  -- Drift de alumnos (puente usuario_id, p. ej. EDVEX): ahí alumnos.id ≠ auth.uid()
+  -- y los techos «propio o admin» (alumno_id = auth.uid()) dejarían a cada alumno
+  -- sin ver lo suyo. Esta migración es para bases con alumnos.id = auth.uid().
+  IF EXISTS (SELECT 1 FROM pg_attribute
+              WHERE attrelid = 'public.alumnos'::regclass AND attname = 'usuario_id' AND NOT attisdropped) THEN
+    EXECUTE 'SELECT count(*)::text FROM public.alumnos WHERE usuario_id IS NOT NULL AND usuario_id <> id'
+       INTO v_malas;
+    IF v_malas <> '0' THEN
+      RAISE EXCEPTION 'R2: % alumno(s) con alumnos.usuario_id distinto de alumnos.id (drift: alumnos.id no es auth.uid()). Los techos «propio o admin» los dejarían sin ver lo suyo. No se toca nada: esta base necesita su propia migración.', v_malas;
+    END IF;
   END IF;
   -- es_admin() con S2: los techos la llaman; sin SECURITY DEFINER una política que
   -- lea usuarios entraría en recursión (Bug 16) y un admin con rol='ADMIN' dejaría de ver.
@@ -317,12 +332,16 @@ BEGIN
   END LOOP;
 
   -- ── H6: anon no escribe en public; nadie con sesión hace TRUNCATE ─────────
+  -- keep_alive_log conserva el INSERT de anon por NOMBRE, aunque su política sea
+  -- TO public (DDL de rescate a mano, Bug 65): sin latido Supabase pausa y borra
+  -- el proyecto. Sin política de INSERT, la RLS lo sigue frenando.
   FOR r IN
     SELECT c.relname,
-           EXISTS (SELECT 1 FROM pg_policies p
-                    WHERE p.schemaname = 'public' AND p.tablename = c.relname
-                      AND p.permissive = 'PERMISSIVE' AND p.cmd IN ('INSERT', 'ALL')
-                      AND p.roles @> ARRAY['anon']::name[]) AS insert_anon
+           c.relname = 'keep_alive_log'
+           OR EXISTS (SELECT 1 FROM pg_policies p
+                       WHERE p.schemaname = 'public' AND p.tablename = c.relname
+                         AND p.permissive = 'PERMISSIVE' AND p.cmd IN ('INSERT', 'ALL')
+                         AND p.roles @> ARRAY['anon']::name[]) AS insert_anon
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
   LOOP
@@ -386,7 +405,7 @@ BEGIN
    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
      AND (has_table_privilege('anon', c.oid, 'UPDATE') OR has_table_privilege('anon', c.oid, 'DELETE')
           OR has_table_privilege('anon', c.oid, 'TRUNCATE') OR has_table_privilege('authenticated', c.oid, 'TRUNCATE')
-          OR (has_table_privilege('anon', c.oid, 'INSERT')
+          OR (has_table_privilege('anon', c.oid, 'INSERT') AND c.relname <> 'keep_alive_log'
               AND NOT EXISTS (SELECT 1 FROM pg_policies p
                                WHERE p.schemaname = 'public' AND p.tablename = c.relname
                                  AND p.permissive = 'PERMISSIVE' AND p.cmd IN ('INSERT', 'ALL')

@@ -1252,7 +1252,7 @@ WITH t AS (
      AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
      AND (has_table_privilege('anon', c.oid, 'UPDATE') OR has_table_privilege('anon', c.oid, 'DELETE')
           OR has_table_privilege('anon', c.oid, 'TRUNCATE') OR has_table_privilege('authenticated', c.oid, 'TRUNCATE')
-          OR (has_table_privilege('anon', c.oid, 'INSERT')
+          OR (has_table_privilege('anon', c.oid, 'INSERT') AND c.relname <> 'keep_alive_log'
               AND NOT EXISTS (SELECT 1 FROM pg_policies p
                                WHERE p.schemaname = 'public' AND p.tablename = c.relname
                                  AND p.permissive = 'PERMISSIVE' AND p.cmd IN ('INSERT', 'ALL')

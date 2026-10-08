@@ -245,6 +245,10 @@ export async function POST(
       // el candado de arriba y cada uno recibía SU veredicto. Ahora se responde
       // SIEMPRE con la primera respuesta guardada: con el índice único las demás
       // chocan (23505) y, en una base sin él, se relee la más antigua.
+      // OJO: la forma JSONB (una fila por semana, compat K-d12) NO queda cubierta:
+      // el upsert reescribe el objeto completo y gana la ÚLTIMA escritura, así que
+      // ahí la carrera sigue pudiendo dar más de un veredicto. La plantilla nace
+      // con la forma de filas; una base JSONB necesita su propia migración.
       const { respuestas: guardadas } = await leerRespuestasAlumno(admin, alumnoId, semanaId, [row.id])
       const ganadora = guardadas[row.id]
       if (ganadora !== undefined && ganadora !== idx) {

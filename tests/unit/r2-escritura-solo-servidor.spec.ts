@@ -39,6 +39,8 @@ const FOTO = JSON.parse(leer('tests/unit/fixtures/explotaciones-r2.json')) as {
   migracionSha256: string; refAntes: string; explotaciones: { id: string }[]; legitimas: { id: string }[]
   bases: Record<'antes' | 'migrada' | 'despues' | 'instalador' | 'combo' | 'copia_vieja', Base>
   duplicados: { aborta: boolean; mensaje: string; filasQuiz: number; sinCambios: boolean }
+  drift: { aborta: boolean; mensaje: string; sinCambios: boolean }
+  latidoPublic: { latido: string; checks: Record<string, boolean> }
 }
 
 // La lista de la auditoría (a-i del ticket). Si agregas una al arnés, agrégala aquí.
@@ -112,6 +114,20 @@ test('2b. con respuestas repetidas del quiz la migración ABORTA: no borra filas
   expect(d.mensaje).toContain('R2: quiz_respuestas tiene respuestas repetidas')
   expect(d.filasQuiz).toBe(2)
   expect(d.sinCambios, 'la transacción completa se revirtió').toBe(true)
+})
+
+test('2c. drift de alumnos (usuario_id ≠ id): la migración ABORTA sin tocar nada (los techos dejarían a cada alumno sin lo suyo)', () => {
+  const d = FOTO.drift
+  expect(d.aborta).toBe(true)
+  expect(d.mensaje).toContain('alumnos.usuario_id distinto de alumnos.id')
+  expect(d.sinCambios, 'la transacción completa se revirtió').toBe(true)
+})
+
+test('2d. latido con la política TO public (rescate a mano, Bug 65): anon sigue insertando en keep_alive_log y los CHECK R2 dan ✅', () => {
+  const l = FOTO.latidoPublic
+  expect(l.latido).toBe('PASA:1')
+  expect(Object.values(l.checks)).toHaveLength(3)
+  for (const [n, ok] of Object.entries(l.checks)) expect(ok, n).toBe(true)
 })
 
 test('3. la migración: transaccional, idempotente, aborta (sin borrar) ante duplicados, y nombra el despliegue previo', () => {

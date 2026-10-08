@@ -167,6 +167,8 @@ desplegado?** Usa el mismo cluster local desechable y `harness-supabase.sql` (m�
 | `r2_despues` | la cadena de este árbol completa |
 | `r2_instalador` / `r2_combo` | `supabase/schema.sql` solo / `scripts/schema.sql` solo (clientes nuevos) |
 | `r2_duplicados` | `r2_antes` con dos respuestas del mismo alumno a la misma pregunta: la migración tiene que **abortar** sin borrar ni dejar nada a medias |
+| `r2_drift` | `r2_antes` con `alumnos.usuario_id` distinto de `alumnos.id` (puente de EDVEX): la migración tiene que **abortar** sin dejar nada a medias (sus techos `alumno_id = auth.uid()` dejarían a cada alumno sin lo suyo) |
+| `r2_latido_public` | `r2_antes` con la política del latido `TO public` (DDL de rescate a mano, Bug 65): tras la migración `anon` **sigue insertando** en `keep_alive_log` y los CHECK R2 dan ✅ |
 
 En cada base siembra dos alumnos y un admin con el alta real (`auth.users` →
 `handle_new_user`, uno con `rol: 'admin'` en el metadata) y, con la sesión de un
@@ -197,6 +199,8 @@ armando r2_antes (48 archivos)… 11 explotación(es) PASAN (d_quiz_carrera, …
 armando r2_migrada (50 archivos)… 0 explotación(es) PASAN; legítimas rotas: ninguna; CHECK R2: ✅ ✅ ✅
 …
 armando r2_duplicados… aborta: true; filas del quiz intactas: 2; nada aplicado a medias: true
+armando r2_drift… aborta: true; nada aplicado a medias: true
+armando r2_latido_public… latido de anon: PASA:1; CHECK R2: ✅ ✅ ✅
 
 ✔ R2 verificada con RLS real; foto en tests/unit/fixtures/explotaciones-r2.json
 ```
