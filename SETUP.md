@@ -194,7 +194,7 @@ Editar SOLO este archivo: src/lib/config.ts
    **`INSTRUCCIONES-SOLO-CURSOS.md`**: la configuración del modo, el catálogo
    público y los 3 pasos posteriores.
 
-8. **Verificación** → ejecutar `scripts/post-setup-check.sql` (CHECK 1 a 31)
+8. **Verificación** → ejecutar `scripts/post-setup-check.sql` (CHECK 1 a 34)
    Reporta ✅/❌ por check. Si todo sale ✅, la plataforma está lista para entregar.
    Sin seed (línea Solo-Cursos) los CHECK 1-6, 9 y 10 salen ❌ a propósito, y el
    CHECK 8 sale ❌ hasta crear el admin.
@@ -260,8 +260,12 @@ Copiar .env.example → .env.local y llenar con datos de Supabase
      D22d-1 agregó, en el repo del cliente:
      `git cat-file -e <sha-desplegado>:src/lib/evaluaciones/examen-mensual.ts && git cat-file -e <sha-desplegado>:src/lib/quiz/quiz-semana.ts && echo OK`
      (en la plantilla misma sirve `git merge-base --is-ancestor fe00225 <sha> && echo OK`).
+   - Que ese commit trae la app de la **R2** (plantilla `0ebc236`, #302, Bug 275):
+     con una app anterior, la fila 25 deja «Marcar semana» y el tiempo de estudio
+     en 500.
+     `git cat-file -e <sha-desplegado>:supabase/migrations/20261008120000_r2_escritura_solo_servidor.sql && git grep -q createAdminClient <sha-desplegado> -- src/app/api/alumno/progreso/semana/route.ts && echo "R2 OK"`
    Si no sale OK: actualiza el repo con la plantilla y redeploy desde `main` antes
-   de correr la fila 23.
+   de correr la fila 23 (D22d-1) o la 25 (R2).
 
 ## Paso 7 — Dominio (10 min)
 1. Vercel → Settings → Domains → Add
