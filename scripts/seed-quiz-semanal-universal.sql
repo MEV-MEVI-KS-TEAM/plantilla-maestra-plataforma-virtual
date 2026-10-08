@@ -3213,7 +3213,7 @@ BEGIN
     INSERT INTO public.quiz_semana (semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES
       (v_semana_id, '¿Qué son las palabras agudas?', 'Palabras de una sola sílaba', 'Palabras donde la sílaba tónica es la última', 'Palabras sin acento', 'Palabras con acento en la antepenúltima sílaba', 'b', 1, 'Las palabras agudas tienen acento prosódico en la última sílaba. Llevan tilde si terminan en n, s o vocal: ca-fé, can-ción, com-prar (sin tilde, no termina en n/s/vocal).'),
       (v_semana_id, '¿Cuándo lleva tilde la palabra "tu"?', 'Cuando es pronombre personal (tú estudias) y no cuando es adjetivo posesivo (tu libro)', 'Nunca lleva tilde', 'Solo al inicio de oración', 'Siempre', 'a', 2, 'Es un caso de tilde diacrítica: "tú" (con tilde) es pronombre = "you", mientras "tu" (sin tilde) es posesivo = "your". Distinguir ambas es clave para escribir correctamente.'),
-      (v_semana_id, '¿Cuál es la palabra correctamente escrita?', 'Ortografía', 'Ortografia', 'Hortografía', 'Hortografia', 'a', 3, '"Ortografía" se escribe sin "h" inicial y lleva tilde en la "i" porque es palabra esdrújula (acento en antepenúltima sílaba: or-to-gra-FÍ-a... espera, hiato fuerza a tildar la "í").');
+      (v_semana_id, '¿Cuál es la palabra correctamente escrita?', 'Ortografía', 'Ortografia', 'Hortografía', 'Hortografia', 'a', 3, '"Ortografía" se escribe sin "h" inicial y lleva tilde en la "í" por hiato: la "í" tónica va junto a la "a" y la tilde rompe el diptongo (or-to-gra-FÍ-a).');
   END IF;
 END $$;
 
@@ -3716,7 +3716,7 @@ BEGIN
     DELETE FROM public.quiz_semana WHERE semana_id = v_semana_id;
     INSERT INTO public.quiz_semana (semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES
       (v_semana_id, 'What is the correct form of "to be" for the subject "they"?', 'is', 'am', 'be', 'are', 'd', 1, 'The verb "to be" in present tense: I am, you are, he/she/it is, we are, they are. "They" always uses "are".'),
-      (v_semana_id, 'Which sentence is grammatically correct?', 'He is my brother', 'She are a teacher', 'They is students', 'I is from Mexico', 'a', 2, 'The verb "to be" must agree with the subject: I am, You are, He/She/It is, We/They are. Only option D follows this rule correctly.'),
+      (v_semana_id, 'Which sentence is grammatically correct?', 'He is my brother', 'She are a teacher', 'They is students', 'I is from Mexico', 'a', 2, 'The verb "to be" must agree with the subject: I am, You are, He/She/It is, We/They are. Only option A follows this rule correctly.'),
       (v_semana_id, 'How do you make a negative sentence with "to be"?', 'Adding "not" after the verb: "I am not tired" (also "I''m not tired")', 'Putting the verb at the end', 'Doubling the verb', 'Adding "no" before the verb: "I no am tired"', 'a', 3, 'To negate "to be", add "not" after the verb: I am not / I''m not, you are not / you aren''t, he is not / he isn''t. Spanish "no" doesn''t apply here.');
   END IF;
 END $$;
