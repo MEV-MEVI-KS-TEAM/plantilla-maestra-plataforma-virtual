@@ -17,6 +17,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { CONFIG } from '@/lib/config'
 import { withAlpha } from '@/lib/utils'
+import { colorLegibleSobre } from '@/lib/contraste'
 import ContenidoMarkdown, { normalizarContenido } from '@/components/ContenidoMarkdown'
 
 gsap.registerPlugin(useGSAP)
@@ -305,7 +306,7 @@ export default function MateriaPage() {
                     <div className="rounded-xl p-5 space-y-4" style={CARD}>
                       {/* Header de la semana */}
                       <div className="pb-3" style={{ borderBottom: '1px solid #2A2F3E' }}>
-                        <span className="text-xs font-mono" style={{ color: CONFIG.colores.acento }}>
+                        <span className="text-xs font-mono" style={{ color: colorLegibleSobre(CONFIG.colores.acento, '#181C26') }}>
                           {materia.nivel === 'demo' ? `Paso ${semana.numero}` : `Semana ${semana.numero}`}
                         </span>
                         <h3 className="text-base font-bold mt-0.5" style={{ color: '#F1F5F9' }}>

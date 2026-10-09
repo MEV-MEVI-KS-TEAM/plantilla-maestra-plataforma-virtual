@@ -6,8 +6,15 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { CONFIG } from '@/lib/config'
 import { withAlpha } from '@/lib/utils'
+import { colorLegibleSobre } from '@/lib/contraste'
 
 gsap.registerPlugin(useGSAP)
+
+// El roadmap vive en la tarjeta oscura de la materia (#181C26). Un acento de
+// marca oscuro (p. ej. el petróleo de EDUVA) desaparecía ahí: «Semana 1», el
+// número del nodo y «En curso» quedaban ilegibles. Si el acento ya cumple, no
+// cambia; si no, se aclara conservando el tono (contraste.ts).
+const ACENTO = colorLegibleSobre(CONFIG.colores.acento, '#181C26')
 
 interface WeekRoadmapProps {
   semanas: Array<{
@@ -125,9 +132,9 @@ export default function WeekRoadmap({
                 ].join(' ')}
                 style={
                   estado === 'completado'
-                    ? { backgroundColor: CONFIG.colores.primario, borderColor: seleccionado ? CONFIG.colores.acento : CONFIG.colores.primario, boxShadow: seleccionado ? `0 0 0 3px ${withAlpha(CONFIG.colores.acento, 0.35)}` : undefined }
+                    ? { backgroundColor: CONFIG.colores.primario, borderColor: seleccionado ? ACENTO : CONFIG.colores.primario, boxShadow: seleccionado ? `0 0 0 3px ${withAlpha(ACENTO, 0.35)}` : undefined }
                     : estado === 'activo'
-                    ? { backgroundColor: withAlpha(CONFIG.colores.acento, 0.15), borderColor: CONFIG.colores.acento }
+                    ? { backgroundColor: withAlpha(ACENTO, 0.15), borderColor: ACENTO }
                     : undefined
                 }
               >
@@ -135,7 +142,7 @@ export default function WeekRoadmap({
                   <Check className="w-5 h-5" style={{ color: '#fff' }} strokeWidth={2.5} />
                 )}
                 {estado === 'activo' && (
-                  <span className="text-sm font-bold" style={{ color: CONFIG.colores.acento }}>
+                  <span className="text-sm font-bold" style={{ color: ACENTO }}>
                     {semana.numero}
                   </span>
                 )}
@@ -177,7 +184,7 @@ export default function WeekRoadmap({
               <div className="flex items-center gap-2 mb-0.5 mt-1.5">
                 <span
                   className="text-xs font-mono transition-all duration-500"
-                  style={{ color: estado === 'bloqueado' || estado === 'pendiente' ? '#94A3B8' : CONFIG.colores.acento }}
+                  style={{ color: estado === 'bloqueado' || estado === 'pendiente' ? '#94A3B8' : ACENTO }}
                 >
                   {labelPrefijo} {semana.numero}
                 </span>
@@ -185,7 +192,7 @@ export default function WeekRoadmap({
                 {estado === 'activo' && (
                   <span
                     className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: withAlpha(CONFIG.colores.acento, 0.15), color: CONFIG.colores.acento }}
+                    style={{ background: withAlpha(ACENTO, 0.15), color: ACENTO }}
                   >
                     {libre ? 'Viendo' : lang === 'en' ? 'In progress' : 'En curso'}
                   </span>

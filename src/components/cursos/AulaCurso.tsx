@@ -37,11 +37,14 @@ import { canalEscuela } from '@/lib/contacto-ui'
 import { textoSinLecciones } from '@/lib/cursos/visor-textos'
 import { CONFIG } from '@/lib/config'
 import { withAlpha } from '@/lib/utils'
+import { colorLegibleSobre } from '@/lib/contraste'
 
 type Tab = 'contenido' | 'examen' | 'informacion'
 
 // Mismas tarjetas que la materia (src/app/(dashboard)/alumno/materia/[id]/page.tsx).
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
+// Acento legible DENTRO de las tarjetas oscuras (igual que el roadmap).
+const ACENTO = colorLegibleSobre(CONFIG.colores.acento, '#181C26')
 
 interface ExamenResumen { total: number; mejor: number | null; aprobado: boolean }
 
@@ -276,7 +279,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                 {vacio.esperaPago && canal && (
                   <a href={canal.href} target="_blank" rel="noopener noreferrer"
                     className="inline-block mt-3 text-sm font-semibold underline"
-                    style={{ color: CONFIG.colores.acento }}>
+                    style={{ color: ACENTO }}>
                     Escríbele a tu escuela por {canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}
                   </a>
                 )}
@@ -294,7 +297,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                       <div key={modulo.id} className="space-y-3">
                         <div className="flex items-center gap-2">
                           <span className="flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold flex-shrink-0"
-                            style={{ background: withAlpha(CONFIG.colores.acento, 0.18), color: CONFIG.colores.acento }}>
+                            style={{ background: withAlpha(ACENTO, 0.18), color: ACENTO }}>
                             {mi + 1}
                           </span>
                           <p className="flex-1 min-w-0 text-xs font-semibold uppercase tracking-wide leading-snug" style={{ color: '#CBD5E1' }}>
@@ -337,7 +340,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                     <div className="rounded-xl p-5 space-y-4" style={CARD}>
                       {/* Header de la lección */}
                       <div className="pb-3" style={{ borderBottom: '1px solid #2A2F3E' }}>
-                        <span className="text-xs font-mono" style={{ color: CONFIG.colores.acento }}>
+                        <span className="text-xs font-mono" style={{ color: ACENTO }}>
                           {moduloDeActiva >= 0 ? `Módulo ${moduloDeActiva + 1} · ` : ''}Lección {numeroDe.get(activa.id)}
                         </span>
                         <h2 className="text-base font-bold mt-0.5" style={{ color: '#F1F5F9' }}>{activa.titulo}</h2>
@@ -361,7 +364,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all"
                             style={{ background: '#0D1017', border: '1px solid #2A2F3E', color: '#F1F5F9' }}
                           >
-                            <FileText className="w-4 h-4 flex-shrink-0" style={{ color: CONFIG.colores.acento }} />
+                            <FileText className="w-4 h-4 flex-shrink-0" style={{ color: ACENTO }} />
                             <span className="flex-1 min-w-0 truncate">Descargar material (PDF)</span>
                             <Download className="w-4 h-4 flex-shrink-0" style={{ color: '#94A3B8' }} />
                           </a>
@@ -391,7 +394,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                               disabled={marcando}
                               className="w-full py-3 rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
                               style={{ background: CONFIG.colores.primario, color: '#fff', border: 'none' }}
-                              onMouseEnter={e => { if (!marcando) e.currentTarget.style.background = CONFIG.colores.acento }}
+                              onMouseEnter={e => { if (!marcando) e.currentTarget.style.background = CONFIG.colores.acentoHover ?? CONFIG.colores.primario }}
                               onMouseLeave={e => { e.currentTarget.style.background = CONFIG.colores.primario }}
                             >
                               {marcando ? '⏳ Guardando...' : '✅ Marcar lección como completada'}
@@ -570,7 +573,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                 {detalle.modulos.map((m, i) => (
                   <li key={m.id} className="flex items-start gap-3 text-sm">
                     <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
-                      style={{ background: withAlpha(CONFIG.colores.acento, 0.15), color: CONFIG.colores.acento }}>
+                      style={{ background: withAlpha(ACENTO, 0.15), color: ACENTO }}>
                       {i + 1}
                     </span>
                     <span className="flex-1" style={{ color: '#CBD5E1' }}>{m.nombre}</span>
