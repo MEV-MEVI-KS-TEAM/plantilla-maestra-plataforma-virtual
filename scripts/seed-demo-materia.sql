@@ -23,7 +23,7 @@ INSERT INTO public.meses_contenido (id, materia_id, numero_mes, titulo, descripc
 
 -- ── 3. SEMANAS ───────────────────────────────────────────────────────────────
 INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido) VALUES
-('cc000001-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',1,'Bienvenida a tu programa virtual — qué esperar','Bienvenida a tu programa virtual — qué esperar','https://www.youtube.com/results?search_query=C%C3%B3mo+tener+%C3%A9xito+en+la+educaci%C3%B3n+en+l%C3%ADnea+en+linea',60,'Decidiste retomar tus estudios en línea. Eso ya dice mucho de ti: tienes iniciativa, quieres superarte y estás tomando acción. Esta materia te va a dar las herramientas para que lo logres.
+('cc000001-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',1,'Bienvenida a tu programa virtual — qué esperar','Bienvenida a tu programa virtual — qué esperar','https://player.mediadelivery.net/embed/775332/2cbac038-7a4c-4e38-b55c-7443fc77f7e7',60,'Decidiste retomar tus estudios en línea. Eso ya dice mucho de ti: tienes iniciativa, quieres superarte y estás tomando acción. Esta materia te va a dar las herramientas para que lo logres.
 
 **¿Qué es estudiar en línea?**
 Es el mismo programa que en el sistema presencial, con la misma validez oficial, pero en formato 100% en línea. Estudias a tu ritmo, las 24 horas del día, los 7 días de la semana, desde cualquier lugar con internet.
@@ -65,7 +65,7 @@ Estudiar en línea requiere más autodisciplina que el presencial. Nadie te va a
 2. [Tips para estudiar desde casa](https://www.youtube.com/results?search_query=Tips+para+estudiar+desde+casa+en+linea) — 10 min
 3. [Ventajas de la educación virtual](https://www.youtube.com/results?search_query=Ventajas+de+la+educaci%C3%B3n+virtual+en+linea) — 8 min
 '),
-('cc000002-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',2,'Estilos de aprendizaje — descubre cómo aprendes mejor','Estilos de aprendizaje — descubre cómo aprendes mejor','https://www.youtube.com/results?search_query=Estilos+de+aprendizaje+VARK+%E2%80%94+descubre+el+tuyo+en+linea',66,'No todos aprendemos de la misma manera. Conocer tu estilo de aprendizaje te permite estudiar de forma más eficiente — aprender más en menos tiempo.
+('cc000002-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',2,'Estilos de aprendizaje — descubre cómo aprendes mejor','Estilos de aprendizaje — descubre cómo aprendes mejor','https://player.mediadelivery.net/embed/775332/7d038d79-db11-4609-a4ea-5c0fb4fd9a28',66,'No todos aprendemos de la misma manera. Conocer tu estilo de aprendizaje te permite estudiar de forma más eficiente — aprender más en menos tiempo.
 
 **Modelo VARK — Los 4 estilos principales:**
 
@@ -98,7 +98,7 @@ No eres ''inteligente'' o ''no inteligente''. Eres inteligente de diferentes man
 2. [Inteligencias múltiples de Gardner](https://www.youtube.com/results?search_query=Inteligencias+m%C3%BAltiples+de+Gardner+en+linea) — 12 min
 3. [Cómo estudiar según tu estilo de aprendizaje](https://www.youtube.com/results?search_query=C%C3%B3mo+estudiar+seg%C3%BAn+tu+estilo+de+aprendizaje+en+linea) — 10 min
 '),
-('cc000003-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',3,'Técnicas de estudio efectivas','Técnicas de estudio efectivas','https://www.youtube.com/results?search_query=Active+Recall+%E2%80%94+la+mejor+t%C3%A9cnica+de+estudio+en+linea',68,'Estudiar mucho NO es lo mismo que estudiar bien. Las técnicas correctas pueden hacer que aprendas en 1 hora lo que antes te tomaba 3.
+('cc000003-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',3,'Técnicas de estudio efectivas','Técnicas de estudio efectivas','https://player.mediadelivery.net/embed/775332/94f1fe80-38b3-480d-8662-8b6d227b12b4',68,'Estudiar mucho NO es lo mismo que estudiar bien. Las técnicas correctas pueden hacer que aprendas en 1 hora lo que antes te tomaba 3.
 
 **Técnicas que SÍ funcionan (respaldadas por ciencia):**
 
@@ -142,7 +142,7 @@ Explica el tema como si se lo enseñaras a un niño de 10 años. Si no puedes ex
 2. [Técnica Pomodoro explicada](https://www.youtube.com/results?search_query=T%C3%A9cnica+Pomodoro+explicada+en+linea) — 8 min
 3. [Cómo estudiar de forma efectiva — basado en ciencia](https://www.youtube.com/results?search_query=C%C3%B3mo+estudiar+de+forma+efectiva+%E2%80%94+basado+en+ciencia+en+linea) — 16 min
 '),
-('cc000004-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',4,'Gestión del tiempo y organización personal','Gestión del tiempo y organización personal','https://www.youtube.com/results?search_query=Gesti%C3%B3n+del+tiempo+%E2%80%94+la+Matriz+de+Eisenhower+en+linea',66,'En la educación virtual, nadie administra tu tiempo por ti. Si no te organizas, el tiempo se va y las materias se acumulan.
+('cc000004-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',4,'Gestión del tiempo y organización personal','Gestión del tiempo y organización personal','https://player.mediadelivery.net/embed/775332/47372bd1-4f96-4e43-8c7f-093eccf9bdc9',66,'En la educación virtual, nadie administra tu tiempo por ti. Si no te organizas, el tiempo se va y las materias se acumulan.
 
 **La Matriz de Eisenhower:**
 Clasifica tus tareas en 4 cuadrantes:
@@ -189,7 +189,7 @@ Domingo: planificación de la semana siguiente (15 min) + descanso
 2. [Cómo dejar de procrastinar — tips reales](https://www.youtube.com/results?search_query=C%C3%B3mo+dejar+de+procrastinar+%E2%80%94+tips+reales+en+linea) — 14 min
 3. [Cómo organizar tu semana de estudio](https://www.youtube.com/results?search_query=C%C3%B3mo+organizar+tu+semana+de+estudio+en+linea) — 12 min
 '),
-('cc000005-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',5,'Motivación y disciplina en la educación a distancia','Motivación y disciplina en la educación a distancia','https://www.youtube.com/results?search_query=Motivaci%C3%B3n+vs+disciplina+%E2%80%94+qu%C3%A9+funciona+mejor+en+linea',66,'La motivación te hace empezar. La disciplina te hace continuar. En la educación virtual necesitas ambas.
+('cc000005-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',5,'Motivación y disciplina en la educación a distancia','Motivación y disciplina en la educación a distancia','https://player.mediadelivery.net/embed/775332/43af6e5e-166e-43b5-88bc-bfefe7677011',66,'La motivación te hace empezar. La disciplina te hace continuar. En la educación virtual necesitas ambas.
 
 **Motivación intrínseca vs extrínseca:**
 - Extrínseca: estudias por el título, por quedar bien, por presión familiar. Funciona a corto plazo.
@@ -231,7 +231,7 @@ La inteligencia no es fija. Tu cerebro es como un músculo: entre más lo ejerci
 2. [Cómo crear hábitos que duren](https://www.youtube.com/results?search_query=C%C3%B3mo+crear+h%C3%A1bitos+que+duren+en+linea) — 14 min
 3. [Mentalidad de crecimiento — Carol Dweck](https://www.youtube.com/results?search_query=Mentalidad+de+crecimiento+%E2%80%94+Carol+Dweck+en+linea) — 10 min
 '),
-('cc000006-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',6,'Herramientas digitales para el estudio','Herramientas digitales para el estudio','https://www.youtube.com/results?search_query=Mejores+apps+para+estudiar+%E2%80%94+todas+gratis+en+linea',71,'La tecnología puede ser tu mejor aliada o tu peor distracción. Aquí te presento herramientas gratuitas que harán tu estudio más eficiente.
+('cc000006-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',6,'Herramientas digitales para el estudio','Herramientas digitales para el estudio','https://player.mediadelivery.net/embed/775332/64304eae-8494-4937-8630-db1d1ea0ec4a',71,'La tecnología puede ser tu mejor aliada o tu peor distracción. Aquí te presento herramientas gratuitas que harán tu estudio más eficiente.
 
 **Para tomar notas:**
 - Google Docs: simple, colaborativo, en la nube
@@ -277,7 +277,7 @@ La inteligencia no es fija. Tu cerebro es como un músculo: entre más lo ejerci
 2. [Cómo usar Anki para estudiar mejor](https://www.youtube.com/results?search_query=C%C3%B3mo+usar+Anki+para+estudiar+mejor+en+linea) — 12 min
 3. [Notion para estudiantes — tutorial](https://www.youtube.com/results?search_query=Notion+para+estudiantes+%E2%80%94+tutorial+en+linea) — 15 min
 '),
-('cc000007-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',7,'Mi proyecto académico — metas y plan de acción','Mi proyecto académico — metas y plan de acción','https://www.youtube.com/results?search_query=C%C3%B3mo+establecer+metas+SMART+en+linea',66,'Tener un plan claro multiplica tus posibilidades de éxito. Esta semana vas a construir tu proyecto académico personal.
+('cc000007-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',7,'Mi proyecto académico — metas y plan de acción','Mi proyecto académico — metas y plan de acción','https://player.mediadelivery.net/embed/775332/9f0a75a9-030b-4a1a-b90f-270d47ddead2',66,'Tener un plan claro multiplica tus posibilidades de éxito. Esta semana vas a construir tu proyecto académico personal.
 
 **Metas SMART:**
 Una buena meta debe ser:
@@ -323,7 +323,7 @@ Concluir tus estudios es la puerta. Lo que hay detrás de esa puerta lo decides 
 2. [Cómo crear un plan de estudios personal](https://www.youtube.com/results?search_query=C%C3%B3mo+crear+un+plan+de+estudios+personal+en+linea) — 12 min
 3. [¿Qué estudiar al terminar tu programa?](https://www.youtube.com/results?search_query=%C2%BFQu%C3%A9+estudiar+despu%C3%A9s+del+en+linea%3F+en+linea) — 14 min
 '),
-('cc000008-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',8,'Repaso general y preparación para examen final','Repaso general y preparación para examen final','https://www.youtube.com/results?search_query=Repaso+de+habilidades+para+el+estudio+en+linea',45,'Última semana. Repasa: las ventajas y retos del estudio en línea, los estilos de aprendizaje VARK, técnicas de estudio efectivas (Active Recall, Pomodoro, Feynman), gestión del tiempo con la Matriz de Eisenhower, la diferencia entre motivación y disciplina, las herramientas digitales para estudiar, y las metas SMART para tu proyecto académico.')
+('cc000008-0000-4000-a000-000000000001','aa000000-0000-4000-a000-000000000001',8,'Repaso general y preparación para examen final','Repaso general y preparación para examen final','https://player.mediadelivery.net/embed/775332/e461cfb8-3e14-4dc1-804a-0d6786527e9d',45,'Última semana. Repasa: las ventajas y retos del estudio en línea, los estilos de aprendizaje VARK, técnicas de estudio efectivas (Active Recall, Pomodoro, Feynman), gestión del tiempo con la Matriz de Eisenhower, la diferencia entre motivación y disciplina, las herramientas digitales para estudiar, y las metas SMART para tu proyecto académico.')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 4. EVALUACIÓN FINAL ──────────────────────────────────────────────────────
