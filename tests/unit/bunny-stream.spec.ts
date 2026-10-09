@@ -308,7 +308,7 @@ test('ningún módulo de navegador importa la firma, y no existe NEXT_PUBLIC_BUN
     }
   }
   const firma = fs.readFileSync('src/lib/video/bunny-firma.ts', 'utf8')
-  expect(firma.split('\n')[0]).toBe("import 'server-only'")
+  expect(firma.split(/\r?\n/)[0]).toBe("import 'server-only'") // el checkout puede traer CRLF
   // el entorno BUNNY_* solo se lee en bunny-firma-core (configBunnyDe); nadie más lo toca directo
   const leen = todos.filter(f => /env\.BUNNY_|env\[['"]BUNNY_/.test(fs.readFileSync(f, 'utf8')) && !/bunny-firma-core\.ts$/.test(f))
   expect(leen).toEqual([])
