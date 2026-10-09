@@ -1,7 +1,8 @@
 'use client'
 
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, VideoOff } from 'lucide-react'
 import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
+import { BUNNY_IFRAME_ALLOW, VIDEO_NO_DISPONIBLE } from '@/lib/video/bunny-url'
 import { safeExternalUrl } from '@/lib/cursos/url-safe'
 
 /**
@@ -38,13 +39,30 @@ export function VideoPlayer({ url, titulo }: { url: string; titulo: string }) {
     )
   }
 
+  // Bunny Stream: el servidor (cursos/alumno-data) la firma; sin firma no hay
+  // iframe que montar (Bunny daría 403) y se pinta un aviso neutro.
+  if (parsed.provider === 'bunny' && !parsed.embedUrl) {
+    return (
+      <p
+        className="flex items-center gap-2 text-sm rounded-xl px-4 py-3"
+        style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B' }}
+        role="status"
+      >
+        <VideoOff className="w-4 h-4 flex-shrink-0" />
+        {VIDEO_NO_DISPONIBLE}
+      </p>
+    )
+  }
+
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-primario)' }}>
       <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
         <iframe
-          src={parsed.embedUrl}
+          src={parsed.embedUrl ?? undefined}
           title={`Video: ${titulo}`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow={parsed.provider === 'bunny'
+            ? BUNNY_IFRAME_ALLOW
+            : 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}
           allowFullScreen
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
         />

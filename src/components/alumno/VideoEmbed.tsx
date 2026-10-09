@@ -1,6 +1,7 @@
 'use client'
 
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, VideoOff } from 'lucide-react'
+import { BUNNY_IFRAME_ALLOW, VIDEO_NO_DISPONIBLE, bunnyEmbedFirmado, parseBunnyUrl } from '@/lib/video/bunny-url'
 
 interface VideoEmbedProps {
   url: string
@@ -53,6 +54,49 @@ export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
   // muerto dentro de una materia pagada. Se quitó en vez de arreglarse porque
   // no hay a qué arreglarlo — el endpoint ya no existe.
   if (!esVideoReproducible(url)) return null
+
+  // ── Caso 1: Bunny Stream (videos propios) ───────────────────────────────────
+  // Va PRIMERO: su ruta /embed/{biblioteca}/{GUID} la capturaría el extractor de
+  // YouTube de abajo (`embed\/…`) y montaría un iframe de YouTube con basura.
+  // El servidor (api/alumno/materia) la firma después de validar el acceso; si
+  // no viene firmada (faltan BUNNY_* en el servidor) no hay nada que montar —
+  // Bunny respondería 403 — y se pinta un aviso neutro en vez de un iframe roto.
+  const bunny = parseBunnyUrl(url)
+  if (bunny) {
+    const src = bunnyEmbedFirmado(bunny)
+    if (!src) {
+      return (
+        <div
+          className="flex items-center gap-3 rounded-xl px-4 py-3"
+          style={{ background: '#1E2330', border: '1px solid #2A2F3E', color: '#94A3B8' }}
+          role="status"
+        >
+          <VideoOff className="w-4 h-4 shrink-0" />
+          <p className="text-sm">{VIDEO_NO_DISPONIBLE}</p>
+        </div>
+      )
+    }
+    return (
+      <div className="rounded-xl overflow-hidden" style={{ background: '#1E2330' }}>
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+          <iframe
+            src={src}
+            title={titulo}
+            loading="lazy"
+            allow={BUNNY_IFRAME_ALLOW}
+            allowFullScreen
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+          />
+        </div>
+        {(titulo || duracion) && (
+          <div className="px-4 py-3">
+            {titulo && <p className="text-sm font-medium" style={{ color: '#E2E8F0' }}>{titulo}</p>}
+            {duracion && <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>{duracion}</p>}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // ── Caso 2: Video directo de YouTube (watch?v= o youtu.be/) ─────────────────
   // Ej: https://www.youtube.com/watch?v=YWLP8YKqGvE

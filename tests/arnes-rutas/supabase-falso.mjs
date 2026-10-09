@@ -62,6 +62,16 @@ class Consulta {
     this.filtros.push((f) => re.test(String(f[c] ?? '')))
     return this
   }
+  // PostgREST `or`: solo la forma que usan las rutas, `col.eq.valor,col.eq.valor`.
+  or(expr) {
+    const ramas = String(expr).split(',').map((r) => {
+      const m = r.trim().match(/^([a-z_]+)\.eq\.(.*)$/)
+      if (!m) throw new Error(`or() del arnés no entiende «${r}»`)
+      return (f) => igual(f[m[1]], m[2])
+    })
+    this.filtros.push((f) => ramas.some((p) => p(f)))
+    return this
+  }
   gt(c, v) { this.filtros.push((f) => f[c] > v); return this }
   gte(c, v) { this.filtros.push((f) => f[c] >= v); return this }
   lt(c, v) { this.filtros.push((f) => f[c] < v); return this }

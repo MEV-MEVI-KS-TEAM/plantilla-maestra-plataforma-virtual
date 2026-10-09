@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
+import { canonizarVideoUrl } from '@/lib/video/bunny-url'
 
 // ─── POST /api/admin/cursos/[id]/lecciones — crear lección en un módulo ──────
 export async function POST(
@@ -19,7 +20,8 @@ export async function POST(
     const body = await request.json()
     const moduloId = body.modulo_id as string | undefined
     const titulo = (body.titulo as string | undefined)?.trim()
-    const videoUrl = (body.video_url as string | undefined)?.trim() || null
+    // Bunny Stream se guarda SIEMPRE canónico (sin token ni expires)
+    const videoUrl = canonizarVideoUrl((body.video_url as string | undefined)?.trim() || null)
     const contenidoTexto = (body.contenido_texto as string | undefined)?.trim() || null
 
     if (!moduloId) return NextResponse.json({ error: 'modulo_id es requerido' }, { status: 400 })

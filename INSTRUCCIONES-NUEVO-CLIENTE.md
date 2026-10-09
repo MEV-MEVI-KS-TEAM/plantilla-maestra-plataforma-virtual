@@ -84,6 +84,9 @@ INSERT INTO planes_estudio (nombre, duracion_meses, precio_mensual, activo) VALU
 ### Paso 8: Crear proyecto en Vercel
 - Importar el repositorio del cliente en Vercel
 - Agregar las 3 variables de entorno (SUPABASE_URL, ANON_KEY, SERVICE_ROLE_KEY)
+- Vincular el proyecto a las variables COMPARTIDAS del equipo `BUNNY_LIBRARY_ID` y
+  `BUNNY_TOKEN_KEY` (videos propios en Bunny Stream; la llave no se copia, solo se
+  vincula). Sin ellas los videos de Bunny salen como «Video no disponible por el momento».
 - Framework: Next.js
 - Deploy
 

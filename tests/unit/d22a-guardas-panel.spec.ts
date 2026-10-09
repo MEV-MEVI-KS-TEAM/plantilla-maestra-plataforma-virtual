@@ -9,7 +9,7 @@ import { SECCIONES_PANEL, INICIO_SECRETARIO, destinoSinPermiso, type SeccionPane
  * Dos guardianes que fallan con cualquier ruta NUEVA sin clasificar:
  *  - PÁGINAS: toda page.tsx de /admin cae en una sección de SECCIONES_PANEL, y
  *    las de nivel 'admin' tienen su guarda de servidor (exigirSeccion).
- *  - API: la tabla de abajo lista los 102 handlers de /api/admin con su nivel, y
+ *  - API: la tabla de abajo lista los 103 handlers de /api/admin con su nivel, y
  *    cada uno lo revisa en su cuerpo (verifyAdmin/verifyStaff/…, o la función
  *    SQL con es_staff() llamada con la sesión).
  */
@@ -140,6 +140,7 @@ const API: Record<string, Nivel> = {
   'semanas/[id]/quiz GET': A, 'semanas/[id]/quiz POST': A,
   'semanas/[id] PATCH': A, 'semanas/[id] DELETE': A, 'semanas POST': A,
   'stats GET': A, 'usuarios GET': A, 'usuarios POST': A,
+  'video-firmado POST': A,                          // Bunny Stream: vista previa firmada en servidor
 }
 const T_ADMIN = ['verifyAdmin(', 'authAdmin(', 'autorizar(true)', 'autorizarAdmin(', "?.toUpperCase() !== 'ADMIN'"]
 const T_STAFF = ['verifyStaff(', 'autorizar(false)', "viewerRol !== 'ADMIN' && viewerRol !== 'SECRETARIO'", 'reglaPatchAlumno(']
@@ -156,7 +157,7 @@ function handlers(): Map<string, string> {
   return out
 }
 
-test('5. guardián de API: los 102 handlers están en la tabla, y cada uno revisa el rol que dice', () => {
+test('5. guardián de API: los 103 handlers están en la tabla, y cada uno revisa el rol que dice', () => {
   // Solo se admite la forma que el guardián sabe leer: `export async function MÉTODO`.
   const base = join('src', 'app', 'api', 'admin')
   for (const n of ['route.js', 'route.tsx', 'route.jsx']) expect(recorrer(base, n), n).toEqual([])
@@ -172,7 +173,7 @@ test('5. guardián de API: los 102 handlers están en la tabla, y cada uno revis
   }
   const h = handlers()
   expect([...h.keys()].sort()).toEqual(Object.keys(API).sort())
-  expect(h.size).toBe(102)
+  expect(h.size).toBe(103)
   for (const [clave, cuerpo] of h) {
     const nivel = API[clave]
     const adm = T_ADMIN.some(t => cuerpo.includes(t)), stf = T_STAFF.some(t => cuerpo.includes(t))
