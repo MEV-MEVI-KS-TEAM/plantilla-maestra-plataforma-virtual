@@ -182,7 +182,10 @@ function aReact(n: Nodo): Nodo {
   return n
 }
 function html<P>(componente: (p: P) => unknown, props: P): string {
-  return renderToStaticMarkup(aReact(componente(props)) as Parameters<typeof renderToStaticMarkup>[0])
+  // El componente se llama DENTRO del render de un envoltorio: así sus hooks
+  // (useMemo de la caducidad) tienen a React como despachador.
+  const Envoltorio = () => aReact(componente(props)) as ReturnType<typeof createElement>
+  return renderToStaticMarkup(createElement(Envoltorio))
 }
 
 test('VideoEmbed (materias): Bunny firmada → iframe de Bunny, NO de YouTube', () => {
@@ -223,18 +226,40 @@ test('VideoPlayer (cursos): Bunny firmada → iframe; sin firmar → aviso; YouT
   expect(c).toContain('src="https://www.youtube-nocookie.com/embed/Nyts_ereM4Y?rel=0&amp;modestbranding=1"')
 })
 
+const SIETE_HORAS_MS = 7 * 3600 * 1000
+
 test('firma vencida (pestaña abierta > 6 h): aviso para recargar, sin iframe', () => {
   const vencida = `${CANONICA}?token=${TOKEN64}&expires=1700000000`
-  expect(bunnyCaducada(parseBunnyUrl(vencida)!)).toBe(true)
-  expect(bunnyCaducada(parseBunnyUrl(`${CANONICA}?token=${TOKEN64}&expires=${FUTURO}`)!)).toBe(false)
-  expect(bunnyCaducada(parseBunnyUrl(`${CANONICA}?token=${TOKEN64}&expires=1800000030`)!, 1_800_000_000)).toBe(true) // margen 60 s
-  for (const h of [
-    html(VideoEmbed, { url: vencida, titulo: 'S1', lang: 'es' }),
-    html(VideoPlayer, { url: vencida, titulo: 'L1' }),
-  ]) {
-    expect(h).toContain(VIDEO_CADUCADO)
-    expect(h).not.toContain('<iframe')
+  expect(bunnyCaducada(parseBunnyUrl(vencida)!, undefined, SIETE_HORAS_MS)).toBe(true)
+  expect(bunnyCaducada(parseBunnyUrl(`${CANONICA}?token=${TOKEN64}&expires=${FUTURO}`)!, undefined, SIETE_HORAS_MS)).toBe(false)
+  expect(bunnyCaducada(parseBunnyUrl(`${CANONICA}?token=${TOKEN64}&expires=1800000030`)!, 1_800_000_000, SIETE_HORAS_MS)).toBe(true) // margen 60 s
+  const original = performance.now
+  performance.now = () => SIETE_HORAS_MS
+  try {
+    for (const h of [
+      html(VideoEmbed, { url: vencida, titulo: 'S1', lang: 'es' }),
+      html(VideoPlayer, { url: vencida, titulo: 'L1' }),
+    ]) {
+      expect(h).toContain(VIDEO_CADUCADO)
+      expect(h).not.toContain('<iframe')
+    }
+  } finally {
+    performance.now = original
   }
+})
+
+test('reloj del alumno adelantado: con la página recién abierta NUNCA es «caducada»', () => {
+  // expires ya pasó según el reloj local (adelantado), pero la página lleva 1 min abierta:
+  // la URL se firmó después de cargarla, así que no puede haber vencido.
+  expect(bunnyCaducada(parseBunnyUrl(`${CANONICA}?token=${TOKEN64}&expires=1700000000`)!, 1_900_000_000, 60_000)).toBe(false)
+  const h = html(VideoEmbed, { url: `${CANONICA}?token=${TOKEN64}&expires=1700000000`, titulo: 'S1', lang: 'es' })
+  expect(h).toContain('<iframe') // performance.now() del proceso de pruebas es chico
+})
+
+test('http de Bunny en VideoEmbed: iframe de Bunny en https, nunca el extractor de YouTube', () => {
+  const h = html(VideoEmbed, { url: `http://iframe.mediadelivery.net/embed/${LIB}/${GUID}?token=${TOKEN64}&expires=${FUTURO}`, titulo: 'S1', lang: 'es' })
+  expect(h).toContain(`src="${CANONICA}?token=${TOKEN64}&amp;expires=${FUTURO}"`)
+  expect(h).not.toContain('youtube')
 })
 
 test('un host de Bunny mal formado no cae en YouTube ni en un link: aviso', () => {
@@ -254,8 +279,13 @@ test('un host de Bunny mal formado no cae en YouTube ni en un link: aviso', () =
 })
 
 test('VideoEmbed: el link externo solo acepta http(s) (antes pintaba javascript: crudo)', () => {
-  expect(html(VideoEmbed, { url: 'javascript:alert(1)', titulo: 'x', lang: 'es' })).toBe('')
-  expect(html(VideoEmbed, { url: 'data:text/html,hola', titulo: 'x', lang: 'es' })).toBe('')
+  for (const url of ['javascript:alert(1)', 'data:text/html,hola', 'drive.google.com/file/d/abc']) {
+    expect(html(VideoEmbed, { url, titulo: 'x', lang: 'es' }), url).toBe('')
+    // y la pantalla no cuenta ni pinta el bloque para lo que el componente no pinta
+    expect(esVideoReproducible(url), url).toBe(false)
+  }
+  expect(esVideoReproducible(`http://iframe.mediadelivery.net/embed/${LIB}/${GUID}`)).toBe(true)
+  expect(esVideoReproducible(`https://player.mediadelivery.net/play/${LIB}/${GUID}`)).toBe(true) // pinta el aviso
 })
 
 // ─── La llave nunca llega al navegador ───────────────────────────────────────

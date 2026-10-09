@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { ExternalLink, VideoOff } from 'lucide-react'
 import {
   BUNNY_IFRAME_ALLOW, VIDEO_CADUCADO, VIDEO_NO_DISPONIBLE, bunnyCaducada, bunnyEmbedFirmado, esHostBunny, parseBunnyUrl,
@@ -29,7 +30,12 @@ interface VideoEmbedProps {
 export function esVideoReproducible(url: string | null | undefined): boolean {
   if (!url || !url.trim()) return false
   if (url.includes('results?search_query')) return false
-  return true
+  // Lo mismo que pinta VideoEmbed: Bunny (iframe o aviso), YouTube o un link
+  // http(s). Un `javascript:` o una URL sin esquema no pinta nada, así que
+  // tampoco cuenta (si no, saldría el encabezado con su borde y nada debajo).
+  if (parseBunnyUrl(url) || esHostBunny(url)) return true
+  if (extractYouTubeId(url)) return true
+  return safeExternalUrl(url) !== null
 }
 
 function extractYouTubeId(url: string): string | null {
@@ -47,6 +53,13 @@ function extractYouTubeId(url: string): string | null {
 }
 
 export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
+  // La caducidad de Bunny se decide al MONTAR (por URL), no en cada render: un
+  // re-render del padre cerca de las 6 h no debe desmontar un video que suena.
+  const caducada = useMemo(() => {
+    const b = parseBunnyUrl(url)
+    return !!b?.token && bunnyCaducada(b)
+  }, [url])
+
   // Una URL no reproducible no pinta nada, igual que `video_url` en NULL. La
   // pantalla ya filtra con `esVideoReproducible`, pero esto cierra el caso por
   // si alguien monta el componente directo.
@@ -69,7 +82,6 @@ export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
   const bunny = parseBunnyUrl(url)
   if (bunny || esHostBunny(url)) {
     const src = bunny ? bunnyEmbedFirmado(bunny) : null
-    const caducada = !!bunny && !!src && bunnyCaducada(bunny)
     if (!src || caducada) {
       return (
         <div

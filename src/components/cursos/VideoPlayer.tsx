@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { ExternalLink, VideoOff } from 'lucide-react'
 import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
 import {
@@ -15,11 +16,14 @@ import { safeExternalUrl } from '@/lib/cursos/url-safe'
  */
 export function VideoPlayer({ url, titulo }: { url: string; titulo: string }) {
   const parsed = parseVideoUrl(url)
+  // Caducidad decidida al montar (por URL): un re-render no desmonta un video que suena.
+  const caducada = useMemo(() => {
+    const b = parseBunnyUrl(url)
+    return !!b?.token && bunnyCaducada(b)
+  }, [url])
 
   // Bunny sin firma, con la firma vencida o con un host de Bunny que no es un
   // embed válido: no hay iframe que montar (Bunny daría 403) → aviso neutro.
-  const bunny = parseBunnyUrl(url)
-  const caducada = !!bunny?.token && bunnyCaducada(bunny)
   if ((parsed?.provider === 'bunny' && (!parsed.embedUrl || caducada)) || (!parsed && esHostBunny(url))) {
     return (
       <p

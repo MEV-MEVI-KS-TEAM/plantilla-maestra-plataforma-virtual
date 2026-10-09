@@ -80,13 +80,28 @@ export function esHostBunny(url: string | null | undefined): boolean {
   }
 }
 
+/** Vigencia con la que firma el servidor (bunny-firma-core: 6 h). */
+const VIGENCIA_S = 6 * 60 * 60
+
 /**
  * ¿Ya venció la firma? La página pide la materia una vez; si el alumno abre la
  * semana horas después, montar el iframe daría 403 dentro del reproductor.
  * Margen de 60 s para no montar un enlace a punto de vencer.
+ *
+ * Dos condiciones, para que un reloj del alumno adelantado no deje TODOS los
+ * videos en «caducó» (la hora de `expires` es la del servidor):
+ *   - la página lleva abierta al menos la vigencia (`abiertaMs`, reloj
+ *     monótono: performance.now() no depende de la hora del equipo); la URL se
+ *     firmó DESPUÉS de cargar la página, así que antes de eso no puede vencer;
+ *   - y además `expires` ya pasó según el reloj local.
  */
-export function bunnyCaducada(v: BunnyVideo, ahoraS: number = Math.floor(Date.now() / 1000)): boolean {
-  return v.expires !== null && v.expires - 60 <= ahoraS
+export function bunnyCaducada(
+  v: BunnyVideo,
+  ahoraS: number = Math.floor(Date.now() / 1000),
+  abiertaMs: number = typeof performance !== 'undefined' ? performance.now() : 0,
+): boolean {
+  if (v.expires === null) return false
+  return abiertaMs >= (VIGENCIA_S - 60) * 1000 && v.expires - 60 <= ahoraS
 }
 
 /** Texto cuando la firma ya venció (pestaña abierta más de 6 h). */
