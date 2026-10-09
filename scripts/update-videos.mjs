@@ -161,7 +161,12 @@ async function main() {
   //   - Sin columnas multi-video: saltar si video_url tiene watch?v=
   //   - Con columnas multi-video: saltar solo si los 3 tienen watch?v=
   const goodUrl = url => (url || '').includes('watch?v=')
+  // Video propio en Bunny Stream (CLASES MEV EN VIDEO, Nota 278): la semana YA tiene su video
+  // y sus video_url_2/3 van en NULL a propósito. NUNCA se toca: sin esto el filtro de abajo
+  // la daba por incompleta y el PATCH pisaba el video de Bunny con uno de YouTube.
+  const esBunny = url => /^https:\/\/player\.mediadelivery\.net\/embed\//.test(url || '')
   const semanas = todasSemanas.filter(s => {
+    if (esBunny(s.video_url)) return false
     if (multiVideo) {
       return !(goodUrl(s.video_url) && goodUrl(s.video_url_2) && goodUrl(s.video_url_3))
     }
