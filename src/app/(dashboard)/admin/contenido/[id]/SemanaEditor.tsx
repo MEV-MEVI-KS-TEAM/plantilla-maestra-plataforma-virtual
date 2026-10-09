@@ -1,6 +1,9 @@
 'use client'
 
-import { Loader2, Save, Check, AlertCircle, Video } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, Save, Check, AlertCircle, Video, PlayCircle } from 'lucide-react'
+import { BunnyVistaPrevia } from '@/components/admin/BunnyVistaPrevia'
+import { bunnyCanonica, parseBunnyUrl } from '@/lib/video/bunny-url'
 import ApuntesEditor from './ApuntesEditor'
 import MaterialesPanel, { type Material } from './MaterialesPanel'
 import QuizEditor from './QuizEditor'
@@ -69,6 +72,9 @@ export default function SemanaEditor({ numero, semanaId, estado: v, materiales, 
   const cambiados = camposCambiados(v, v.inicial)
   const cambio = (c: CampoValor) => cambiados.includes(c)
   const dirty = cambiados.length > 0
+  // Vista previa de Bunny bajo demanda: cada una firma en el servidor y monta un
+  // reproductor, y el acordeón puede tener decenas de semanas abiertas.
+  const [previa, setPrevia] = useState<(typeof VIDEOS)[number]['field'] | null>(null)
 
   return (
     <div className="rounded-xl p-4 space-y-4" style={INNER}>
@@ -133,10 +139,24 @@ export default function SemanaEditor({ numero, semanaId, estado: v, materiales, 
         {VIDEOS.map(({ field }, i) => {
           const url = v[field]
           const vid = getYoutubeId(url)
+          const bunny = parseBunnyUrl(url)
           return (
             <div key={field} className="flex-1">
               <p className="text-xs mb-1" style={{ color: '#64748B' }}>Video {i + 1}</p>
-              {vid ? (
+              {bunny ? (
+                // Video propio en Bunny Stream: no tiene miniatura pública (la
+                // biblioteca exige firma); la vista previa se pide al servidor.
+                <button
+                  type="button"
+                  onClick={() => setPrevia(previa === field ? null : field)}
+                  className="w-full h-20 rounded flex flex-col items-center justify-center gap-1 text-xs"
+                  style={{ background: '#1A1F2E', border: `1px solid ${previa === field ? 'var(--color-acento)' : '#2A2F3E'}`, color: '#CBD5E1' }}
+                  title="Ver vista previa"
+                >
+                  <PlayCircle className="w-5 h-5" />
+                  Bunny Stream · {previa === field ? 'ocultar' : 'vista previa'}
+                </button>
+              ) : vid ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={`https://img.youtube.com/vi/${vid}/mqdefault.jpg`}
@@ -159,6 +179,11 @@ export default function SemanaEditor({ numero, semanaId, estado: v, materiales, 
         })}
       </div>
 
+      {previa && (() => {
+        const b = parseBunnyUrl(v[previa])
+        return b ? <BunnyVistaPrevia url={bunnyCanonica(b.libraryId, b.videoId)} titulo={v.titulo} oscuro /> : null
+      })()}
+
       {/* URLs de los tres videos */}
       <div className="space-y-2">
         {VIDEOS.map(({ field, label }) => (
@@ -169,7 +194,7 @@ export default function SemanaEditor({ numero, semanaId, estado: v, materiales, 
             </label>
             <input
               type="url"
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder="https://www.youtube.com/watch?v=... o https://player.mediadelivery.net/embed/..."
               value={v[field]}
               maxLength={URL_MAX}
               onChange={e => onCampo(field, e.target.value)}

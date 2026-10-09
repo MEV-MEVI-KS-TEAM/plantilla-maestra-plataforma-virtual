@@ -7,6 +7,10 @@ import SemanaEditor, { type SemanaState, type CampoTexto } from './SemanaEditor'
 import EvaluacionEditor from './EvaluacionEditor'
 import EstructuraBar, { type ItemEstructura } from './EstructuraBar'
 import { TIEMPO_MIN, TIEMPO_MAX, camposCambiados, type ValoresSemana } from '@/lib/contenido-semana'
+import { canonizarVideoUrl } from '@/lib/video/bunny-url'
+
+const esVideo = (c: string): c is 'video_url' | 'video_url_2' | 'video_url_3' =>
+  c === 'video_url' || c === 'video_url_2' || c === 'video_url_3'
 
 interface Semana {
   id: string
@@ -277,13 +281,19 @@ export default function ContenidoDetallePage() {
           video_url_2: actual.video_url_2,
           video_url_3: actual.video_url_3,
           ...Object.fromEntries(cambiados.map(c =>
-            [c, c === 'tiempo_estimado_minutos' ? minutos : v[c]],
+            [c, c === 'tiempo_estimado_minutos' ? minutos : esVideo(c) ? canonizarVideoUrl(v[c]) : v[c]],
           )),
         } as ValoresSemana
+        // Bunny Stream se guarda canónico (sin token): el campo muestra lo que
+        // quedó en la BD, salvo que el admin lo haya vuelto a editar en vuelo.
+        const videosGuardados = Object.fromEntries(
+          cambiados.filter(c => esVideo(c) && actual[c] === v[c]).map(c => [c, guardado[c]]),
+        )
         return {
           ...prev,
           [semanaId]: {
             ...actual,
+            ...videosGuardados,
             tiempo_estimado_minutos: cambiados.includes('tiempo_estimado_minutos')
               ? minutos
               : actual.tiempo_estimado_minutos,

@@ -1,7 +1,11 @@
 'use client'
 
-import { ExternalLink } from 'lucide-react'
+import { useMemo } from 'react'
+import { ExternalLink, VideoOff } from 'lucide-react'
 import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
+import {
+  BUNNY_IFRAME_ALLOW, VIDEO_CADUCADO, VIDEO_NO_DISPONIBLE, bunnyCaducada, esHostBunny, parseBunnyUrl,
+} from '@/lib/video/bunny-url'
 import { safeExternalUrl } from '@/lib/cursos/url-safe'
 
 /**
@@ -12,6 +16,26 @@ import { safeExternalUrl } from '@/lib/cursos/url-safe'
  */
 export function VideoPlayer({ url, titulo }: { url: string; titulo: string }) {
   const parsed = parseVideoUrl(url)
+  // Caducidad decidida al montar (por URL): un re-render no desmonta un video que suena.
+  const caducada = useMemo(() => {
+    const b = parseBunnyUrl(url)
+    return !!b?.token && bunnyCaducada(b)
+  }, [url])
+
+  // Bunny sin firma, con la firma vencida o con un host de Bunny que no es un
+  // embed válido: no hay iframe que montar (Bunny daría 403) → aviso neutro.
+  if ((parsed?.provider === 'bunny' && (!parsed.embedUrl || caducada)) || (!parsed && esHostBunny(url))) {
+    return (
+      <p
+        className="flex items-center gap-2 text-sm rounded-xl px-4 py-3"
+        style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B' }}
+        role="status"
+      >
+        <VideoOff className="w-4 h-4 flex-shrink-0" />
+        {caducada ? VIDEO_CADUCADO : VIDEO_NO_DISPONIBLE}
+      </p>
+    )
+  }
 
   if (!parsed) {
     // No es un proveedor reconocido. Solo ofrecer enlace si es http(s) seguro;
@@ -42,9 +66,11 @@ export function VideoPlayer({ url, titulo }: { url: string; titulo: string }) {
     <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-primario)' }}>
       <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
         <iframe
-          src={parsed.embedUrl}
+          src={parsed.embedUrl ?? undefined}
           title={`Video: ${titulo}`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow={parsed.provider === 'bunny'
+            ? BUNNY_IFRAME_ALLOW
+            : 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}
           allowFullScreen
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
         />

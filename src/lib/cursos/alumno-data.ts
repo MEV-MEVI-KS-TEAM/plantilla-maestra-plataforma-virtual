@@ -8,6 +8,7 @@ import { SIGNED_URL_TTL } from './storage'
 import { BUCKET_CURSOS } from './archivos'
 import { limiteVentana, motivoBloqueo, modulosPorAbrir, topeMeses } from './acceso'
 import { conAccesoTotal } from './acceso-total'
+import { firmarVideoUrl } from '@/lib/video/bunny-firma'
 import type { CursoVentana, InscripcionVentana } from './acceso'
 import type { LeccionAlumno, ModuloAlumno, VentanaCurso } from '@/types/cursos-alumno'
 
@@ -82,7 +83,9 @@ export async function modulosConProgreso(
     todas.map(async l => ({
       id: l.id as string,
       titulo: l.titulo as string,
-      video_url: (l.video_url as string | null) ?? null,
+      // Bunny Stream se firma aquí, en el servidor: estas lecciones ya pasaron
+      // por la RLS de la ventana de pago (la sesión del alumno no ve las demás).
+      video_url: firmarVideoUrl((l.video_url as string | null) ?? null, 'cursos/alumno-data'),
       contenido_texto: (l.contenido_texto as string | null) ?? null,
       materialUrl: await signed(supabase, l.material_path as string | null),
       tieneMaterial: Boolean(l.material_path),

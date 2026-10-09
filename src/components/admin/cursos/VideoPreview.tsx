@@ -1,11 +1,13 @@
 'use client'
 
 import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
+import { BunnyVistaPrevia } from '@/components/admin/BunnyVistaPrevia'
 
 const PROVIDER_LABEL: Record<string, string> = {
   youtube: 'YouTube',
   vimeo: 'Vimeo',
   loom: 'Loom',
+  bunny: 'Bunny Stream',
 }
 
 /**
@@ -21,7 +23,7 @@ export function VideoPreview({ url, titulo }: { url: string; titulo?: string }) 
   if (!parsed) {
     return (
       <p className="text-xs mt-2" style={{ color: '#F59E0B' }}>
-        Pega un enlace de YouTube, Vimeo o Loom. (Puedes guardar la lección de todas formas.)
+        Pega un enlace de YouTube, Vimeo, Loom o Bunny Stream. (Puedes guardar la lección de todas formas.)
       </p>
     )
   }
@@ -34,6 +36,12 @@ export function VideoPreview({ url, titulo }: { url: string; titulo?: string }) 
       >
         {PROVIDER_LABEL[parsed.provider]}
       </span>
+      {parsed.provider === 'bunny' ? (
+        // Bunny exige firma y la llave vive en el servidor: la vista previa la
+        // pide firmada a /api/admin/video-firmado. Se usa la canónica (sin el
+        // token que pudiera traer lo pegado).
+        <BunnyVistaPrevia url={parsed.canonica} titulo={titulo} />
+      ) : (
       <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-primario)' }}>
         <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
           <iframe
@@ -45,6 +53,7 @@ export function VideoPreview({ url, titulo }: { url: string; titulo?: string }) 
           />
         </div>
       </div>
+      )}
     </div>
   )
 }

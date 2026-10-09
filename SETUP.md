@@ -245,6 +245,13 @@ Copiar .env.example → .env.local y llenar con datos de Supabase
 1. vercel.com → Add New Project
 2. Importar repo GitHub del cliente
 3. Environment Variables → pegar las 3 variables de .env.local
+   - **Videos de Bunny Stream** (`BUNNY_LIBRARY_ID`, `BUNNY_TOKEN_KEY`): NO se pegan.
+     Son variables **compartidas del equipo de MEV** en Vercel (Settings del team →
+     Environment Variables → Shared); el proyecto nuevo solo se **vincula** a ellas
+     (el onboarding lo hace solo; a mano: en la variable compartida → «Link to
+     Projects»). Solo servidor: nunca con prefijo `NEXT_PUBLIC_`. Sin ellas, cada
+     video de Bunny le sale al alumno como «Video no disponible por el momento».
+     Smoke: TAREA 9.10 del Super Prompt (`/api/health/video` → `ok: true`).
 4. Deploy
 5. **Verifica el commit desplegado** (Bloque E3): el deploy de producción tiene
    que traer el código de **D22d-1** (plantilla `fe00225`, #273) o posterior. La

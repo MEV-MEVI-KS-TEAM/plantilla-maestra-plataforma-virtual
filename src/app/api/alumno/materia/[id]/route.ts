@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoAcceso, cargarContextoAcceso, tieneAccesoMateria } from '@/lib/acceso-materias'
+import { firmarVideoUrl } from '@/lib/video/bunny-firma'
 
 export async function GET(
   _request: NextRequest,
@@ -105,15 +106,22 @@ export async function GET(
         // escondiendo videos distintos) y `s.tiempo_estimado_minutos` a cada uno,
         // que el encabezado sumaba: 3 videos x 60 min = "180 min de videos" para
         // una semana estimada en 60. El titulo real lo muestra el propio reproductor.
+        // Bunny Stream se firma AQUÍ, después del control de acceso del paso 3:
+        // la URL firmada es la llave del video por 6 horas. YouTube/Vimeo/Loom
+        // salen tal cual. Sin BUNNY_* en el servidor sale la canónica sin firma
+        // y VideoEmbed pinta "Video no disponible por el momento".
         videos:      [s.video_url, s.video_url_2, s.video_url_3]
           .filter(Boolean)
-          .map((url, i, arr) => ({
-            titulo:    arr.length > 1 ? `Video ${i + 1} de ${arr.length}` : 'Video de la semana',
-            titulo_en: arr.length > 1 ? `Video ${i + 1} of ${arr.length}` : 'Week video',
-            url:       url as string,
-            url_en:    url as string,
-            duracion:  '',
-          })),
+          .map((url, i, arr) => {
+            const firmada = firmarVideoUrl(url as string, 'api/alumno/materia')
+            return {
+              titulo:    arr.length > 1 ? `Video ${i + 1} de ${arr.length}` : 'Video de la semana',
+              titulo_en: arr.length > 1 ? `Video ${i + 1} of ${arr.length}` : 'Week video',
+              url:       firmada,
+              url_en:    firmada,
+              duracion:  '',
+            }
+          }),
         materiales: (s.semana_materiales ?? [])
           .slice()
           .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || String(a.created_at).localeCompare(String(b.created_at)))

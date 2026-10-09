@@ -10,6 +10,8 @@
 // Todos los campos son OPCIONALES pero al menos uno debe venir: la pantalla
 // guarda semana por semana y no siempre manda el formulario completo.
 
+import { canonizarVideoUrl } from '@/lib/video/bunny-url'
+
 export const CAMPOS_SEMANA = [
   'titulo', 'descripcion', 'contenido', 'tiempo_estimado_minutos',
   'video_url', 'video_url_2', 'video_url_3',
@@ -126,20 +128,22 @@ export function validarSemanaPatch(body: unknown): ResultadoSemana {
 
   // Los tres videos, explícitos y no en bucle: el bucle obliga a un índice
   // dinámico sobre ParcheSemana que TypeScript no puede estrechar.
+  // Bunny Stream se guarda SIEMPRE canónico (sin token): si el admin pega una
+  // URL ya firmada, el token caducaría en horas y quedaría en la BD.
   if (claves.includes('video_url')) {
     const r = textoOpcional(b.video_url, URL_MAX, 'video_url')
     if (!r.ok) return r
-    update.video_url = r.valor
+    update.video_url = canonizarVideoUrl(r.valor)
   }
   if (claves.includes('video_url_2')) {
     const r = textoOpcional(b.video_url_2, URL_MAX, 'video_url_2')
     if (!r.ok) return r
-    update.video_url_2 = r.valor
+    update.video_url_2 = canonizarVideoUrl(r.valor)
   }
   if (claves.includes('video_url_3')) {
     const r = textoOpcional(b.video_url_3, URL_MAX, 'video_url_3')
     if (!r.ok) return r
-    update.video_url_3 = r.valor
+    update.video_url_3 = canonizarVideoUrl(r.valor)
   }
 
   return { ok: true, update }

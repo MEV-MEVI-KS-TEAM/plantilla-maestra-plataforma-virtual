@@ -1,6 +1,11 @@
 'use client'
 
-import { ExternalLink } from 'lucide-react'
+import { useMemo } from 'react'
+import { ExternalLink, VideoOff } from 'lucide-react'
+import {
+  BUNNY_IFRAME_ALLOW, VIDEO_CADUCADO, VIDEO_NO_DISPONIBLE, bunnyCaducada, bunnyEmbedFirmado, esHostBunny, parseBunnyUrl,
+} from '@/lib/video/bunny-url'
+import { safeExternalUrl } from '@/lib/cursos/url-safe'
 
 interface VideoEmbedProps {
   url: string
@@ -25,7 +30,12 @@ interface VideoEmbedProps {
 export function esVideoReproducible(url: string | null | undefined): boolean {
   if (!url || !url.trim()) return false
   if (url.includes('results?search_query')) return false
-  return true
+  // Lo mismo que pinta VideoEmbed: Bunny (iframe o aviso), YouTube o un link
+  // http(s). Un `javascript:` o una URL sin esquema no pinta nada, así que
+  // tampoco cuenta (si no, saldría el encabezado con su borde y nada debajo).
+  if (parseBunnyUrl(url) || esHostBunny(url)) return true
+  if (extractYouTubeId(url)) return true
+  return safeExternalUrl(url) !== null
 }
 
 function extractYouTubeId(url: string): string | null {
@@ -43,6 +53,13 @@ function extractYouTubeId(url: string): string | null {
 }
 
 export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
+  // La caducidad de Bunny se decide al MONTAR (por URL), no en cada render: un
+  // re-render del padre cerca de las 6 h no debe desmontar un video que suena.
+  const caducada = useMemo(() => {
+    const b = parseBunnyUrl(url)
+    return !!b?.token && bunnyCaducada(b)
+  }, [url])
+
   // Una URL no reproducible no pinta nada, igual que `video_url` en NULL. La
   // pantalla ya filtra con `esVideoReproducible`, pero esto cierra el caso por
   // si alguien monta el componente directo.
@@ -53,6 +70,51 @@ export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
   // muerto dentro de una materia pagada. Se quitó en vez de arreglarse porque
   // no hay a qué arreglarlo — el endpoint ya no existe.
   if (!esVideoReproducible(url)) return null
+
+  // ── Caso 1: Bunny Stream (videos propios) ───────────────────────────────────
+  // Va PRIMERO: su ruta /embed/{biblioteca}/{GUID} la capturaría el extractor de
+  // YouTube de abajo (`embed\/…`) y montaría un iframe de YouTube con basura.
+  // El servidor (api/alumno/materia) la firma después de validar el acceso; si
+  // no viene firmada (faltan BUNNY_* en el servidor) no hay nada que montar —
+  // Bunny respondería 403 — y se pinta un aviso neutro en vez de un iframe roto.
+  // Un host de Bunny que no es un embed válido tampoco llega al extractor de
+  // YouTube ni al link externo: aviso neutro.
+  const bunny = parseBunnyUrl(url)
+  if (bunny || esHostBunny(url)) {
+    const src = bunny ? bunnyEmbedFirmado(bunny) : null
+    if (!src || caducada) {
+      return (
+        <div
+          className="flex items-center gap-3 rounded-xl px-4 py-3"
+          style={{ background: '#1E2330', border: '1px solid #2A2F3E', color: '#94A3B8' }}
+          role="status"
+        >
+          <VideoOff className="w-4 h-4 shrink-0" />
+          <p className="text-sm">{caducada ? VIDEO_CADUCADO : VIDEO_NO_DISPONIBLE}</p>
+        </div>
+      )
+    }
+    return (
+      <div className="rounded-xl overflow-hidden" style={{ background: '#1E2330' }}>
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+          <iframe
+            src={src}
+            title={titulo}
+            loading="lazy"
+            allow={BUNNY_IFRAME_ALLOW}
+            allowFullScreen
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+          />
+        </div>
+        {(titulo || duracion) && (
+          <div className="px-4 py-3">
+            {titulo && <p className="text-sm font-medium" style={{ color: '#E2E8F0' }}>{titulo}</p>}
+            {duracion && <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>{duracion}</p>}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // ── Caso 2: Video directo de YouTube (watch?v= o youtu.be/) ─────────────────
   // Ej: https://www.youtube.com/watch?v=YWLP8YKqGvE
@@ -88,9 +150,13 @@ export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
   }
 
   // ── Caso 3: Link externo genérico ───────────────────────────────────────────
+  // Solo http(s): React 18 no filtra `javascript:` en un href, y esta URL viene
+  // cruda de la BD (mismo criterio que VideoPlayer de cursos con safeExternalUrl).
+  const href = safeExternalUrl(url)
+  if (!href) return null
   return (
     <a
-      href={url}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
