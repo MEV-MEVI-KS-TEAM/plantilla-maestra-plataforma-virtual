@@ -16,7 +16,8 @@
  *   node scripts/update-videos.mjs --nivel secundaria
  *
  * Skip automático: semanas que ya tienen video_url con watch?v= se omiten
- * para no gastar cuota de YouTube en videos que ya están bien.
+ * para no gastar cuota de YouTube en videos que ya están bien. Las semanas con
+ * video propio en Bunny Stream (mediadelivery.net) NUNCA se tocan (Nota 278).
  */
 
 import https from 'https'
@@ -164,7 +165,8 @@ async function main() {
   // Video propio en Bunny Stream (CLASES MEV EN VIDEO, Nota 278): la semana YA tiene su video
   // y sus video_url_2/3 van en NULL a propósito. NUNCA se toca: sin esto el filtro de abajo
   // la daba por incompleta y el PATCH pisaba el video de Bunny con uno de YouTube.
-  const esBunny = url => /^https:\/\/player\.mediadelivery\.net\/embed\//.test(url || '')
+  // Cualquier forma: player/iframe, http/https, mayúsculas (parseBunnyUrl acepta todas).
+  const esBunny = url => /mediadelivery\.net\/embed\//i.test(url || '')
   const semanas = todasSemanas.filter(s => {
     if (esBunny(s.video_url)) return false
     if (multiVideo) {
