@@ -247,7 +247,9 @@ export default function MateriaPage() {
               key={tab_.key}
               onClick={() => setTab(tab_.key)}
               className="px-4 py-2.5 text-sm font-medium transition-all relative whitespace-nowrap"
-              style={{ color: tab === tab_.key ? '#F1F5F9' : '#94A3B8' }}
+              // El portal del alumno es tema claro: '#F1F5F9' dejaba la pestaña
+              // activa casi invisible (blanco sobre #F8FAFB).
+              style={{ color: tab === tab_.key ? CONFIG.colores.primario : '#64748B', fontWeight: tab === tab_.key ? 600 : 500 }}
             >
               {tab_.label}
               {tab === tab_.key && (
