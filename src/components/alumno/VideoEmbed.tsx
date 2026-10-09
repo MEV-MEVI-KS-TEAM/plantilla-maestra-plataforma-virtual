@@ -1,7 +1,10 @@
 'use client'
 
 import { ExternalLink, VideoOff } from 'lucide-react'
-import { BUNNY_IFRAME_ALLOW, VIDEO_NO_DISPONIBLE, bunnyEmbedFirmado, parseBunnyUrl } from '@/lib/video/bunny-url'
+import {
+  BUNNY_IFRAME_ALLOW, VIDEO_CADUCADO, VIDEO_NO_DISPONIBLE, bunnyCaducada, bunnyEmbedFirmado, esHostBunny, parseBunnyUrl,
+} from '@/lib/video/bunny-url'
+import { safeExternalUrl } from '@/lib/cursos/url-safe'
 
 interface VideoEmbedProps {
   url: string
@@ -61,10 +64,13 @@ export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
   // El servidor (api/alumno/materia) la firma después de validar el acceso; si
   // no viene firmada (faltan BUNNY_* en el servidor) no hay nada que montar —
   // Bunny respondería 403 — y se pinta un aviso neutro en vez de un iframe roto.
+  // Un host de Bunny que no es un embed válido tampoco llega al extractor de
+  // YouTube ni al link externo: aviso neutro.
   const bunny = parseBunnyUrl(url)
-  if (bunny) {
-    const src = bunnyEmbedFirmado(bunny)
-    if (!src) {
+  if (bunny || esHostBunny(url)) {
+    const src = bunny ? bunnyEmbedFirmado(bunny) : null
+    const caducada = !!bunny && !!src && bunnyCaducada(bunny)
+    if (!src || caducada) {
       return (
         <div
           className="flex items-center gap-3 rounded-xl px-4 py-3"
@@ -72,7 +78,7 @@ export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
           role="status"
         >
           <VideoOff className="w-4 h-4 shrink-0" />
-          <p className="text-sm">{VIDEO_NO_DISPONIBLE}</p>
+          <p className="text-sm">{caducada ? VIDEO_CADUCADO : VIDEO_NO_DISPONIBLE}</p>
         </div>
       )
     }
@@ -132,9 +138,13 @@ export default function VideoEmbed({ url, titulo, duracion }: VideoEmbedProps) {
   }
 
   // ── Caso 3: Link externo genérico ───────────────────────────────────────────
+  // Solo http(s): React 18 no filtra `javascript:` en un href, y esta URL viene
+  // cruda de la BD (mismo criterio que VideoPlayer de cursos con safeExternalUrl).
+  const href = safeExternalUrl(url)
+  if (!href) return null
   return (
     <a
-      href={url}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"

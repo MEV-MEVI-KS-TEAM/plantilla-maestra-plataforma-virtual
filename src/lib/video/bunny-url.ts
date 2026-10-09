@@ -42,7 +42,9 @@ export function parseBunnyUrl(url: string | null | undefined): BunnyVideo | null
   } catch {
     return null
   }
-  if (u.protocol !== 'https:') return null
+  // http se acepta y se RECONSTRUYE en https (nunca se usa la URL cruda): si se
+  // rechazara, VideoEmbed la mandaría al extractor de YouTube (`embed/…`).
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null
   if (u.username || u.password || u.port) return null
   if (!HOSTS.has(u.hostname.toLowerCase())) return null
   const m = u.pathname.match(RUTA)
@@ -61,6 +63,34 @@ export function parseBunnyUrl(url: string | null | undefined): BunnyVideo | null
 export function esBunnyUrl(url: string | null | undefined): boolean {
   return parseBunnyUrl(url) !== null
 }
+
+/**
+ * ¿La URL apunta a un host de Bunny Stream (aunque no sea un embed válido)?
+ * Sirve para que una URL de mediadelivery.net mal formada (p. ej. /play/… o
+ * un GUID roto) no caiga en el extractor de YouTube ni en un link externo:
+ * se pinta el aviso neutro.
+ */
+export function esHostBunny(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string') return false
+  try {
+    const h = new URL(url.trim()).hostname.toLowerCase()
+    return h === 'mediadelivery.net' || h.endsWith('.mediadelivery.net')
+  } catch {
+    return false
+  }
+}
+
+/**
+ * ¿Ya venció la firma? La página pide la materia una vez; si el alumno abre la
+ * semana horas después, montar el iframe daría 403 dentro del reproductor.
+ * Margen de 60 s para no montar un enlace a punto de vencer.
+ */
+export function bunnyCaducada(v: BunnyVideo, ahoraS: number = Math.floor(Date.now() / 1000)): boolean {
+  return v.expires !== null && v.expires - 60 <= ahoraS
+}
+
+/** Texto cuando la firma ya venció (pestaña abierta más de 6 h). */
+export const VIDEO_CADUCADO = 'El enlace de este video caducó. Recarga la página para verlo.'
 
 export function bunnyCanonica(libraryId: string, videoId: string): string {
   return `https://player.mediadelivery.net/embed/${libraryId}/${videoId}`

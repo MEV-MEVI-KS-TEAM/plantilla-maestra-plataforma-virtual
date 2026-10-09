@@ -4,7 +4,7 @@ import * as path from 'path'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  parseBunnyUrl, bunnyCanonica, bunnyEmbedFirmado, canonizarVideoUrl, VIDEO_NO_DISPONIBLE,
+  parseBunnyUrl, bunnyEmbedFirmado, canonizarVideoUrl, bunnyCaducada, esHostBunny, VIDEO_NO_DISPONIBLE, VIDEO_CADUCADO,
 } from '@/lib/video/bunny-url'
 import { tokenBunny, firmarUrlVideo, configBunnyDe, BUNNY_VIGENCIA_S } from '@/lib/video/bunny-firma-core'
 import { parseVideoUrl } from '@/lib/cursos/parse-video-url'
@@ -26,6 +26,7 @@ const LIB = '123456'
 const GUID = '32d140e2-e4f4-4eec-9d53-20371e9be607'
 const CANONICA = `https://player.mediadelivery.net/embed/${LIB}/${GUID}`
 const TOKEN64 = 'a'.repeat(64)
+const FUTURO = 4102444800 // 2100-01-01: firma vigente
 
 // ─── Reconocer URLs ─────────────────────────────────────────────────────────
 
@@ -45,9 +46,14 @@ test('reconoce las URLs de embed válidas (player e iframe, con o sin «/» fina
   }
 })
 
+test('http se acepta pero se reconstruye SIEMPRE en https', () => {
+  const v = parseBunnyUrl(`http://player.mediadelivery.net/embed/${LIB}/${GUID}?token=${TOKEN64}&expires=${FUTURO}`)
+  expect(bunnyEmbedFirmado(v!)).toBe(`${CANONICA}?token=${TOKEN64}&expires=${FUTURO}`)
+  expect(canonizarVideoUrl(`http://iframe.mediadelivery.net/embed/${LIB}/${GUID}`)).toBe(CANONICA)
+})
+
 test('rechaza hosts, esquemas, rutas e IDs inválidos', () => {
   for (const url of [
-    `http://player.mediadelivery.net/embed/${LIB}/${GUID}`,          // sin https
     `https://player.mediadelivery.net.evil.com/embed/${LIB}/${GUID}`, // sufijo
     `https://evilmediadelivery.net/embed/${LIB}/${GUID}`,
     `https://mediadelivery.net/embed/${LIB}/${GUID}`,
@@ -98,8 +104,10 @@ test('al guardar, Bunny queda canónica (sin token) y lo demás tal cual', () =>
 
 // ─── Firma ──────────────────────────────────────────────────────────────────
 
-test('firma determinista: caso conocido (ejemplo de la documentación de Bunny)', () => {
+test('firma determinista: caso conocido (entradas del ejemplo de la doc de Bunny; hash calculado aparte)', () => {
   // SHA256_HEX("4742a81b-…" + "32d140e2-…" + "1623440202"), calculado aparte con Python hashlib.
+  // La compatibilidad REAL con Bunny la prueban el arnés (tests/arnes-rutas/bunny-videos.mjs) y
+  // el smoke /api/health/video: Bunny responde 200 a la firmada y 403 a la canónica.
   expect(tokenBunny('4742a81b-bf15-42fe-8b1c-8fcb9024c550', '32d140e2-e4f4-4eec-9d53-20371e9be607', 1623440202))
     .toBe('a8617f6df2e9b55b65ac7112138c70417766d80614bfe146d0d9bb2bd21fef87')
 })
@@ -178,9 +186,9 @@ function html<P>(componente: (p: P) => unknown, props: P): string {
 }
 
 test('VideoEmbed (materias): Bunny firmada → iframe de Bunny, NO de YouTube', () => {
-  const firmada = `${CANONICA}?token=${TOKEN64}&expires=1700000000`
+  const firmada = `${CANONICA}?token=${TOKEN64}&expires=${FUTURO}`
   const h = html(VideoEmbed, { url: firmada, titulo: 'Semana 1', lang: 'es' })
-  expect(h).toContain(`src="${CANONICA}?token=${TOKEN64}&amp;expires=1700000000"`)
+  expect(h).toContain(`src="${CANONICA}?token=${TOKEN64}&amp;expires=${FUTURO}"`)
   expect(h).toContain('allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"')
   expect(h).toContain('allowfullscreen')
   expect(h).not.toContain('youtube')
@@ -203,9 +211,9 @@ test('VideoEmbed (materias): YouTube y el link externo no cambian', () => {
 })
 
 test('VideoPlayer (cursos): Bunny firmada → iframe; sin firmar → aviso; YouTube igual', () => {
-  const firmada = `${CANONICA}?token=${TOKEN64}&expires=1700000000`
+  const firmada = `${CANONICA}?token=${TOKEN64}&expires=${FUTURO}`
   const a = html(VideoPlayer, { url: firmada, titulo: 'L1' })
-  expect(a).toContain(`src="${CANONICA}?token=${TOKEN64}&amp;expires=1700000000"`)
+  expect(a).toContain(`src="${CANONICA}?token=${TOKEN64}&amp;expires=${FUTURO}"`)
   expect(a).toContain('allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"')
   const b = html(VideoPlayer, { url: CANONICA, titulo: 'L1' })
   expect(b).toContain(VIDEO_NO_DISPONIBLE)
@@ -213,6 +221,41 @@ test('VideoPlayer (cursos): Bunny firmada → iframe; sin firmar → aviso; YouT
   expect(b).not.toContain('href=')
   const c = html(VideoPlayer, { url: 'https://youtu.be/Nyts_ereM4Y', titulo: 'L1' })
   expect(c).toContain('src="https://www.youtube-nocookie.com/embed/Nyts_ereM4Y?rel=0&amp;modestbranding=1"')
+})
+
+test('firma vencida (pestaña abierta > 6 h): aviso para recargar, sin iframe', () => {
+  const vencida = `${CANONICA}?token=${TOKEN64}&expires=1700000000`
+  expect(bunnyCaducada(parseBunnyUrl(vencida)!)).toBe(true)
+  expect(bunnyCaducada(parseBunnyUrl(`${CANONICA}?token=${TOKEN64}&expires=${FUTURO}`)!)).toBe(false)
+  expect(bunnyCaducada(parseBunnyUrl(`${CANONICA}?token=${TOKEN64}&expires=1800000030`)!, 1_800_000_000)).toBe(true) // margen 60 s
+  for (const h of [
+    html(VideoEmbed, { url: vencida, titulo: 'S1', lang: 'es' }),
+    html(VideoPlayer, { url: vencida, titulo: 'L1' }),
+  ]) {
+    expect(h).toContain(VIDEO_CADUCADO)
+    expect(h).not.toContain('<iframe')
+  }
+})
+
+test('un host de Bunny mal formado no cae en YouTube ni en un link: aviso', () => {
+  for (const url of [
+    `https://player.mediadelivery.net/play/${LIB}/${GUID}`,
+    `https://iframe.mediadelivery.net/embed/${LIB}/no-es-guid`,
+    `https://vz-abc.b-cdn.net.mediadelivery.net/embed/${LIB}/${GUID}`,
+  ]) {
+    expect(esHostBunny(url), url).toBe(true)
+    for (const h of [html(VideoEmbed, { url, titulo: 'S1', lang: 'es' }), html(VideoPlayer, { url, titulo: 'L1' })]) {
+      expect(h, url).toContain(VIDEO_NO_DISPONIBLE)
+      expect(h, url).not.toContain('<iframe')
+      expect(h, url).not.toContain('href=')
+    }
+  }
+  expect(esHostBunny('https://evilmediadelivery.net/embed/1/2')).toBe(false)
+})
+
+test('VideoEmbed: el link externo solo acepta http(s) (antes pintaba javascript: crudo)', () => {
+  expect(html(VideoEmbed, { url: 'javascript:alert(1)', titulo: 'x', lang: 'es' })).toBe('')
+  expect(html(VideoEmbed, { url: 'data:text/html,hola', titulo: 'x', lang: 'es' })).toBe('')
 })
 
 // ─── La llave nunca llega al navegador ───────────────────────────────────────
