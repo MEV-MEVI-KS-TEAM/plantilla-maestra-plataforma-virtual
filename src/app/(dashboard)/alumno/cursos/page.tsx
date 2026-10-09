@@ -110,7 +110,7 @@ export default function MisCursosPage() {
           {cursos.map(curso => (
             <button
               key={curso.id}
-              onClick={() => router.push(`/cursos/${curso.id}`)}
+              onClick={() => router.push(`/alumno/curso/${curso.id}`)}
               className="text-left rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-0.5"
               style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7', boxShadow: '0 1px 4px rgba(27,58,87,0.06)' }}
             >

@@ -239,7 +239,8 @@ test('13. UI: el quiz no conoce la clave y revisa r.ok; el mensual y el de curso
   expect(curso).toContain('{!resultado && !aprobadoPrevio && preguntas && (')
   expect(curso).toContain("r.es_correcta === undefined")
   // K-d2 también en la página del curso: aprobado ya no ofrece «Volver a intentar».
-  const pagCurso = sinComentarios(leer('src', 'app', '(cursos)', 'cursos', '[id]', 'page.tsx'))
+  // El visor del curso vive en AulaCurso desde TICKET-2026-10-09-02 (aula tipo materia).
+  const pagCurso = sinComentarios(leer('src', 'components', 'cursos', 'AulaCurso.tsx'))
   expect(pagCurso).toContain('aprobado: json.aprobado === true')
   expect(pagCurso).toContain("{examen.aprobado ? 'Ver resultado' : examen.mejor !== null ? 'Volver a intentar' : 'Presentar examen'}")
 })

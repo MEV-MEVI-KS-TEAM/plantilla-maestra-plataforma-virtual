@@ -34,6 +34,13 @@ function ContenidoMarkdown({ texto }: { texto: string }) {
           h1: ({ children }) => <h1 className="text-2xl font-bold mt-4 mb-2" style={{ color: '#F1F5F9' }}>{children}</h1>,
           h2: ({ children }) => <h2 className="text-xl font-bold mt-3 mb-2" style={{ color: '#F1F5F9' }}>{children}</h2>,
           h3: ({ children }) => <h3 className="text-lg font-bold mt-3 mb-1" style={{ color: '#F1F5F9' }}>{children}</h3>,
+          // Las tablas (p. ej. la distribución de reactivos de los cursos de
+          // ingreso) se desbordan en 390px si no pueden desplazarse solas.
+          table: ({ children }) => (
+            <div className="overflow-x-auto -mx-1">
+              <table className="min-w-full text-sm">{children}</table>
+            </div>
+          ),
         }}
       >
         {texto}

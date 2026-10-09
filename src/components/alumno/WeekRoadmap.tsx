@@ -6,8 +6,15 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { CONFIG } from '@/lib/config'
 import { withAlpha } from '@/lib/utils'
+import { colorLegibleSobre } from '@/lib/contraste'
 
 gsap.registerPlugin(useGSAP)
+
+// El roadmap vive en la tarjeta oscura de la materia (#181C26). Un acento de
+// marca oscuro (p. ej. el petróleo de EDUVA) desaparecía ahí: «Semana 1», el
+// número del nodo y «En curso» quedaban ilegibles. Si el acento ya cumple, no
+// cambia; si no, se aclara conservando el tono (contraste.ts).
+const ACENTO = colorLegibleSobre(CONFIG.colores.acento, '#181C26')
 
 interface WeekRoadmapProps {
   semanas: Array<{
@@ -21,9 +28,21 @@ interface WeekRoadmapProps {
   onSemanaClick: (semanaId: string) => void
   lang: string
   esDemo?: boolean
+  /**
+   * Visor de cursos (aula tipo materia): el rótulo de cada paso («Lección»)
+   * y la numeración la pone quien llama. Sin esto: «Semana» / «Paso».
+   */
+  etiqueta?: string
+  /**
+   * Visor de cursos: ningún paso se bloquea por avance (las lecciones de un
+   * curso se abren libres; lo que no se ve lo decide la ventana de pago, que
+   * ni siquiera manda esos módulos). Los pendientes se pintan con su número y
+   * el seleccionado se resalta. Sin esto: la cadena de la materia.
+   */
+  libre?: boolean
 }
 
-type EstadoSemana = 'completado' | 'activo' | 'bloqueado'
+type EstadoSemana = 'completado' | 'activo' | 'bloqueado' | 'pendiente'
 
 function getEstado(
   semanaId: string,
@@ -46,9 +65,12 @@ function getEstado(
 export default function WeekRoadmap({
   semanas,
   semanasCompletadas,
+  semanaActivaId,
   onSemanaClick,
   lang,
   esDemo = false,
+  etiqueta,
+  libre = false,
 }: WeekRoadmapProps) {
   const loc = (es: string, en?: string) => lang === 'en' && en ? en : es
   const containerRef = useRef<HTMLDivElement>(null)
@@ -81,13 +103,17 @@ export default function WeekRoadmap({
     <div ref={containerRef} className="flex flex-col">
       {semanas.map((semana, index) => {
         // En demo: todas las semanas están desbloqueadas
-        const estado = esDemo
+        const estado: EstadoSemana = libre
+          ? (semanasCompletadas.has(semana.id) ? 'completado' : semana.id === semanaActivaId ? 'activo' : 'pendiente')
+          : esDemo
           ? (semanasCompletadas.has(semana.id) ? 'completado' : 'activo')
           : getEstado(semana.id, index, semanas, semanasCompletadas)
         const esUltima = index === semanas.length - 1
         const clickable = estado !== 'bloqueado'
+        // En modo libre, el seleccionado se marca aunque ya esté completado.
+        const seleccionado = libre && semana.id === semanaActivaId
         // En demo: "Paso N" en vez de "Semana N"
-        const labelPrefijo = esDemo ? 'Paso' : (lang === 'en' ? 'Week' : 'Semana')
+        const labelPrefijo = etiqueta ?? (esDemo ? 'Paso' : (lang === 'en' ? 'Week' : 'Semana'))
 
         return (
           <div key={semana.id} className="roadmap-node flex gap-4">
@@ -101,14 +127,14 @@ export default function WeekRoadmap({
                 className={[
                   'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 relative z-10 border-2',
                   estado === 'activo' ? 'animate-pulse' : '',
-                  estado === 'bloqueado' ? 'bg-transparent border-slate-600' : '',
+                  estado === 'bloqueado' || estado === 'pendiente' ? 'bg-transparent border-slate-600' : '',
                   clickable ? 'cursor-pointer hover:scale-110' : 'cursor-not-allowed',
                 ].join(' ')}
                 style={
                   estado === 'completado'
-                    ? { backgroundColor: CONFIG.colores.primario, borderColor: CONFIG.colores.primario }
+                    ? { backgroundColor: CONFIG.colores.primario, borderColor: seleccionado ? ACENTO : CONFIG.colores.primario, boxShadow: seleccionado ? `0 0 0 3px ${withAlpha(ACENTO, 0.35)}` : undefined }
                     : estado === 'activo'
-                    ? { backgroundColor: withAlpha(CONFIG.colores.acento, 0.15), borderColor: CONFIG.colores.acento }
+                    ? { backgroundColor: withAlpha(ACENTO, 0.15), borderColor: ACENTO }
                     : undefined
                 }
               >
@@ -116,12 +142,17 @@ export default function WeekRoadmap({
                   <Check className="w-5 h-5" style={{ color: '#fff' }} strokeWidth={2.5} />
                 )}
                 {estado === 'activo' && (
-                  <span className="text-sm font-bold" style={{ color: CONFIG.colores.acento }}>
+                  <span className="text-sm font-bold" style={{ color: ACENTO }}>
                     {semana.numero}
                   </span>
                 )}
                 {estado === 'bloqueado' && (
                   <Lock className="w-4 h-4" style={{ color: '#475569' }} />
+                )}
+                {estado === 'pendiente' && (
+                  <span className="text-sm font-bold" style={{ color: '#94A3B8' }}>
+                    {semana.numero}
+                  </span>
                 )}
               </button>
 
@@ -153,7 +184,7 @@ export default function WeekRoadmap({
               <div className="flex items-center gap-2 mb-0.5 mt-1.5">
                 <span
                   className="text-xs font-mono transition-all duration-500"
-                  style={{ color: estado === 'bloqueado' ? '#475569' : CONFIG.colores.acento }}
+                  style={{ color: estado === 'bloqueado' || estado === 'pendiente' ? '#94A3B8' : ACENTO }}
                 >
                   {labelPrefijo} {semana.numero}
                 </span>
@@ -161,9 +192,9 @@ export default function WeekRoadmap({
                 {estado === 'activo' && (
                   <span
                     className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: withAlpha(CONFIG.colores.acento, 0.15), color: CONFIG.colores.acento }}
+                    style={{ background: withAlpha(ACENTO, 0.15), color: ACENTO }}
                   >
-                    {lang === 'en' ? 'In progress' : 'En curso'}
+                    {libre ? 'Viendo' : lang === 'en' ? 'In progress' : 'En curso'}
                   </span>
                 )}
                 {estado === 'completado' && (
@@ -185,7 +216,7 @@ export default function WeekRoadmap({
                   estado === 'bloqueado' ? 'opacity-40' : '',
                 ].join(' ')}
                 style={{
-                  color: estado === 'bloqueado' ? '#94A3B8' : '#F1F5F9',
+                  color: estado === 'bloqueado' ? '#94A3B8' : estado === 'pendiente' ? '#CBD5E1' : '#F1F5F9',
                 }}
               >
                 {loc(semana.titulo, semana.titulo_en)}

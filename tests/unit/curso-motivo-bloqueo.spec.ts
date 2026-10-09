@@ -107,7 +107,7 @@ test('3b. la banda cuenta con el eje de la RLS (posición < límite, #255) y no 
 })
 
 test('4. el visor usa el motivo y pinta los módulos por abrir; ya no escribe la frase a mano', () => {
-  const page = sinComentarios(leer('src/app/(cursos)/cursos/[id]/page.tsx'))
+  const page = sinComentarios(leer('src/components/cursos/AulaCurso.tsx'))
   expect(page).not.toContain('todavía no tiene lecciones')
   expect(page).toContain('textoSinLecciones(detalle.totalLecciones, detalle.ventana, curso.tipo)')
   expect(page).toMatch(/ventana\.limite > 0 && ventana\.modulos_bloqueados > 0/)
