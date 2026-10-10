@@ -276,3 +276,34 @@ test.describe('f. tarjetas del hero: calculadas de fábrica, literales con opt-i
     expect(fuente).toContain("ICONO_TARJETA[t.icono ?? 'libro']")
   })
 })
+
+test.describe('g. opt-ins de IDEP #268: arco del hero, planes oscuros y fuente única', () => {
+  test('g1. la plantilla NO trae las claves: sin ellas, la portada de siempre', () => {
+    const extras = CONFIG as unknown as { heroArcoColor?: unknown; planesOscuros?: unknown; fuenteUnica?: unknown }
+    expect(extras.heroArcoColor).toBeUndefined()
+    expect(extras.planesOscuros).toBeUndefined()
+    expect(extras.fuenteUnica).toBeUndefined()
+    expect(leer(LANDING)).toContain('background: EXTRAS.heroArcoColor ?? tOscuro.fondo')
+    // Sin la opción, los planes siguen en superficie suave.
+    expect(secuenciaSecciones(todas()).find(s => s.id === 'planes')?.variante).toBe('suave')
+  })
+
+  test('g2. `planesOscuros` pone los planes en la cara oscura sin pegar dos oscuros, en TODAS las combinaciones', () => {
+    const n = SECCIONES_OPCIONALES.length
+    for (let mascara = 0; mascara < (1 << n); mascara++) {
+      const presentes = Object.fromEntries(
+        SECCIONES_OPCIONALES.map((id, i) => [id, Boolean(mascara & (1 << i))]),
+      ) as Record<SeccionOpcional, boolean>
+      const secuencia = secuenciaSecciones(presentes, { planesOscuros: true })
+      expect(secuenciaValida(secuencia), `máscara ${mascara}: ${secuencia.map(s => `${s.id}:${s.variante}`).join(' ')}`).toBe(true)
+    }
+    expect(secuenciaSecciones(todas(), { planesOscuros: true }).find(s => s.id === 'planes')?.variante).toBe('oscuro')
+    expect(leer(LANDING)).toContain('secuenciaSecciones(presentes, { planesOscuros: Boolean(EXTRAS.planesOscuros) })')
+  })
+
+  test('g3. `fuenteUnica` pisa las tres variables de fuente en el <body> solo si viene', () => {
+    const layout = leer('src/app/layout.tsx')
+    expect(layout).toContain("'--font-heading': FUENTE_UNICA, '--font-body': FUENTE_UNICA, '--font-geist-sans': FUENTE_UNICA")
+    expect(layout).toMatch(/\.\.\.\(FUENTE_UNICA\s*\?/)
+  })
+})

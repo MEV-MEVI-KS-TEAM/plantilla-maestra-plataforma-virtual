@@ -143,6 +143,19 @@ type ExtrasPortada = {
    * no incluye.
    */
   tarjetasHero?: ReadonlyArray<{ icono?: 'libro' | 'birrete' | 'laptop'; titulo: string; detalle: string }>
+  /**
+   * Color del ARCO grande del hero (IDEP #268, 9-oct-2026). Sin la clave, el
+   * fondo oscuro de la marca, como siempre. Para la escuela que quiere el arco en
+   * su color vivo de marca (heroArcoColor con el hex en config.ts del cliente).
+   * 🛑 El arco es decorativo y no lleva texto encima: no hay contraste que cuidar.
+   */
+  heroArcoColor?: string | null
+  /**
+   * Planes de Secundaria/Preparatoria en la cara OSCURA (IDEP #268, 9-oct-2026),
+   * como el costo de licenciaturas. Sin la clave, en superficie suave. El orden
+   * de secciones sigue sin dejar dos oscuros pegados (`secuenciaSecciones`).
+   */
+  planesOscuros?: boolean
 }
 const EXTRAS = CONFIG as unknown as ExtrasPortada
 
@@ -365,7 +378,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     catalogo: hayCatalogo,
     faq: faqs.length > 0,
   }
-  const secciones = secuenciaSecciones(presentes)
+  const secciones = secuenciaSecciones(presentes, { planesOscuros: Boolean(EXTRAS.planesOscuros) })
   const seccion = (id: IdSeccion) => secciones.find(s => s.id === id) ?? { id, variante: 'claro' as const }
   const tokens = (id: IdSeccion) => tokensDe(seccion(id).variante, paleta)
   /** `data-variant`, fondo y letra de una sección, y el margen para el menú fijo. */
@@ -643,7 +656,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             {/* La escena. `aria-hidden`: repite lo que dicen la franja y los
                 planes, y un lector de pantalla no necesita oírlo dos veces. */}
             <div aria-hidden className="la-escena relative mx-auto w-full max-w-[400px]">
-              <div className="la-forma la-arco" style={{ background: tOscuro.fondo }} />
+              <div className="la-forma la-arco" style={{ background: EXTRAS.heroArcoColor ?? tOscuro.fondo }} />
               <div className="la-forma la-circulo" style={{ background: tHero.btnFondo }} />
               <ul className="la-tarjetas relative">
                 {tarjetasHero.map(({ Icono, titulo, detalle }, i) => (
