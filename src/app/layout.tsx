@@ -8,6 +8,10 @@ import { landingAnimadaActiva } from "@/lib/landing-estilo";
 import { Providers } from "@/components/providers";
 import { SiteConfigProvider } from "@/components/site-config-provider";
 import { getSiteConfig, toPublicSiteConfig } from "@/lib/site-config";
+import { CONFIG } from "@/lib/config";
+
+/** Opt-in `fuenteUnica` en la raíz de CONFIG (ver cssVars). */
+const FUENTE_UNICA = (CONFIG as unknown as { fuenteUnica?: string | null }).fuenteUnica ?? null
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -183,6 +187,13 @@ export default async function RootLayout({
       oscurecerHasta(cfg.colores.acento, '#FFFFFF', 7),
       4.5,
     ),
+    // `fuenteUnica` (opt-in, IDEP #268): una sola familia en toda la página
+    // (portada y panel), p. ej. '"Helvetica Neue", Helvetica, Arial, sans-serif'.
+    // El inline del <body> pisa las variables que cuelga next/font. Sin la clave,
+    // las fuentes de siempre.
+    ...(FUENTE_UNICA
+      ? { '--font-heading': FUENTE_UNICA, '--font-body': FUENTE_UNICA, '--font-geist-sans': FUENTE_UNICA }
+      : {}),
   } as React.CSSProperties
 
   return (

@@ -273,13 +273,18 @@ const esClara = (s?: Seccion): boolean => s !== undefined && s.variante !== 'osc
  *    panel —que quita una sección entera— no deja dos fondos iguales pegados. Lo
  *    verifica `secuenciaValida` para las 512 combinaciones posibles.
  */
-export function secuenciaSecciones(presentes: Partial<Record<SeccionOpcional, boolean>> = {}): Seccion[] {
+export function secuenciaSecciones(
+  presentes: Partial<Record<SeccionOpcional, boolean>> = {},
+  opciones: { planesOscuros?: boolean } = {},
+): Seccion[] {
   const ids = ORDEN_SECCIONES.filter(id =>
     !(SECCIONES_OPCIONALES as readonly IdSeccion[]).includes(id) || presentes[id as SeccionOpcional] === true)
   const salida: Seccion[] = []
   for (const id of ids) {
     const previa = salida[salida.length - 1]
-    const quiereOscura = OSCURAS.has(id) && !(previa?.variante === 'oscuro')
+    // IDEP #268 (`planesOscuros`, opcional): los planes de Sec/Prepa en la cara oscura.
+    const quiereOscura = (OSCURAS.has(id) || (opciones.planesOscuros === true && id === 'planes'))
+      && !(previa?.variante === 'oscuro')
     let variante: Variante
     if (quiereOscura) variante = 'oscuro'
     else if (esClara(previa)) variante = previa!.variante === 'claro' ? 'suave' : 'claro'
