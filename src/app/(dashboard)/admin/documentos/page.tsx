@@ -21,6 +21,18 @@ const DOC_LABELS: Record<string, string> = {
   foto_perfil_doc: 'Foto (fondo blanco)',
 }
 
+/**
+ * Etiqueta del documento para el alumno que lo subió. Licenciatura reutiliza el
+ * slot `certificado_secundaria` para el BACHILLERATO (Bug 94): mismo criterio
+ * que `docLabel` de admin/alumnos/[id]. Si cambia una, cambia la otra.
+ */
+function docLabel(tipo: string, nivel: string | null | undefined): string {
+  if (nivel === 'licenciatura' && tipo === 'certificado_secundaria') {
+    return 'Certificado de Bachillerato'
+  }
+  return DOC_LABELS[tipo] ?? tipo
+}
+
 interface Documento {
   id: string
   alumno_id: string
@@ -31,6 +43,7 @@ interface Documento {
   signed_url: string | null
   subido_en: string
   alumno_nombre?: string
+  alumno_nivel?: string | null
 }
 
 const CARD = { background: '#1E2230', border: '1px solid #2A2F3E' }
@@ -164,7 +177,7 @@ export default function DocumentosAdminPage() {
           <option value="">Todos los tipos</option>
           {Object.entries(DOC_LABELS).map(([key, label]) => (
             <option key={key} value={key}>
-              {label}
+              {key === 'certificado_secundaria' ? 'Certificado de Secundaria / Bachillerato' : label}
             </option>
           ))}
         </select>
@@ -230,7 +243,7 @@ export default function DocumentosAdminPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold" style={{ color: '#E2E8F0' }}>
-                          {DOC_LABELS[doc.tipo] ?? doc.tipo}
+                          {docLabel(doc.tipo, doc.alumno_nivel)}
                         </p>
                         <span
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
