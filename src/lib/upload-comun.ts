@@ -21,6 +21,8 @@ export async function subirArchivo(
   bucket: string,
   file: File,
   extraConfirm: Record<string, unknown> = {},
+  /** Content-Type del objeto; por defecto el que reporta el navegador (vacío en dwg/pbix). */
+  contentType?: string,
 ): Promise<ResultadoSubida> {
   let r1: Response
   try {
@@ -40,7 +42,7 @@ export async function subirArchivo(
   const supabase = createClient()
   const { error: upError } = await supabase.storage
     .from(bucket)
-    .uploadToSignedUrl(j1.path, j1.token, file, { contentType: file.type })
+    .uploadToSignedUrl(j1.path, j1.token, file, { contentType: contentType ?? file.type })
   if (upError) {
     return { ok: false, error: `No se pudo subir el archivo: ${upError.message}` }
   }

@@ -46,6 +46,8 @@ export interface LeccionAlumno {
   contenido_texto: string | null
   materialUrl: string | null
   tieneMaterial: boolean
+  /** «PDF», «Word», «Excel», «AutoCAD»… para el botón de descarga. */
+  materialFormato?: string | null
   orden: number
   completada: boolean
 }

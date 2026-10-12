@@ -6,6 +6,6 @@ import { BUCKET_CURSOS } from './archivos'
 
 export type { ResultadoSubida }
 
-export function subirArchivoCursos(endpoint: string, file: File): Promise<ResultadoSubida> {
-  return subirArchivo(endpoint, BUCKET_CURSOS, file)
+export function subirArchivoCursos(endpoint: string, file: File, contentType?: string): Promise<ResultadoSubida> {
+  return subirArchivo(endpoint, BUCKET_CURSOS, file, {}, contentType)
 }
