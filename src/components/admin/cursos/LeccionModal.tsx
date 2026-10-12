@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FileText, Trash2, Upload, X } from 'lucide-react'
 import { VideoPreview } from './VideoPreview'
-import { validarMaterial } from '@/lib/cursos/archivos'
+import { contentTypeMaterial, MATERIAL_LECCION_ACCEPT, validarMaterialLeccion } from '@/lib/cursos/material-leccion'
 import { subirArchivoCursos } from '@/lib/cursos/upload'
 import type { CursoLeccion } from '@/types/cursos'
 
@@ -29,7 +29,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
   const [material, setMaterial] = useState<File | null>(null)
   const [quitarMaterialActual, setQuitarMaterialActual] = useState(false)
   const [guardando, setGuardando] = useState(false)
-  // Si el POST de creación tuvo éxito pero el PDF falló, aquí queda el id
+  // Si el POST de creación tuvo éxito pero el material falló, aquí queda el id
   // real: el reintento hace PATCH sobre esta lección (evita duplicados).
   const [leccionIdGuardada, setLeccionIdGuardada] = useState<string | null>(null)
 
@@ -50,7 +50,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
   function onMaterialChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const valid = validarMaterial(file)
+    const valid = validarMaterialLeccion(file)
     if (!valid.ok) {
       onError(valid.error)
       e.target.value = ''
@@ -108,21 +108,22 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
       if (material && leccionId) {
         const resultado = await subirArchivoCursos(
           `/api/admin/cursos/${cursoId}/lecciones/${leccionId}/material`,
-          material
+          material,
+          contentTypeMaterial(material.name, material.type)
         )
         if (!resultado.ok) {
           // Fallo PARCIAL: la lección sí quedó guardada → refetch silencioso
           // para que aparezca en la lista, y el modal queda abierto para
-          // reintentar el PDF (leccionIdGuardada evita duplicarla).
+          // reintentar el material (leccionIdGuardada evita duplicarla).
           onPartial()
-          throw new Error(`La lección se guardó, pero el PDF falló: ${resultado.error}. Reintenta la subida.`)
+          throw new Error(`La lección se guardó, pero el material falló: ${resultado.error}. Reintenta la subida.`)
         }
       } else if (quitarMaterialActual && leccionId && leccion?.material_path) {
         const rmRes = await fetch(`/api/admin/cursos/${cursoId}/lecciones/${leccionId}/material`, { method: 'DELETE' })
         if (!rmRes.ok) {
           const rmJson = await rmRes.json().catch(() => ({} as { error?: string }))
           onPartial()
-          throw new Error(`La lección se guardó, pero no se pudo quitar el PDF: ${rmJson.error ?? 'error'}`)
+          throw new Error(`La lección se guardó, pero no se pudo quitar el material: ${rmJson.error ?? 'error'}`)
         }
       }
 
@@ -204,7 +205,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
 
           <div>
             <span className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--color-primario)' }}>
-              Material PDF <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(opcional · máx 10MB)</span>
+              Material <span className="font-normal text-xs" style={{ color: 'var(--color-texto-secundario)' }}>(opcional · PDF, Word, Excel, PowerPoint, AutoCAD o Power BI · máx 10MB)</span>
             </span>
 
             {materialActualVisible && (
@@ -230,8 +231,8 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
                   onClick={() => setQuitarMaterialActual(true)}
                   className="p-1 rounded"
                   style={{ color: '#EF4444' }}
-                  aria-label="Quitar PDF actual"
-                  title="Quitar PDF"
+                  aria-label="Quitar material actual"
+                  title="Quitar material"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -240,7 +241,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
 
             {quitarMaterialActual && (
               <p className="text-xs mb-2" style={{ color: '#F59E0B' }}>
-                El PDF actual se eliminará al guardar.{' '}
+                El material actual se eliminará al guardar.{' '}
                 <button type="button" onClick={() => setQuitarMaterialActual(false)} className="underline font-medium">
                   Deshacer
                 </button>
@@ -256,7 +257,7 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
                   onClick={() => { setMaterial(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
                   className="p-1 rounded"
                   style={{ color: '#EF4444' }}
-                  aria-label="Quitar PDF seleccionado"
+                  aria-label="Quitar material seleccionado"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -269,16 +270,16 @@ export function LeccionModal({ open, cursoId, moduloId, leccion, onClose, onSave
                 style={{ border: '2px dashed #D1D5DB', color: 'var(--color-texto-secundario)', background: '#FAFAFA' }}
               >
                 <Upload className="w-4 h-4" />
-                {leccion?.material_path && !quitarMaterialActual ? 'Reemplazar PDF' : 'Seleccionar PDF'}
+                {leccion?.material_path && !quitarMaterialActual ? 'Reemplazar archivo' : 'Seleccionar archivo'}
               </button>
             )}
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/pdf"
+              accept={MATERIAL_LECCION_ACCEPT}
               onChange={onMaterialChange}
               className="hidden"
-              aria-label="Archivo PDF de material"
+              aria-label="Archivo de material"
             />
           </div>
         </div>

@@ -335,7 +335,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                   const meta: string[] = []
                   if (minLectura > 0) meta.push(`📖 ${minLectura} min lectura`)
                   if (activa.video_url) meta.push('🎬 1 video')
-                  if (activa.tieneMaterial) meta.push('📄 material PDF')
+                  if (activa.tieneMaterial) meta.push(`📄 material ${activa.materialFormato ?? 'PDF'}`)
                   return (
                     <div className="rounded-xl p-5 space-y-4" style={CARD}>
                       {/* Header de la lección */}
@@ -365,7 +365,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                             style={{ background: '#0D1017', border: '1px solid #2A2F3E', color: '#F1F5F9' }}
                           >
                             <FileText className="w-4 h-4 flex-shrink-0" style={{ color: ACENTO }} />
-                            <span className="flex-1 min-w-0 truncate">Descargar material (PDF)</span>
+                            <span className="flex-1 min-w-0 truncate">Descargar material ({activa.materialFormato ?? 'PDF'})</span>
                             <Download className="w-4 h-4 flex-shrink-0" style={{ color: '#94A3B8' }} />
                           </a>
                         </div>
