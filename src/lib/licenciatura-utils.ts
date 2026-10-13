@@ -30,6 +30,11 @@ type CarreraCfg = {
   desc: string
   incluye: readonly string[]
   /**
+   * Tira de materias (opt-in): nombres en el orden del plan. Si viene, la ficha
+   * de la carrera en la portada la muestra desplegable; si no, no se pinta.
+   */
+  materias?: readonly string[]
+  /**
    * Un diplomado montado sobre los rieles de licenciatura: se guarda como
    * `nivel='licenciatura'` + su `carrera`, y hereda modalidades, precios,
    * materias y constancia del add-on. Lo único que cambia es cómo se le
