@@ -256,3 +256,23 @@ test.describe('e. el movimiento es honesto', () => {
     expect(leer(ANIMACION)).toContain('useRevelado')
   })
 })
+
+test.describe('f. tarjetas del hero: calculadas de fábrica, literales con opt-in', () => {
+  test('f1. la plantilla NO trae `tarjetasHero`: sin la clave, las de siempre', () => {
+    // Si la plantilla trajera la clave, todas las escuelas nuevas perderían las
+    // tarjetas con duración y precio calculados.
+    expect((CONFIG as unknown as { tarjetasHero?: unknown }).tarjetasHero).toBeUndefined()
+    const fuente = leer(LANDING)
+    // El respaldo sigue siendo el arreglo calculado (niveles + licenciaturas o «100% en línea»).
+    expect(fuente).toMatch(/EXTRAS\.tarjetasHero\?\.length\s*\?/)
+    expect(fuente).toContain("detalle: 'A tu ritmo, las 24 horas'")
+    expect(fuente).toContain('minimaDe(n) > 0 && `desde ${dinero(minimaDe(n))}/mes`')
+  })
+
+  test('f2. el opt-in se declara con tipo opcional y sus tres íconos', () => {
+    const fuente = leer(LANDING)
+    expect(fuente).toMatch(/tarjetasHero\?: ReadonlyArray<\{ icono\?: 'libro' \| 'birrete' \| 'laptop'; titulo: string; detalle: string \}>/)
+    expect(fuente).toMatch(/libro: BookOpen, birrete: GraduationCap, laptop: Laptop/)
+    expect(fuente).toContain("ICONO_TARJETA[t.icono ?? 'libro']")
+  })
+})
