@@ -63,7 +63,7 @@ export default function MisCursosPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
       {/* Header */}
       <div>
         <h2 className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>

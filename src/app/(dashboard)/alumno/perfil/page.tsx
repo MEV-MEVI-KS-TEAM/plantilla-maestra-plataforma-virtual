@@ -117,7 +117,7 @@ export default function PerfilPage() {
   )
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 w-full max-w-2xl mx-auto">
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       <div>

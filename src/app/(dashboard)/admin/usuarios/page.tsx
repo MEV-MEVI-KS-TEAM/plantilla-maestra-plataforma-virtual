@@ -117,7 +117,7 @@ export default function UsuariosPage() {
   )
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       <div className="flex items-center justify-between flex-wrap gap-3">
