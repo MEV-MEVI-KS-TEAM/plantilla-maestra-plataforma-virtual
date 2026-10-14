@@ -213,7 +213,7 @@ export default function AlumnoDashboard() {
 
   // ── Loading skeletons ──────────────────────────────────────────────────────
   if (loading) return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
       {/* Header skeleton */}
       <div className="rounded-2xl p-6" style={{ background: '#fff', border: '1px solid var(--color-borde)' }}>
         <Skeleton className="h-8 w-64 mb-2" />
@@ -253,7 +253,7 @@ export default function AlumnoDashboard() {
                       : 'Secundaria'
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* ── Banner DEMO ────────────────────────────────────────────────────── */}

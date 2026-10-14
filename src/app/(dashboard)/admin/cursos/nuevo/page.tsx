@@ -91,7 +91,7 @@ export default function NuevoCursoPage() {
   const inputStyle = { border: '1px solid var(--color-borde)', color: 'var(--color-primario)', background: 'var(--color-superficie)' }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="w-full max-w-2xl mx-auto space-y-6">
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       <div>

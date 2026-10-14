@@ -63,7 +63,7 @@ export default function PagarPage() {
   const porWhatsApp = canal?.tipo === 'whatsapp'
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="w-full max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold" style={{ color: 'var(--color-texto)' }}>Pagos</h1>
         {/* D21b (OL1): la promesa de pagar aquí solo cuando HAY enlaces que le aplican.
