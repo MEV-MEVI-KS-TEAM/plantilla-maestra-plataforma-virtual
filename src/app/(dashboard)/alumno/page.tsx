@@ -12,6 +12,7 @@ import BadgesGrid from '@/components/alumno/BadgesGrid'
 import { CONFIG } from '@/lib/config'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
+import type { CursoCatalogoItem } from '@/types/cursos-alumno'
 import { canalEscuela } from '@/lib/contacto-ui'
 import { esSemanal } from '@/lib/periodicidad'
 import type { CostoPrograma } from '@/lib/costo-programa'
@@ -126,6 +127,14 @@ export default function AlumnoDashboard() {
   const [loading,            setLoading]            = useState(true)
   /** Primera materia del plan (orden) con acceso; IVS entra directo a materia, no a /mes/[n] */
   const [primeraMateriaId,    setPrimeraMateriaId]   = useState<string | null>(null)
+  /**
+   * Cursos del alumno SOLO-CURSO (nivel 'diplomado' dentro de un combo con
+   * secundaria/prepa). Ese alumno no tiene plan de estudios: sin esto el
+   * dashboard le pintaba los meses de un plan que no cursa —todos con 🔒 y
+   * «0 de 3 meses»— aunque su curso estuviera abierto completo. La escuela
+   * leía esos candados como «no puedo abrir los meses» (TICKET-2026-10-15-07).
+   */
+  const [cursos, setCursos] = useState<CursoCatalogoItem[] | null>(null)
 
   // Toast on redirect
   useEffect(() => {
@@ -138,6 +147,16 @@ export default function AlumnoDashboard() {
       router.replace('/alumno', { scroll: false })
     }
   }, [searchParams, router, showToast])
+
+  useEffect(() => {
+    if (perfil?.nivel !== 'diplomado') return
+    let cancelled = false
+    fetch('/api/alumno/cursos')
+      .then(r => (r.ok ? r.json() : []))
+      .then(json => { if (!cancelled) setCursos(Array.isArray(json) ? json : []) })
+      .catch(() => { if (!cancelled) setCursos([]) })
+    return () => { cancelled = true }
+  }, [perfil?.nivel])
 
   // Logros + racha. Vive fuera del efecto de carga para que la carga inicial
   // pueda esperarlo (ver abajo) y el evento de refresco lo reutilice.
@@ -244,6 +263,11 @@ export default function AlumnoDashboard() {
   const saludo        = !ahora ? '' : hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
   const primerNombre  = perfil?.nombre_completo?.split(' ')?.[0] ?? 'Alumno'
   const mesActivo     = perfil.meses_desbloqueados
+  const soloCurso     = perfil.nivel === 'diplomado'
+  const totalLecc     = (cursos ?? []).reduce((acc, c) => acc + c.totalLecciones, 0)
+  const hechasLecc    = (cursos ?? []).reduce((acc, c) => acc + c.completadas, 0)
+  const pctCursos     = totalLecc > 0 ? Math.round((hechasLecc / totalLecc) * 100) : 0
+  const pctGeneral    = soloCurso ? pctCursos : porcentaje
   const logrosCount   = logros.length
   // getPlanNombre cubre licenciatura (devuelve el nombre de la carrera); el
   // ternario anterior caía a 'Secundaria' para cualquier nivel desconocido.
@@ -366,7 +390,16 @@ export default function AlumnoDashboard() {
           </div>
         </div>
 
-        {!demo && mesActivo > 0 && (
+        {soloCurso && !demo && cursos && cursos.length > 0 && (
+          <Link
+            href={`/cursos/${cursos[0].id}`}
+            className="relative z-10 flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm flex-shrink-0 transition-all"
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(8px)' }}
+          >
+            Continuar mi curso <ChevronRight className="w-4 h-4" />
+          </Link>
+        )}
+        {!soloCurso && !demo && mesActivo > 0 && (
           <button
             type="button"
             onClick={() => {
@@ -388,13 +421,15 @@ export default function AlumnoDashboard() {
         <StatCard
           emoji="📈"
           label="Progreso general"
-          value={`${porcentaje}%`}
-          sub={`${mesActivo} de ${perfil.duracion_meses || 6} meses`}
+          value={`${pctGeneral}%`}
+          sub={soloCurso
+            ? cursos === null ? 'Cargando tu curso…' : `${hechasLecc} de ${totalLecc} ${totalLecc === 1 ? 'lección' : 'lecciones'}`
+            : `${mesActivo} de ${perfil.duracion_meses || 6} meses`}
           accentColor="var(--color-acento)"
           extra={
             <div className="h-1.5 rounded-full overflow-hidden w-full" style={{ background: 'var(--color-borde)' }}>
               <div className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${porcentaje}%`, background: 'var(--color-acento)' }} />
+                style={{ width: `${pctGeneral}%`, background: 'var(--color-acento)' }} />
             </div>
           }
         />
@@ -462,8 +497,41 @@ export default function AlumnoDashboard() {
         </div>
       )}
 
-      {/* ── Meses del programa (siempre visible) ─────────────────────────── */}
-      {(() => {
+      {/* ── Mis cursos (alumno solo-curso) ─────────────────────────────────── */}
+      {soloCurso && !demo && (
+        <div>
+          <SectionTitle>Mis cursos</SectionTitle>
+          {cursos === null ? (
+            <Skeleton className="h-28" />
+          ) : cursos.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
+              Todavía no tienes un curso asignado. Escríbenos por WhatsApp y te lo activamos.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {cursos.map(c => (
+                <Link key={c.id} href={`/cursos/${c.id}`}
+                  className="rounded-2xl p-4 flex flex-col gap-2 transition-all hover:-translate-y-0.5"
+                  style={{ background: '#fff', border: '1.5px solid var(--color-acento)' }}>
+                  <p className="text-sm font-bold leading-snug" style={{ color: 'var(--color-primario)' }}>{c.nombre}</p>
+                  <div className="h-1.5 rounded-full overflow-hidden w-full" style={{ background: 'var(--color-borde)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${c.porcentaje}%`, background: 'var(--color-acento)' }} />
+                  </div>
+                  <p className="text-xs" style={{ color: '#64748B' }}>
+                    {c.completadas} de {c.totalLecciones} lecciones · {c.porcentaje}%
+                  </p>
+                  <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--color-acento)' }}>
+                    Entrar al curso <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Meses del programa (solo alumnos con plan de estudios) ─────────── */}
+      {!soloCurso && (() => {
         // Si no hay meses de la API, generar 6 placeholders
         const duracion = perfil.duracion_meses || 6
         const mesesDisplay: Mes[] = meses.length > 0
