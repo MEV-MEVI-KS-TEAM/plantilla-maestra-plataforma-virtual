@@ -2,7 +2,21 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig } from '@/lib/site-config'
+import { getNivelLabel } from '@/lib/modalidades'
+import { licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
+
+// Los programas que la escuela vende, leídos de CONFIG.niveles (Bug 283, CÚSPIDE #285).
+// Se filtra a secundaria/preparatoria porque la plantilla trae 'licenciatura' en
+// `niveles` aunque el add-on esté apagado; la licenciatura entra solo si el add-on
+// está activo. Sin ninguno (solo cursos) se conserva el texto de siempre. Con
+// ['secundaria', 'preparatoria'] y sin licenciaturas el resultado es idéntico al de
+// antes: «Secundaria o Preparatoria».
+const NIVELES_AVISO =
+  getNivelLabel([
+    ...['secundaria', 'preparatoria'].filter(n => (CONFIG.niveles as readonly string[]).includes(n)),
+    ...(licenciaturasActivas() ? ['licenciatura'] : []),
+  ]) || 'Secundaria o Preparatoria'
 
 // Nombre y correo son editables desde "Personalizar mi página", así que se
 // leen de la config fusionada por petición. El dominio no es editable (cambia
@@ -121,7 +135,7 @@ export default async function AvisoPrivacidadPage() {
             <p><strong style={{ color: '#fff' }}>Finalidades primarias</strong> (necesarias para la relación jurídica):</p>
             <ul>
               <li>Crear y administrar tu cuenta de alumno en la plataforma.</li>
-              <li>Gestionar tu inscripción al programa de Secundaria o Preparatoria.</li>
+              <li>Gestionar tu inscripción al programa de {NIVELES_AVISO}.</li>
               {CERTIFICA ? (
                 <>
                   <li>Verificar y validar documentos académicos requeridos por las autoridades educativas.</li>
