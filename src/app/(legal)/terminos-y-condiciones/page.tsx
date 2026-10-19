@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
+import { esSoloCursos } from '@/lib/modo'
 import { getSiteConfig } from '@/lib/site-config'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
@@ -133,14 +134,24 @@ export default async function TerminosCondicionesPage() {
               </>
             ) : (
               <>
-                <p>
-                  {RAZON_SOCIAL} ofrece programas de <strong style={{ color: '#fff' }}>estudio en línea</strong> de
-                  nivel <strong style={{ color: '#fff' }}>Secundaria</strong> y{' '}
-                  <strong style={{ color: '#fff' }}>Preparatoria</strong>, con material organizado por meses y
-                  acompañamiento académico. Nuestros servicios incluyen:
-                </p>
+                {/* Solo cursos: la escuela no tiene programa de Secundaria ni Preparatoria (CAAIV #288). */}
+                {esSoloCursos() ? (
+                  <p>
+                    {RAZON_SOCIAL} ofrece <strong style={{ color: '#fff' }}>cursos en línea</strong> con
+                    lecciones, material de estudio y acompañamiento académico. Nuestros servicios incluyen:
+                  </p>
+                ) : (
+                  <p>
+                    {RAZON_SOCIAL} ofrece programas de <strong style={{ color: '#fff' }}>estudio en línea</strong> de
+                    nivel <strong style={{ color: '#fff' }}>Secundaria</strong> y{' '}
+                    <strong style={{ color: '#fff' }}>Preparatoria</strong>, con material organizado por meses y
+                    acompañamiento académico. Nuestros servicios incluyen:
+                  </p>
+                )}
                 <ul>
-                  <li>Acceso a la plataforma de aprendizaje en línea durante la vigencia del plan contratado.</li>
+                  <li>{esSoloCursos()
+                    ? 'Acceso a la plataforma de aprendizaje en línea para los cursos contratados.'
+                    : 'Acceso a la plataforma de aprendizaje en línea durante la vigencia del plan contratado.'}</li>
                   <li>Material de estudio, evaluaciones y seguimiento de tu avance.</li>
                   <li>Acompañamiento académico y atención al alumno.</li>
                   <li>Emisión de constancias de avance dentro de la plataforma.</li>

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
+import { esSoloCursos } from '@/lib/modo'
 import { getSiteConfig } from '@/lib/site-config'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
@@ -121,7 +122,8 @@ export default async function AvisoPrivacidadPage() {
             <p><strong style={{ color: '#fff' }}>Finalidades primarias</strong> (necesarias para la relación jurídica):</p>
             <ul>
               <li>Crear y administrar tu cuenta de alumno en la plataforma.</li>
-              <li>Gestionar tu inscripción al programa de Secundaria o Preparatoria.</li>
+              {/* Solo cursos: no hay programa de Secundaria ni Preparatoria (CAAIV #288). */}
+              <li>{esSoloCursos() ? 'Gestionar tu inscripción a los cursos que contrates.' : 'Gestionar tu inscripción al programa de Secundaria o Preparatoria.'}</li>
               {CERTIFICA ? (
                 <>
                   <li>Verificar y validar documentos académicos requeridos por las autoridades educativas.</li>
