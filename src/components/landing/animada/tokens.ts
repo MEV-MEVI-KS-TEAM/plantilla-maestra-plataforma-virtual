@@ -70,6 +70,9 @@ export type Paleta = {
   /** Formas, filetes e íconos de las secciones CLARAS, si la escuela declaró
    *  `decorativoClaro` y cumple (≥ 3 sobre la superficie). Sin él, el de siempre. */
   decorativoClaro?: string
+  /** Fondo de los chips de ícono de las secciones CLARAS (ícono blanco encima),
+   *  si la escuela declaró `fondoIconoClaro` y el blanco se lee (≥ 4.5). */
+  iconoClaro?: string
 }
 
 type ColoresEditables = Partial<Readonly<Record<
@@ -79,7 +82,7 @@ type ColoresEditables = Partial<Readonly<Record<
   // amarillo cuyo botón lleva letra navy, no casi negro, y un azul de marca para
   // los enlaces en vez del amarillo oscurecido). Si vienen y CUMPLEN su
   // contraste, mandan; si no vienen o no cumplen, todo sale como siempre.
-  | 'letraSobreAccion' | 'acentoLetra' | 'decorativoClaro', string
+  | 'letraSobreAccion' | 'acentoLetra' | 'decorativoClaro' | 'fondoIconoClaro', string
 >>>
 
 const hex = (v: string | undefined, respaldo: string) =>
@@ -123,6 +126,7 @@ export function paletaDesde(colores?: ColoresEditables | null): Paleta {
   const hoverPropio = oscurecer(acento, 0.14)
   const acentoLetra = hexOpcional(colores?.acentoLetra)
   const decorativoClaro = hexOpcional(colores?.decorativoClaro)
+  const iconoClaro = hexOpcional(colores?.fondoIconoClaro)
 
   return {
     marca: colorLegibleSobre(primario, superficie, 4.5),
@@ -156,6 +160,7 @@ export function paletaDesde(colores?: ColoresEditables | null): Paleta {
     // para otra cosa) los dos CTA saldrían idénticos: el secundario va de contorno.
     marcaYAccionIguales: ratioContraste(primario, accion) < 1.2,
     ...(decorativoClaro !== null && ratioContraste(decorativoClaro, superficie) >= 3 ? { decorativoClaro } : {}),
+    ...(iconoClaro !== null && ratioContraste(BLANCO, iconoClaro) >= 4.5 ? { iconoClaro } : {}),
   }
 }
 
@@ -181,6 +186,9 @@ export type TokensSeccion = {
   decorativo: string
   chipFondo: string
   chipTexto: string
+  /** Chips de ícono (servicios, pasos, contacto). Sin `fondoIconoClaro`, los del CTA secundario. */
+  iconoFondo: string
+  iconoTexto: string
 }
 
 /**
@@ -211,6 +219,9 @@ export function tokensDe(variante: Variante, p: Paleta): TokensSeccion {
       decorativo: p.realceOscuro,
       chipFondo: BLANCO,
       chipTexto: p.marcaProfunda,
+      // 🛑 La cara oscura no lee `fondoIconoClaro`.
+      iconoFondo: 'transparent',
+      iconoTexto: BLANCO,
     }
   }
   const suave = variante === 'suave'
@@ -236,6 +247,8 @@ export function tokensDe(variante: Variante, p: Paleta): TokensSeccion {
     decorativo: p.decorativoClaro ?? (suave ? p.marca : p.acentoTexto),
     chipFondo: p.accion,
     chipTexto: p.accionTexto,
+    iconoFondo: p.iconoClaro ?? (p.marcaYAccionIguales ? 'transparent' : p.marca),
+    iconoTexto: p.iconoClaro ? BLANCO : (p.marcaYAccionIguales ? p.marca : colorLegibleSobre(sugerirTextoSobre(p.marca), p.marca, 4.5)),
   }
 }
 

@@ -539,6 +539,8 @@ export const CONFIG = {
   //       favicon del sitio (src/app/layout.tsx)
   //   colores.letraSobreAccion / acentoLetra / decorativoClaro → letras de marca
   //       de la portada animada; mandan solo si cumplen su contraste (animada/tokens.ts)
+  //   colores.fondoIconoClaro → fondo de los chips de ícono en lo claro (ícono
+  //       blanco encima, exige 4.5); la cara oscura no lo lee
 
   redes: {
     facebook:  '',

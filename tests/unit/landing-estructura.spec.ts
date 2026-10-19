@@ -216,6 +216,28 @@ test.describe('4. letras de marca opcionales (paletaDesde)', () => {
   })
 })
 
+test.describe('4bis. chips de ícono (fondoIconoClaro)', () => {
+  const CAAIV = { primario: '#002458', secundario: '#002458', acento: '#FCCC60', texto: '#002458', textoSecundario: '#476187', fondo: '#F5F6F8', borde: '#E0E5EB' }
+  test('sin la llave, el chip es el del CTA secundario de siempre', () => {
+    for (const v of ['claro', 'suave'] as const) {
+      const t = tokensDe(v, paletaDesde(CAAIV))
+      expect([t.iconoFondo, t.iconoTexto]).toEqual([t.btn2Fondo, t.btn2Texto])
+    }
+  })
+  test('con la llave: verde con ícono blanco legible; la cara oscura no la lee', () => {
+    const p = paletaDesde({ ...CAAIV, fondoIconoClaro: '#00843C' })
+    for (const v of ['claro', 'suave'] as const) {
+      const t = tokensDe(v, p)
+      expect(t.iconoFondo).toBe('#00843C')
+      expect(ratioContraste(t.iconoTexto, t.iconoFondo)).toBeGreaterThanOrEqual(4.5)
+    }
+    expect(tokensDe('oscuro', p)).toEqual(tokensDe('oscuro', paletaDesde(CAAIV)))
+  })
+  test('un fondo donde el blanco no se lee se ignora', () => {
+    expect(paletaDesde({ ...CAAIV, fondoIconoClaro: '#FCCC60' }).iconoClaro).toBeUndefined()
+  })
+})
+
 test.describe('5. acento del panel (coloresPanel)', () => {
   test('5a. sin la llave, nada', () => {
     expect(variablesPanel(undefined, '#FFFFFF')).toEqual({})

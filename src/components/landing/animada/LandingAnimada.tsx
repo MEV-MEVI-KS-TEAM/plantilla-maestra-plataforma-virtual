@@ -157,8 +157,8 @@ function TarjetaContacto({ t, href, externo = false, destacada = false, grande =
       className={`la-card flex rounded-2xl ${grande ? 'flex-col gap-5 p-7 sm:p-9' : 'items-center gap-4 p-5'}`}
       style={{ background: fondo, border: `1px solid ${destacada ? t.btn2Fondo : t.borde}` }}>
       <span className="la-icono-card flex items-center justify-center rounded-2xl flex-shrink-0"
-        style={{ width: grande ? 64 : 48, height: grande ? 64 : 48, background: destacada ? 'transparent' : t.btn2Fondo, border: `1.5px solid ${destacada ? letra : t.btn2Fondo}` }}>
-        <Icono size={grande ? 28 : 22} aria-hidden style={{ color: destacada ? letra : t.btn2Texto }} />
+        style={{ width: grande ? 64 : 48, height: grande ? 64 : 48, background: destacada ? 'transparent' : t.iconoFondo, border: `1.5px solid ${destacada ? letra : t.iconoFondo}` }}>
+        <Icono size={grande ? 28 : 22} aria-hidden style={{ color: destacada ? letra : t.iconoTexto }} />
       </span>
       <span className="min-w-0">
         <span className="block text-sm font-medium" style={{ color: suave }}>{etiqueta}</span>
@@ -501,7 +501,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
               <article key={i} data-la-reveal="sube" className="la-card rounded-2xl p-6 flex flex-col"
                 style={{ ...retraso(i % 4, 90), background: tServicios.superficie, border: `1px solid ${tServicios.borde}` }}>
                 <span aria-hidden className="la-icono-card flex items-center justify-center rounded-2xl"
-                  style={{ width: 52, height: 52, background: tServicios.btn2Fondo, color: tServicios.btn2Texto }}>
+                  style={{ width: 52, height: 52, background: tServicios.iconoFondo, color: tServicios.iconoTexto }}>
                   <Icono size={24} />
                 </span>
                 <h3 className="mt-5 text-lg font-bold" style={{ color: tServicios.titulo }}>{sv.titulo}</h3>
@@ -743,8 +743,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   <li key={titulo} className={`la-tarjeta-hero la-tarjeta-hero--${i + 1}`}>
                     <div className="la-tarjeta-hero__cuerpo flex items-center gap-3 sm:gap-4 rounded-2xl px-4 sm:px-5 py-4"
                       style={{ background: tHero.fondo, border: `1px solid ${tHero.borde}` }}>
-                      <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: tOscuro.fondo }}>
-                        <Icono size={22} style={{ color: tOscuro.titulo }} />
+                      {/* Con `fondoIconoClaro` el chip va en ese color; sin él, el bloque oscuro de siempre. */}
+                      <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: paleta.iconoClaro ? tHero.iconoFondo : tOscuro.fondo }}>
+                        <Icono size={22} style={{ color: paleta.iconoClaro ? tHero.iconoTexto : tOscuro.titulo }} />
                       </span>
                       <span className="min-w-0">
                         <span className="block font-bold" style={{ color: tHero.titulo, fontFamily: 'var(--font-heading)', fontSize: '1.15rem', lineHeight: 1.25 }}>
@@ -793,7 +794,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                     <article key={i} data-la-reveal="sube" className="la-card rounded-2xl p-7"
                       style={{ ...retraso(i, 90), background: tDolor.superficie, border: `1px solid ${tDolor.borde}` }}>
                       <span aria-hidden className="la-icono-card flex items-center justify-center rounded-2xl text-2xl"
-                        style={{ width: 52, height: 52, background: tDolor.btn2Fondo, color: tDolor.btn2Texto }}>
+                        style={{ width: 52, height: 52, background: tDolor.iconoFondo, color: tDolor.iconoTexto }}>
                         {Icono ? <Icono size={24} /> : it.icono}
                       </span>
                       <h3 className="mt-5 text-xl font-bold" style={{ color: tDolor.titulo }}>{texto(it.titulo)}</h3>
@@ -1202,7 +1203,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   {L.proceso_pasos.map((p, i) => (
                     <li key={i} className="text-center lg:px-2">
                       <span data-la-reveal="escala" className="mx-auto flex items-center justify-center rounded-full text-lg font-bold"
-                        style={{ ...retraso(i, 150), width: 56, height: 56, background: tProceso.btn2Fondo, color: tProceso.btn2Texto, boxShadow: `0 0 0 8px ${tProceso.fondo}` }}>
+                        style={{ ...retraso(i, 150), width: 56, height: 56, background: tProceso.iconoFondo, color: tProceso.iconoTexto, boxShadow: `0 0 0 8px ${tProceso.fondo}` }}>
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <h3 data-la-reveal className="mt-5 text-lg font-bold"
@@ -1229,7 +1230,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                     <blockquote className="mt-4 flex-1 italic leading-relaxed" style={{ color: tTestim.texto }}>{tm.quote}</blockquote>
                     <figcaption className="mt-6 flex items-center gap-3">
                       <span aria-hidden className="flex items-center justify-center rounded-full text-sm font-bold"
-                        style={{ width: 44, height: 44, background: tTestim.btn2Fondo, color: tTestim.btn2Texto }}>
+                        style={{ width: 44, height: 44, background: tTestim.iconoFondo, color: tTestim.iconoTexto }}>
                         {tm.initials}
                       </span>
                       <span>
