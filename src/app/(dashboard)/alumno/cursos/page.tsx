@@ -7,7 +7,7 @@ import { GraduationCap, Loader2, BookOpen } from 'lucide-react'
 import { ProgressBar } from '@/components/cursos/ProgressBar'
 import type { CursoCanceladoAlumno, CursoCatalogoItem } from '@/types/cursos-alumno'
 import { CONFIG } from '@/lib/config'
-import { etiquetasCursos } from '@/lib/etiquetas-cursos'
+import { etiquetasCursos, palabraInstitucion } from '@/lib/etiquetas-cursos'
 import { formatearMoneda } from '@/lib/moneda'
 import { resumenPagosCurso } from '@/lib/cursos/pagos-alumno'
 
@@ -181,7 +181,7 @@ export default function MisCursosPage() {
             Cursos cancelados
           </h3>
           <p className="text-xs" style={{ color: '#94A3B8' }}>
-            Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado y, si ya tenías tu constancia, la sigues viendo; si tienes dudas, habla con tu escuela.
+            Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado y, si ya tenías tu constancia, la sigues viendo; si tienes dudas, habla con tu {palabraInstitucion()}.
           </p>
           <ul className="space-y-2">
             {cancelados.map(c => (

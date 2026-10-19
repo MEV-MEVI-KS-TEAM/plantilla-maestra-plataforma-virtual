@@ -77,3 +77,18 @@ export function variablesPanelDeConfig(): Record<string, string> {
   const panel = (CONFIG as { coloresPanel?: Partial<ColoresPanel> }).coloresPanel
   return variablesPanel(panel, CONFIG.colores.superficie)
 }
+
+/**
+ * El acento que leen como HEX (no como variable CSS) los componentes del panel
+ * que lo pasan por `colorLegibleSobre` (aula del curso, roadmap de lecciones).
+ * Con `coloresPanel`, el del panel; sin la llave, `colores.acento` / `acentoHover`
+ * de siempre.
+ */
+export function acentoDelPanel(): { acento: string; acentoHover: string } {
+  const panel = (CONFIG as { coloresPanel?: Partial<ColoresPanel> }).coloresPanel
+  const c = CONFIG.colores as { acento: string; acentoHover?: string }
+  if (panel && esHex(panel.acento)) {
+    return { acento: panel.acento.trim(), acentoHover: esHex(panel.acentoHover) ? panel.acentoHover.trim() : panel.acento.trim() }
+  }
+  return { acento: c.acento, acentoHover: c.acentoHover ?? c.acento }
+}

@@ -529,6 +529,8 @@ export const CONFIG = {
 
   // === LLAVES OPCIONALES DE PANEL Y METADATOS (ausentes = como siempre) =====
   //   diploma.leyenda: string → letra pequeña bajo «Expedida el …» en la constancia
+  //   palabraInstitucion: string → «tu centro» en vez de «tu escuela» en el aula,
+  //       el examen y Mis cursos (src/lib/etiquetas-cursos.ts)
   //   etiquetaCursos: { plural, miPlural } → «Cursos» / «Mis cursos» en vez de
   //       «Diplomados» / «Mis Diplomados» (src/lib/etiquetas-cursos.ts)
   //   coloresPanel: { acento, acentoHover, textoSobreAcento, acentoClaro } → el

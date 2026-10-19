@@ -88,6 +88,7 @@ Todas estas llaves son **opcionales**; sin ellas la portada usa lo automático:
 | `coloresPanel: { acento, acentoHover, textoSobreAcento, acentoClaro }` | acento propio del panel (útil si el de marca se confunde con «Pendiente»/«Pagado») | el de `colores` |
 | `etiquetaCursos: { plural, miPlural }` | «Cursos» / «Mis cursos» en menú y títulos | «Diplomados» / «Mis Diplomados» |
 | `etiquetasNivel: { diplomado: 'Curso' }` | cómo se lee el nivel técnico del alumno | «Curso o diplomado» |
+| `palabraInstitucion: 'centro'` | «tu centro» / «el centro» en el aula, el examen y Mis cursos | «tu escuela» |
 | `diploma.leyenda` | leyenda bajo la fecha de la constancia | — |
 | `metadatos: { titulo?, descripcion?, icono? }` | `<title>`, descripción y favicon | `nombre \| tagline`, la descripción de fábrica (habla de Secundaria/Preparatoria) y `/favicon.svg` |
 

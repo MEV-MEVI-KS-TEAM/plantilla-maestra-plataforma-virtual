@@ -31,3 +31,19 @@ export function etiquetasCursos(): EtiquetasCursos {
     propias: plural !== '' || miPlural !== '',
   }
 }
+
+/**
+ * Cómo se nombra la institución en los avisos al alumno («tu escuela»). Llave
+ * OPCIONAL `CONFIG.palabraInstitucion`; sin ella, 'escuela' como siempre. Un
+ * centro de apoyo que no es escuela (CAAIV #288) declara 'centro'.
+ */
+export function palabraInstitucion(): string {
+  const p = (CONFIG as { palabraInstitucion?: string }).palabraInstitucion
+  return p?.trim() || 'escuela'
+}
+
+/** «la escuela» / «el centro»: el artículo por la terminación (-a → la). */
+export function institucionConArticulo(): string {
+  const p = palabraInstitucion()
+  return `${/a$/i.test(p) ? 'la' : 'el'} ${p}`
+}
