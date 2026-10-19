@@ -67,14 +67,30 @@ export type Paleta = {
   bordeOscuro: string
   /** ¿El acento y el primario son el mismo color? Entonces el CTA secundario va de contorno. */
   marcaYAccionIguales: boolean
+  /** Formas, filetes e íconos de las secciones CLARAS, si la escuela declaró
+   *  `decorativoClaro` y cumple (≥ 3 sobre la superficie). Sin él, el de siempre. */
+  decorativoClaro?: string
+  /** Fondo de los chips de ícono de las secciones CLARAS (ícono blanco encima),
+   *  si la escuela declaró `fondoIconoClaro` y el blanco se lee (≥ 4.5). */
+  iconoClaro?: string
 }
 
 type ColoresEditables = Partial<Readonly<Record<
-  'primario' | 'secundario' | 'acento' | 'texto' | 'textoSecundario' | 'fondo' | 'borde', string
+  'primario' | 'secundario' | 'acento' | 'texto' | 'textoSecundario' | 'fondo' | 'borde'
+  // OPCIONALES, no editables desde el panel: las letras de marca que la escuela
+  // fija a mano cuando las derivadas no son las de su manual (CAAIV #288: un
+  // amarillo cuyo botón lleva letra navy, no casi negro, y un azul de marca para
+  // los enlaces en vez del amarillo oscurecido). Si vienen y CUMPLEN su
+  // contraste, mandan; si no vienen o no cumplen, todo sale como siempre.
+  | 'letraSobreAccion' | 'acentoLetra' | 'decorativoClaro' | 'fondoIconoClaro', string
 >>>
 
 const hex = (v: string | undefined, respaldo: string) =>
   typeof v === 'string' && /^#[0-9A-Fa-f]{6}$/.test(v.trim()) ? v.trim().toUpperCase() : respaldo
+const hexOpcional = (v: string | undefined): string | null => {
+  const h = hex(v, '')
+  return h === '' ? null : h
+}
 
 /**
  * La paleta de la landing a partir de los colores editables.
@@ -103,13 +119,32 @@ export function paletaDesde(colores?: ColoresEditables | null): Paleta {
   // ajusta la letra (no el hover) para no cambiar el color de marca.
   const accionHover = oscurecer(accion, 0.14)
 
+  // Letras de marca opcionales. 🛑 Ninguna entra si queda bajo su piso: una
+  // que no cumple se ignora y sale la derivada de siempre.
+  const letraPropia = hexOpcional(colores?.letraSobreAccion)
+  const letraManda = letraPropia !== null && ratioContraste(letraPropia, acento) >= 4.5
+  const hoverPropio = oscurecer(acento, 0.14)
+  const acentoLetra = hexOpcional(colores?.acentoLetra)
+  const decorativoClaro = hexOpcional(colores?.decorativoClaro)
+  const iconoClaro = hexOpcional(colores?.fondoIconoClaro)
+
   return {
     marca: colorLegibleSobre(primario, superficie, 4.5),
     marcaProfunda,
-    accion,
-    accionTexto: colorLegibleSobre(accionTexto, accion, 4.5),
-    accionHover: ratioContraste(accionTexto, accionHover) >= 4.5 ? accionHover : accion,
-    acentoTexto: colorLegibleSobre(acento, superficie, 4.5),
+    ...(letraManda
+      ? {
+          accion: acento,
+          accionTexto: letraPropia!,
+          accionHover: ratioContraste(letraPropia!, hoverPropio) >= 4.5 ? hoverPropio : acento,
+        }
+      : {
+          accion,
+          accionTexto: colorLegibleSobre(accionTexto, accion, 4.5),
+          accionHover: ratioContraste(accionTexto, accionHover) >= 4.5 ? accionHover : accion,
+        }),
+    acentoTexto: acentoLetra !== null && ratioContraste(acentoLetra, superficie) >= 4.5
+      ? acentoLetra
+      : colorLegibleSobre(acento, superficie, 4.5),
     // 🛑 Los realces del bloque oscuro NO son editables ni son colores de marca:
     // son el propio fondo aclarado hasta que se lee encima. Un acento crudo aquí
     // es justo lo que se empasta cuando los dos colores de marca están cerca.
@@ -124,6 +159,8 @@ export function paletaDesde(colores?: ColoresEditables | null): Paleta {
     // Con `acento === primario` (pasa cuando la escuela reserva su segundo color
     // para otra cosa) los dos CTA saldrían idénticos: el secundario va de contorno.
     marcaYAccionIguales: ratioContraste(primario, accion) < 1.2,
+    ...(decorativoClaro !== null && ratioContraste(decorativoClaro, superficie) >= 3 ? { decorativoClaro } : {}),
+    ...(iconoClaro !== null && ratioContraste(BLANCO, iconoClaro) >= 4.5 ? { iconoClaro } : {}),
   }
 }
 
@@ -149,6 +186,9 @@ export type TokensSeccion = {
   decorativo: string
   chipFondo: string
   chipTexto: string
+  /** Chips de ícono (servicios, pasos, contacto). Sin `fondoIconoClaro`, los del CTA secundario. */
+  iconoFondo: string
+  iconoTexto: string
 }
 
 /**
@@ -179,6 +219,9 @@ export function tokensDe(variante: Variante, p: Paleta): TokensSeccion {
       decorativo: p.realceOscuro,
       chipFondo: BLANCO,
       chipTexto: p.marcaProfunda,
+      // 🛑 La cara oscura no lee `fondoIconoClaro`.
+      iconoFondo: 'transparent',
+      iconoTexto: BLANCO,
     }
   }
   const suave = variante === 'suave'
@@ -200,9 +243,12 @@ export function tokensDe(variante: Variante, p: Paleta): TokensSeccion {
     btn2Fondo: p.marcaYAccionIguales ? 'transparent' : p.marca,
     btn2Texto: p.marcaYAccionIguales ? p.marca : colorLegibleSobre(sugerirTextoSobre(p.marca), p.marca, 4.5),
     btn2Borde: p.marca,
-    decorativo: suave ? p.marca : p.acentoTexto,
+    // 🛑 `decorativoClaro` solo en las caras claras: la oscura no lo lee.
+    decorativo: p.decorativoClaro ?? (suave ? p.marca : p.acentoTexto),
     chipFondo: p.accion,
     chipTexto: p.accionTexto,
+    iconoFondo: p.iconoClaro ?? (p.marcaYAccionIguales ? 'transparent' : p.marca),
+    iconoTexto: p.iconoClaro ? BLANCO : (p.marcaYAccionIguales ? p.marca : colorLegibleSobre(sugerirTextoSobre(p.marca), p.marca, 4.5)),
   }
 }
 
@@ -211,7 +257,7 @@ export function tokensDe(variante: Variante, p: Paleta): TokensSeccion {
 export type IdSeccion =
   | 'hero' | 'franja' | 'dolor' | 'niveles' | 'planes' | 'licenciaturas' | 'validez'
   | 'transformacion' | 'proceso' | 'testimonios' | 'beneficios'
-  | 'catalogo' | 'faq' | 'cta' | 'contacto' | 'pie'
+  | 'catalogo' | 'servicios' | 'faq' | 'cta' | 'contacto' | 'pie'
 
 export type Seccion = { id: IdSeccion; variante: Variante }
 
@@ -234,11 +280,27 @@ export type SeccionOpcional = Exclude<IdSeccion, 'hero' | 'franja' | 'niveles' |
 export const ORDEN_SECCIONES: readonly IdSeccion[] = [
   'hero', 'franja', 'dolor', 'niveles', 'planes', 'licenciaturas', 'validez',
   'transformacion', 'proceso', 'testimonios', 'beneficios',
-  'catalogo', 'faq', 'cta', 'contacto', 'pie',
+  'catalogo', 'servicios', 'faq', 'cta', 'contacto', 'pie',
+]
+
+/**
+ * El orden en modo `solo_cursos`: los cursos son lo que se vende, así que el
+ * catálogo (y los servicios, si los hay) sube justo después de la franja. Niveles
+ * y planes siguen en la lista por completitud, pero en ese modo se omiten
+ * (`seccionesOmitidas` en estructura.ts).
+ *
+ * ⚠️ `LandingAnimada` pinta el catálogo y los servicios en ESTA posición cuando
+ * `esSoloCursos()`, y en la de `ORDEN_SECCIONES` si no: si cambias uno, cambia
+ * el otro.
+ */
+export const ORDEN_SECCIONES_SOLO_CURSOS: readonly IdSeccion[] = [
+  'hero', 'franja', 'catalogo', 'servicios', 'dolor', 'niveles', 'planes', 'licenciaturas', 'validez',
+  'transformacion', 'proceso', 'testimonios', 'beneficios',
+  'faq', 'cta', 'contacto', 'pie',
 ]
 
 export const SECCIONES_OPCIONALES: readonly SeccionOpcional[] = [
-  'dolor', 'licenciaturas', 'validez', 'transformacion', 'proceso', 'testimonios', 'beneficios', 'catalogo', 'faq',
+  'dolor', 'licenciaturas', 'validez', 'transformacion', 'proceso', 'testimonios', 'beneficios', 'catalogo', 'servicios', 'faq',
 ]
 
 /** Las secciones de color. Todas las demás son claras (blanco o superficie). */
@@ -259,6 +321,7 @@ const PREFERIDA: Partial<Record<IdSeccion, Exclude<Variante, 'oscuro'>>> = {
   proceso: 'suave',
   testimonios: 'claro',
   catalogo: 'claro',
+  servicios: 'suave',
   faq: 'suave',
   contacto: 'claro',
 }
@@ -273,9 +336,14 @@ const esClara = (s?: Seccion): boolean => s !== undefined && s.variante !== 'osc
  *    panel —que quita una sección entera— no deja dos fondos iguales pegados. Lo
  *    verifica `secuenciaValida` para las 512 combinaciones posibles.
  */
-export function secuenciaSecciones(presentes: Partial<Record<SeccionOpcional, boolean>> = {}): Seccion[] {
-  const ids = ORDEN_SECCIONES.filter(id =>
-    !(SECCIONES_OPCIONALES as readonly IdSeccion[]).includes(id) || presentes[id as SeccionOpcional] === true)
+export function secuenciaSecciones(
+  presentes: Partial<Record<SeccionOpcional, boolean>> = {},
+  // `omitir`: secciones que no existen en este modo (en solo_cursos, niveles y
+  // planes). Default [] y `ORDEN_SECCIONES` → la secuencia de siempre.
+  { omitir = [], orden = ORDEN_SECCIONES }: { omitir?: readonly IdSeccion[]; orden?: readonly IdSeccion[] } = {},
+): Seccion[] {
+  const ids = orden.filter(id => !omitir.includes(id) && (
+    !(SECCIONES_OPCIONALES as readonly IdSeccion[]).includes(id) || presentes[id as SeccionOpcional] === true))
   const salida: Seccion[] = []
   for (const id of ids) {
     const previa = salida[salida.length - 1]

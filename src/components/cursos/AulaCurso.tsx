@@ -23,11 +23,13 @@
  *  - Los quizzes por lección todavía no existen en cursos; el examen final sí.
  */
 
+import { acentoDelPanel } from '@/lib/colores-panel'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Download, Eye, FileText, Loader2, Lock } from 'lucide-react'
 import WeekRoadmap from '@/components/alumno/WeekRoadmap'
 import FadeIn from '@/components/ui/FadeIn'
+import { palabraInstitucion } from '@/lib/etiquetas-cursos'
 import ContenidoMarkdown, { normalizarContenido } from '@/components/ContenidoMarkdown'
 import { VideoPlayer } from '@/components/cursos/VideoPlayer'
 import { porcentajeProgreso, cursoCompletado } from '@/lib/cursos/progreso'
@@ -44,7 +46,8 @@ type Tab = 'contenido' | 'examen' | 'informacion'
 // Mismas tarjetas que la materia (src/app/(dashboard)/alumno/materia/[id]/page.tsx).
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
 // Acento legible DENTRO de las tarjetas oscuras (igual que el roadmap).
-const ACENTO = colorLegibleSobre(CONFIG.colores.acento, '#181C26')
+// `coloresPanel` (opcional) manda aquí también: el aula es zona de panel.
+const ACENTO = colorLegibleSobre(acentoDelPanel().acento, '#181C26')
 
 interface ExamenResumen { total: number; mejor: number | null; aprobado: boolean }
 
@@ -191,8 +194,8 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
       <span>
         {porAbrir.modulos_bloqueados === 1 ? 'Queda 1 módulo por abrir' : `Quedan ${porAbrir.modulos_bloqueados} módulos por abrir`}
         {porAbrir.proximo_mes
-          ? `: el siguiente se abre con el mes ${porAbrir.proximo_mes}, cuando tu escuela registre ese pago.`
-          : `. Pregúntale a tu escuela por ${porAbrir.modulos_bloqueados === 1 ? 'él' : 'ellos'}.`}
+          ? `: el siguiente se abre con el mes ${porAbrir.proximo_mes}, cuando tu ${palabraInstitucion()} registre ese pago.`
+          : `. Pregúntale a tu ${palabraInstitucion()} por ${porAbrir.modulos_bloqueados === 1 ? 'él' : 'ellos'}.`}
       </span>
     </div>
   )
@@ -280,7 +283,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                   <a href={canal.href} target="_blank" rel="noopener noreferrer"
                     className="inline-block mt-3 text-sm font-semibold underline"
                     style={{ color: ACENTO }}>
-                    Escríbele a tu escuela por {canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}
+                    Escríbele a tu {palabraInstitucion()} por {canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}
                   </a>
                 )}
               </div>
@@ -394,7 +397,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                               disabled={marcando}
                               className="w-full py-3 rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
                               style={{ background: CONFIG.colores.primario, color: '#fff', border: 'none' }}
-                              onMouseEnter={e => { if (!marcando) e.currentTarget.style.background = CONFIG.colores.acentoHover ?? CONFIG.colores.primario }}
+                              onMouseEnter={e => { if (!marcando) e.currentTarget.style.background = acentoDelPanel().acentoHover ?? CONFIG.colores.primario }}
                               onMouseLeave={e => { e.currentTarget.style.background = CONFIG.colores.primario }}
                             >
                               {marcando ? '⏳ Guardando...' : '✅ Marcar lección como completada'}

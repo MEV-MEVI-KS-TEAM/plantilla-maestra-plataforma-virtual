@@ -8,6 +8,7 @@ import { GraduationCap, Layers, FileText, Users, Plus, Pencil, Trash2 } from 'lu
 import { ConfirmDialog } from '@/components/admin/cursos/ConfirmDialog'
 import { ToastContainer, useToast } from '@/components/ui/toast'
 import type { CursoListItem } from '@/types/cursos'
+import { etiquetasCursos } from '@/lib/etiquetas-cursos'
 
 function EstadoBadge({ estado }: { estado: string }) {
   const publicado = estado === 'publicado'
@@ -92,7 +93,7 @@ export default function AdminCursosPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--color-primario)' }}>
-            Cursos y Diplomados
+            {etiquetasCursos().propias ? etiquetasCursos().plural : 'Cursos y Diplomados'}
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario, #525252)' }}>
             {esAdmin === null ? ' '

@@ -1,6 +1,8 @@
 'use client'
 
 import { CONFIG } from '@/lib/config'
+import { esSoloCursos } from '@/lib/modo'
+import { etiquetasCursos } from '@/lib/etiquetas-cursos'
 import { getNivelLabel } from '@/lib/modalidades'
 import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
@@ -14,6 +16,8 @@ import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
  * un curso o diplomado leía al pie de su portal dos programas que no cursa.
  */
 function ofertaDelCliente(): string {
+  // Solo cursos: no hay niveles que anunciar (CAAIV #288 pintaba «Preparatoria»).
+  if (esSoloCursos()) return `${etiquetasCursos().plural} · 100% en línea`
   const partes: string[] = []
   const niveles = getNivelLabel()
   if (niveles) partes.push(niveles)

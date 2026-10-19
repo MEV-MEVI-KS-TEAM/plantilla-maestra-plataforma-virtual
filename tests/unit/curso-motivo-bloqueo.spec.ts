@@ -111,7 +111,8 @@ test('4. el visor usa el motivo y pinta los módulos por abrir; ya no escribe la
   expect(page).not.toContain('todavía no tiene lecciones')
   expect(page).toContain('textoSinLecciones(detalle.totalLecciones, detalle.ventana, curso.tipo)')
   expect(page).toMatch(/ventana\.limite > 0 && ventana\.modulos_bloqueados > 0/)
-  expect(page).toMatch(/Pregúntale a tu escuela/)
+  // «escuela» sale de palabraInstitucion() (CAAIV #288: «tu centro»).
+  expect(page).toMatch(/Pregúntale a tu \$\{palabraInstitucion\(\)\}/)
   const data = sinComentarios(leer('src/lib/cursos/alumno-data.ts'))
   expect(data).toContain('motivo: motivoBloqueo({ inscripcion, curso: cursoV, modulosTotales: totales, ordenes })')
   // La banda sale de modulosPorAbrir (eje de la RLS + tope), no de «totales − límite».

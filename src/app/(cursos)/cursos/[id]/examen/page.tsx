@@ -21,6 +21,7 @@
  * desglose por tema, sin ✓/✗ por pregunta ni respuestas correctas.
  */
 
+import { institucionConArticulo } from '@/lib/etiquetas-cursos'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Check, CheckCircle2, Loader2, RotateCcw, XCircle } from 'lucide-react'
@@ -229,7 +230,7 @@ export default function ExamenCursoPage() {
 
               {resultado.aprobado && (
                 <div className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(16,185,129,0.1)', color: '#047857', border: '1px solid rgba(16,185,129,0.3)' }}>
-                  ¡Aprobaste el examen final! Tu constancia la emite la escuela; la verás en el curso cuando esté lista.
+                  ¡Aprobaste el examen final! Tu constancia la emite {institucionConArticulo()}; la verás en el curso cuando esté lista.
                 </div>
               )}
 
@@ -338,7 +339,7 @@ export default function ExamenCursoPage() {
             <div className="rounded-2xl p-5 space-y-3" style={{ background: 'var(--color-superficie)', border: '1px solid #E8F0F7' }}>
               <p className="text-sm font-bold" style={{ color: '#047857' }}>Ya aprobaste este examen.</p>
               <p className="text-xs" style={{ color: '#64748B' }}>
-                Tu constancia la emite la escuela; la verás en el curso cuando esté lista.
+                Tu constancia la emite {institucionConArticulo()}; la verás en el curso cuando esté lista.
               </p>
               {historial.length > 0 && <ListaHistorial items={historial} />}
             </div>

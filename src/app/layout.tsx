@@ -5,6 +5,7 @@ import { Playfair_Display, Manrope } from "next/font/google";
 import "./globals.css";
 import "./landing-animada.css";
 import { landingAnimadaActiva } from "@/lib/landing-estilo";
+import { CONFIG } from "@/lib/config";
 import { Providers } from "@/components/providers";
 import { SiteConfigProvider } from "@/components/site-config-provider";
 import { getSiteConfig, toPublicSiteConfig } from "@/lib/site-config";
@@ -40,7 +41,15 @@ const manrope = Manrope({
   display: "swap",
 });
 
-const description = "Estudia Secundaria o Preparatoria desde casa. Acompañamiento en la gestión de tu certificación con validez oficial. 100% en línea, a tu ritmo, sin examen final."
+const DESCRIPCION_DE_FABRICA = "Estudia Secundaria o Preparatoria desde casa. Acompañamiento en la gestión de tu certificación con validez oficial. 100% en línea, a tu ritmo, sin examen final."
+
+// Título, descripción e ícono del sitio. OPCIONALES (`CONFIG.metadatos`): sin la
+// llave salen el `nombre | tagline`, la descripción de fábrica y /favicon.svg de
+// siempre. Existen porque esa descripción habla de Secundaria, Preparatoria y
+// certificación, y una escuela solo_cursos o con `ofreceCertificacion: false` no
+// puede publicarla (encontrado en CAAIV #288).
+const metadatos = (CONFIG as { metadatos?: { titulo?: string; descripcion?: string; icono?: string } }).metadatos
+const description = metadatos?.descripcion?.trim() || DESCRIPCION_DE_FABRICA
 
 // "Personalizar mi página" (F1): themeColor, título y paleta salen de
 // getSiteConfig() — config.ts + overrides de site_config —, por eso viewport y
@@ -69,13 +78,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const cfg = await getSiteConfig()
   return {
     title: {
-      default: `${cfg.nombre} | ${cfg.tagline}`,
+      default: metadatos?.titulo?.trim() || `${cfg.nombre} | ${cfg.tagline}`,
       template: `%s | ${cfg.nombre}`,
     },
     description,
     icons: {
-      icon: "/favicon.svg",
-      shortcut: "/favicon.svg",
+      icon: metadatos?.icono?.trim() || "/favicon.svg",
+      shortcut: metadatos?.icono?.trim() || "/favicon.svg",
     },
     openGraph: {
       title: cfg.nombre,

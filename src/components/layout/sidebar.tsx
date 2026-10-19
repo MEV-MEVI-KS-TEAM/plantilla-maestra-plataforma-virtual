@@ -10,6 +10,7 @@ import type { UserRole } from '@/types'
 import { CONFIG } from '@/lib/config'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { esSoloCursos } from '@/lib/modo'
+import { etiquetasCursos } from '@/lib/etiquetas-cursos'
 import { esSemanal, RUTA_PAGOS_ALUMNO_SEMANAL, RUTA_COBRANZA_ADMIN } from '@/lib/periodicidad'
 import { useSiteConfig } from '@/components/site-config-provider'
 
@@ -125,8 +126,14 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   //
   // En modo tradicional esta expresión es EXACTAMENTE la de antes de B7.
   const soloCursos = esSoloCursos()
+  // Rótulos de los cursos (llave opcional `etiquetaCursos`). Sin ella son
+  // exactamente «Diplomados» / «Mis Diplomados», los de la lista.
+  const etq = etiquetasCursos()
   const navItems = soloCursos
-    ? NAV_ITEMS_SOLO_CURSOS[role]
+    ? NAV_ITEMS_SOLO_CURSOS[role].map(i =>
+        i.href === '/admin/cursos' ? { ...i, label: etq.plural }
+        : i.href === '/alumno/cursos' ? { ...i, label: etq.miPlural }
+        : i)
     // Se agrega al FINAL (no en medio) para no desplazar 'Constancia' fuera de
     // los 5 ítems que muestra la barra inferior en móvil.
     : role === 'ALUMNO' && tieneCursos
@@ -234,7 +241,10 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   const sidebarBg     = 'var(--color-primario)'
   const sidebarBorder = 'var(--color-sidebar-borde, rgba(30,136,229,0.22))'
   const activeBg      = 'var(--color-sidebar-activo, var(--color-acento))'
-  const activeColor   = '#fff'
+  // La letra del item activo va ENCIMA de `activeBg`: con un realce claro
+  // (`sidebarActivo: '#FFFFFF'`) el '#fff' fijo dejaba el item seleccionado en
+  // blanco sobre blanco (CAAIV #288). Fallback al blanco de siempre.
+  const activeColor   = 'var(--color-sidebar-activo-texto, #fff)'
   const inactiveColor = 'rgba(255,255,255,0.65)'
   const hoverBg       = 'var(--color-sidebar-hover, rgba(21,101,192,0.28))'
   const hoverColor    = '#fff'

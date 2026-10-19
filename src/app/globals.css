@@ -321,3 +321,36 @@ html {
 .text-xs   { font-size: 0.8125rem; line-height: 1.25rem; }  /* 12 → 13.8 */
 .text-sm   { font-size: 0.9375rem; line-height: 1.45rem; }  /* 14 → 15.9 */
 .text-base { font-size: 1.0625rem; line-height: 1.7rem; }   /* 16 → 18.1 */
+
+/* ── coloresPanel: el acento dentro de los fondos oscuros fijos del panel ──
+ * Solo existe con `CONFIG.coloresPanel` (la clase la pone el contenedor del
+ * panel). Ahí dentro el acento oscuro de la escuela no se lee, así que se
+ * cambia por su realce medido y la letra de los botones por el propio acento.
+ * Las dos formas del selector: el HTML del servidor trae el hex tal cual y el
+ * navegador lo serializa como rgb() cuando React vuelve a escribir el estilo.
+ * ⚠️ La lista es FONDOS_OSCUROS_PANEL (src/lib/colores-panel.ts). */
+.panel-acento-propio [style*="#0B0D11" i],
+.panel-acento-propio [style*="rgb(11, 13, 17)"],
+.panel-acento-propio [style*="#0D1017" i],
+.panel-acento-propio [style*="rgb(13, 16, 23)"],
+.panel-acento-propio [style*="#12161F" i],
+.panel-acento-propio [style*="rgb(18, 22, 31)"],
+.panel-acento-propio [style*="#141824" i],
+.panel-acento-propio [style*="rgb(20, 24, 36)"],
+.panel-acento-propio [style*="#181C26" i],
+.panel-acento-propio [style*="rgb(24, 28, 38)"],
+.panel-acento-propio [style*="#1A1F2E" i],
+.panel-acento-propio [style*="rgb(26, 31, 46)"],
+.panel-acento-propio [style*="#1E2230" i],
+.panel-acento-propio [style*="rgb(30, 34, 48)"],
+.panel-acento-propio [style*="#1E2330" i],
+.panel-acento-propio [style*="rgb(30, 35, 48)"],
+.panel-acento-propio [style*="#1E2430" i],
+.panel-acento-propio [style*="rgb(30, 36, 48)"],
+.panel-acento-propio [style*="#1E2535" i],
+.panel-acento-propio [style*="rgb(30, 37, 53)"],
+.panel-acento-propio [style*="#2A2F3E" i],
+.panel-acento-propio [style*="rgb(42, 47, 62)"] {
+  --color-acento: var(--color-acento-en-oscuro);
+  --color-texto-sobre-acento: var(--color-texto-sobre-acento-en-oscuro);
+}

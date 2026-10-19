@@ -1,5 +1,6 @@
 'use client'
 
+import { acentoDelPanel } from '@/lib/colores-panel'
 import { useRef } from 'react'
 import { Check, Lock } from 'lucide-react'
 import gsap from 'gsap'
@@ -14,7 +15,8 @@ gsap.registerPlugin(useGSAP)
 // marca oscuro (p. ej. el petróleo de EDUVA) desaparecía ahí: «Semana 1», el
 // número del nodo y «En curso» quedaban ilegibles. Si el acento ya cumple, no
 // cambia; si no, se aclara conservando el tono (contraste.ts).
-const ACENTO = colorLegibleSobre(CONFIG.colores.acento, '#181C26')
+// `coloresPanel` (opcional) manda aquí también: el roadmap es zona de panel.
+const ACENTO = colorLegibleSobre(acentoDelPanel().acento, '#181C26')
 
 interface WeekRoadmapProps {
   semanas: Array<{

@@ -119,6 +119,7 @@ export default function ConstanciaCursoPage() {
   const fecha = new Date(constancia.emitido_en).toLocaleDateString('es-MX', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
+  const leyenda = ((CONFIG.diploma as { leyenda?: string }).leyenda ?? '').trim()
 
   return (
     <>
@@ -191,6 +192,14 @@ export default function ConstanciaCursoPage() {
           <p className="text-center text-sm mt-6" style={{ color: '#475569' }}>
             Expedida el {fecha}.
           </p>
+
+          {/* Leyenda opcional (`diploma.leyenda`), p. ej. «Constancia de participación.
+              No es un documento oficial…». Sin la llave no se pinta nada. */}
+          {leyenda && (
+            <p className="text-center text-xs mt-2 max-w-md mx-auto" style={{ color: '#64748B' }}>
+              {leyenda}
+            </p>
+          )}
 
           {/* Firma, solo si el cliente la configuró */}
           {CONFIG.diploma.firma && (

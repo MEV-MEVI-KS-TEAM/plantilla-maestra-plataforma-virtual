@@ -22,6 +22,7 @@ import { aperturaAlAsignar } from '@/lib/cursos/acceso'
 import { useSiteConfig } from '@/components/site-config-provider'
 import { urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { mensajeRegistro } from '@/lib/registro-mensajes'
+import { textosAccesoDeConfig } from '@/lib/textos-acceso'
 
 // La última viñeta enumera la oferta real de la escuela en vez de una frase
 // fija: si el cliente activa o retira un programa, el copy lo sigue solo.
@@ -33,12 +34,6 @@ function ofertaTexto(): string {
   return `${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}`
 }
 
-const BENEFITS = [
-  'Acompañamiento para tu certificado SEP',
-  'Estudia desde casa, a tu ritmo',
-  'Centro de Apoyo para la Acreditación de Conocimientos',
-  ofertaTexto(),
-]
 
 // ─── Input helpers ─────────────────────────────────────────────────────────────
 function onFocus(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -193,6 +188,8 @@ function ProgressBar({ current }: { current: 1 | 2 | 3 }) {
 // ─── Left decorative panel ─────────────────────────────────────────────────────
 function LeftPanel() {
   const cfg = useSiteConfig()
+  // De fábrica, los literales de siempre; sin certificación o en solo_cursos, neutros.
+  const T = textosAccesoDeConfig(ofertaTexto(), cfg.nombreCompleto)
   return (
     <div
       className="hidden md:flex flex-col justify-between px-10 py-12"
@@ -228,11 +225,11 @@ function LeftPanel() {
           <span style={{ color: 'var(--color-acento-sobre-oscuro)' }}>tu camino educativo</span>
         </h2>
         <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.75)', lineHeight: 1.7 }}>
-          Únete a alumnos que han completado su trayectoria educativa con nosotros.
+          {T.lemaRegistro}
         </p>
 
         <div className="flex flex-col gap-3">
-          {BENEFITS.map(b => (
+          {T.beneficios.map(b => (
             <div key={b} className="flex items-center gap-3">
               <CheckCircle2 className="shrink-0 w-5 h-5" style={{ color: 'var(--color-acento-sobre-oscuro)' }} />
               <span className="text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>{b}</span>
@@ -243,8 +240,8 @@ function LeftPanel() {
 
       <div className="relative z-10">
         <div style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12, padding: '12px 16px' }}>
-          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>CENTRO DE APOYO</p>
-          <p className="text-sm font-bold" style={{ color: '#fff' }}>Acreditación de Conocimientos</p>
+          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>{T.insignia.arriba}</p>
+          <p className="text-sm font-bold" style={{ color: '#fff' }}>{T.insignia.abajo}</p>
         </div>
       </div>
     </div>

@@ -66,6 +66,36 @@ numeraciones y deja de servir para verificar un diploma impreso.
 `niveles`, `modalidades`, `precios` y `documentosRequeridos` **se ignoran** en
 este modo: son del programa académico. Déjalos como estén.
 
+### 1.5 Portada animada en solo cursos
+
+Con `estiloLanding: 'animada'` y `modo: 'solo_cursos'` la portada ya no pinta
+Niveles, Planes, la FAQ de planes, las tarjetas del hero por nivel, la franja
+«Secundaria y Preparatoria» ni el menú «Niveles · Planes» (antes sí: PLAYBOOK,
+bug de CAAIV #288). El catálogo sube justo después de la franja y el botón
+principal del hero lleva a `#diplomados`.
+
+Todas estas llaves son **opcionales**; sin ellas la portada usa lo automático:
+
+| Llave | Qué hace | Sin ella |
+|---|---|---|
+| `landing.tarjetasHero: [{ titulo, detalle }]` | tarjetas de la escena del hero | las 3 primeras del catálogo con su precio |
+| `landing.indicadores: string[]` | franja oscura | «100 % en línea · N cursos · A tu ritmo, las 24 horas» |
+| `landing.catalogoGrupos: [{ titulo, subtitulo?, ids }]` + `catalogoGrupoResto` | catálogo agrupado (por UUID del curso); lo demás va al final | lista plana |
+| `landing.servicios_kicker/_titulo/_subtitulo` + `servicios_items: [{ icono, titulo, desc, puntos? }]` | sección «Servicios» con «Pedir informes» por WhatsApp (sin precio) | no existe |
+| `landing.whatsapp2` / `whatsapp2Display` | segundo WhatsApp, solo en contacto y pie | — |
+| `landing.horario` | horario de atención en contacto y pie | — |
+| `colores.letraSobreAccion` / `acentoLetra` / `decorativoClaro` | letra del CTA, letra de acento y decorativos de la portada (mandan solo si cumplen 4.5 / 4.5 / 3) | derivados de `acento` |
+| `colores.fondoIconoClaro` | fondo de los chips de ícono (servicios, pasos, tarjetas del hero y de contacto) con ícono blanco; manda si el blanco se lee (≥ 4.5) | el color del CTA secundario |
+| `coloresPanel: { acento, acentoHover, textoSobreAcento, acentoClaro }` | acento propio del panel (útil si el de marca se confunde con «Pendiente»/«Pagado») | el de `colores` |
+| `etiquetaCursos: { plural, miPlural }` | «Cursos» / «Mis cursos» en menú y títulos | «Diplomados» / «Mis Diplomados» |
+| `etiquetasNivel: { diplomado: 'Curso' }` | cómo se lee el nivel técnico del alumno | «Curso o diplomado» |
+| `palabraInstitucion: 'centro'` | «tu centro» / «el centro» en el aula, el examen y Mis cursos | «tu escuela» |
+| `diploma.leyenda` | leyenda bajo la fecha de la constancia | — |
+| `metadatos: { titulo?, descripcion?, icono? }` | `<title>`, descripción y favicon | `nombre \| tagline`, la descripción de fábrica (habla de Secundaria/Preparatoria) y `/favicon.svg` |
+
+> ⚠️ En solo cursos pon `metadatos.descripcion`: la de fábrica menciona
+> certificación y Secundaria/Preparatoria.
+
 ---
 
 ## 2. Base de datos

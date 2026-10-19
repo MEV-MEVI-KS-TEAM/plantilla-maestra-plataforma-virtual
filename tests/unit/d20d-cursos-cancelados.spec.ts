@@ -70,7 +70,7 @@ test('3. la página: «Cursos cancelados» sin enlace y con lo pagado; tolera la
   expect(bloque).toContain('cancelados.map(')
   expect(bloque).toContain('<TipoBadge tipo={c.tipo} />')
   expect(bloque).toContain('{resumenPagosCurso(c.pagos, fmtCurso)}')
-  expect(bloque).toContain('Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado y, si ya tenías tu constancia, la sigues viendo; si tienes dudas, habla con tu escuela.')
+  expect(bloque).toContain('Tu inscripción a estos cursos se canceló. Lo que pagaste queda registrado y, si ya tenías tu constancia, la sigues viendo; si tienes dudas, habla con tu {palabraInstitucion()}.')
   // No se abre: ni navegación ni botón; el ÚNICO enlace es a su constancia (D20f),
   // y solo si ya la tiene emitida.
   expect(bloque).not.toContain('router.push')

@@ -170,7 +170,8 @@ test('2c. la sección de la landing se pinta con carreras y al menos un plan con
   const landing = sinComentarios(leer('src/components/landing/animada/LandingAnimada.tsx'))
   expect(landing).toContain('const carrerasLic = getCarrerasLicenciatura()')
   expect(landing).toContain('const planesLic = getDesglosesLicenciatura(config.licenciaturas)')
-  expect(landing).toContain('const hayLicenciaturas = carrerasLic.length > 0 && planesLic.length > 0')
+  // En solo_cursos no hay licenciaturas (CAAIV #288): la condición va detrás de `!soloCursos`.
+  expect(landing).toContain('const hayLicenciaturas = !soloCursos && carrerasLic.length > 0 && planesLic.length > 0')
 })
 
 // ─── 3. Detección de cambios y modal ─────────────────────────────────────────
