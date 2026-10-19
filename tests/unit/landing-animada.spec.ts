@@ -229,8 +229,12 @@ test.describe('d. el interruptor de portada', () => {
   test('d4. las tipografías de la portada animada solo se cuelgan con ella encendida', () => {
     const layout = leer('src/app/layout.tsx')
     expect(layout).toContain('landingAnimadaActiva()')
-    expect(layout).toContain('Playfair_Display')
-    expect(layout).toContain('Manrope')
+    // La FAMILIA es de cada escuela (la plantilla trae Playfair Display +
+    // Manrope; CAAIV #288 usa Montserrat + Nunito): se vigilan las dos variables
+    // que lee landing-animada.css, no el nombre de la fuente.
+    expect(layout).toContain('next/font/google')
+    expect(layout).toContain('variable: "--font-heading"')
+    expect(layout).toContain('variable: "--font-body"')
     // Y el CSS lleva respaldo dentro del var(), así que sin las variables no
     // queda ninguna declaración inválida.
     expect(leer(CSS)).toContain('var(--font-body, system-ui)')

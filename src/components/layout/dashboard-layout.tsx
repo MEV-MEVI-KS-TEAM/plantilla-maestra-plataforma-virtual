@@ -5,6 +5,7 @@ import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { Footer } from './footer'
 import type { UserRole } from '@/types'
+import { CLASE_PANEL_ACENTO_PROPIO, variablesPanelDeConfig } from '@/lib/colores-panel'
 
 const PAGE_TITLES: Record<string, string> = {
   'header.adminPortal':   'Panel de Administración',
@@ -37,9 +38,12 @@ export function DashboardLayout({
   const translatedTitle = PAGE_TITLES[pageTitle] ?? pageTitle
 
   const mainBg = theme === 'light' ? '#F8FAFB' : '#0B0D11'
+  const varsPanel = variablesPanelDeConfig()
 
   return (
-    <div className="flex min-h-screen" style={{ background: mainBg }}>
+    // `coloresPanel` (opcional): el panel con su propio acento. Sin la llave, `{}`.
+    <div className={`flex min-h-screen${Object.keys(varsPanel).length ? ` ${CLASE_PANEL_ACENTO_PROPIO}` : ''}`}
+      style={{ background: mainBg, ...varsPanel } as React.CSSProperties}>
       <Sidebar
         role={role}
         userName={userName}

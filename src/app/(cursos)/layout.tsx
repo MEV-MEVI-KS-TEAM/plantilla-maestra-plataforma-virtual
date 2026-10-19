@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { CLASE_PANEL_ACENTO_PROPIO, variablesPanelDeConfig } from '@/lib/colores-panel'
 
 /**
  * Layout del visor de cursos (/cursos/[id]). Fuera del layout del alumno a
@@ -16,8 +17,11 @@ export default async function CursosViewerLayout({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const varsPanel = variablesPanelDeConfig()
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-fondo)' }}>
+    // `coloresPanel` (opcional): el visor es zona de panel, con su acento. Sin la llave, `{}`.
+    <div className={`min-h-screen${Object.keys(varsPanel).length ? ` ${CLASE_PANEL_ACENTO_PROPIO}` : ''}`}
+      style={{ background: 'var(--color-fondo)', ...varsPanel } as React.CSSProperties}>
       {children}
     </div>
   )

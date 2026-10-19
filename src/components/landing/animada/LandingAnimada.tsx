@@ -42,12 +42,14 @@ import { useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  AlertCircle, ArrowRight, BadgeCheck, BookOpen, Briefcase, CalendarDays, CheckCircle2, Clock,
-  FileCheck, GraduationCap, Laptop, Mail, Menu, MessageCircle, Quote,
-  ShieldCheck, X, XCircle, type LucideIcon,
+  AlertCircle, ArrowRight, BadgeCheck, BookOpen, Briefcase, CalendarDays, CheckCircle2, ClipboardList, Clock,
+  FileCheck, GraduationCap, HeartHandshake, Laptop, Mail, Menu, MessageCircle, Quote,
+  ShieldCheck, Sparkles, Users, Video, X, XCircle, type LucideIcon,
 } from 'lucide-react'
 
 import { CONFIG } from '@/lib/config'
+import { esSoloCursos } from '@/lib/modo'
+import { etiquetasCursos } from '@/lib/etiquetas-cursos'
 import { formatearMoneda } from '@/lib/moneda'
 import { planesPorNivel, getDuracionLabel, getPlanLabelPublico, getPlanLabelConDuracion } from '@/lib/modalidades'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
@@ -75,9 +77,13 @@ import {
   type OverridesLicenciaturasLanding,
 } from './textos-licenciatura'
 import {
-  paletaDesde, secuenciaSecciones, tokensDe,
+  ORDEN_SECCIONES, ORDEN_SECCIONES_SOLO_CURSOS, paletaDesde, secuenciaSecciones, tokensDe,
   type IdSeccion, type SeccionOpcional, type TokensSeccion,
 } from './tokens'
+import {
+  agruparCatalogo, extrasLanding, indicadoresPortada, menuPortada, mensajeWhatsAppGeneral, mensajeWhatsAppServicio,
+  seccionesOmitidas, tarjetasHeroPortada, type IconoPortada,
+} from './estructura'
 
 /**
  * Los niveles del programa académico, en el orden en que se presentan. Se
@@ -100,6 +106,11 @@ function duracionesTexto(meses: readonly number[]): string {
   if (unicos.length === 0) return ''
   if (unicos.length === 1) return `${unicos[0]} meses`
   return `${unicos.slice(0, -1).join(', ')} o ${unicos[unicos.length - 1]} meses`
+}
+
+/** Los íconos que devuelve `estructura.ts`, por nombre. */
+const ICONOS: Record<IconoPortada, LucideIcon> = {
+  Laptop, ShieldCheck, BadgeCheck, GraduationCap, BookOpen, Clock, Users, ClipboardList, HeartHandshake, Sparkles, Video,
 }
 
 /** Los emojis de `dolor_items` que trae la entrega, dibujados como íconos de la marca. */
@@ -181,6 +192,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const desplazado = useDesplazado(8)
 
   const L = resolverLanding(config.landing)
+  // Modo solo_cursos: sin niveles, planes ni licenciaturas (ver estructura.ts).
+  const soloCursos = esSoloCursos()
+  const extras = extrasLanding(config.landing)
   const precios = config.precios as unknown as Record<string, unknown>
   const paleta = paletaDesde(config.colores)
 
@@ -242,9 +256,17 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   //    ALUMNO y sigue activo en el panel.
   const urlWhatsApp = urlWhatsAppEscuela(
     config.whatsapp,
-    `Hola, quiero información sobre ${listaConY(niveles.map(etiquetaNivelConArticulo))} en línea de ${config.nombre}.`,
+    mensajeWhatsAppGeneral({ soloCursos, nombre: config.nombre, niveles: listaConY(niveles.map(etiquetaNivelConArticulo)) }),
   )
   const telefonoVisible = config.whatsappDisplay || config.whatsapp
+  // Segundo WhatsApp (opcional): SOLO en contacto y pie, nunca en los botones de acción.
+  const urlWhatsApp2 = extras.whatsapp2
+    ? urlWhatsAppEscuela(extras.whatsapp2, mensajeWhatsAppGeneral({ soloCursos, nombre: config.nombre, niveles: listaConY(niveles.map(etiquetaNivelConArticulo)) }))
+    : null
+  const telefonoVisible2 = extras.whatsapp2Display || extras.whatsapp2
+  // Solo cursos: el botón principal lleva al catálogo (lo que se vende); sin
+  // catálogo, al registro como siempre.
+  const destinoPrincipal = soloCursos && hayCatalogo ? '#diplomados' : '/register'
   const correo = config.contactoEmail || config.email
   const mailto = mailtoEscuela(correo)
   const anio = new Date().getFullYear()
@@ -262,7 +284,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // sin planes, la sección y su tarjeta no existen.
   const carrerasLic = getCarrerasLicenciatura()
   const planesLic = getDesglosesLicenciatura(config.licenciaturas)
-  const hayLicenciaturas = carrerasLic.length > 0 && planesLic.length > 0
+  const hayLicenciaturas = !soloCursos && carrerasLic.length > 0 && planesLic.length > 0
   const etiquetaLic = hayLicenciaturas ? (carrerasLic.length > 1 ? pluralEtiqueta(getEtiquetaLicenciatura()) : getEtiquetaLicenciatura()) : ''
   const ritmosLic = hayLicenciaturas ? `${unirConO(planesLic.map(p => String(p.meses)))} meses` : ''
   /** «Secundaria y Preparatoria» · «Secundaria, Preparatoria y Licenciaturas». */
@@ -289,7 +311,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // Pregunta sobre los planes, CALCULADA de los precios: si el admin cambia uno,
   // la respuesta cambia con él y la página no afirma algo que ya no es cierto.
   const faqPlanes: Array<{ q: string; a: string }> = []
-  if (planes.length >= 2) {
+  if (!soloCursos && planes.length >= 2) {
     const materias = planes.map(m => m.meses * m.materiasPorMes)
     const mismasMaterias = materias.every(x => x === materias[0])
     const detalle = planes
@@ -333,9 +355,13 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     testimonios: testimonios.length > 0,
     beneficios: L.beneficios_items.length > 0,
     catalogo: hayCatalogo,
+    servicios: extras.servicios_items.length > 0,
     faq: faqs.length > 0,
   }
-  const secciones = secuenciaSecciones(presentes)
+  const secciones = secuenciaSecciones(presentes, {
+    omitir: seccionesOmitidas(soloCursos),
+    orden: soloCursos ? ORDEN_SECCIONES_SOLO_CURSOS : ORDEN_SECCIONES,
+  })
   const seccion = (id: IdSeccion) => secciones.find(s => s.id === id) ?? { id, variante: 'claro' as const }
   const tokens = (id: IdSeccion) => tokensDe(seccion(id).variante, paleta)
   /** `data-variant`, fondo y letra de una sección, y el margen para el menú fijo. */
@@ -358,55 +384,152 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const tTestim = tokens('testimonios')
   const tBenef = tokens('beneficios')
   const tCatalogo = tokens('catalogo')
+  const tServicios = tokens('servicios')
   const tFaq = tokens('faq')
   const tCta = tokens('cta')
   const tContacto = tokens('contacto')
   const tPie = tokens('pie')
 
-  const enlacesMenu = [
-    { href: '#niveles', etiqueta: 'Niveles' },
-    { href: '#planes', etiqueta: 'Planes' },
-    ...(hayLicenciaturas ? [{ href: '#licenciaturas', etiqueta: 'Licenciaturas' }] : []),
-    ...(validezActiva ? [{ href: '#validez', etiqueta: 'Validez oficial' }] : []),
-    ...(presentes.faq ? [{ href: '#preguntas', etiqueta: 'Preguntas' }] : []),
-    { href: '#contacto', etiqueta: 'Contacto' },
-  ]
+  const enlacesMenu = menuPortada({
+    soloCursos, hayCatalogo, hayServicios: presentes.servicios, hayLicenciaturas, validez: validezActiva, hayFaq: presentes.faq,
+  })
   const activa = useSeccionActiva(enlacesMenu.map(e => e.href.slice(1)))
 
   // La franja oscura. 🛑 Ni colores de marca ni el gris del papel: letra
   // blanca, íconos en el realce del bloque y divisores en su borde.
-  const indicadores: Array<{ Icono: LucideIcon; dato: string }> = [
-    { Icono: Laptop, dato: '100% en línea' },
-    ...(validezActiva ? [{ Icono: ShieldCheck, dato: 'Validez oficial' }] : []),
-    // ⚠️ Con licenciaturas, «en ambos planes» dejaría de ser verdad para TODOS
-    // los planes de la página (los de licenciatura no suman lo mismo): se dice
-    // de qué programas es.
-    ...(mismoTotalPorNivel
-      ? [{ Icono: BadgeCheck, dato: hayLicenciaturas ? `Mismo precio total en ${nivelesTexto(niveles)}` : 'Mismo precio total en ambos planes' }]
-      : []),
-    { Icono: GraduationCap, dato: programasTexto },
-  ]
+  // ⚠️ Con licenciaturas, «en ambos planes» dejaría de ser verdad para TODOS
+  // los planes de la página (los de licenciatura no suman lo mismo): se dice
+  // de qué programas es (ver indicadoresPortada).
+  const indicadores = indicadoresPortada({
+    soloCursos, validez: validezActiva, mismoTotal: mismoTotalPorNivel, hayLicenciaturas,
+    nivelesTexto: nivelesTexto(niveles), programasTexto, propios: extras.indicadores,
+    cursos: hayCatalogo ? catalogo.length : 0,
+  }).map(i => ({ Icono: ICONOS[i.icono], dato: i.dato }))
 
   // Tarjetas de la escena del hero: lo que vende, con precios y duraciones
   // CALCULADOS. 🛑 Ninguna ofrece servicios que el combo no incluye.
-  const tarjetasHero: Array<{ Icono: LucideIcon; titulo: string; detalle: string }> = [
-    ...niveles.map(n => ({
-      Icono: BookOpen,
-      titulo: etiquetaNivel(n),
-      detalle: [duracionesTexto(planesDe(n).map(m => m.meses)), minimaDe(n) > 0 && `desde ${dinero(minimaDe(n))}/mes`]
-        .filter(Boolean).join(' · '),
-    })),
-    // Con licenciaturas la tercera tarjeta es el nivel superior (tres golpes,
-    // como HTI #205); sin ellas, «100% en línea».
-    hayLicenciaturas
-      ? { Icono: GraduationCap, titulo: etiquetaLic, detalle: `${carrerasLic.length === 2 ? 'Dos carreras' : `${carrerasLic.length} carreras`} · ${ritmosLic}` }
-      : { Icono: Laptop, titulo: '100% en línea', detalle: 'A tu ritmo, las 24 horas' },
-  ]
-
   // Un curso sin precio NO se anuncia «Sin costo»: la tabla guarda 0 cuando
   // nadie capturó el precio (ver `precioCatalogo`). Dice «Pide informes».
   // La línea sale de lineaPrecio, la misma que usa el registro.
   const precioCurso = (c: CursoCatalogoPublico) => lineaPrecio(precioCatalogo(c))
+
+  // Con licenciaturas la tercera tarjeta es el nivel superior (tres golpes,
+  // como HTI #205); sin ellas, «100% en línea». En solo_cursos: las de
+  // `landing.tarjetasHero` o las tres primeras del catálogo.
+  const tarjetasHero = tarjetasHeroPortada({
+    soloCursos,
+    niveles: niveles.map(n => ({
+      titulo: etiquetaNivel(n),
+      detalle: [duracionesTexto(planesDe(n).map(m => m.meses)), minimaDe(n) > 0 && `desde ${dinero(minimaDe(n))}/mes`]
+        .filter(Boolean).join(' · '),
+    })),
+    licenciatura: hayLicenciaturas
+      ? { titulo: etiquetaLic, detalle: `${carrerasLic.length === 2 ? 'Dos carreras' : `${carrerasLic.length} carreras`} · ${ritmosLic}` }
+      : null,
+    propias: extras.tarjetasHero,
+    catalogo: hayCatalogo ? catalogo.map(c => ({ titulo: c.nombre, detalle: precioCurso(c) })) : [],
+  }).map(t => ({ Icono: ICONOS[t.icono], titulo: t.titulo, detalle: t.detalle }))
+
+  const gruposCatalogo = agruparCatalogo(catalogo, extras.catalogoGrupos, extras.catalogoGrupoResto)
+  const catalogoAgrupado = gruposCatalogo.some(g => g.titulo !== '')
+
+  /* ── Catálogo y servicios ──────────────────────────────────────────────
+     Van en una posición u otra según el modo (ORDEN_SECCIONES_SOLO_CURSOS):
+     en solo_cursos justo después de la franja; si no, donde siempre. */
+  const seccionCatalogo = hayCatalogo && (
+    <section id="diplomados" {...marco('catalogo')}>
+      <div className={CONTENEDOR}>
+        <Encabezado t={tCatalogo} kicker="Cursos" titulo={texto(L.catalogoTitulo)} bajada={texto(L.catalogoSubtitulo)} />
+        {gruposCatalogo.map((g, iG) => {
+          const tarjetas = (
+            <div key={iG} className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${catalogoAgrupado ? 'mt-6' : 'mt-12'}`}>
+              {g.cursos.map((c, i) => (
+                <div key={c.id} data-la-reveal="sube" style={retraso(i % 3, 100)}>
+                  <Link href={`/diplomados/${c.id}`} className="la-card rounded-2xl p-6 block h-full"
+                    style={{ background: tCatalogo.superficie, border: `1px solid ${tCatalogo.borde}`, color: tCatalogo.texto }}>
+                    {catalogoAgrupado
+                      ? <h4 className="text-lg font-bold" style={{ color: tCatalogo.titulo }}>{c.nombre}</h4>
+                      : <h3 className="text-lg font-bold" style={{ color: tCatalogo.titulo }}>{c.nombre}</h3>}
+                    {c.descripcion && (
+                      <p className="mt-2 text-sm line-clamp-3" style={{ color: tCatalogo.textoSuave }}>{c.descripcion}</p>
+                    )}
+                    <p className="mt-4 text-sm font-semibold flex items-center gap-1.5" style={{ color: tCatalogo.titulo }}>
+                      {precioCurso(c)}
+                      <ArrowRight size={15} aria-hidden />
+                    </p>
+                    {/* #208: el precio es el de la ficha, así que pago único ⇔ acceso total al asignar. */}
+                    {precioCatalogo(c).tipo === 'unico' && (
+                      <p className="mt-1 text-xs" style={{ color: tCatalogo.textoSuave }}>{AVISO_PAGO_UNICO}</p>
+                    )}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )
+          // Sin `catalogoGrupos`: la rejilla de siempre, sin envoltorio.
+          if (!catalogoAgrupado) return tarjetas
+          return (
+            <div key={iG} className="mt-14">
+              {g.titulo && (
+                <div data-la-reveal className="max-w-3xl">
+                  <h3 className="flex items-center gap-3 font-bold" style={{ color: tCatalogo.titulo, fontSize: 'clamp(1.35rem, 2.2vw, 1.7rem)' }}>
+                    <span aria-hidden className="block rounded-full" style={{ width: 28, height: 4, background: tCatalogo.decorativo }} />
+                    {g.titulo}
+                  </h3>
+                  {g.subtitulo && <p className="mt-2 text-sm sm:text-base" style={{ color: tCatalogo.textoSuave }}>{g.subtitulo}</p>}
+                </div>
+              )}
+              {tarjetas}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+
+  // 🛑 Los servicios se contratan por WhatsApp (o correo): sin precio y sin
+  // decir que viven en la plataforma.
+  const seccionServicios = presentes.servicios && (
+    <section id="servicios" {...marco('servicios')}>
+      <div className={CONTENEDOR}>
+        <Encabezado t={tServicios} kicker={extras.servicios_kicker} titulo={extras.servicios_titulo} bajada={extras.servicios_subtitulo} />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+          {extras.servicios_items.map((sv, i) => {
+            const Icono = ICONOS[sv.icono]
+            const canalSv = canalEscuela(config, mensajeWhatsAppServicio(sv.titulo, config.nombre))
+            return (
+              <article key={i} data-la-reveal="sube" className="la-card rounded-2xl p-6 flex flex-col"
+                style={{ ...retraso(i % 4, 90), background: tServicios.superficie, border: `1px solid ${tServicios.borde}` }}>
+                <span aria-hidden className="la-icono-card flex items-center justify-center rounded-2xl"
+                  style={{ width: 52, height: 52, background: tServicios.btn2Fondo, color: tServicios.btn2Texto }}>
+                  <Icono size={24} />
+                </span>
+                <h3 className="mt-5 text-lg font-bold" style={{ color: tServicios.titulo }}>{sv.titulo}</h3>
+                {sv.desc && <p className="mt-2 text-sm sm:text-base leading-relaxed" style={{ color: tServicios.textoSuave }}>{sv.desc}</p>}
+                {sv.puntos.length > 0 && (
+                  <ul className="mt-4 space-y-2 flex-1">
+                    {sv.puntos.map((pt, j) => (
+                      <li key={j} className="flex items-start gap-2 text-sm" style={{ color: tServicios.texto }}>
+                        <CheckCircle2 size={17} aria-hidden className="mt-0.5" style={{ color: tServicios.decorativo, flexShrink: 0 }} />
+                        <span>{pt}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {canalSv && (
+                  <a href={canalSv.href} {...(canalSv.tipo === 'whatsapp' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    className={`${BOTON} mt-6 w-full`}
+                    style={estiloBoton(tServicios.btn2Fondo, tServicios.btn2Texto, tServicios.btn2Borde)}>
+                    {canalSv.tipo === 'whatsapp' ? <MessageCircle size={18} aria-hidden /> : <Mail size={18} aria-hidden />}Pedir informes
+                  </a>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
 
   return (
     <div className="la-landing" style={{ background: paleta.blanco, color: paleta.tinta, minHeight: '100vh' }}>
@@ -576,13 +699,16 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
               {/* CTAs: acento y marca, con aire entre los
                   dos (gap). 🟠 Sin WhatsApp mientras la escuela no dé su número. */}
               <div className="la-entrada mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3" style={retraso(5, 90)}>
-                <Link href="/register" className={`${BOTON} la-btn-color whitespace-nowrap`}
+                <Link href={destinoPrincipal} className={`${BOTON} la-btn-color whitespace-nowrap`}
                   style={estiloBoton(tHero.btnFondo, tHero.btnTexto, tHero.btnFondo, tHero.btnHover)}>
                   {sinFlecha(texto(L.hero_cta_primario))}<ArrowRight size={18} aria-hidden className="la-flecha" />
                 </Link>
-                <a href="#planes" className={`${BOTON} whitespace-nowrap`} style={estiloBoton(tHero.btn2Fondo, tHero.btn2Texto, tHero.btn2Borde)}>
-                  Conoce los planes
-                </a>
+                {/* Solo cursos: no hay planes que conocer; el principal ya lleva a los cursos. */}
+                {!soloCursos && (
+                  <a href="#planes" className={`${BOTON} whitespace-nowrap`} style={estiloBoton(tHero.btn2Fondo, tHero.btn2Texto, tHero.btn2Borde)}>
+                    Conoce los planes
+                  </a>
+                )}
                 {urlWhatsApp && (
                   <a href={urlWhatsApp} target="_blank" rel="noopener noreferrer" className={`${BOTON} whitespace-nowrap`}
                     style={estiloBoton('transparent', tHero.titulo, tHero.titulo)}>
@@ -651,6 +777,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
           </ul>
         </section>
 
+        {/* ⭐ Solo cursos: lo que se vende va primero (ORDEN_SECCIONES_SOLO_CURSOS). */}
+        {soloCursos && seccionCatalogo}
+        {soloCursos && seccionServicios}
+
         {/* ── ¿TE IDENTIFICAS? ───────────────────────────────────────────── */}
         {presentes.dolor && (
           <section id="dolor" {...marco('dolor')}>
@@ -692,6 +822,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             marca, cuerpo en tinta y datos secundarios en gris. Cada
             cifra se lee con `mensualidadDe(nivel, …)`, que respeta el precio
             por nivel. */}
+        {/* 🛑 Niveles y planes son del programa académico: en solo_cursos no existen. */}
+        {!soloCursos && (
         <section id="niveles" {...marco('niveles')}>
           <div className={CONTENEDOR}>
             <Encabezado t={tNiveles} kicker={hayLicenciaturas ? 'Programas' : 'Niveles'} titulo={programasTexto}
@@ -796,6 +928,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             </div>
           </div>
         </section>
+        )}
 
         {/* ── 5. PLANES Y PRECIOS (suave) ─────────────────────────────────────
             ⭐ Aquí vive el argumento de la escuela: en cada nivel, los dos totales
@@ -803,6 +936,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             🛑 Todas las tarjetas llevan el mismo tratamiento: ninguna se destaca y
             ninguna lleva insignia de preferencia. Cada una dice solo lo que es
             verdad de ella (chips calculados por `etiquetasPlan`). */}
+        {!soloCursos && (
         <section id="planes" {...marco('planes')}>
           <div className={CONTENEDOR}>
             <Encabezado t={tPlanes}
@@ -931,6 +1065,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             </div>
           </div>
         </section>
+        )}
 
         {/* ── LICENCIATURAS (claro, con panel oscuro dentro) — add-on ────── */}
         {hayLicenciaturas && textosLic && (
@@ -1135,35 +1270,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
           </section>
         )}
 
-        {/* ── CATÁLOGO (solo con cursos publicados) ────────────────────────── */}
-        {hayCatalogo && (
-          <section id="diplomados" {...marco('catalogo')}>
-            <div className={CONTENEDOR}>
-              <Encabezado t={tCatalogo} kicker="Cursos" titulo={texto(L.catalogoTitulo)} bajada={texto(L.catalogoSubtitulo)} />
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-                {catalogo.map((c, i) => (
-                  <div key={c.id} data-la-reveal="sube" style={retraso(i % 3, 100)}>
-                    <Link href={`/diplomados/${c.id}`} className="la-card rounded-2xl p-6 block h-full"
-                      style={{ background: tCatalogo.superficie, border: `1px solid ${tCatalogo.borde}`, color: tCatalogo.texto }}>
-                      <h3 className="text-lg font-bold" style={{ color: tCatalogo.titulo }}>{c.nombre}</h3>
-                      {c.descripcion && (
-                        <p className="mt-2 text-sm line-clamp-3" style={{ color: tCatalogo.textoSuave }}>{c.descripcion}</p>
-                      )}
-                      <p className="mt-4 text-sm font-semibold flex items-center gap-1.5" style={{ color: tCatalogo.titulo }}>
-                        {precioCurso(c)}
-                        <ArrowRight size={15} aria-hidden />
-                      </p>
-                      {/* #208: el precio es el de la ficha, así que pago único ⇔ acceso total al asignar. */}
-                      {precioCatalogo(c).tipo === 'unico' && (
-                        <p className="mt-1 text-xs" style={{ color: tCatalogo.textoSuave }}>{AVISO_PAGO_UNICO}</p>
-                      )}
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        {/* ── CATÁLOGO (solo con cursos publicados) y SERVICIOS (opcional) ──── */}
+        {!soloCursos && seccionCatalogo}
+        {!soloCursos && seccionServicios}
 
         {/* ── PREGUNTAS FRECUENTES ──────────────────────────────────────────── */}
         {presentes.faq && (
@@ -1228,9 +1337,17 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
           <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20 sm:py-24 grid lg:grid-cols-2 gap-12 items-center">
             <div className="min-w-0">
               <Encabezado t={tContacto} centrado={false} kicker="Contacto" titulo="¿Tienes dudas? Te orientamos"
-                bajada="Escríbenos y te ayudamos a elegir el nivel y el plan que mejor te acomoda." />
+                bajada={soloCursos
+                  ? 'Escríbenos y te ayudamos a elegir el curso que necesitas.'
+                  : 'Escríbenos y te ayudamos a elegir el nivel y el plan que mejor te acomoda.'} />
+              {extras.horario && (
+                <p data-la-reveal className="mt-5 flex items-start gap-2 text-sm sm:text-base" style={{ ...retraso(2), color: tContacto.texto }}>
+                  <Clock size={18} aria-hidden className="mt-0.5" style={{ color: tContacto.decorativo, flexShrink: 0 }} />
+                  <span><span className="font-semibold" style={{ color: tContacto.titulo }}>Horario de atención:</span> {extras.horario}</span>
+                </p>
+              )}
               <div data-la-reveal className="mt-8" style={retraso(3)}>
-                <Link href="/register" className={`${BOTON} la-btn-color`}
+                <Link href={destinoPrincipal} className={`${BOTON} la-btn-color`}
                   style={estiloBoton(tContacto.btnFondo, tContacto.btnTexto, tContacto.btnFondo, tContacto.btnHover)}>
                   {sinFlecha(texto(L.hero_cta_primario))}<ArrowRight size={18} aria-hidden className="la-flecha" />
                 </Link>
@@ -1243,11 +1360,18 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   <TarjetaContacto t={tContacto} href={urlWhatsApp} externo destacada Icono={MessageCircle} etiqueta="WhatsApp" valor={telefonoVisible} />
                 </li>
               )}
+              {urlWhatsApp2 && (
+                <li data-la-reveal="der" style={retraso(2)}>
+                  <TarjetaContacto t={tContacto} href={urlWhatsApp2} externo Icono={MessageCircle} etiqueta="WhatsApp (otra línea)" valor={telefonoVisible2} />
+                </li>
+              )}
               {correo && mailto && (
                 <li data-la-reveal="der" style={retraso(2)}>
                   <TarjetaContacto t={tContacto} href={mailto} Icono={Mail} etiqueta="Escríbenos por correo"
                     valor={correo} grande={!urlWhatsApp} accion={urlWhatsApp ? undefined : 'Escríbenos'}
-                    nota={urlWhatsApp ? undefined : 'Te respondemos para orientarte sobre niveles, planes y documentos.'} />
+                    nota={urlWhatsApp ? undefined : soloCursos
+                      ? 'Te respondemos para orientarte sobre los cursos.'
+                      : 'Te respondemos para orientarte sobre niveles, planes y documentos.'} />
                 </li>
               )}
             </ul>
@@ -1279,7 +1403,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 <p className="mt-2 italic" style={{ color: tPie.textoSuave, fontFamily: 'var(--font-heading)' }}>{config.tagline}</p>
               )}
               <p className="mt-2 text-sm" style={{ color: tPie.textoSuave }}>
-                {programasTexto} en línea
+                {soloCursos ? `${etiquetasCursos().plural} en línea` : <>{programasTexto} en línea</>}
               </p>
             </div>
           </div>
@@ -1295,12 +1419,25 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   </a>
                 </li>
               )}
+              {urlWhatsApp2 && (
+                <li>
+                  <a href={urlWhatsApp2} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 hover:underline underline-offset-4" style={{ color: tPie.texto }}>
+                    <MessageCircle size={16} aria-hidden style={{ color: tPie.decorativo }} />WhatsApp {telefonoVisible2}
+                  </a>
+                </li>
+              )}
               {correo && mailto && (
                 <li>
                   <a href={mailto} className="inline-flex items-center gap-2 hover:underline underline-offset-4 break-all"
                     style={{ color: tPie.texto }}>
                     <Mail size={16} aria-hidden style={{ color: tPie.decorativo }} />{correo}
                   </a>
+                </li>
+              )}
+              {extras.horario && (
+                <li className="inline-flex items-start gap-2" style={{ color: tPie.texto }}>
+                  <Clock size={16} aria-hidden className="mt-0.5" style={{ color: tPie.decorativo, flexShrink: 0 }} />{extras.horario}
                 </li>
               )}
             </ul>

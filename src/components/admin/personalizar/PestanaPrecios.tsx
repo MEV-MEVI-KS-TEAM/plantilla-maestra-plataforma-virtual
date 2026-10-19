@@ -40,6 +40,7 @@ import Link from 'next/link'
 import { ArrowLeftRight, BadgeDollarSign, ExternalLink, GraduationCap, Landmark, Layers } from 'lucide-react'
 import { CONFIG } from '@/lib/config'
 import { esSoloCursos } from '@/lib/modo'
+import { etiquetasCursos } from '@/lib/etiquetas-cursos'
 import { esSemanal } from '@/lib/periodicidad'
 import { codigoMoneda, equivalenteMXN, type Moneda } from '@/lib/moneda'
 
@@ -364,6 +365,9 @@ export function PestanaPrecios({
 
   return (
     <div className="space-y-5">
+      {/* Solo cursos: no hay programa académico, así que ni su inscripción ni
+          sus planes (CAAIV #288). El precio de cada curso vive en su ficha. */}
+      {!esSoloCursos() && (<>
       <Tarjeta
         titulo={tituloSecPrepa('Inscripción', conLic)}
         icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}
@@ -503,6 +507,7 @@ export function PestanaPrecios({
             semanas pendientes y vencidas con la cuota vigente. */}
         {semanal && <Ayuda>{AYUDA_CUOTA_SEMANAL}</Ayuda>}
       </Tarjeta>
+      </>)}
 
       {/* 🛑 GATEADA POR `ofreceCertificacion` (Bug P-8). Una escuela que no
           certifica no debe ver en su panel una tarjeta que le pide ponerle
@@ -589,7 +594,7 @@ export function PestanaPrecios({
           que un clic aquí perdería los cambios sin publicar. */}
       {puedeEditar && (
         <Tarjeta
-          titulo={esSoloCursos() ? 'Diplomados' : 'Cursos y diplomados'}
+          titulo={esSoloCursos() ? etiquetasCursos().plural : 'Cursos y diplomados'}
           icono={<GraduationCap {...ICONO} aria-hidden="true" />}
         >
           <p className="text-xs leading-relaxed" style={{ color: TXT_SUAVE }}>
@@ -602,7 +607,7 @@ export function PestanaPrecios({
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
             style={BOTON_SECUNDARIO}
           >
-            {esSoloCursos() ? 'Ir a Diplomados' : 'Ir a Gestionar cursos'}
+            {esSoloCursos() ? `Ir a ${etiquetasCursos().plural}` : 'Ir a Gestionar cursos'}
             <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>
         </Tarjeta>

@@ -131,7 +131,8 @@ test('6. PestanaPrecios: tipo de cambio solo fuera de MXN; cursos solo con permi
   expect(cursos).toContain('href="/admin/cursos"')
   // Otra pestaña: el borrador del editor no sobrevive a una navegación interna.
   expect(cursos).toContain('target="_blank"')
-  expect(cursos).toContain("esSoloCursos() ? 'Ir a Diplomados' : 'Ir a Gestionar cursos'")
+  // El rótulo sale de etiquetasCursos() («Diplomados» sin `etiquetaCursos`).
+  expect(cursos).toContain("esSoloCursos() ? `Ir a ${etiquetasCursos().plural}` : 'Ir a Gestionar cursos'")
   // Y fuera de esos bloques no hay otra copia que se salte la condición.
   expect(pestana.split('{campoTipoCambio()}').length - 1).toBe(1)
   expect(pestana.split('href="/admin/cursos"').length - 1).toBe(1)

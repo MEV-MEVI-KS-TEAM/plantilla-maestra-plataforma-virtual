@@ -356,6 +356,20 @@ export const CONFIG = {
     // oficial", "SEP" ni "RVOE". Eso solo lo agrega quien acredite su registro.
     catalogoSubtitulo:          'Programas especializados, con acompañamiento y material descargable.',
 
+    // === PORTADA ANIMADA: LLAVES OPCIONALES (ausentes = no existen) ===========
+    // Ninguna viene aquí a propósito: sin ellas la portada es la de siempre.
+    // Ver INSTRUCCIONES-SOLO-CURSOS.md §1.5 y src/components/landing/animada/estructura.ts.
+    //   servicios_kicker / servicios_titulo / servicios_subtitulo: string
+    //   servicios_items: Array<{ icono, titulo, desc, puntos? }>  → sección #servicios
+    //       con «Pedir informes» por WhatsApp. icono ∈ Users · ClipboardList ·
+    //       HeartHandshake · Sparkles · GraduationCap · Video (otro → Sparkles).
+    //   catalogoGrupos: Array<{ titulo, subtitulo?, ids: string[] }> → agrupa el catálogo
+    //   catalogoGrupoResto: string        → título de lo que no cae en ningún grupo
+    //   tarjetasHero: Array<{ titulo, detalle }> → solo en modo solo_cursos
+    //   indicadores: string[]             → franja, solo en modo solo_cursos
+    //   whatsapp2 / whatsapp2Display: string → segundo número, SOLO contacto y pie
+    //   horario: string                   → horario de atención en contacto y pie
+
     // === TEXTOS DE LA LANDING (F3, "Personalizar mi página") ===
     // Cada default es el literal EXACTO que LandingClient.tsx tenía escrito en
     // el JSX antes de F3: con la BD vacía la página no cambia ni una letra.
@@ -512,6 +526,17 @@ export const CONFIG = {
     /** Cargo bajo la firma. */
     firmaCargo: 'Dirección Académica',
   },
+
+  // === LLAVES OPCIONALES DE PANEL Y METADATOS (ausentes = como siempre) =====
+  //   diploma.leyenda: string → letra pequeña bajo «Expedida el …» en la constancia
+  //   etiquetaCursos: { plural, miPlural } → «Cursos» / «Mis cursos» en vez de
+  //       «Diplomados» / «Mis Diplomados» (src/lib/etiquetas-cursos.ts)
+  //   coloresPanel: { acento, acentoHover, textoSobreAcento, acentoClaro } → el
+  //       panel con un acento propio, distinto del de la portada (src/lib/colores-panel.ts)
+  //   metadatos: { titulo?, descripcion?, icono? } → <title>, descripción y
+  //       favicon del sitio (src/app/layout.tsx)
+  //   colores.letraSobreAccion / acentoLetra / decorativoClaro → letras de marca
+  //       de la portada animada; mandan solo si cumplen su contraste (animada/tokens.ts)
 
   redes: {
     facebook:  '',
