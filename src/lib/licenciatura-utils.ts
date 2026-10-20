@@ -272,3 +272,33 @@ export function certificacionDelAlumno(
   if (nivel === 'licenciatura') return titulacionLicenciaturaDe(lic) ?? 0
   return nivel === 'secundaria' || nivel === 'preparatoria' ? certificacionDe(nivel, precios) : 0
 }
+
+/* ─── Diplomados CONOCER en el riel (#212, #222) ──────────────── */
+
+export type TextosConocer = {
+  titulo: string
+  bajada: string
+  /** Texto largo del costo de la evaluación oficial (va con el mismo peso que el precio). */
+  costoEvaluacion: string
+  /** Lo que se pinta en la fila «Evaluación oficial · aparte». Sin monto si no está confirmado. */
+  costoEvaluacionEtiqueta?: string
+  disclaimer: string
+}
+
+export function textosConocer(): TextosConocer | null {
+  return (CONFIG as { diplomadosConocer?: TextosConocer }).diplomadosConocer ?? null
+}
+
+/**
+ * Precio (pago único) de la PREPARACIÓN de un diplomado: el de la propia carrera
+ * (`precio.publico`). Solo si no lo declara se cae a `licenciaturas.inscripcion`
+ * (#212, donde el riel era únicamente de diplomados). 🛑 En un riel con
+ * licenciatura, `inscripcion` es la de la licenciatura ($1,500 en #222),
+ * no el precio del diplomado.
+ */
+export function precioDiplomado(slug: string | null | undefined): number {
+  const c = getCarrerasDiplomado().find(x => x.slug === slug) as ({ precio?: { publico?: number } } & ReturnType<typeof getCarrerasDiplomado>[number]) | undefined
+  const propio = Number(c?.precio?.publico ?? 0)
+  if (propio > 0) return propio
+  return Number(((CONFIG as { licenciaturas?: { inscripcion?: number } }).licenciaturas?.inscripcion) ?? 0)
+}

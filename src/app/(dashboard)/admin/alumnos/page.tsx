@@ -985,8 +985,8 @@ export default function AlumnosPage() {
                   style={{ ...INPUT_STYLE, opacity: form.nivel ? 1 : 0.5 }}
                 >
                   <option value="">{form.nivel ? 'Selecciona modalidad...' : 'Primero elige nivel'}</option>
-                  {/* D9: los planes de ESE nivel (lo mismo que el registro y que valida el servidor). */}
-                  {(form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(form.nivel, cfg.modalidades)).map(m => (
+                  {/* D9: los planes de ESE nivel (lo mismo que el registro y que valida el servidor). #222: en licenciatura, los del programa elegido. */}
+                  {(form.nivel === 'licenciatura' ? getModalidadesLicenciatura(form.carrera || null) : planesPorNivel(form.nivel, cfg.modalidades)).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>

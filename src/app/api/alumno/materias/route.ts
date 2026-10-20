@@ -141,6 +141,9 @@ export async function GET() {
       materias:            result,
       meses_desbloqueados: mesesDesbloqueados,
       nivel,
+      // Para nombrar el programa en el encabezado (licenciatura o diplomado del
+      // riel de licenciaturas: #212 decía «Licenciatura» a un diplomado).
+      carrera: alumno.carrera ?? null,
     })
   } catch (err) {
     console.error('[api/alumno/materias]', err)

@@ -556,7 +556,7 @@ ${hayDip && (L.avisoCostoDiplomado || L.disclaimerDiplomado) ? `
 <h3>Lo que se vende en un diplomado, con todas sus letras</h3>
 ${L.avisoCostoDiplomado ? `<div class="note"><b>El costo total para el alumno</b><p>${esc(L.avisoCostoDiplomado)}</p></div>` : ''}
 ${L.disclaimerDiplomado ? `<div class="note"><b>Texto legal obligatorio</b><p>${esc(L.disclaimerDiplomado)}</p></div>` : ''}` : ''}
-${L.carreras.some(c => c.desc) ? descripciones(L) : ''}
+${L.carreras.some(c => c.desc) && RUTAS.length ? descripciones(L) : ''}
 ` : null,
   ].filter(Boolean)
 }

@@ -76,7 +76,9 @@ export function desglosesLicenciatura(lic, carreras) {
   const inscripcion = Number(lic.inscripcion) || 0
   const titulacion = Number(lic.certificacion)
   return (lic.modalidades || [])
-    .filter(planLicVendible)
+    // #222: los planes `soloDiplomado` (pago único) no son planes de
+    // licenciatura: sumarlos aquí inventaba un «3 × Gratis … $39,500».
+    .filter(m => planLicVendible(m) && m.soloDiplomado !== true)
     .map(m => {
       const meses = Number(m.meses)
       const mensualidad = Number(m.mensualidad) || 0

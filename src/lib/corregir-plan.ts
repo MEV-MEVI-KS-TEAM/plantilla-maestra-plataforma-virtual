@@ -86,7 +86,7 @@ export function validarCorreccionPlan(
   // Mismas funciones que el select de alta: el catálogo de modalidades depende
   // del nivel elegido.
   const modalidadesValidas = (
-    nivelValido === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(mods)
+    nivelValido === 'licenciatura' ? getModalidadesLicenciatura(carreraNormalizada) : getModalidadesActivas(mods)
   ).map(m => m.id)
   if (typeof modalidad !== 'string' || !modalidadesValidas.includes(modalidad)) {
     return { ok: false, error: `modalidad es requerida (${modalidadesValidas.join(', ')})` }

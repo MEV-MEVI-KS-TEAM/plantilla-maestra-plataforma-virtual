@@ -54,7 +54,8 @@ test('2. el alta valida ANTES de crear la cuenta de Auth, con el catálogo estru
 
 test('3. el modal solo ofrece los planes de ESE nivel, y todo lo que ofrece pasa la validación', () => {
   const page = sinComentarios(leer('src/app/(dashboard)/admin/alumnos/page.tsx'))
-  expect(page).toContain("form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(form.nivel, cfg.modalidades)")
+  // #254 (patrón #222): en licenciatura, los planes del PROGRAMA elegido (diplomado o licenciatura).
+  expect(page).toContain("form.nivel === 'licenciatura' ? getModalidadesLicenciatura(form.carrera || null) : planesPorNivel(form.nivel, cfg.modalidades)")
   expect(page).not.toContain('getModalidadesActivas(cfg.modalidades)')
 
   // Una escuela ASIMÉTRICA (Secundaria solo en 3 meses; Preparatoria en 6, más un
