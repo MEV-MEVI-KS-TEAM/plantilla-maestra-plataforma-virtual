@@ -408,6 +408,9 @@ CREATE TABLE public.materias (
     -- alumno por esta columna (Bugs 59/91).
     carrera text,
     modalidad text,
+    -- 20261021120000 (actividades): cuaderno completo de actividades de la
+    -- materia (https). En licenciatura, la misma URL de la carrera en todas.
+    cuaderno_pdf_url text,
     CONSTRAINT materias_nivel_check CHECK ((nivel = ANY (ARRAY['secundaria'::text, 'preparatoria'::text, 'demo'::text, 'licenciatura'::text])))
 );
 
@@ -547,7 +550,11 @@ CREATE TABLE public.semanas (
     contenido text,
     video_url_2 text,
     video_url_3 text,
-    activa boolean DEFAULT true NOT NULL
+    activa boolean DEFAULT true NOT NULL,
+    -- 20261021120000 (actividades): unidad «actividades/1» de la semana y su
+    -- PDF imprimible (https). NULL = la semana no pinta nada de actividades.
+    actividades jsonb,
+    actividades_pdf_url text
 );
 
 --
