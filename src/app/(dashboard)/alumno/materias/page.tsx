@@ -57,9 +57,11 @@ export default function MateriasPage() {
         <div>
           <h2 className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>Mis Materias</h2>
           <p className="text-sm mt-0.5" style={{ color: '#64748B' }}>
-            {data?.nivel === 'preparatoria' ? 'Preparatoria' : data?.nivel === 'secundaria' ? 'Secundaria' : 'Plan de estudios'}
-            {' · '}Meses desbloqueados:{' '}
-            <span className="font-semibold" style={{ color: 'var(--color-primario)' }}>{data?.meses_desbloqueados ?? 0}</span>
+            {data?.nivel === 'preparatoria' ? 'Preparatoria' : data?.nivel === 'secundaria' ? 'Secundaria' : data?.nivel === 'diplomado' ? 'Curso' : 'Plan de estudios'}
+            {data?.nivel !== 'diplomado' && (<>
+              {' · '}Meses desbloqueados:{' '}
+              <span className="font-semibold" style={{ color: 'var(--color-primario)' }}>{data?.meses_desbloqueados ?? 0}</span>
+            </>)}
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium"
@@ -68,6 +70,26 @@ export default function MateriasPage() {
           {materias.length} {materias.length === 1 ? 'materia' : 'materias'}
         </div>
       </div>
+
+      {/* Alumno solo-curso: su curso NO es una materia. Sin este aviso veía
+          solo la Tutoría y concluía que su curso estaba cerrado
+          (TICKET-2026-10-15-07). */}
+      {data?.nivel === 'diplomado' && (
+        <div className="rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+          style={{ background: '#fff', border: '1.5px solid var(--color-acento)' }}>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm" style={{ color: 'var(--color-primario)' }}>🎓 Tu curso está en «Cursos y Diplomados»</p>
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-texto-secundario)' }}>
+              Aquí solo aparece la Tutoría de ingreso. Los módulos, lecciones y el examen de tu curso están en su propia sección.
+            </p>
+          </div>
+          <button type="button" onClick={() => router.push('/alumno/cursos')}
+            className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
+            style={{ background: 'var(--color-acento)', color: 'var(--color-texto-sobre-acento)' }}>
+            Ir a mi curso <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Sin materias */}
       {materias.length === 0 ? (

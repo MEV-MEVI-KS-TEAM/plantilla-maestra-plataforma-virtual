@@ -44,6 +44,18 @@ export async function POST(
 
     if (error) {
       const { status, mensaje } = errorDeRpcCurso(error)
+      // Curso de 1 mes (pago único que libera TODO el curso de una vez): la
+      // función dice «llega hasta 1 meses … no hay más contenido que liberar»,
+      // que la escuela leyó como «el curso está mal, debería durar 3 meses»
+      // mientras la alumna ya tenía los módulos abiertos (TICKET-2026-10-15-07).
+      const tope = /llega hasta (\d+) mes/.exec(mensaje)?.[1]
+      if (tope === '1') {
+        return NextResponse.json({
+          error:
+            'Este curso se libera COMPLETO con su primer mes: esta inscripción ya tiene abiertos todos los módulos y el examen. ' +
+            'No hay más meses que abrir. El alumno lo ve en «Cursos y Diplomados», en su menú.',
+        }, { status })
+      }
       return NextResponse.json({ error: mensaje }, { status })
     }
 
