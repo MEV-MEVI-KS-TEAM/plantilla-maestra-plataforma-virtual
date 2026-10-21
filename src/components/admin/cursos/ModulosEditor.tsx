@@ -218,7 +218,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
                 </span>
                 <span className="flex items-center gap-1.5 flex-shrink-0">
                   {leccion.video_url && <Play className="w-3.5 h-3.5" style={{ color: '#10B981' }} aria-label="Tiene video" />}
-                  {leccion.material_path && <FileText className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} aria-label="Tiene PDF" />}
+                  {leccion.material_path && <FileText className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} aria-label="Tiene material" />}
                 </span>
                 <button
                   onClick={() => moverLeccion(leccion.id, 'up')}
@@ -315,7 +315,7 @@ export function ModulosEditor({ cursoId, modulos, onChanged, onError }: ModulosE
         message={
           <>
             Vas a eliminar la lección <strong>{leccionAEliminar?.leccion.titulo}</strong>
-            {leccionAEliminar?.leccion.material_path ? ' y su PDF adjunto' : ''}. Esta acción no se puede deshacer.
+            {leccionAEliminar?.leccion.material_path ? ' y su material adjunto' : ''}. Esta acción no se puede deshacer.
           </>
         }
         confirmLabel="Eliminar lección"

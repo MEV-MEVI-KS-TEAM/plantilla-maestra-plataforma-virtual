@@ -9,6 +9,7 @@ import { BUCKET_CURSOS } from './archivos'
 import { limiteVentana, motivoBloqueo, modulosPorAbrir, topeMeses } from './acceso'
 import { conAccesoTotal } from './acceso-total'
 import { firmarVideoUrl } from '@/lib/video/bunny-firma'
+import { formatoMaterial } from './material-leccion'
 import type { CursoVentana, InscripcionVentana } from './acceso'
 import type { LeccionAlumno, ModuloAlumno, VentanaCurso } from '@/types/cursos-alumno'
 
@@ -89,6 +90,7 @@ export async function modulosConProgreso(
       contenido_texto: (l.contenido_texto as string | null) ?? null,
       materialUrl: await signed(supabase, l.material_path as string | null),
       tieneMaterial: Boolean(l.material_path),
+      materialFormato: formatoMaterial(l.material_path as string | null),
       orden: (l.orden as number) ?? 0,
       completada: completadasSet.has(l.id as string),
     }))

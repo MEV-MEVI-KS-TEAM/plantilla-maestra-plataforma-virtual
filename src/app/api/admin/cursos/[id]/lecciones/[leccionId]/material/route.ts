@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { removeFolder, signedUrl } from '@/lib/cursos/storage'
-import { BUCKET_CURSOS, MATERIAL_MAX_BYTES, MATERIAL_MIMES, sanitizeFilename, validarMaterial } from '@/lib/cursos/archivos'
+import { BUCKET_CURSOS, MATERIAL_MAX_BYTES, sanitizeFilename } from '@/lib/cursos/archivos'
+import { firmaMaterialValida, validarMaterialLeccion, MATERIAL_LECCION_DESCRIPCION } from '@/lib/cursos/material-leccion'
 
 async function authAdmin() {
   const supabase = await createClient()
@@ -34,7 +35,7 @@ async function getLeccionDelCurso(
   return modulo ? leccion : null
 }
 
-// ─── POST — material PDF vía signed upload URL (ver portada/route.ts) ────────
+// ─── POST — material (PDF, Office, AutoCAD, Power BI) vía signed upload URL (ver portada/route.ts) ────────
 //   {action:'upload-url', filename, size, type} → {path, token}
 //   {action:'confirm', path}                    → verifica, actualiza DB, limpia viejos
 export async function POST(
@@ -57,7 +58,7 @@ export async function POST(
       const size = Number(body.size ?? 0)
       const type = String(body.type ?? '')
 
-      const valid = validarMaterial({ name: filename, size, type })
+      const valid = validarMaterialLeccion({ name: filename, size, type })
       if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 })
 
       const path = `${carpeta}/${Date.now()}-${sanitizeFilename(filename)}`
@@ -82,12 +83,18 @@ export async function POST(
       const objeto = (entries ?? []).find(e => e.name === nombre && e.id)
       if (!objeto) return NextResponse.json({ error: 'El archivo no se subió correctamente, reintenta' }, { status: 400 })
 
+      // El MIME del objeto lo declaró el navegador: lo que manda es la firma
+      // de los primeros bytes contra la extensión (ver material-leccion.ts).
       const meta = objeto.metadata as { size?: number; mimetype?: string } | null
-      const mimeOk = !meta?.mimetype || (MATERIAL_MIMES as readonly string[]).includes(meta.mimetype)
       const sizeOk = !meta?.size || meta.size <= MATERIAL_MAX_BYTES
-      if (!mimeOk || !sizeOk) {
+      let firmaOk = false
+      if (sizeOk) {
+        const { data: blob } = await admin.storage.from(BUCKET_CURSOS).download(path)
+        if (blob) firmaOk = firmaMaterialValida(nombre, new Uint8Array(await blob.slice(0, 512).arrayBuffer()))
+      }
+      if (!sizeOk || !firmaOk) {
         await admin.storage.from(BUCKET_CURSOS).remove([path])
-        return NextResponse.json({ error: 'El archivo subido no es un PDF válido (≤10MB)' }, { status: 400 })
+        return NextResponse.json({ error: `El archivo subido no es válido: debe ser ${MATERIAL_LECCION_DESCRIPCION} de hasta 10MB` }, { status: 400 })
       }
 
       const { error: dbError } = await admin
