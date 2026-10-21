@@ -1,0 +1,477 @@
+{
+ "esquema": "actividades/1",
+ "unidad": {
+  "id": "cursos-ingreso/ing-01-exani-ii/modulo-01-leccion-01",
+  "nivel": "cursos-ingreso",
+  "materia": "Curso de preparación EXANI-II",
+  "slug": "ing-01-exani-ii",
+  "clave": "modulo-01-leccion-01",
+  "rotulo": "Lección 1.1",
+  "titulo": "Qué es el EXANI-II y cómo está estructurado",
+  "fuente_id": "4684f8a5-c687-578a-a46b-917c2afbea30",
+  "color": "#2563EB",
+  "examen": "Curso de preparación EXANI-II"
+ },
+ "esencial": {
+  "intro": "El EXANI-II es un examen nacional de admisión a licenciatura elaborado por el Ceneval. No es memoria enciclopédica: es razonamiento aplicado, o sea leer bien, calcular con criterio y escribir con orden.",
+  "puntos": [
+   {
+    "titulo": "Quién hace qué",
+    "texto": "El Ceneval diseña y califica el examen, pero no decide quién entra. Cada universidad establece cuánto pesa tu resultado, qué módulos aplica y su punto de corte. Lo que manda es la convocatoria vigente de tu universidad."
+   },
+   {
+    "titulo": "Áreas y módulos",
+    "texto": "Todos presentan pensamiento matemático, comprensión lectora y redacción indirecta (aquí eliges la mejor opción, no escribes un ensayo). Los módulos específicos se ligan a la carrera: cada institución elige dos y decide si cuentan para seleccionar o solo como diagnóstico."
+   },
+   {
+    "titulo": "El día del examen",
+    "texto": "Son 168 preguntas de opción múltiple, con tres opciones y solo una correcta, en una sola sesión de 4 horas y media: 90 de las áreas transversales, 48 de los dos módulos específicos y 30 de Inglés."
+   },
+   {
+    "titulo": "Qué entra a tu puntaje",
+    "texto": "Inglés es diagnóstico y no entra al puntaje global: lo integran 90 + 48 = 138 preguntas. No hay penalización, solo suman los aciertos; el resultado es un índice de 700 a 1300 puntos."
+   },
+   {
+    "titulo": "Para el reto: porcentajes",
+    "texto": "El reto usa dos cálculos. En un aumento, el cambio se divide entre el valor original; en un puntaje, los aciertos se dividen entre el total de preguntas. En ambos casos se multiplica por 100."
+   }
+  ],
+  "formulas": [
+   "$\\text{Aumento \\%} = \\dfrac{\\text{nuevo} - \\text{original}}{\\text{original}} \\times 100$",
+   "$\\text{Aciertos \\%} = \\dfrac{\\text{aciertos}}{\\text{total}} \\times 100$"
+  ],
+  "recuerda": "En porcentajes, marca siempre cuál es la base: el aumento se divide entre el valor original, no entre el nuevo."
+ },
+ "actividades": [
+  {
+   "id": "a1",
+   "tipo": "relacionar",
+   "titulo": "Quién es quién en el EXANI-II",
+   "instrucciones": "Elige, para cada concepto, la descripción que le corresponde. Sobra una descripción.",
+   "pares": [
+    {
+     "id": "p1",
+     "izquierda": "Módulos específicos",
+     "derecha": "Dos módulos ligados a tu carrera que elige la institución"
+    },
+    {
+     "id": "p2",
+     "izquierda": "Redacción indirecta",
+     "derecha": "Dominio de la lengua escrita eligiendo la mejor opción"
+    },
+    {
+     "id": "p3",
+     "izquierda": "Ceneval",
+     "derecha": "Organismo que elabora el examen y lo califica"
+    },
+    {
+     "id": "p4",
+     "izquierda": "Pensamiento matemático",
+     "derecha": "Razonamiento aritmético y algebraico; porcentajes y gráficas"
+    },
+    {
+     "id": "p5",
+     "izquierda": "Comprensión lectora",
+     "derecha": "Idea principal, inferencias y hecho contra opinión"
+    }
+   ],
+   "distractores": [
+    "Descuento de un punto por cada respuesta incorrecta"
+   ],
+   "explicacion": "Cada área transversal mide una habilidad distinta: razonar con números, comprender textos y manejar la lengua escrita. Los módulos específicos dependen de la carrera y de la institución, y la descripción que sobra habla de una penalización que no existe en este examen."
+  },
+  {
+   "id": "a2",
+   "tipo": "verdadero_falso",
+   "titulo": "¿Verdadero o falso?",
+   "instrucciones": "Decide si cada afirmación sobre el examen es verdadera o falsa.",
+   "items": [
+    {
+     "id": "v1",
+     "afirmacion": "Cada universidad decide cuánto pesa tu resultado del EXANI-II frente a otros criterios de selección.",
+     "respuesta": true,
+     "explicacion": "El peso de tu resultado lo establece la universidad, junto con los módulos que aplica y su punto de corte; esa decisión no es del Ceneval."
+    },
+    {
+     "id": "v3",
+     "afirmacion": "El EXANI-II se presenta siempre en papel y en una sede.",
+     "respuesta": false,
+     "explicacion": "La modalidad puede ser papel o computadora, en sede o en línea con supervisión; se confirma en la guía y en la convocatoria vigentes."
+    },
+    {
+     "id": "v2",
+     "afirmacion": "Los módulos específicos que aplica tu universidad se confirman en su convocatoria vigente.",
+     "respuesta": true,
+     "explicacion": "Es la universidad quien decide qué módulos aplica, y la convocatoria vigente es la que manda; por eso conviene descargarla y leerla completa."
+    },
+    {
+     "id": "v5",
+     "afirmacion": "En redacción indirecta tienes que escribir un ensayo.",
+     "respuesta": false,
+     "explicacion": "El nombre confunde: se evalúa tu dominio de la lengua escrita pidiéndote elegir la mejor opción en coherencia, cohesión, conectores, concordancia y ortografía."
+    },
+    {
+     "id": "v7",
+     "afirmacion": "El examen pide memorizar fechas sueltas y definiciones textuales.",
+     "respuesta": false,
+     "explicacion": "No es memoria enciclopédica: no hay fechas sueltas ni definiciones textuales. Es razonamiento aplicado, y eso sí se entrena."
+    },
+    {
+     "id": "v4",
+     "afirmacion": "Una respuesta incorrecta no resta puntos: solo suman los aciertos.",
+     "respuesta": true,
+     "explicacion": "No hay penalización por respuestas incorrectas ni por preguntas sin contestar; dejar una en blanco no te protege de nada."
+    },
+    {
+     "id": "v6",
+     "afirmacion": "Un aspirante a Medicina y otro a Derecho presentan las mismas tres áreas transversales.",
+     "respuesta": true,
+     "explicacion": "Las áreas transversales son comunes a todos los sustentantes; lo que puede cambiar entre aspirantes son los módulos específicos, que elige cada institución."
+    }
+   ]
+  },
+  {
+   "id": "a3",
+   "tipo": "completar",
+   "titulo": "Completa los datos clave",
+   "instrucciones": "Escribe en cada espacio la palabra o el número que falta.",
+   "banco": [
+    "licenciatura",
+    "índice",
+    "tres",
+    "168",
+    "138",
+    "convocatoria",
+    "sede",
+    "dos",
+    "150"
+   ],
+   "items": [
+    {
+     "id": "c1",
+     "texto": "Las universidades usan el EXANI-II en su proceso de selección de aspirantes a una ___.",
+     "respuestas": [
+      [
+       "licenciatura",
+       "una licenciatura",
+       "la licenciatura",
+       "licenciaturas"
+      ]
+     ],
+     "explicacion": "Es un examen nacional de admisión a licenciatura, y muchas universidades públicas y privadas lo contratan en su proceso de selección."
+    },
+    {
+     "id": "c2",
+     "texto": "En lugar de un conteo de aciertos, tu resultado se expresa como un ___ dentro de la escala Ceneval de 700 a 1300 puntos.",
+     "respuestas": [
+      [
+       "índice",
+       "indice",
+       "un índice",
+       "un indice"
+      ]
+     ],
+     "explicacion": "El resultado no se reporta como número de aciertos, sino como un índice en la escala Ceneval."
+    },
+    {
+     "id": "c3",
+     "texto": "Cuando contestes una pregunta del examen, tendrás que elegir entre ___ opciones y solo una será correcta.",
+     "respuestas": [
+      [
+       "tres",
+       "3"
+      ]
+     ],
+     "explicacion": "Todas las preguntas son de opción múltiple con tres opciones y una sola respuesta correcta."
+    },
+    {
+     "id": "c4",
+     "texto": "Entre áreas transversales, módulos específicos e Inglés, el examen suma en total ___ preguntas.",
+     "respuestas": [
+      [
+       "168",
+       "168 preguntas",
+       "ciento sesenta y ocho"
+      ]
+     ],
+     "explicacion": "El examen consta de 168 preguntas: 90 transversales, 48 de módulos específicos y 30 de Inglés."
+    },
+    {
+     "id": "c5",
+     "texto": "Sin contar Inglés, las preguntas que integran tu puntaje global son ___.",
+     "respuestas": [
+      [
+       "138",
+       "138 preguntas",
+       "ciento treinta y ocho"
+      ]
+     ],
+     "explicacion": "Inglés es diagnóstico y no entra al puntaje global; quedan las 90 transversales y las 48 de los dos módulos específicos, o sea 138."
+    },
+    {
+     "id": "c6",
+     "texto": "Dos amigos te dan datos distintos sobre el examen que presentarás; la fuente que manda es la ___ vigente de tu universidad.",
+     "respuestas": [
+      [
+       "convocatoria",
+       "la convocatoria"
+      ]
+     ],
+     "explicacion": "La convocatoria vigente de tu universidad manda; los datos de otras personas no la sustituyen."
+    }
+   ]
+  },
+  {
+   "id": "a4",
+   "tipo": "opcion_multiple",
+   "titulo": "Casos de aspirantes",
+   "instrucciones": "Lee cada situación y elige la opción que se sostiene con lo que vimos en la lección.",
+   "items": [
+    {
+     "id": "q1",
+     "enunciado": "Una aspirante quiere saber cuántos puntos necesita para quedar en su universidad. ¿Quién establece el punto de corte?",
+     "opciones": [
+      "El Ceneval, porque diseña y califica el examen",
+      "La institución donde cursó el bachillerato",
+      "La universidad, dentro de su proceso de selección"
+     ],
+     "correcta": 2,
+     "explicacion": "El punto de corte lo fija cada universidad, igual que el peso de tu resultado y los módulos que aplica. El Ceneval diseña y califica el examen, pero no decide quién entra, y el bachillerato de procedencia no lo fija."
+    },
+    {
+     "id": "q2",
+     "enunciado": "Dos aspirantes presentan el examen el mismo día y responden módulos específicos distintos. ¿Qué lo explica?",
+     "opciones": [
+      "Cada institución define los dos módulos que aplica",
+      "El Ceneval asigna los módulos al azar a cada aspirante",
+      "Cada aspirante elige sus módulos durante el examen"
+     ],
+     "correcta": 0,
+     "explicacion": "Cada institución elige dos módulos del menú que define el Ceneval, por eso aspirantes que presentan el mismo día pueden responder módulos distintos. El aspirante no los elige ni se reparten al azar."
+    },
+    {
+     "id": "q3",
+     "enunciado": "Una pregunta te da un párrafo y te pide deducir algo que el texto no dice de forma literal. ¿Qué área transversal mide esa habilidad?",
+     "opciones": [
+      "Pensamiento matemático",
+      "Redacción indirecta",
+      "Comprensión lectora"
+     ],
+     "correcta": 2,
+     "explicacion": "En comprensión lectora identificas la idea principal, infieres lo que no está dicho de forma literal, distingues un hecho de una opinión y reconoces la intención del autor. Pensamiento matemático razona con números, no con el sentido de un texto; redacción indirecta evalúa la lengua escrita."
+    },
+    {
+     "id": "q4",
+     "enunciado": "Una aspirante ya sabe el área de su carrera, pero no ha revisado qué módulos específicos aplicará su institución. ¿Qué le conviene hacer antes de armar su plan de estudio?",
+     "opciones": [
+      "Estudiar todos los módulos del menú para cubrir cualquier caso",
+      "Confirmar cuáles módulos presentará para no estudiar de más",
+      "Esperar a saber cuáles le tocan al llegar el día del examen"
+     ],
+     "correcta": 1,
+     "explicacion": "Estudiar un módulo que no va a presentar es tiempo regalado, por eso conviene confirmar los suyos antes de planear. Esperar al día del examen tampoco sirve: los módulos los define la institución y se confirman en la convocatoria."
+    }
+   ]
+  },
+  {
+   "id": "a5",
+   "tipo": "numerico",
+   "reto": true,
+   "titulo": "Porcentajes y puntaje",
+   "instrucciones": "Calcula cada porcentaje y escribe solo el número.",
+   "ejemplo": {
+    "enunciado": "Una guía de estudio pasó de 300 a 375 pesos. ¿Cuál fue el porcentaje de aumento?",
+    "pasos": [
+     "Calcula el aumento absoluto: $375 - 300 = 75$",
+     "Divide entre el valor **original**, no entre el nuevo: $75 \\div 300 = 0.25$",
+     "Pasa a porcentaje: $0.25 \\times 100 = 25$, o sea 25 %."
+    ],
+    "resultado": "El aumento fue de 25 %.",
+    "valor": 25,
+    "verif": "Rational(375 - 300, 300) * 100"
+   },
+   "ejercicios": [
+    {
+     "id": "r1",
+     "enunciado": "Para tu preparación compras un paquete de simulacros impresos. Su costo pasó de 1,500 a 1,800 pesos. ¿Cuál fue el porcentaje de aumento?",
+     "respuesta": 20,
+     "tolerancia": 0,
+     "unidad": "%",
+     "formato": "entero",
+     "pasos": [
+      "Aumento absoluto: $1{,}800 - 1{,}500 = 300$",
+      "Divide entre el valor original: $300 \\div 1{,}500 = 0.2$",
+      "Pasa a porcentaje: $0.2 \\times 100 = 20$"
+     ],
+     "verif": "Rational(1800 - 1500, 1500) * 100",
+     "error_tipico": 16.666666666666668,
+     "error_tipico_msg": "Dividiste el aumento entre el valor nuevo (1,800); debe dividirse entre el valor original (1,500)."
+    },
+    {
+     "id": "r2",
+     "enunciado": "En un simulacro de 150 preguntas obtuviste 108 aciertos. ¿Qué porcentaje de aciertos lograste?",
+     "respuesta": 72,
+     "tolerancia": 0,
+     "unidad": "%",
+     "formato": "entero",
+     "pasos": [
+      "Divide los aciertos entre el total de preguntas: $108 \\div 150 = 0.72$",
+      "Pasa a porcentaje: $0.72 \\times 100 = 72$"
+     ],
+     "verif": "Rational(108, 150) * 100",
+     "error_tipico": 108,
+     "error_tipico_msg": "Leíste el número de aciertos como si fuera el porcentaje; eso solo funciona si el simulacro tiene 100 preguntas."
+    },
+    {
+     "id": "r3",
+     "enunciado": "En un simulacro con la estructura del examen (168 preguntas) aciertas 40 de las 90 transversales y 29 de las 48 de módulos específicos. ¿Qué porcentaje de aciertos tienes sobre las preguntas que sí integran tu puntaje?",
+     "respuesta": 50,
+     "tolerancia": 0,
+     "unidad": "%",
+     "formato": "entero",
+     "pasos": [
+      "Aciertos que cuentan: $40 + 29 = 69$",
+      "Preguntas que integran el puntaje: $90 + 48 = 138$ (Inglés no entra).",
+      "Divide: $69 \\div 138 = 0.5$",
+      "Pasa a porcentaje: $0.5 \\times 100 = 50$"
+     ],
+     "verif": "Rational(40 + 29, 90 + 48) * 100",
+     "error_tipico": 41.07142857142857,
+     "error_tipico_msg": "Dividiste entre las 168 preguntas del examen; las 30 de Inglés no entran al puntaje global, así que el total correcto es 138."
+    },
+    {
+     "id": "r4",
+     "enunciado": "En tu primer simulacro acertaste 60; en el segundo, 75. ¿En qué porcentaje aumentaron tus aciertos?",
+     "respuesta": 25,
+     "tolerancia": 0,
+     "unidad": "%",
+     "formato": "entero",
+     "pasos": [
+      "Aumento absoluto: $75 - 60 = 15$",
+      "Divide entre el valor original, que es el primer simulacro: $15 \\div 60 = 0.25$",
+      "Pasa a porcentaje: $0.25 \\times 100 = 25$"
+     ],
+     "verif": "Rational(75 - 60, 60) * 100",
+     "error_tipico": 20,
+     "error_tipico_msg": "Dividiste el aumento entre el valor nuevo (75); debe dividirse entre el valor original (60)."
+    }
+   ]
+  }
+ ],
+ "autoevaluacion": {
+  "instrucciones": "Elige la opción correcta de cada pregunta, como en el examen.",
+  "reactivos": [
+   {
+    "id": "q1",
+    "enunciado": "¿Qué papel tiene el EXANI-II en las universidades que lo contratan?",
+    "opciones": [
+     "Reemplaza los demás criterios de selección de la universidad",
+     "Se usa como parte de su proceso de selección de aspirantes",
+     "Cada universidad lo diseña y califica por su cuenta"
+    ],
+    "correcta": 1,
+    "explicacion": "Muchas universidades públicas y privadas lo contratan como parte de su proceso de selección, donde tu resultado pesa frente a otros criterios. El examen lo elabora el Ceneval, no cada universidad."
+   },
+   {
+    "id": "q2",
+    "enunciado": "¿Cómo se reporta tu resultado en el examen?",
+    "opciones": [
+     "Como el número de aciertos sobre las 138 preguntas del puntaje",
+     "Como un porcentaje de aciertos sobre las 168 preguntas del examen",
+     "Como un índice entre 700 y 1300 puntos"
+    ],
+    "correcta": 2,
+    "explicacion": "El resultado se expresa como un índice en una escala de 700 a 1300 puntos, no como un conteo de aciertos. Tampoco se reporta como porcentaje de las preguntas del examen."
+   },
+   {
+    "id": "q3",
+    "enunciado": "¿Cuál es la descripción correcta del día del examen?",
+    "opciones": [
+     "168 preguntas en una sola sesión de 4 horas y media",
+     "168 preguntas repartidas en dos sesiones el mismo día",
+     "138 preguntas en una sola sesión de 4 horas y media"
+    ],
+    "correcta": 0,
+    "explicacion": "El examen tiene 168 preguntas y se aplica en una sola sesión de 4 horas y media. El 138 es otro número: son las preguntas que integran el puntaje, no el total del examen."
+   },
+   {
+    "id": "q4",
+    "enunciado": "¿Qué papel tienen las 30 preguntas de Inglés como lengua extranjera?",
+    "opciones": [
+     "Valen igual que las de las áreas transversales para tu puntaje",
+     "Se contestan en una sesión aparte, después de las demás",
+     "Sirven de diagnóstico y no suman a tu puntaje global"
+    ],
+    "correcta": 2,
+    "explicacion": "Las de Inglés son diagnósticas: se contestan, pero no entran a tu puntaje global, que se integra con las áreas transversales y los módulos específicos. Se aplican en la misma sesión que el resto."
+   },
+   {
+    "id": "q5",
+    "enunciado": "Lee el texto: «Mucha gente cree que un mapa muestra el terreno tal como es. En realidad, un mapa decide qué incluir y qué dejar fuera: una ruta de autobuses omite el relieve, y un mapa de relieve omite las paradas. Por eso, antes de usar un mapa conviene preguntar para qué fue hecho.» ¿Cuál es la idea principal del texto?",
+    "opciones": [
+     "Un mapa elige qué mostrar según su propósito, por eso conviene saber para qué se hizo",
+     "Un mapa de relieve ofrece más información útil que una ruta de autobuses",
+     "Una ruta de autobuses puede omitir el relieve del terreno que recorre"
+    ],
+    "correcta": 0,
+    "explicacion": "La idea principal es lo que sostiene todo el texto: un mapa no muestra todo, sino lo que su propósito exige. Que la ruta de autobuses omita el relieve es solo un ejemplo, un detalle que sirve para ilustrar esa idea, y el texto no compara cuál de los dos mapas es más útil."
+   },
+   {
+    "id": "q6",
+    "enunciado": "Elige la forma que completa la oración: «Los módulos específicos de tu carrera se ______ en la convocatoria.»",
+    "opciones": [
+     "confirmará",
+     "confirmarán",
+     "confirmaría"
+    ],
+    "correcta": 1,
+    "explicacion": "El sujeto es «los módulos específicos», en plural, así que el verbo va en plural: «se confirmarán». «Confirmará» concuerda con un sujeto singular y «confirmaría» cambia el tiempo a condicional. La trampa es «tu carrera», en singular y justo antes del verbo: el sujeto sigue siendo «los módulos»."
+   },
+   {
+    "id": "q7",
+    "enunciado": "El precio de un libro de preparación pasó de 400 a 560 pesos. ¿En qué porcentaje aumentó?",
+    "opciones": [
+     "40 %",
+     "29 %",
+     "140 %"
+    ],
+    "correcta": 0,
+    "explicacion": "Aumento: $560 - 400 = 160$; se divide entre el valor original: $160 \\div 400 = 0.4$, o sea 40 %. El 29 % sale de dividir entre el valor nuevo: $160 \\div 560 \\approx 0.286$, redondeado a 29 %. El 140 % es el precio final respecto del original: $560 \\div 400 = 1.4$",
+    "verif": "Rational(560 - 400, 400) * 100"
+   },
+   {
+    "id": "q8",
+    "enunciado": "Tienes un texto largo y una pregunta sobre él. ¿Qué conviene hacer primero?",
+    "opciones": [
+     "Leer el texto completo antes que la pregunta",
+     "Leer las opciones antes que la pregunta y el texto",
+     "Leer la pregunta antes que el texto largo"
+    ],
+    "correcta": 2,
+    "explicacion": "Saber qué te preguntan convierte una lectura completa en una búsqueda dirigida y te ahorra minutos para matemáticas. Leer primero el texto completo o empezar por las opciones, sin saber qué te preguntan, pierde esa ventaja."
+   },
+   {
+    "id": "q9",
+    "enunciado": "¿Cuál de estas es una pregunta propia de este examen?",
+    "opciones": [
+     "Una pregunta sobre el año de un hecho histórico",
+     "Un párrafo breve y una pregunta sobre su idea principal",
+     "Una petición de escribir la definición textual de un concepto"
+    ],
+    "correcta": 1,
+    "explicacion": "El examen evalúa razonamiento aplicado, y encontrar la idea principal de un texto es una habilidad de comprensión lectora. No hay fechas sueltas ni definiciones textuales."
+   },
+   {
+    "id": "q10",
+    "enunciado": "¿Qué sección del examen aporta la mayor parte de tu puntaje global?",
+    "opciones": [
+     "Los dos módulos específicos ligados a tu carrera",
+     "Las tres áreas transversales que presentan todos",
+     "Las preguntas de Inglés como lengua extranjera"
+    ],
+    "correcta": 1,
+    "explicacion": "Las áreas transversales aportan 90 de las 138 preguntas que integran el puntaje; los módulos específicos aportan 48 e Inglés no entra a ese puntaje. Por eso el curso les dedica el grueso de sus módulos."
+   }
+  ]
+ }
+}

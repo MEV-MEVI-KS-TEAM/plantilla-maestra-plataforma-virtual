@@ -1,0 +1,445 @@
+{
+ "esquema": "actividades/1",
+ "unidad": {
+  "id": "secundaria/matematicas-1/semana-01",
+  "nivel": "secundaria",
+  "materia": "Matemáticas I",
+  "slug": "matematicas-1",
+  "clave": "semana-01",
+  "rotulo": "Semana 1",
+  "titulo": "Números naturales — qué son, para qué sirven, la recta numérica",
+  "fuente_id": "dd8600f2-0324-5a6c-9a0b-1f22a1473fdd",
+  "color": "#10B981"
+ },
+ "esencial": {
+  "intro": "Los **números naturales** son los primeros que aprendemos: 1, 2, 3, 4, 5... y así hasta el infinito. Algunos incluyen el 0 en este grupo. Los usamos para contar, ordenar y medir.",
+  "puntos": [
+   {
+    "titulo": "La recta numérica",
+    "texto": "Es una línea recta con el 0 en el centro. Hacia la derecha van los números positivos (1, 2, 3...) y hacia la izquierda irían los negativos. Te ayuda a ver qué número es mayor o menor."
+   },
+   {
+    "titulo": "Comparar números",
+    "texto": "El que está más a la derecha en la recta numérica es el mayor. Por ejemplo, $5 > 3$ (cinco es mayor que tres), $12 < 20$ (doce es menor que veinte) y $7 = 7$ (siete es igual a siete)."
+   },
+   {
+    "titulo": "Valor posicional",
+    "texto": "Cada dígito vale según el lugar que ocupa: 345 no es lo mismo que 543. En 345 hay 3 centenas, 4 decenas y 5 unidades, así que el 3 vale 300, el 4 vale 40 y el 5 vale 5. A esto se le llama **sistema decimal** o de base 10."
+   },
+   {
+    "titulo": "Cardinales y ordinales",
+    "texto": "Los **cardinales** dicen cuántos hay (1, 2, 3...). Los **ordinales** dicen el orden (primero, segundo, tercero... o 1°, 2°, 3°...)."
+   },
+   {
+    "titulo": "Redondear",
+    "texto": "Si el dígito a la derecha es 5 o más, el número sube; si es 4 o menos, se queda igual. A la decena más cercana, 347 queda en 350 (el 7 es 5 o más) y 342 queda en 340 (el 2 es 4 o menos). Sirve para estimar precios, presupuestos y estadísticas."
+   }
+  ],
+  "formulas": [
+   "$345 = 300 + 40 + 5$"
+  ],
+  "recuerda": "para redondear, fíjate en el dígito de la derecha: con 5 o más el número sube, con 4 o menos se queda igual."
+ },
+ "actividades": [
+  {
+   "id": "a1",
+   "tipo": "relacionar",
+   "titulo": "Situaciones y conceptos",
+   "instrucciones": "Elige, para cada situación, el concepto que le corresponde.",
+   "pares": [
+    {
+     "id": "p1",
+     "izquierda": "En el concurso quedaste en cuarto lugar",
+     "derecha": "Número ordinal"
+    },
+    {
+     "id": "p2",
+     "izquierda": "En tu mochila hay 9 libros",
+     "derecha": "Número cardinal"
+    },
+    {
+     "id": "p3",
+     "izquierda": "En 507, el 5 vale 500 y el 7 vale 7",
+     "derecha": "Valor posicional"
+    },
+    {
+     "id": "p4",
+     "izquierda": "Línea con el 0 en el centro y los positivos a la derecha",
+     "derecha": "Recta numérica"
+    },
+    {
+     "id": "p5",
+     "izquierda": "Escribir que 12 es menor que 20",
+     "derecha": "Comparación de números"
+    }
+   ],
+   "distractores": [
+    "Número negativo"
+   ],
+   "explicacion": "Un número cardinal dice cuántos hay (9 libros) y uno ordinal dice el orden (cuarto lugar). En 507 cada dígito vale según su lugar: 5 centenas, 0 decenas y 7 unidades. La recta numérica tiene el 0 en el centro, y comparar es decir cuál de dos números es mayor, menor o igual. Sobra «Número negativo»: los negativos irían a la izquierda del 0 en la recta y ninguna de las situaciones habla de ellos."
+  },
+  {
+   "id": "a2",
+   "tipo": "verdadero_falso",
+   "titulo": "¿Verdadero o falso?",
+   "instrucciones": "Decide si cada afirmación es verdadera o falsa.",
+   "items": [
+    {
+     "id": "v1",
+     "afirmacion": "Los números naturales sirven para contar y ordenar, pero no para medir.",
+     "respuesta": false,
+     "explicacion": "Los números naturales se usan para contar, ordenar y medir; medir también es uno de sus usos."
+    },
+    {
+     "id": "v2",
+     "afirmacion": "En el número 624, el 2 vale 2.",
+     "respuesta": false,
+     "explicacion": "El 2 está en el lugar de las decenas, así que vale 20: $624 = 600 + 20 + 4$."
+    },
+    {
+     "id": "v3",
+     "afirmacion": "Si el dígito a la derecha es 5 o más, el número sube al redondearlo.",
+     "respuesta": true,
+     "explicacion": "Con 5 o más el número sube; con 4 o menos se queda igual. Por ejemplo, a la decena más cercana 86 sube a 90, mientras que 83 queda en 80."
+    },
+    {
+     "id": "v4",
+     "afirmacion": "El sistema decimal es el mismo sistema de base 10.",
+     "respuesta": true,
+     "explicacion": "«Sistema decimal» y «sistema de base 10» son dos nombres del sistema en que cada dígito vale según el lugar que ocupa; por eso 345 y 543 no son el mismo número."
+    },
+    {
+     "id": "v5",
+     "afirmacion": "En la recta numérica, el número que queda más a la izquierda es el mayor.",
+     "respuesta": false,
+     "explicacion": "El mayor es el que queda más a la derecha: en la recta, el 12 está a la derecha del 8, por eso $12 > 8$."
+    },
+    {
+     "id": "v6",
+     "afirmacion": "Algunos incluyen el 0 entre los números naturales.",
+     "respuesta": true,
+     "explicacion": "La lista de los naturales se escribe 1, 2, 3, 4, 5... y algunos incluyen también el 0 en el grupo."
+    }
+   ]
+  },
+  {
+   "id": "a3",
+   "tipo": "completar",
+   "titulo": "Completa las ideas",
+   "instrucciones": "Escribe en cada espacio la palabra o el número que falta.",
+   "items": [
+    {
+     "id": "c1",
+     "texto": "En 726, el 7 ocupa el lugar de las ___.",
+     "respuestas": [
+      [
+       "centenas",
+       "las centenas",
+       "centena",
+       "la centena"
+      ]
+     ],
+     "explicacion": "Siete centenas valen 700; además hay 2 decenas y 6 unidades: $726 = 700 + 20 + 6$."
+    },
+    {
+     "id": "c2",
+     "texto": "En 904, el 4 ocupa el lugar de las ___.",
+     "respuestas": [
+      [
+       "unidades",
+       "las unidades",
+       "unidad",
+       "la unidad"
+      ]
+     ],
+     "explicacion": "El 4 está en el lugar de las unidades y vale 4; el 9 vale 900 y el 0, que ocupa el lugar de las decenas, vale 0: $904 = 900 + 0 + 4$."
+    },
+    {
+     "id": "c3",
+     "texto": "El sistema decimal también se conoce como sistema de base ___.",
+     "respuestas": [
+      [
+       "10",
+       "diez"
+      ]
+     ],
+     "explicacion": "El sistema decimal, también llamado de base 10, es aquel en que cada dígito vale según el lugar que ocupa.",
+     "ayuda": "Número, ej. 7"
+    },
+    {
+     "id": "c4",
+     "texto": "Una tienda dice «como \\$350» cuando algo cuesta \\$347, para estimar un presupuesto; esa técnica se llama ___.",
+     "respuestas": [
+      [
+       "redondeo",
+       "el redondeo",
+       "redondear",
+       "un redondeo"
+      ]
+     ],
+     "explicacion": "Redondear es dar un número cercano, como \\$350 en lugar de \\$347. Se usa en estimaciones de precios, presupuestos y estadísticas."
+    }
+   ]
+  },
+  {
+   "id": "a4",
+   "tipo": "numerico",
+   "titulo": "Redondea y descompón",
+   "instrucciones": "Resuelve cada ejercicio con lo que vale cada dígito y con la regla del redondeo.",
+   "ejemplo": {
+    "enunciado": "Redondea 468 a la decena más cercana.",
+    "pasos": [
+     "Mira el dígito de la derecha: en 468 es el 8.",
+     "El 8 es 5 o más, así que el número sube: las decenas pasan de 6 a 7.",
+     "Las decenas quedan en 7 y el número en 470."
+    ],
+    "resultado": "Queda en 470.",
+    "verif": "470"
+   },
+   "ejercicios": [
+    {
+     "id": "e1",
+     "enunciado": "Un cuaderno cuesta \\$76 y el cartel de la tienda redondea los precios a la decena más cercana. ¿Cuántos pesos marca el cartel?",
+     "respuesta": 80,
+     "tolerancia": 0,
+     "unidad": "pesos",
+     "formato": "entero",
+     "pasos": [
+      "El dígito de la derecha en 76 es el 6, que es 5 o más: el número sube.",
+      "Las decenas pasan de 7 a 8: el cartel marca 80."
+     ],
+     "verif": "80",
+     "error_tipico": 70,
+     "error_tipico_msg": "Dejaste las decenas en 7; como el dígito de la derecha es el 6 (5 o más), el número sube y queda en 80."
+    },
+    {
+     "id": "e2",
+     "enunciado": "Una compañera dicta un número: 5 centenas, 0 decenas y 8 unidades. ¿Qué número es?",
+     "respuesta": 508,
+     "tolerancia": 0,
+     "formato": "entero",
+     "pasos": [
+      "5 centenas son 500, 0 decenas son 0 y 8 unidades son 8.",
+      "Júntalas: $500 + 0 + 8 = 508$."
+     ],
+     "verif": "500 + 0 + 8",
+     "error_tipico": 58,
+     "error_tipico_msg": "Escribiste 58 y se te perdió el lugar de las decenas; con 0 decenas el 5 sigue en las centenas y vale 500."
+    },
+    {
+     "id": "e3",
+     "enunciado": "¿Cuánto vale el dígito 4 en el número 943?",
+     "respuesta": 40,
+     "tolerancia": 0,
+     "formato": "entero",
+     "pasos": [
+      "En 943 hay 9 centenas, 4 decenas y 3 unidades.",
+      "El 4 ocupa el lugar de las decenas: $943 = 900 + 40 + 3$, así que vale 40."
+     ],
+     "verif": "4 * 10",
+     "error_tipico": 4,
+     "error_tipico_msg": "Leíste el 4 como si estuviera en el lugar de las unidades; está en el de las decenas, así que vale 40."
+    }
+   ]
+  },
+  {
+   "id": "a5",
+   "tipo": "opcion_multiple",
+   "reto": true,
+   "titulo": "Venta de garaje del grupo",
+   "instrucciones": "Tu grupo organiza una venta de garaje. Elige la mejor respuesta en cada caso.",
+   "items": [
+    {
+     "id": "r1",
+     "enunciado": "Una compañera anota el precio de un juego usando 4 centenas, 0 decenas y 9 unidades de pesos. ¿Cuántos pesos cuesta?",
+     "opciones": [
+      "\\$490",
+      "\\$49",
+      "\\$409",
+      "\\$94"
+     ],
+     "correcta": 2,
+     "verif": "4*100 + 0*10 + 9",
+     "explicacion": "Cuatro centenas valen 400, 0 decenas valen 0 y 9 unidades valen 9: $400 + 0 + 9 = 409$. El 490 pone el 9 en las decenas, el 49 pierde el lugar de las centenas y el 94 cambia de lugar al 4 y al 9."
+    },
+    {
+     "id": "r2",
+     "enunciado": "El cartel de la venta dice que los precios se redondean a la decena más cercana. Una gorra cuesta 6 decenas y 3 unidades de pesos, y una pulsera, 7 decenas y 5 unidades. ¿Qué precios marca el cartel?",
+     "opciones": [
+      "\\$60 la gorra y \\$80 la pulsera",
+      "\\$70 la gorra y \\$80 la pulsera",
+      "\\$60 la gorra y \\$70 la pulsera",
+      "\\$70 la gorra y \\$70 la pulsera"
+     ],
+     "correcta": 0,
+     "explicacion": "La gorra cuesta 63: el dígito de la derecha es el 3 (4 o menos), así que se queda en 60. La pulsera cuesta 75: el 5 es 5 o más, así que sube a 80. En las otras opciones la gorra sube con un 3 o la pulsera se queda con un 5."
+    },
+    {
+     "id": "r3",
+     "enunciado": "Para acomodar la mesa, la compañera dicta tres precios: 8 decenas y 5 unidades; 5 centenas, 0 decenas y 8 unidades; y 5 centenas, 8 decenas y 0 unidades. ¿Qué lista los pone de menor a mayor?",
+     "opciones": [
+      "\\$580, \\$508, \\$85",
+      "\\$85, \\$580, \\$508",
+      "\\$508, \\$85, \\$580",
+      "\\$85, \\$508, \\$580"
+     ],
+     "correcta": 3,
+     "explicacion": "Los precios son 85, 508 y 580. De menor a mayor van de izquierda a derecha en la recta numérica: $85 < 508 < 580$. La primera opción los pone de mayor a menor; en las otras dos, el 85 o el 508 quedan fuera de lugar."
+    }
+   ]
+  }
+ ],
+ "autoevaluacion": {
+  "instrucciones": "Elige la mejor respuesta. Al terminar, lee la explicación de cada pregunta.",
+  "reactivos": [
+   {
+    "id": "q1",
+    "enunciado": "Dibujas una recta numérica en tu cuaderno. ¿Dónde colocas el 7 y dónde un número negativo?",
+    "opciones": [
+     "El 7 a la izquierda del 0 y el negativo a la derecha",
+     "El 7 a la derecha del 0 y el negativo a la izquierda",
+     "Los dos a la derecha del 0, el negativo más lejos",
+     "Los dos a la izquierda del 0, el 7 más cerca del 0"
+    ],
+    "correcta": 1,
+    "explicacion": "En la recta numérica los positivos, como el 7, van a la derecha del 0 y los negativos irían a la izquierda. Las otras opciones colocan al menos uno de los dos del lado contrario."
+   },
+   {
+    "id": "q2",
+    "enunciado": "¿Cuál de estos números sube al redondearlo a la decena más cercana?",
+    "opciones": [
+     "461",
+     "462",
+     "464",
+     "468"
+    ],
+    "correcta": 3,
+    "explicacion": "Sube el que tiene 5 o más a la derecha: el 8 de 468 hace que pase a 470. En 461, 462 y 464 el dígito de la derecha es 4 o menos, así que todos quedan en 460."
+   },
+   {
+    "id": "q3",
+    "enunciado": "En el número 835, ¿cuánto vale el dígito 3?",
+    "opciones": [
+     "30",
+     "3",
+     "300",
+     "35"
+    ],
+    "correcta": 0,
+    "explicacion": "El 3 ocupa el lugar de las decenas: 3 decenas valen 30, y $835 = 800 + 30 + 5$. Valdría 3 en las unidades y 300 en las centenas; el 35 es lo que valen juntas las decenas y las unidades.",
+    "verif": "30"
+   },
+   {
+    "id": "q4",
+    "enunciado": "Una compañera dice que 618 y 816 son iguales porque tienen los mismos dígitos. ¿Qué le respondes?",
+    "opciones": [
+     "Que son iguales, porque el orden de los dígitos no cambia el valor del número",
+     "Que no son iguales, porque 816 tiene un dígito más que 618",
+     "Que no son iguales, porque el 6 vale 600 en uno y solo 6 en el otro",
+     "Que no son iguales, porque el 1 vale 100 en uno y 10 en el otro"
+    ],
+    "correcta": 2,
+    "explicacion": "En 618 el 6 está en las centenas y vale 600; en 816 está en las unidades y vale 6. Con los mismos dígitos el valor cambia si cambian de lugar, como pasa con 345 y 543. El 1 ocupa el lugar de las decenas en los dos números y vale 10 en ambos, y los dos tienen tres dígitos."
+   },
+   {
+    "id": "q5",
+    "enunciado": "Quieres estimar cuánto gastarás en tres artículos de \\$38, \\$52 y \\$41. Redondeas cada precio a la decena más cercana y los juntas. ¿Cuánto estimas?",
+    "opciones": [
+     "\\$120",
+     "\\$130",
+     "\\$131",
+     "\\$140"
+    ],
+    "correcta": 1,
+    "explicacion": "El 38 queda en 40 (el 8 es 5 o más), el 52 queda en 50 (el 2 es 4 o menos) y el 41 queda en 40: $40 + 50 + 40 = 130$. El 131 es la suma exacta, sin redondear.",
+    "verif": "40 + 50 + 40"
+   },
+   {
+    "id": "q6",
+    "enunciado": "Un compañero dice que los números naturales terminan en el 100. ¿Qué le respondes?",
+    "opciones": [
+     "Que no, porque los números naturales siguen así hasta el infinito",
+     "Que sí, porque después del 100 ya no hay más números naturales",
+     "Que no, porque terminan en el 1,000, no en el 100",
+     "Que sí, porque la recta numérica solo llega hasta el 100"
+    ],
+    "correcta": 0,
+    "explicacion": "Los números naturales son 1, 2, 3, 4, 5... y siguen así hasta el infinito, por eso no terminan en el 100 ni en el 1,000. Las otras opciones dicen que sí terminan, en el 100 o en otro número, y eso contradice lo anterior."
+   },
+   {
+    "id": "q7",
+    "enunciado": "¿Cómo se descompone 703 según lo que vale cada dígito?",
+    "opciones": [
+     "$7 + 0 + 3$",
+     "$70 + 3$",
+     "$700 + 30$",
+     "$700 + 0 + 3$"
+    ],
+    "correcta": 3,
+    "explicacion": "El 7 está en las centenas y vale 700, el 0 está en las decenas y vale 0, y el 3 está en las unidades y vale 3: $703 = 700 + 0 + 3$. En la primera opción los dígitos valen solo lo que muestran; en las otras dos, el 7 o el 3 se corren un lugar y valen 70 o 30."
+   },
+   {
+    "id": "q8",
+    "enunciado": "En la frase «Mi grupo tiene 30 alumnos y yo soy el segundo de la lista», ¿cuál es el número cardinal y cuál el ordinal?",
+    "opciones": [
+     "30 es ordinal y «segundo» es cardinal",
+     "Los dos son cardinales",
+     "30 es cardinal y «segundo» es ordinal",
+     "Los dos son ordinales"
+    ],
+    "correcta": 2,
+    "explicacion": "El 30 dice cuántos alumnos hay, así que es cardinal; «segundo» dice el lugar que ocupas en la lista, así que es ordinal. Las otras opciones invierten los papeles o ponen a los dos en el mismo grupo."
+   }
+  ]
+ },
+ "extras_pdf": {
+  "crucigrama": {
+   "palabras": [
+    {
+     "palabra": "NATURALES",
+     "pista": "Los números 1, 2, 3, 4, 5... que usamos para contar, ordenar y medir."
+    },
+    {
+     "palabra": "CARDINALES",
+     "pista": "Números que dicen cuántos hay."
+    },
+    {
+     "palabra": "ORDINALES",
+     "pista": "Números que dicen el orden: primero, segundo, tercero."
+    },
+    {
+     "palabra": "CENTENAS",
+     "pista": "En 345, el lugar del 3."
+    },
+    {
+     "palabra": "DECENAS",
+     "pista": "En 345, el lugar del 4."
+    },
+    {
+     "palabra": "UNIDADES",
+     "pista": "En 345, el lugar del 5."
+    },
+    {
+     "palabra": "REDONDEO",
+     "pista": "Decir «como 350» cuando algo cuesta 347."
+    },
+    {
+     "palabra": "DECIMAL",
+     "pista": "Otro nombre del sistema de base 10."
+    }
+   ]
+  },
+  "sopa": {
+   "palabras": [
+    "NATURALES",
+    "CARDINALES",
+    "ORDINALES",
+    "CENTENAS",
+    "DECENAS",
+    "UNIDADES",
+    "REDONDEO",
+    "RECTA"
+   ]
+  }
+ }
+}
