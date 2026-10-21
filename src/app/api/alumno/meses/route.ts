@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getMesesByModalidad, getMateriasPorMesByModalidad } from '@/lib/modalidades'
+import {
+  cargarContextoAcceso, esTutorial, materiasPorMesDePlan, ordenarCanonico, rangoMateriasDelMes,
+} from '@/lib/acceso-materias'
 
 const DEMO_MATERIA_ID = 'f0551b82-1c3e-4286-bfb4-878842bc6eff' // nivel='demo' — Tutoría de Ingreso I
 
@@ -78,6 +81,50 @@ export async function GET() {
     // Sin pago y sin meses → modo demo
     if (!inscripcionPagada && mesesDesbloqueados === 0) {
       return NextResponse.json({ demo: true, materia_demo_id: DEMO_MATERIA_ID })
+    }
+
+    // ── Schema nuevo: el mes sale de la POSICIÓN de la materia en el plan ────
+    // Mismo índice que la ventana de acceso (calcularDisponibilidad): el seed
+    // reparte meses_contenido.numero_mes para el plan de REFERENCIA (6 meses en
+    // Sec/Prepa, el más largo en licenciatura). Con el plan corto, el corte
+    // `numero_mes <= duración` de abajo dejaba fuera la mitad del programa
+    // aunque la ventana lo tuviera abierto: el alumno de 3 meses solo veía las
+    // materias 1-6 en su tablero (TICKET-2026-10-12-08, EDUCOOP).
+    if (nivelAlumno && modalidadAlumno) {
+      const alumnoAcc = {
+        nivel: nivelAlumno, modalidad: modalidadAlumno, carrera: carreraAlumno,
+        duracion_meses: duracionMeses, meses_desbloqueados: mesesDesbloqueados,
+      }
+      const { materias } = await cargarContextoAcceso(supabase, user.id, alumnoAcc)
+      const delNivel   = ordenarCanonico(materias.filter(m => m.nivel === nivelAlumno))
+      const regulares  = delNivel.filter(m => !esTutorial(m))
+      const tutoriales = delNivel.filter(m => esTutorial(m))
+
+      if (regulares.length > 0) {
+        const mpm = materiasPorMesDePlan(alumnoAcc, regulares.length)
+        const { data: colores } = await supabase
+          .from('materias').select('id, color').in('id', delNivel.map(m => m.id))
+        const colorDe = new Map(((colores ?? []) as { id: string; color: string | null }[]).map(x => [x.id, x.color]))
+        const item = (m: { id: string; nombre: string }) =>
+          ({ id: m.id, codigo: '', nombre: m.nombre, color_hex: colorDe.get(m.id) ?? '#1565C0' })
+
+        const total = duracionMeses || 6
+        return NextResponse.json(Array.from({ length: total }, (_, i) => {
+          const n = i + 1
+          const { desde, hasta } = rangoMateriasDelMes(n, mpm)
+          // El último mes se queda con el remanente si el reparto no es exacto.
+          const mats = regulares.slice(desde, n === total ? regulares.length : hasta + 1).map(item)
+          if (n === 1) mats.unshift(...tutoriales.map(item))
+          return {
+            id:           mats[0]?.id ?? `mes-resumen-${n}`,
+            numero:       n,
+            numero_mes:   n,
+            titulo:       `Mes ${n}`,
+            materias:     mats,
+            desbloqueado: n <= mesesDesbloqueados,
+          }
+        }))
+      }
     }
 
     const materiasPorMes = getMateriasPorMesByModalidad(modalidadAlumno)
