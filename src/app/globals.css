@@ -321,3 +321,8 @@ html {
 .text-xs   { font-size: 0.8125rem; line-height: 1.25rem; }  /* 12 → 13.8 */
 .text-sm   { font-size: 0.9375rem; line-height: 1.45rem; }  /* 14 → 15.9 */
 .text-base { font-size: 1.0625rem; line-height: 1.7rem; }   /* 16 → 18.1 */
+
+/* Ancho de pantalla (Bug de ancho del panel): ninguna página empuja el ancho del
+   documento. `clip` y no `hidden`: `hidden` crea un contenedor de scroll y rompe
+   los encabezados `sticky`. */
+html, body { max-width: 100%; overflow-x: clip; }

@@ -178,7 +178,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
     const revisionCompleta = resultado.revision_completa !== false
 
     return (
-      <div className="space-y-4 max-w-3xl">
+      <div className="space-y-4 w-full max-w-3xl mx-auto">
         <ToastContainer toasts={toasts} onClose={removeToast} />
         {/* Card calificación */}
         <div className="rounded-2xl p-5 sm:p-8 text-center" style={CARD}>
@@ -339,7 +339,7 @@ export default function EvaluacionClient({ id }: { id: string }) {
   )
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="w-full max-w-2xl mx-auto space-y-4">
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       {/* Header */}

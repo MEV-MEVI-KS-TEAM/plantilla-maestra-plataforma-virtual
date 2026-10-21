@@ -51,7 +51,7 @@ export default function MateriasPage() {
   const materias = data?.materias ?? []
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

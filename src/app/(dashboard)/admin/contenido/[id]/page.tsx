@@ -341,7 +341,7 @@ export default function ContenidoDetallePage() {
   const totalSemanas = meses.reduce((acc, m) => acc + m.semanas.length, 0)
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
 
       {/* Header */}
       <div className="flex items-start gap-4">
