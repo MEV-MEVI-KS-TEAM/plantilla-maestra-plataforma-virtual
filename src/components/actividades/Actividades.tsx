@@ -3,8 +3,9 @@
 // react y katex, estilos en CSS module y colores de la escuela por las variables --color-* de «Personalizar mi página».
 // Nada se envía al servidor: el avance vive solo en el navegador del alumno (almacen.ts).
 // FUENTE: C:\clientes-MEV\actividades\sistema\web\src\actividades (vista previa y PDF del sistema de actividades).
-// Copiado tal cual salvo un parámetro sin usar que el lint de la plantilla rechaza; corregir.ts, tipos.ts, almacen.ts,
-// TextoRico.tsx y el CSS son copia exacta. Lo propio de la plantilla vive en datos.ts, Descargas.tsx y SeccionActividades.tsx.
+// Copiado tal cual salvo un parámetro sin usar que el lint de la plantilla rechaza; corregir.ts, tipos.ts, almacen.ts y
+// TextoRico.tsx son copia exacta. El CSS cambia SOLO los colores de resultado (bien/mal/modelo/parcial): fondos derivados
+// de --color-superficie y textos mezclados con --color-texto, para que se lean también en paletas oscuras. Lo propio de la plantilla vive en datos.ts, Descargas.tsx y SeccionActividades.tsx.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "katex/dist/katex.min.css";
 import s from "./Actividades.module.css";

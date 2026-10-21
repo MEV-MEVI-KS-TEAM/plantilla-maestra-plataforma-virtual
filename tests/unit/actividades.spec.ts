@@ -393,10 +393,17 @@ test('C5. las API leen las columnas con respaldo para bases sin la migración (4
   expect(curso).toContain('cuaderno_pdf_url')
   expect(curso).toContain('faltanColumnasActividades(')
 
+})
+
+test('C5b. el reintento sin columnas se activa SOLO con 42703 (no con PGRST204 ni por el texto del error)', () => {
   expect(faltanColumnasActividades({ code: '42703', message: 'column semanas_1.actividades does not exist' })).toBe(true)
-  expect(faltanColumnasActividades({ code: 'PGRST204', message: '' })).toBe(true)
+  expect(faltanColumnasActividades({ code: '42703' })).toBe(true)
+  expect(faltanColumnasActividades({ code: 'PGRST204', message: "Could not find the 'actividades' column" })).toBe(false)
   expect(faltanColumnasActividades({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' })).toBe(false)
+  expect(faltanColumnasActividades({ code: '42P01', message: 'relation actividades does not exist' })).toBe(false)
+  expect(faltanColumnasActividades({ message: 'column cuaderno_pdf_url does not exist' })).toBe(false)
   expect(faltanColumnasActividades(null)).toBe(false)
+  expect(faltanColumnasActividades(undefined)).toBe(false)
 })
 
 test('C6. el componente usa solo variables de color ya declaradas en layout.tsx', () => {
@@ -405,4 +412,20 @@ test('C6. el componente usa solo variables de color ya declaradas en layout.tsx'
   const usadas = new Set([...css.matchAll(/var\(\s*(--color-[a-z0-9-]+)/g)].map(m => m[1]))
   expect(usadas.size).toBeGreaterThan(5)
   for (const v of usadas) expect(layout, v).toContain(`'${v}':`)
+})
+
+test('C7. paleta oscura: los fondos de resultado salen de la superficie y los textos del color de texto', () => {
+  // «Dorado sobre negro»: un fondo pastel FIJO con var(--tx) crema encima era ilegible (revisión del PR #322).
+  const css = leer('src/components/actividades/Actividades.module.css')
+  for (const v of ['--bien-fondo', '--mal-fondo', '--modelo-fondo']) {
+    expect(css, v).toMatch(new RegExp(`${v}: color-mix\\(in srgb, #[0-9a-f]{6} \\d+%, var\\(--sup\\)\\);`))
+  }
+  for (const v of ['--bien-txt', '--mal-txt', '--parte-txt', '--modelo', '--a-txt']) {
+    expect(css, v).toMatch(new RegExp(`${v}: color-mix\\(in srgb, [^;]+, var\\(--tx\\)\\);`))
+  }
+  // El texto de resultado usa las variantes *-txt, nunca el verde/rojo sólido.
+  expect(css).not.toMatch(/^\s+color: var\(--(bien|mal)\);/m)
+  expect(css).not.toMatch(/^\s+color: #b45309;/m)
+  // Sobre --color-acento-profundo (oscurecido hasta 7:1 con BLANCO) va blanco, no texto-sobre-acento.
+  expect(css).toMatch(/--sobre-a: #ffffff;/)
 })

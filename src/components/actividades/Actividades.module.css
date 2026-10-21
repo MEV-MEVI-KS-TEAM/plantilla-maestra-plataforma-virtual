@@ -3,9 +3,14 @@
 
 .raiz {
   --a: var(--color-acento, #2563eb);
-  --a-txt: var(--color-acento-texto, #1d4ed8);
+  /* El acento como LETRA se acerca un 15 % al color de texto: --color-acento-texto cumple AA sobre la superficie, pero
+     aquí también va sobre los tintes del acento (--tinte, --tinte-fuerte) y ahí quedaba en 4.1–4.5. */
+  --a-txt: color-mix(in srgb, var(--color-acento-texto, #1d4ed8) 85%, var(--tx));
   --a-fondo: var(--color-acento-profundo, #1d4ed8);
-  --sobre-a: var(--color-texto-sobre-acento, #ffffff);
+  /* Letra sobre --a-fondo: BLANCO. --color-acento-profundo es el acento oscurecido hasta que el blanco se lea encima
+     (7:1, layout.tsx); --color-texto-sobre-acento es para el acento CRUDO y en una paleta de acento claro («Dorado
+     sobre negro») es casi negro: sobre el dorado oscurecido quedaba en 2.6 («Revisar», «Reto final»). */
+  --sobre-a: #ffffff;
   --sup: var(--color-superficie, #ffffff);
   --fondo: var(--color-fondo, #f8fafc);
   --borde: var(--color-borde, #e5e7eb);
@@ -13,14 +18,18 @@
   --tx2: var(--color-texto-secundario, #525252);
   --tinte: color-mix(in srgb, var(--a) 7%, var(--sup));
   --tinte-fuerte: color-mix(in srgb, var(--a) 14%, var(--sup));
+  /* Resultados. Los FONDOS salen de la superficie de la escuela y los TEXTOS se mezclan con su color de texto: así
+     se leen igual en la paleta clara de fábrica que en una oscura («Dorado sobre negro»), donde un fondo pastel fijo
+     con var(--tx) crema encima quedaba ilegible. --bien / --mal sólidos quedan para bordes y para la letra con #fff. */
   --bien: #15803d;
-  --bien-fondo: #f0fdf4;
-  --bien-borde: #86efac;
   --mal: #b91c1c;
-  --mal-fondo: #fef2f2;
-  --mal-borde: #fca5a5;
-  --modelo: #78350f;
-  --modelo-fondo: #fffbeb;
+  --bien-fondo: color-mix(in srgb, #22c55e 10%, var(--sup));
+  --mal-fondo: color-mix(in srgb, #ef4444 9%, var(--sup));
+  --modelo-fondo: color-mix(in srgb, #f59e0b 12%, var(--sup));
+  --bien-txt: color-mix(in srgb, #15803d 55%, var(--tx));
+  --mal-txt: color-mix(in srgb, #b91c1c 55%, var(--tx));
+  --parte-txt: color-mix(in srgb, #b45309 55%, var(--tx));
+  --modelo: color-mix(in srgb, #78350f 50%, var(--tx));
   --r: 14px;
 
   color: var(--tx);
@@ -156,13 +165,13 @@
   font-variant-numeric: tabular-nums;
 }
 .pasoNota[data-nivel="todo"] {
-  color: var(--bien);
+  color: var(--bien-txt);
 }
 .pasoNota[data-nivel="parte"] {
-  color: #b45309;
+  color: var(--parte-txt);
 }
 .pasoNota[data-nivel="nada"] {
-  color: var(--mal);
+  color: var(--mal-txt);
 }
 
 /* ── Lo esencial ── */
@@ -506,19 +515,19 @@
   font-weight: 700;
 }
 .marcaOp[data-ok="true"] {
-  color: var(--bien);
+  color: var(--bien-txt);
 }
 .marcaOp[data-ok="false"] {
-  color: var(--mal);
+  color: var(--mal-txt);
 }
 .marcaVF {
   display: inline-flex;
 }
 .marcaVF[data-ok="true"] {
-  color: var(--bien);
+  color: var(--bien-txt);
 }
 .marcaVF[data-ok="false"] {
-  color: var(--mal);
+  color: var(--mal-txt);
 }
 .eleccion {
   margin: 0;
@@ -532,7 +541,7 @@
   align-items: flex-start;
   font-size: 15px;
   font-weight: 600;
-  color: var(--bien);
+  color: var(--bien-txt);
 }
 .eleccionBien span {
   color: var(--tx);
@@ -561,10 +570,10 @@
   font-size: 17px;
 }
 .veredicto[data-ok="true"] .veredictoCab {
-  color: var(--bien);
+  color: var(--bien-txt);
 }
 .veredicto[data-ok="false"] .veredictoCab {
-  color: var(--mal);
+  color: var(--mal-txt);
 }
 .veredictoCab span {
   color: var(--tx);
@@ -682,12 +691,12 @@
   line-height: 1.35;
 }
 .huecoVista[data-resultado="correcto"] {
-  color: var(--bien);
+  color: var(--bien-txt);
   border-bottom-color: var(--bien);
   background: var(--bien-fondo);
 }
 .huecoVista[data-resultado="incorrecto"] {
-  color: var(--mal);
+  color: var(--mal-txt);
   border-bottom-color: var(--mal);
   background: var(--mal-fondo);
   text-decoration: line-through;
@@ -828,10 +837,10 @@
   height: 44px;
 }
 .ordenMarca[data-ok="true"] {
-  color: var(--bien);
+  color: var(--bien-txt);
 }
 .ordenMarca[data-ok="false"] {
-  color: var(--mal);
+  color: var(--mal-txt);
 }
 .ordenCorrecto {
   margin: 6px 0 0;

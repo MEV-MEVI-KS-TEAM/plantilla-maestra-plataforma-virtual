@@ -54,7 +54,9 @@ export default function SeccionActividades({
   if (vista.tipo === 'solo-pdf') return soloPdf(vista.pdfUrl)
 
   return (
-    <Aislar respaldo={vista.pdfUrl ? soloPdf(vista.pdfUrl) : null}>
+    // key por unidad: cada semana / lección tiene su propio límite de error (si
+    // una falla, la siguiente que se abre vuelve a intentarlo desde cero).
+    <Aislar key={vista.datos.unidad.id} respaldo={vista.pdfUrl ? soloPdf(vista.pdfUrl) : null}>
       {/* Rejilla minmax(0,1fr): la tira de avance (chips sin salto de línea) no
           impone su ancho mínimo. En el celular la columna de la semana es
           `items-start` (ancho «fit-content»): sin esto, la tira estiraba la

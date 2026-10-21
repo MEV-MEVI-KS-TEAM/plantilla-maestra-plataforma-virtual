@@ -68,14 +68,13 @@ export function vistaActividades(actividades: unknown, pdf: unknown): VistaActiv
 }
 
 /**
- * ¿El error de PostgREST dice que la base aún no tiene las columnas de esta
- * migración? (42703 en Postgres, PGRST204 en PostgREST.) Un cliente con el
- * código nuevo y la base sin migrar debe seguir viendo todo lo demás: se
- * reintenta la misma consulta sin las columnas.
+ * ¿La base aún no tiene las columnas de esta migración? SOLO el 42703 de
+ * Postgres («column … does not exist», que PostgREST reenvía tal cual en un
+ * SELECT). Un cliente con el código nuevo y la base sin migrar debe seguir
+ * viendo todo lo demás: se reintenta la misma consulta sin las columnas.
+ * Cualquier otro error (PGRST204 es de escritura, un texto que mencione
+ * «actividades», un fallo de red) NO dispara el reintento: se trata como hoy.
  */
 export function faltanColumnasActividades(error: { code?: string; message?: string } | null | undefined): boolean {
-  if (!error) return false
-  const msg = (error.message ?? '').toLowerCase()
-  return error.code === '42703' || error.code === 'PGRST204' ||
-    msg.includes('actividades') || msg.includes('cuaderno_pdf_url')
+  return error?.code === '42703'
 }
