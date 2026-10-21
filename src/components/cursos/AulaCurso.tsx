@@ -206,7 +206,7 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
   const moduloDeActiva = activa ? detalle.modulos.findIndex(m => m.lecciones.some(l => l.id === activa.id)) : -1
 
   return (
-    <div className={vistaAdmin ? 'space-y-6 max-w-5xl mx-auto p-4 sm:p-6' : 'space-y-6 max-w-4xl'}>
+    <div className={vistaAdmin ? 'space-y-6 max-w-5xl mx-auto p-4 sm:p-6' : 'space-y-6 w-full max-w-7xl mx-auto'}>
       {/* Banner vista previa admin */}
       {modoPreview && (
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium"
