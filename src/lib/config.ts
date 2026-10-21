@@ -593,6 +593,8 @@ export const CONFIG = {
       icono: string
       desc: string
       incluye: readonly string[]
+      /** Tira de materias opcional, en orden; la portada la muestra desplegable. */
+      materias?: readonly string[]
     }>,
     modalidades: [
       { id: '6_meses_lic', label: 'Intensivo 6 meses', sublabel: '6 meses', meses: 6, mensualidad: 2500, activa: true, materiasPorMes: 5.34 },

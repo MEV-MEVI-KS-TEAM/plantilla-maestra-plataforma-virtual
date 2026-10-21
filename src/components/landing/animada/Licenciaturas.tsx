@@ -288,8 +288,36 @@ function FichaCarrera({ t, carrera, ritmos, visible }: {
             <li key={x} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ border: `1px solid ${t.titulo}`, color: t.titulo }}>{x}</li>
           ))}
         </ul>
+        {carrera.materias && carrera.materias.length > 0 && (
+          <TiraMaterias t={t} materias={carrera.materias} />
+        )}
       </div>
     </article>
+  )
+}
+
+/**
+ * Tira de materias de la carrera (opt-in `carreras[].materias`). Desplegable
+ * nativo (<details>): funciona sin JS y no alarga la ficha mientras está
+ * cerrada. Numera en el orden del plan; NO agrupa por periodo, porque el
+ * agrupamiento cambia según el plan (12 o 18 meses) que elija el alumno.
+ */
+function TiraMaterias({ t, materias }: { t: TokensSeccion; materias: readonly string[] }) {
+  return (
+    <details data-testid="lic-tira" className="mt-5 rounded-xl" style={{ border: `1px solid ${t.borde}` }}>
+      <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold flex items-center gap-2" style={{ color: t.titulo }}>
+        <BookOpen size={16} aria-hidden />
+        Ver tira de materias ({materias.length})
+      </summary>
+      <ol className="px-4 pb-4 pt-1 grid gap-1.5 text-sm" style={{ color: t.texto }}>
+        {materias.map((m, i) => (
+          <li key={`${i}-${m}`} className="flex gap-2">
+            <span className="tabular-nums font-semibold" style={{ color: t.textoSuave, minWidth: '1.75rem' }}>{i + 1}.</span>
+            <span>{m}</span>
+          </li>
+        ))}
+      </ol>
+    </details>
   )
 }
 
