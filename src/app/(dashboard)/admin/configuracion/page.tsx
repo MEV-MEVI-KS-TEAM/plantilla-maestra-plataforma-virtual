@@ -73,6 +73,7 @@ import { BarraPublicar } from '@/components/admin/personalizar/BarraPublicar'
 import { ModalConfirmar } from '@/components/admin/personalizar/ModalConfirmar'
 import { PestanaColores } from '@/components/admin/personalizar/PestanaColores'
 import { PestanaCuenta } from '@/components/admin/personalizar/PestanaCuenta'
+import { PestanaDatosPago } from '@/components/admin/personalizar/PestanaDatosPago'
 import { PestanaIdentidad } from '@/components/admin/personalizar/PestanaIdentidad'
 import { PestanaPrecios } from '@/components/admin/personalizar/PestanaPrecios'
 import { PestanaTextos } from '@/components/admin/personalizar/PestanaTextos'
@@ -86,13 +87,15 @@ import {
   type Actualizar,
 } from '@/components/admin/personalizar/Comunes'
 
-type IdPestana = 'identidad' | 'colores' | 'textos' | 'precios' | 'cuenta'
+type IdPestana = 'identidad' | 'colores' | 'textos' | 'precios' | 'pagos' | 'cuenta'
 
 const PESTANAS: ReadonlyArray<{ id: IdPestana; etiqueta: string }> = [
   { id: 'identidad', etiqueta: 'Identidad' },
   { id: 'colores', etiqueta: 'Colores' },
   { id: 'textos', etiqueta: 'Textos de mi página' },
   { id: 'precios', etiqueta: 'Precios' },
+  // #295: se guarda aparte (tabla datos_pago, solo servidor), no con «Publicar».
+  { id: 'pagos', etiqueta: 'Datos de pago' },
   { id: 'cuenta', etiqueta: 'Cuenta' },
 ]
 
@@ -518,7 +521,7 @@ export default function PersonalizarPage() {
         className={
           // La pestaña de Cuenta no lleva vista previa: sin ella, la columna
           // de 340 px dejaría un hueco a la derecha.
-          pestana === 'cuenta'
+          pestana === 'cuenta' || pestana === 'pagos'
             ? 'grid grid-cols-1 gap-5'
             : 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-5'
         }
@@ -548,10 +551,11 @@ export default function PersonalizarPage() {
           )}
           {pestana === 'textos' && <PestanaTextos {...propsPestana} />}
           {pestana === 'precios' && <PestanaPrecios {...propsPestana} />}
+          {pestana === 'pagos' && <PestanaDatosPago puedeEditar={puedeEditar} onMensaje={showToast} />}
           {pestana === 'cuenta' && <PestanaCuenta puedeEditar={puedeEditar} onMensaje={showToast} />}
         </div>
 
-        {pestana !== 'cuenta' && (
+        {pestana !== 'cuenta' && pestana !== 'pagos' && (
           <aside className="order-first lg:order-none lg:col-start-2 lg:row-start-1">
             <div
               className="rounded-xl p-4 lg:sticky lg:top-4"
