@@ -134,6 +134,9 @@ CREATE TABLE IF NOT EXISTS public.materias (
   -- catálogo del alumno por ella.
   carrera     TEXT,
   modalidad   TEXT,
+  -- Actividades (20261021120000): cuaderno completo de la materia (https). En
+  -- licenciatura, la misma URL de la carrera en todas sus materias.
+  cuaderno_pdf_url TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_materias_carrera
@@ -164,6 +167,10 @@ CREATE TABLE IF NOT EXISTS public.semanas (
   -- Videos de apoyo opcionales; los edita el panel de contenido del admin.
   video_url_2              TEXT,
   video_url_3              TEXT,
+  -- Actividades (20261021120000): unidad «actividades/1» de la semana y su PDF
+  -- imprimible (https). NULL = la semana no pinta nada de actividades.
+  actividades              JSONB,
+  actividades_pdf_url      TEXT,
   tiempo_estimado_minutos  INTEGER     NOT NULL DEFAULT 60,
   activa                   BOOLEAN     NOT NULL DEFAULT true,
   created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),

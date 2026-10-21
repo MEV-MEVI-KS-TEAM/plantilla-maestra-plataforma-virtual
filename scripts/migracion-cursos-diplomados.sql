@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS public.cursos (
   descripcion  TEXT,
   tipo         TEXT        NOT NULL CHECK (tipo IN ('curso', 'diplomado')),
   portada_path TEXT,
+  -- Actividades (20261021120000): cuaderno completo del curso (https).
+  cuaderno_pdf_url TEXT,
   estado       TEXT        NOT NULL DEFAULT 'borrador'
                            CHECK (estado IN ('borrador', 'publicado')),
   orden        INTEGER     DEFAULT 0,
@@ -87,8 +89,17 @@ CREATE TABLE IF NOT EXISTS public.curso_lecciones (
   video_url       TEXT,
   contenido_texto TEXT,
   material_path   TEXT,
-  orden           INTEGER DEFAULT 0
+  orden           INTEGER DEFAULT 0,
+  -- Actividades (20261021120000): unidad «actividades/1» de la lección y su PDF.
+  actividades         JSONB,
+  actividades_pdf_url TEXT
 );
+
+-- Bases donde el módulo ya estaba instalado: mismas columnas, idempotente
+-- (supabase/migrations/20261021120000_actividades_pdf.sql hace lo mismo).
+ALTER TABLE public.cursos          ADD COLUMN IF NOT EXISTS cuaderno_pdf_url    TEXT;
+ALTER TABLE public.curso_lecciones ADD COLUMN IF NOT EXISTS actividades         JSONB;
+ALTER TABLE public.curso_lecciones ADD COLUMN IF NOT EXISTS actividades_pdf_url TEXT;
 
 CREATE TABLE IF NOT EXISTS public.curso_inscripciones (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

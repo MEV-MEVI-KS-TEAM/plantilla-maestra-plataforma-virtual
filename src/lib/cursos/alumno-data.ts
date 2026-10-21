@@ -12,6 +12,7 @@ import { firmarVideoUrl } from '@/lib/video/bunny-firma'
 import { formatoMaterial } from './material-leccion'
 import type { CursoVentana, InscripcionVentana } from './acceso'
 import type { LeccionAlumno, ModuloAlumno, VentanaCurso } from '@/types/cursos-alumno'
+import { faltanColumnasActividades, leerActividades, urlPdf } from '@/components/actividades/datos'
 
 async function signed(supabase: SupabaseClient, path: string | null): Promise<string | null> {
   if (!path) return null
@@ -70,14 +71,22 @@ export async function modulosConProgreso(
   const moduloIds = (modulosRaw ?? []).map(m => m.id as string)
   if (moduloIds.length === 0) return { modulos: [], total: 0, completadas: 0 }
 
-  const { data: leccionesRaw } = await supabase
+  // Actividades interactivas y su PDF (20261021120000): con la MISMA sesión,
+  // así que la RLS de la ventana de pago también decide quién las ve. Una base
+  // sin la migración responde 42703: se reintenta sin ellas (aula como antes).
+  const COLUMNAS_LECCION = 'id, modulo_id, titulo, video_url, contenido_texto, material_path, orden'
+  const leerLecciones = (columnas: string) => supabase
     .from('curso_lecciones')
-    .select('id, modulo_id, titulo, video_url, contenido_texto, material_path, orden')
+    .select(columnas)
     .in('modulo_id', moduloIds)
     .order('orden', { ascending: true })
     .order('id', { ascending: true })
+  const conActividades = await leerLecciones(`${COLUMNAS_LECCION}, actividades, actividades_pdf_url`)
+  const leccionesRaw = faltanColumnasActividades(conActividades.error)
+    ? (await leerLecciones(COLUMNAS_LECCION)).data
+    : conActividades.data
 
-  const todas = (leccionesRaw ?? [])
+  const todas = ((leccionesRaw ?? []) as unknown as Record<string, unknown>[])
   const completadasSet = await completadasDe(supabase, userId, todas.map(l => l.id as string))
 
   const lecciones: LeccionAlumno[] = await Promise.all(
@@ -93,6 +102,8 @@ export async function modulosConProgreso(
       materialFormato: formatoMaterial(l.material_path as string | null),
       orden: (l.orden as number) ?? 0,
       completada: completadasSet.has(l.id as string),
+      actividades: leerActividades(l.actividades),
+      actividades_pdf_url: urlPdf(l.actividades_pdf_url),
     }))
   )
 

@@ -1,0 +1,321 @@
+{
+ "esquema": "actividades/1",
+ "unidad": {
+  "id": "licenciaturas/derecho/materia-01",
+  "nivel": "licenciaturas",
+  "materia": "Licenciatura en Derecho",
+  "slug": "derecho",
+  "clave": "materia-01",
+  "rotulo": "Materia 1",
+  "titulo": "Introducción al Estudio del Derecho",
+  "fuente_id": "218f5739-9ee2-5d38-a684-177c822e00e4",
+  "color": "#84CC16"
+ },
+ "esencial": {
+  "intro": "El derecho regula la conducta de las personas en sociedad. Aquí repasas qué es, en qué se distinguen el derecho objetivo y el subjetivo, cuáles son sus fuentes y cómo se divide en público y privado.",
+  "puntos": [
+   {
+    "titulo": "Qué es el derecho",
+    "texto": "Es el conjunto de **normas jurídicas** que regulan la conducta de las personas en sociedad, de **cumplimiento obligatorio** y respaldadas por la **coacción del Estado**. Busca el **orden**, la **justicia** y el **bien común**."
+   },
+   {
+    "titulo": "Objetivo y subjetivo",
+    "texto": "El **derecho objetivo** es la norma misma (la ley). El **derecho subjetivo** es la facultad que la norma reconoce a una persona, como el derecho a exigir un pago. Son **dos caras de lo mismo**."
+   },
+   {
+    "titulo": "Fuentes del derecho",
+    "texto": "**Formales**: legislación, costumbre, jurisprudencia y doctrina (los estudios de los juristas). **Reales**: los hechos sociales que originan la norma. **Históricas**: los documentos del pasado. En México, la principal fuente formal es la **legislación**."
+   },
+   {
+    "titulo": "Derecho público",
+    "texto": "Regula al **Estado** y su relación con los particulares. La unidad menciona como parte de él el derecho constitucional, el penal y el administrativo."
+   },
+   {
+    "titulo": "Derecho privado",
+    "texto": "Regula a los **particulares entre sí**. La unidad menciona el civil y el mercantil, que regula a los comerciantes y los actos de comercio."
+   }
+  ],
+  "recuerda": "Derecho objetivo y subjetivo no se oponen: la norma (objetivo) reconoce la facultad de una persona (subjetivo); son dos caras de lo mismo."
+ },
+ "actividades": [
+  {
+   "id": "a1",
+   "tipo": "relacionar",
+   "titulo": "Conceptos básicos del derecho",
+   "instrucciones": "Elige, para cada concepto, la descripción que le corresponde. Sobra una descripción.",
+   "pares": [
+    {
+     "id": "p1",
+     "izquierda": "Derecho objetivo",
+     "derecha": "La ley en sí misma"
+    },
+    {
+     "id": "p2",
+     "izquierda": "Derecho subjetivo",
+     "derecha": "Facultad reconocida a alguien"
+    },
+    {
+     "id": "p3",
+     "izquierda": "Fuentes históricas",
+     "derecha": "Documentos de otras épocas"
+    },
+    {
+     "id": "p4",
+     "izquierda": "Doctrina",
+     "derecha": "Estudios hechos por juristas"
+    }
+   ],
+   "distractores": [
+    "Acuerdo privado entre vecinos"
+   ],
+   "explicacion": "El derecho objetivo es la norma misma, la ley; el subjetivo, la facultad que esa norma reconoce a una persona. Las fuentes históricas son documentos del pasado y la doctrina, los estudios de los juristas. Un acuerdo privado entre vecinos no es ninguno de los cuatro conceptos."
+  },
+  {
+   "id": "a2",
+   "tipo": "verdadero_falso",
+   "titulo": "¿Verdadero o falso?",
+   "instrucciones": "Decide si cada afirmación es verdadera o falsa.",
+   "items": [
+    {
+     "id": "v1",
+     "afirmacion": "La costumbre aparece en la unidad entre las fuentes formales del derecho.",
+     "respuesta": true,
+     "explicacion": "Las fuentes formales son la legislación, la costumbre, la jurisprudencia y la doctrina. Las fuentes reales son otra cosa: los hechos sociales que originan la norma."
+    },
+    {
+     "id": "v2",
+     "afirmacion": "El derecho penal forma parte del derecho privado.",
+     "respuesta": false,
+     "explicacion": "La unidad ubica al penal en el derecho público, junto con el constitucional y el administrativo; en el privado menciona el civil y el mercantil."
+    },
+    {
+     "id": "v3",
+     "afirmacion": "Según la unidad, cumplir las normas jurídicas queda a la voluntad de cada persona.",
+     "respuesta": false,
+     "explicacion": "Las normas jurídicas son de cumplimiento obligatorio y las respalda la coacción del Estado: no dependen de que cada quien quiera cumplirlas."
+    },
+    {
+     "id": "v4",
+     "afirmacion": "El derecho privado regula a los particulares entre sí, y el civil y el mercantil son dos de sus ramas.",
+     "respuesta": true,
+     "explicacion": "El privado se ocupa de las relaciones entre particulares; en cambio, el público regula al Estado y su relación con los particulares."
+    },
+    {
+     "id": "v5",
+     "afirmacion": "En México, la principal fuente formal del derecho es la jurisprudencia.",
+     "respuesta": false,
+     "explicacion": "La jurisprudencia sí es una fuente formal, pero la unidad señala a la legislación como la principal en México."
+    }
+   ]
+  },
+  {
+   "id": "a3",
+   "tipo": "completar",
+   "titulo": "Completa cada situación",
+   "instrucciones": "Escribe la palabra que falta en cada espacio.",
+   "banco": [
+    "coacción",
+    "real",
+    "público",
+    "privado",
+    "doctrina",
+    "formal"
+   ],
+   "items": [
+    {
+     "id": "c1",
+     "texto": "Un cliente pregunta a su abogada por qué debe cumplir una ley con la que no está de acuerdo. Ella le explica que el derecho es de cumplimiento obligatorio y que lo respalda la ___ del Estado.",
+     "respuestas": [
+      [
+       "coacción",
+       "coaccion",
+       "la coacción",
+       "la coaccion"
+      ]
+     ],
+     "explicacion": "El derecho es de cumplimiento obligatorio y lo respalda la coacción del Estado. La doctrina son los estudios de los juristas: no es lo que respalda al derecho."
+    },
+    {
+     "id": "c2",
+     "texto": "Tras varios accidentes en una avenida, se crea una norma de tránsito nueva. Esos accidentes, que llevaron a crear la norma, son una fuente ___ del derecho.",
+     "respuestas": [
+      [
+       "real",
+       "reales"
+      ]
+     ],
+     "explicacion": "Las fuentes reales son los hechos sociales que originan la norma, como esos accidentes. Las fuentes formales son otras: legislación, costumbre, jurisprudencia y doctrina."
+    },
+    {
+     "id": "c3",
+     "texto": "En una consultoría, una abogada revisa una norma que fija cómo debe tratar una oficina de gobierno a las personas que hacen trámites ahí. Esa norma pertenece al derecho ___.",
+     "respuestas": [
+      [
+       "público",
+       "publico",
+       "derecho público",
+       "derecho publico"
+      ]
+     ],
+     "explicacion": "La norma regula la relación del Estado con los particulares, y eso le corresponde al derecho público. El privado regula a los particulares entre sí."
+    }
+   ]
+  },
+  {
+   "id": "a4",
+   "tipo": "opcion_multiple",
+   "titulo": "Casos de despacho",
+   "instrucciones": "Elige la respuesta correcta para cada pregunta.",
+   "items": [
+    {
+     "id": "o1",
+     "enunciado": "Al preparar un alegato, un abogado cita lo que han escrito varios juristas reconocidos sobre el tema. Según la unidad, ¿qué fuente del derecho está usando?",
+     "opciones": [
+      "La legislación",
+      "La costumbre",
+      "La doctrina",
+      "La jurisprudencia"
+     ],
+     "correcta": 2,
+     "explicacion": "Los estudios de los juristas son la doctrina. La legislación, la costumbre y la jurisprudencia también son fuentes formales, pero ninguna es lo que escriben los juristas."
+    },
+    {
+     "id": "o2",
+     "enunciado": "En la inducción de personal nuevo, la abogada de una empresa explica qué abarca el derecho. Según la unidad, ¿qué regulan las normas jurídicas?",
+     "opciones": [
+      "La conducta de las personas en sociedad",
+      "Los pensamientos íntimos de cada persona",
+      "Las preferencias de consumo del mercado",
+      "Las opiniones religiosas de cada familia"
+     ],
+     "correcta": 0,
+     "explicacion": "El derecho es el conjunto de normas jurídicas que regulan la conducta de las personas en sociedad. Pensamientos, preferencias de consumo u opiniones religiosas no son lo que la unidad dice que regulan esas normas."
+    }
+   ]
+  },
+  {
+   "id": "a5",
+   "tipo": "abierta",
+   "reto": true,
+   "titulo": "Una plática legal para una cadena de tiendas",
+   "instrucciones": "Lee el caso, responde las preguntas por escrito y luego compara tu respuesta con la respuesta modelo.",
+   "consigna": "La abogada interna de una cadena de tiendas da una plática al personal. Primero, un empleado pregunta por qué debe cumplir una norma con la que no está de acuerdo; la abogada le explica que cumplirla no es opcional. Después pone un ejemplo: una ley le permite a la tienda cobrar los servicios que presta, y con base en esa ley la tienda le reclama a un cliente un pago pendiente. Por último, cuenta que, tras una ola de robos en la zona, se creó una norma nueva para reforzar la vigilancia de los comercios.",
+   "preguntas": [
+    "En la respuesta al empleado, ¿qué rasgos del derecho explica la abogada y qué lo respalda?",
+    "En el ejemplo del cobro, ¿qué es la ley y qué ejerce la tienda al reclamar el pago? Explica cómo se relacionan.",
+    "¿Qué tipo de fuente del derecho es la ola de robos que llevó a crear la norma nueva?",
+    "Piensa en tu trabajo: da un ejemplo de una norma que debas cumplir y di si pertenece al derecho público o al privado, y por qué."
+   ],
+   "respuesta_modelo": "1. Explica que las normas jurídicas son de cumplimiento obligatorio y que las respalda la coacción del Estado; el empleado no puede elegir si las cumple.\n2. La ley es el derecho objetivo, la norma misma. Al reclamar el pago, la tienda ejerce un derecho subjetivo: la facultad que esa norma le reconoce. Son dos caras de lo mismo.\n3. Es una fuente real: un hecho social que originó la norma.\n4. Respuesta personal. Ejemplo: en mi oficina debemos entregar ciertos reportes a una autoridad; esa norma pertenece al derecho público porque regula la relación del Estado con particulares.",
+   "criterios": [
+    "Señala que el derecho es de cumplimiento obligatorio y que lo respalda la coacción del Estado",
+    "Identifica la ley como derecho objetivo y el reclamo del pago como derecho subjetivo",
+    "Explica que el derecho objetivo y el subjetivo son dos caras de lo mismo",
+    "Reconoce la ola de robos como fuente real del derecho",
+    "Da un ejemplo propio y lo ubica en el derecho público o en el privado con una razón"
+   ],
+   "renglones": 12
+  }
+ ],
+ "autoevaluacion": {
+  "instrucciones": "Elige la mejor respuesta según lo visto en la unidad.",
+  "reactivos": [
+   {
+    "id": "q1",
+    "enunciado": "Según la unidad, ¿qué busca el derecho?",
+    "opciones": [
+     "La tradición, la fe y la unidad familiar",
+     "El orden, la justicia y el bien común",
+     "La riqueza, el progreso y el ahorro",
+     "La fama, el éxito y la competencia"
+    ],
+    "correcta": 1,
+    "explicacion": "La unidad dice que el derecho busca el orden, la justicia y el bien común. La tradición, la riqueza o la fama no aparecen como sus fines."
+   },
+   {
+    "id": "q2",
+    "enunciado": "¿Qué ramas menciona la unidad como parte del derecho público?",
+    "opciones": [
+     "Civil, mercantil y penal",
+     "Constitucional, civil y mercantil",
+     "Mercantil, administrativo y civil",
+     "Constitucional, penal y administrativo"
+    ],
+    "correcta": 3,
+    "explicacion": "Constitucional, penal y administrativo forman parte del derecho público. Las otras opciones incluyen el civil o el mercantil, que la unidad ubica en el derecho privado."
+   },
+   {
+    "id": "q3",
+    "enunciado": "Una distribuidora y una tienda, ambas dedicadas al comercio, pactan la venta de un lote de mercancía. Según la unidad, ¿qué rama regula a los comerciantes y los actos de comercio?",
+    "opciones": [
+     "El derecho mercantil",
+     "El derecho administrativo",
+     "El derecho constitucional",
+     "El derecho penal"
+    ],
+    "correcta": 0,
+    "explicacion": "El derecho mercantil regula a los comerciantes y los actos de comercio, y forma parte del derecho privado. El administrativo, el constitucional y el penal pertenecen al derecho público."
+   },
+   {
+    "id": "q4",
+    "enunciado": "Según la unidad, ¿qué son las fuentes históricas del derecho?",
+    "opciones": [
+     "Los documentos del pasado",
+     "Los hechos sociales que originan la norma",
+     "Los estudios de los juristas",
+     "Las facultades que reconoce la norma"
+    ],
+    "correcta": 0,
+    "explicacion": "Las fuentes históricas son los documentos del pasado. Los hechos sociales que originan la norma son las fuentes reales; los estudios de los juristas, la doctrina, y la facultad que reconoce la norma, el derecho subjetivo."
+   },
+   {
+    "id": "q5",
+    "enunciado": "¿Qué grupo reúne solo fuentes que la unidad llama formales?",
+    "opciones": [
+     "Legislación, hechos sociales, costumbre y doctrina",
+     "Documentos del pasado, doctrina, costumbre y legislación",
+     "Legislación, costumbre, jurisprudencia y doctrina",
+     "Jurisprudencia, hechos sociales, doctrina y costumbre"
+    ],
+    "correcta": 2,
+    "explicacion": "Las fuentes formales son la legislación, la costumbre, la jurisprudencia y la doctrina. Las otras opciones mezclan hechos sociales, que son fuentes reales, o documentos del pasado, que son fuentes históricas."
+   },
+   {
+    "id": "q6",
+    "enunciado": "Un despacho prepara una guía para clientes y debe indicar cuál es la principal fuente formal del derecho en México. ¿Qué debe escribir?",
+    "opciones": [
+     "La costumbre",
+     "La doctrina",
+     "La jurisprudencia",
+     "La legislación"
+    ],
+    "correcta": 3,
+    "explicacion": "La unidad señala a la legislación como la principal fuente formal en México. La costumbre, la doctrina y la jurisprudencia también son fuentes formales, pero no la principal."
+   },
+   {
+    "id": "q7",
+    "enunciado": "Dos vecinos tienen un conflicto porque uno le prestó dinero al otro y no se lo ha devuelto; ninguno actúa como autoridad. Según la unidad, ¿qué derecho regula ese asunto?",
+    "opciones": [
+     "El derecho público",
+     "El derecho privado",
+     "El derecho penal",
+     "El derecho constitucional"
+    ],
+    "correcta": 1,
+    "explicacion": "El derecho privado regula a los particulares entre sí, como estos dos vecinos. El público, con ramas como el penal y el constitucional, regula al Estado y su relación con los particulares."
+   },
+   {
+    "id": "q8",
+    "enunciado": "Según la unidad, ¿qué relación hay entre el derecho objetivo y el derecho subjetivo?",
+    "opciones": [
+     "El subjetivo está por encima del objetivo",
+     "El objetivo es público y el subjetivo, privado",
+     "Son dos caras de lo mismo",
+     "El subjetivo existe solo cuando falta la ley"
+    ],
+    "correcta": 2,
+    "explicacion": "El objetivo es la norma y el subjetivo, la facultad que esa norma reconoce a una persona: son dos caras de lo mismo. La unidad no pone uno por encima del otro ni los reparte entre público y privado."
+   }
+  ]
+ }
+}

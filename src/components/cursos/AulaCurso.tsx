@@ -38,6 +38,9 @@ import { textoSinLecciones } from '@/lib/cursos/visor-textos'
 import { CONFIG } from '@/lib/config'
 import { withAlpha } from '@/lib/utils'
 import { colorLegibleSobre } from '@/lib/contraste'
+import SeccionActividades from '@/components/actividades/SeccionActividades'
+import { BotonDescargaPdf } from '@/components/actividades/Descargas'
+import { urlPdf, vistaActividades } from '@/components/actividades/datos'
 
 type Tab = 'contenido' | 'examen' | 'informacion'
 
@@ -241,6 +244,11 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
               role="progressbar" aria-valuenow={detalle.porcentaje} aria-valuemin={0} aria-valuemax={100}>
               <div className="h-full rounded-full transition-all duration-500" style={{ width: `${detalle.porcentaje}%`, background: CONFIG.colores.primario }} />
             </div>
+            {urlPdf(curso.cuaderno_pdf_url) && (
+              <div className="mt-3">
+                <BotonDescargaPdf url={curso.cuaderno_pdf_url} texto="Descargar cuaderno completo" marca="cuaderno" />
+              </div>
+            )}
           </div>
         </div>
       </FadeIn>
@@ -371,7 +379,12 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                         </div>
                       )}
 
-                      {!activa.video_url && !texto && !activa.tieneMaterial && (
+                      {/* Actividades interactivas + «Descargar PDF» de la lección.
+                          Sin actividades ni PDF no pinta nada. */}
+                      <SeccionActividades actividades={activa.actividades} pdfUrl={activa.actividades_pdf_url} acento={ACENTO} />
+
+                      {!activa.video_url && !texto && !activa.tieneMaterial &&
+                        vistaActividades(activa.actividades, activa.actividades_pdf_url).tipo === 'nada' && (
                         <p className="text-sm" style={{ color: '#94A3B8' }}>Esta lección aún no tiene contenido.</p>
                       )}
 

@@ -9,6 +9,7 @@
 --
 -- Orden de ejecución (respeta dependencias FK):
 --   1. seed-contenido-ivs.sql                    — INSERT materias/meses/semanas base
+--   1b. seed-actividades-sec-prepa.sql           — UPDATE semanas.actividades/_pdf_url + materias.cuaderno_pdf_url
 --   2. seed-demo-materia.sql                     — UPDATE demo + INSERT meses/semanas/quiz demo
 --   3. seed-contenido-semanas.sql                — UPDATE semanas.contenido (texto didáctico)
 --   [seed-materias-ejemplo.sql eliminado — ver nota más abajo]
@@ -23,6 +24,18 @@
 
 \echo '=== PASO 1/4: seed-contenido-ivs.sql ==='
 \i seed-contenido-ivs.sql
+
+-- ============================================================================
+-- PASO 1b: actividades interactivas + PDF de Sec/Prepa
+-- ============================================================================
+-- COPIA EXACTA de banco-materias-sec-prepa/actividades/seed-actividades.sql
+-- (generado por su scripts/generar_seed_actividades.py; NO editar aquí: se
+-- regenera en el banco y se vuelve a copiar). 192 semanas + 24 cuadernos, por
+-- id: va DESPUÉS de seed-contenido-ivs.sql porque actualiza las filas que ese
+-- seed inserta (un id ausente actualiza 0 filas, no falla). Idempotente.
+-- Cursos y licenciaturas NO se siembran aquí: cada banco genera su propio SQL.
+\echo '=== PASO 1b: seed-actividades-sec-prepa.sql (192 semanas + 24 cuadernos) ==='
+\i seed-actividades-sec-prepa.sql
 
 \echo '=== PASO 2/4: seed-demo-materia.sql ==='
 \i seed-demo-materia.sql

@@ -83,6 +83,14 @@ export default async function globalSetup() {
     !ADMIN_EMAIL && 'QA_ADMIN_EMAIL',
   ].filter(Boolean)
   if (faltantes.length) {
+    // e2e/actividades.spec.ts se salta sola sin QA_* (test.skip). Si es lo ÚNICO
+    // que se pidió correr, no se aborta la corrida: sale «skipped», no en rojo.
+    // Cualquier otra selección (o la suite entera) sigue exigiendo las variables.
+    const filtros = process.argv.slice(process.argv.indexOf('test') + 1).filter(a => !a.startsWith('-'))
+    if (filtros.length > 0 && filtros.every(f => /actividades/i.test(f))) {
+      console.warn(`[globalSetup] faltan ${faltantes.join(', ')}: solo se pidió e2e/actividades.spec.ts, que se salta sola.`)
+      return
+    }
     throw new Error(`[globalSetup] faltan variables de QA en .env.local: ${faltantes.join(', ')}. Ver e2e/README-QA.md`)
   }
 

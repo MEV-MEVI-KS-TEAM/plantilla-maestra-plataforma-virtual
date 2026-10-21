@@ -1,0 +1,379 @@
+{
+ "esquema": "actividades/1",
+ "unidad": {
+  "id": "cursos-ingreso/ing-01-exani-ii/modulo-01-leccion-03",
+  "nivel": "cursos-ingreso",
+  "materia": "Curso de preparación EXANI-II",
+  "slug": "ing-01-exani-ii",
+  "clave": "modulo-01-leccion-03",
+  "rotulo": "Lección 1.3",
+  "titulo": "Estrategia de examen: tiempo, descarte y control de nervios",
+  "fuente_id": "044b99a1-6c39-5a0a-8f8a-6c0f379e9d5d",
+  "color": "#2563EB",
+  "examen": "Curso de preparación EXANI-II"
+ },
+ "esencial": {
+  "intro": "El EXANI-II también mide cómo administras el tiempo bajo presión: dos aspirantes con la misma preparación pueden terminar con resultados muy distintos. Aquí trabajas tu ritmo, el descarte, las preguntas trampa y los nervios.",
+  "puntos": [
+   {
+    "titulo": "Tu ritmo por pregunta",
+    "texto": "Divide el tiempo disponible entre las preguntas. Si reservas un 10 % para revisión, divide solo lo que queda. Fija puntos de control: si llevas menos preguntas de las previstas, acelera; si llevas más, no te confíes y lee con más cuidado."
+   },
+   {
+    "titulo": "Saltar y volver",
+    "texto": "Si a los 30 segundos no sabes por dónde empezar, marca la pregunta, elige provisionalmente la opción que menos descartaste y sigue. Nunca dejes el espacio vacío: el examen no penaliza respuestas incorrectas. Lee la pregunta antes del texto largo."
+   },
+   {
+    "titulo": "Descartar antes de calcular",
+    "texto": "Estima si el resultado debe ser mayor o menor que el dato. Desconfía de la opción idéntica al dato o que es el resultado de un solo paso. En vocabulario, usa el contexto: la opción correcta debe explicar la consecuencia que menciona la oración."
+   },
+   {
+    "titulo": "Preguntas trampa",
+    "texto": "Si ves «EXCEPTO», subráyalo y piensa «busco la falsa»; anota sí o no junto a cada opción y elige la única con «no». En una doble negación, pasa la frase a positivo: «no es incorrecto» equivale a «es correcto». El error número uno es leer con prisa."
+   },
+   {
+    "titulo": "La víspera y los nervios",
+    "texto": "La noche anterior no estudies temas nuevos: repasa formularios, prepara identificación, comprobante de registro, lápiz y agua, y duerme. Ante un bloqueo, inhala 4 segundos, sostén 4 y exhala 6, tres veces. Estudia en bloques de 50 minutos con 10 de descanso."
+   }
+  ],
+  "formulas": [
+   "$\\text{Segundos por pregunta} = \\dfrac{\\text{segundos de trabajo}}{\\text{preguntas}}$",
+   "$\\text{Preguntas a esa hora} = \\dfrac{\\text{tiempo transcurrido}}{\\text{tiempo por pregunta}}$"
+  ],
+  "recuerda": "Si dudas entre dos opciones, relee la instrucción: con frecuencia pedía «NO», «excepto» o «menos probable»."
+ },
+ "actividades": [
+  {
+   "id": "a1",
+   "tipo": "ordenar",
+   "titulo": "Una pregunta con «EXCEPTO»",
+   "instrucciones": "Ordena los pasos para resolver una pregunta que pide la opción que no cumple.",
+   "elementos": [
+    "Subrayar «EXCEPTO» en cuanto aparece en la pregunta",
+    "Cambiar mentalmente la instrucción a «busco la falsa»",
+    "Marcar sí o no al margen de cada opción",
+    "Elegir la única opción que quedó con «no»"
+   ],
+   "explicacion": "Primero detectas y subrayas la palabra que invierte la consigna; luego la traduces a «busco la falsa» para no contestar la pregunta que creíste leer. Con el sí o no de cada opción a la vista, la respuesta es la única que no cumple."
+  },
+  {
+   "id": "a2",
+   "tipo": "verdadero_falso",
+   "titulo": "¿Verdadero o falso?",
+   "instrucciones": "Decide si cada afirmación sobre la estrategia de examen es verdadera o falsa.",
+   "items": [
+    {
+     "id": "v1",
+     "afirmacion": "Dos aspirantes con la misma preparación pueden obtener resultados muy distintos por cómo reparten su tiempo.",
+     "respuesta": true,
+     "explicacion": "Saber contenido no basta: quien reparte sus minutos contesta todo, y quien se atora en tres preguntas difíciles puede dejar el final sin responder."
+    },
+    {
+     "id": "v2",
+     "afirmacion": "Leer la pregunta antes que el texto largo te permite leer el texto buscando algo concreto.",
+     "respuesta": true,
+     "explicacion": "Con la pregunta en mente, el texto se vuelve una búsqueda; sin ella, intentas memorizarlo todo."
+    },
+    {
+     "id": "v3",
+     "afirmacion": "Una opción idéntica a un número del enunciado suele ser la respuesta correcta.",
+     "respuesta": false,
+     "explicacion": "Es al revés: la opción idéntica al dato, o el resultado de un solo paso, casi siempre es la trampa para quien se detuvo a la mitad del procedimiento."
+    },
+    {
+     "id": "v4",
+     "afirmacion": "Para un bloqueo, la lección propone respirar contando: inhalar 4 segundos, sostener 4 y exhalar 6, tres veces.",
+     "respuesta": true,
+     "explicacion": "Es una respiración contada, con la exhalación más larga que la inhalación y repetida tres veces; la lección la propone para recuperar la atención durante el examen."
+    },
+    {
+     "id": "v5",
+     "afirmacion": "Conviene dejar en blanco una pregunta difícil para no arriesgar puntos.",
+     "respuesta": false,
+     "explicacion": "El examen no penaliza respuestas incorrectas: un espacio en blanco garantiza cero, y una respuesta razonada, aunque sea provisional, tiene una probabilidad real de acertar."
+    },
+    {
+     "id": "v6",
+     "afirmacion": "La noche anterior al examen conviene adelantar los temas que aún no has visto.",
+     "respuesta": false,
+     "explicacion": "La recomendación es la contraria: no estudiar temas nuevos, repasar formularios, preparar identificación, comprobante de registro, lápiz y agua, y dormir."
+    }
+   ]
+  },
+  {
+   "id": "a3",
+   "tipo": "completar",
+   "titulo": "Completa cada situación",
+   "instrucciones": "Escribe en cada espacio la palabra o el número que falta.",
+   "banco": [
+    "menor",
+    "contexto",
+    "positivo",
+    "10",
+    "mayor",
+    "60"
+   ],
+   "items": [
+    {
+     "id": "c1",
+     "texto": "Antes de calcular el precio de una mochila con 15 % de descuento, estimas que el resultado debe ser ___ que el precio original.",
+     "respuestas": [
+      [
+       "menor",
+       "más bajo",
+       "mas bajo"
+      ]
+     ],
+     "explicacion": "Con un descuento pagas menos que el precio original, aunque no muchísimo menos; con esa estimación eliminas la opción mayor que el precio y la que es solo el descuento."
+    },
+    {
+     "id": "c2",
+     "texto": "Ante una palabra destacada que no conoce, una aspirante no busca la definición de memoria: usa la pista del ___ de la oración.",
+     "respuestas": [
+      [
+       "contexto",
+       "el contexto"
+      ]
+     ],
+     "explicacion": "El contexto trae una consecuencia, y la opción correcta es la que la explica; las demás se descartan porque no la producirían."
+    },
+    {
+     "id": "c3",
+     "texto": "Una pregunta dice «no es incorrecto afirmar que…»; antes de decidir, conviene convertir la frase a ___.",
+     "respuestas": [
+      [
+       "positivo",
+       "positiva",
+       "afirmativo",
+       "afirmativa"
+      ]
+     ],
+     "explicacion": "Las dos negaciones se cancelan: «no es incorrecto afirmar que…» equivale a «es correcto afirmar que…», y así decides sin enredarte."
+    },
+    {
+     "id": "c4",
+     "texto": "Para estudiar, cada 50 minutos de trabajo descansas ___ minutos.",
+     "respuestas": [
+      [
+       "10",
+       "diez"
+      ]
+     ],
+     "explicacion": "La lección propone bloques de 50 minutos con 10 de descanso, y prefiere una hora diaria constante a ocho horas el domingo."
+    }
+   ]
+  },
+  {
+   "id": "a4",
+   "tipo": "opcion_multiple",
+   "titulo": "Decide como en el examen",
+   "instrucciones": "Lee cada situación y elige la opción que se sostiene con lo que vimos en la lección.",
+   "items": [
+    {
+     "id": "q1",
+     "enunciado": "«La aspirante fue tan **precavida** que llevó dos lápices y una goma de repuesto.» ¿Qué significa la palabra destacada?",
+     "opciones": [
+      "Que se distrae con facilidad",
+      "Que se prepara para evitar problemas",
+      "Que llega con mucha anticipación"
+     ],
+     "correcta": 1,
+     "explicacion": "La consecuencia es que llevó objetos de repuesto, y la única opción que la explica es prepararse para evitar problemas. Distraerse no lleva a cargar repuestos, y llegar con anticipación habla de la hora, no de lo que llevó."
+    },
+    {
+     "id": "q2",
+     "enunciado": "Todas las siguientes son recomendaciones de la lección para la noche anterior al examen, EXCEPTO:",
+     "opciones": [
+      "Preparar identificación, comprobante, lápiz y agua",
+      "Repasar formularios y dormir",
+      "Estudiar un tema nuevo que aún no has visto"
+     ],
+     "correcta": 2,
+     "explicacion": "La pregunta pide la que no es recomendación. Estudiar un tema nuevo es justo lo que la lección pide evitar la noche anterior. Preparar identificación, comprobante, lápiz y agua, repasar formularios y dormir sí son recomendaciones."
+    },
+    {
+     "id": "q3",
+     "enunciado": "En una pregunta de descuento, una de las opciones es exactamente el monto del descuento. ¿Por qué conviene desconfiar de ella?",
+     "opciones": [
+      "Es el resultado de un solo paso, no el final",
+      "Es mayor que el precio original del producto",
+      "Es un número puesto al azar en la pregunta"
+     ],
+     "correcta": 0,
+     "explicacion": "El descuento es solo el primer paso: falta restarlo al precio, y por eso esa opción atrapa a quien se detuvo a la mitad. No es mayor que el precio original, y tampoco está puesta al azar: nace del error de confundir el descuento con el total."
+    },
+    {
+     "id": "q4",
+     "enunciado": "En un simulacro, a los 45 minutos deberías llevar 30 preguntas y llevas 22. ¿Qué te conviene hacer?",
+     "opciones": [
+      "Leer con más cuidado las que siguen",
+      "Acelerar tu ritmo en las que siguen",
+      "Mantener el ritmo que llevas hasta ahora"
+     ],
+     "correcta": 1,
+     "explicacion": "Llevas menos preguntas de las previstas, y para ese caso la indicación es acelerar. Leer con más cuidado corresponde a cuando vas por arriba del punto de control, y mantener el ritmo no corrige el atraso."
+    }
+   ]
+  },
+  {
+   "id": "a5",
+   "tipo": "numerico",
+   "reto": true,
+   "titulo": "Tu ritmo en el examen",
+   "instrucciones": "Calcula cada resultado y escribe solo el número.",
+   "ejemplo": {
+    "enunciado": "Un simulacro tiene 80 preguntas y dura 120 minutos. Si reservas 10 % del tiempo para revisión, ¿cuántos segundos te quedan por pregunta?",
+    "pasos": [
+     "Reserva para revisión: $120 \\times 0.1 = 12$ minutos.",
+     "Tiempo de trabajo: $120 - 12 = 108$ minutos.",
+     "En segundos: $108 \\times 60 = 6{,}480$",
+     "Por pregunta: $6{,}480 \\div 80 = 81$ segundos."
+    ],
+    "resultado": "Te quedan 81 segundos por pregunta.",
+    "valor": 81,
+    "verif": "Rational(120 * 60 * 9, 10 * 80)"
+   },
+   "ejercicios": [
+    {
+     "id": "r1",
+     "enunciado": "Un simulacro de 120 preguntas dura 150 minutos y no reservas tiempo para revisión. ¿Cuántos segundos tienes por pregunta?",
+     "respuesta": 75,
+     "tolerancia": 0,
+     "unidad": "s",
+     "formato": "entero",
+     "pasos": [
+      "En segundos: $150 \\times 60 = 9{,}000$",
+      "Por pregunta: $9{,}000 \\div 120 = 75$"
+     ],
+     "verif": "Rational(150 * 60, 120)",
+     "error_tipico": 1.25,
+     "error_tipico_msg": "Te quedaste en minutos por pregunta; multiplica por 60 para pasarlo a segundos."
+    },
+    {
+     "id": "r2",
+     "enunciado": "Otro simulacro tiene 120 preguntas y dura 180 minutos, sin reserva. A ritmo constante, ¿cuántas preguntas deberías llevar a los 45 minutos?",
+     "respuesta": 30,
+     "tolerancia": 0,
+     "formato": "entero",
+     "pasos": [
+      "Ritmo: $180 \\div 120 = 1.5$ minutos por pregunta.",
+      "A los 45 minutos: $45 \\div 1.5 = 30$ preguntas."
+     ],
+     "verif": "Rational(45) / Rational(180, 120)",
+     "error_tipico": 67.5,
+     "error_tipico_msg": "Multiplicaste 45 por 1.5 en lugar de dividir: serían más de la mitad de las preguntas en solo un cuarto del tiempo."
+    },
+    {
+     "id": "r3",
+     "enunciado": "Un simulacro de 50 preguntas dura 100 minutos y reservas 10 % para revisión. A tu ritmo, ¿cuántas preguntas deberías llevar a los 63 minutos?",
+     "respuesta": 35,
+     "tolerancia": 0,
+     "formato": "entero",
+     "pasos": [
+      "Reserva: $100 \\times 0.1 = 10$; quedan $100 - 10 = 90$ minutos de trabajo.",
+      "Ritmo: $90 \\div 50 = 1.8$ minutos por pregunta.",
+      "A los 63 minutos: $63 \\div 1.8 = 35$ preguntas."
+     ],
+     "verif": "Rational(63) / Rational(90, 50)",
+     "error_tipico": 31.5,
+     "error_tipico_msg": "Usaste 2 minutos por pregunta, sin descontar la reserva; con 90 minutos de trabajo te tocan 1.8 por pregunta."
+    }
+   ]
+  }
+ ],
+ "autoevaluacion": {
+  "instrucciones": "Elige la opción correcta de cada pregunta, como en el examen.",
+  "reactivos": [
+   {
+    "id": "q1",
+    "enunciado": "Una bicicleta cuesta \\$4,800 y tiene 25 % de descuento. ¿Cuánto se paga?",
+    "opciones": [
+     "\\$1,200",
+     "\\$3,600",
+     "\\$6,000"
+    ],
+    "correcta": 1,
+    "explicacion": "Estima primero: se paga menos de \\$4,800, pero no muchísimo menos; eso descarta \\$6,000, que suma en lugar de restar, y \\$1,200, que es solo el descuento. Luego calcula: $4{,}800 \\times 0.25 = 1{,}200$ y $4{,}800 - 1{,}200 = 3{,}600$.",
+    "verif": "4800 - Rational(4800 * 25, 100)"
+   },
+   {
+    "id": "q2",
+    "enunciado": "«La instrucción era tan **escueta** que varios aspirantes tuvieron que preguntar qué debían hacer.» ¿Qué significa la palabra destacada?",
+    "opciones": [
+     "Breve y con muy poca información",
+     "Ofensiva para quienes la leyeron",
+     "Repetida muchas veces en voz alta"
+    ],
+    "correcta": 0,
+    "explicacion": "La consecuencia es que tuvieron que preguntar qué hacer, y eso lo explica una instrucción breve y con poca información. Una instrucción ofensiva provocaría enojo, no dudas, y que la repitan muchas veces no explica que varios aspirantes tuvieran que preguntar."
+   },
+   {
+    "id": "q3",
+    "enunciado": "Todas las siguientes son señales de que una opción puede ser una trampa, EXCEPTO:",
+    "opciones": [
+     "Es idéntica a un número del enunciado",
+     "Es el resultado de un solo paso del procedimiento",
+     "Es la que explica la consecuencia de la oración"
+    ],
+    "correcta": 2,
+    "explicacion": "La pregunta pide la que no es señal de trampa. Explicar la consecuencia de la oración es lo que hace la opción correcta en una pregunta de vocabulario. La opción idéntica al dato y la que es el resultado de un solo paso sí son trampas típicas."
+   },
+   {
+    "id": "q4",
+    "enunciado": "A los 45 minutos deberías llevar 30 preguntas y ya llevas 38. ¿Qué recomienda la lección?",
+    "opciones": [
+     "Acelerar para terminar todavía antes",
+     "No confiarte y leer con más cuidado",
+     "Seguir igual, porque vas adelantado"
+    ],
+    "correcta": 1,
+    "explicacion": "Ir por arriba del punto de control no es motivo para relajarse: la indicación es no confiarte y leer con más cuidado. Acelerar corresponde a cuando vas por debajo, y seguir igual porque vas adelantado es justo confiarse."
+   },
+   {
+    "id": "q5",
+    "enunciado": "Un examen de práctica dura 200 minutos y reservas 10 % del tiempo para revisión. ¿Cuántos minutos de trabajo te quedan?",
+    "opciones": [
+     "20",
+     "190",
+     "180"
+    ],
+    "correcta": 2,
+    "explicacion": "La reserva es $200 \\times 0.1 = 20$ minutos, y te quedan $200 - 20 = 180$. El 20 es solo la reserva, el resultado de un solo paso. El 190 resta 10 minutos en lugar del 10 %.",
+    "verif": "200 - Rational(200 * 10, 100)"
+   },
+   {
+    "id": "q6",
+    "enunciado": "«No es falso que leer primero la pregunta te ayuda a buscar algo concreto en el texto.» ¿Qué afirma la oración?",
+    "opciones": [
+     "Que leer primero la pregunta sí te ayuda a buscar algo concreto",
+     "Que leer primero la pregunta no te ayuda a buscar algo concreto",
+     "Que no se sabe si leer primero la pregunta te ayuda a buscar algo"
+    ],
+    "correcta": 0,
+    "explicacion": "«No es falso» equivale a «es verdadero»: al pasar la frase a positivo, afirma que leer primero la pregunta sí ayuda. La segunda opción se queda con una sola negación, y la tercera inventa una duda que la oración no expresa."
+   },
+   {
+    "id": "q7",
+    "enunciado": "En las preguntas trampa, ¿cuál es el error número uno según la lección?",
+    "opciones": [
+     "No conocer el tema que se pregunta",
+     "Tardar demasiado en elegir una opción",
+     "Leer con prisa y contestar otra pregunta"
+    ],
+    "correcta": 2,
+    "explicacion": "El error número uno no es de conocimiento sino de lectura apresurada: contestas la pregunta que creíste leer, no la que está impresa. Por eso no se resuelve sabiendo más del tema ni eligiendo más rápido."
+   },
+   {
+    "id": "q8",
+    "enunciado": "Marcas una pregunta para volver a ella después. ¿Qué opción eliges mientras tanto?",
+    "opciones": [
+     "La que menos descartaste al leerla",
+     "Ninguna, para no arriesgar puntos",
+     "La primera, para no perder tiempo"
+    ],
+    "correcta": 0,
+    "explicacion": "La regla de saltar y volver pide elegir provisionalmente la opción que menos descartaste, para no dejar el espacio vacío. Dejarla sin respuesta garantiza cero en un examen que no penaliza errores, y elegir la primera sin criterio desperdicia lo que ya descartaste."
+   }
+  ]
+ }
+}
