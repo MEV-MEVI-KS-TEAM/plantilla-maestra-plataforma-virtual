@@ -1,6 +1,7 @@
 /** Tipos del visor del alumno (respuestas de las API /api/alumno/cursos). */
 import type { CursoTipo } from './cursos'
 import type { MotivoBloqueo } from '@/lib/cursos/acceso'
+import type { ActividadesUnidad } from '@/components/actividades/tipos'
 
 export interface CursoCatalogoItem {
   id: string
@@ -50,6 +51,10 @@ export interface LeccionAlumno {
   materialFormato?: string | null
   orden: number
   completada: boolean
+  /** Actividades interactivas «actividades/1» ya validadas; null = no hay. */
+  actividades?: ActividadesUnidad | null
+  /** PDF de las actividades de la lección (https); null = no hay. */
+  actividades_pdf_url?: string | null
 }
 
 export interface ModuloAlumno {
@@ -97,6 +102,8 @@ export interface CursoDetalleAlumno {
     tipo: CursoTipo
     estado: string
     portadaUrl: string | null
+    /** Cuaderno de actividades de todo el curso (https); null = no hay. */
+    cuaderno_pdf_url?: string | null
   }
   modoPreview: boolean
   modulos: ModuloAlumno[]

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cargarAlumnoAcceso, cargarContextoAcceso, tieneAccesoMateria } from '@/lib/acceso-materias'
 import { firmarVideoUrl } from '@/lib/video/bunny-firma'
+import { faltanColumnasActividades, leerActividades, urlPdf } from '@/components/actividades/datos'
 
 export async function GET(
   _request: NextRequest,
@@ -23,17 +24,25 @@ export async function GET(
     if (!alumno) return Response.json({ error: 'Alumno no encontrado' }, { status: 404 })
 
     // ── 2. Materia ────────────────────────────────────────────────────────────
-    const { data: materiaData } = await admin
+    // `cuaderno_pdf_url` (actividades, 20261021120000) se pide aparte del resto:
+    // una base sin esa migración responde 42703 y la materia se lee como antes.
+    const COLUMNAS_MATERIA = 'id, nombre, descripcion, nivel, icono, color, activa'
+    const leerMateria = (columnas: string) => admin
       .from('materias')
-      .select('id, nombre, descripcion, nivel, icono, color, activa')
+      .select(columnas)
       .eq('id', params.id)
       .single()
+    const conCuaderno = await leerMateria(`${COLUMNAS_MATERIA}, cuaderno_pdf_url`)
+    const materiaData = faltanColumnasActividades(conCuaderno.error)
+      ? (await leerMateria(COLUMNAS_MATERIA)).data
+      : conCuaderno.data
 
     if (!materiaData) return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
 
-    const materia = materiaData as {
+    const materia = materiaData as unknown as {
       id: string; nombre: string; descripcion: string | null
       nivel: string; icono: string | null; color: string | null; activa: boolean
+      cuaderno_pdf_url?: string | null
     }
 
     // ── 3. Control de acceso ──────────────────────────────────────────────────
@@ -60,15 +69,23 @@ export async function GET(
     // El nivel de meses se filtra en la propia query (es el select raíz); el de
     // semanas, en el .map() de abajo — filtrar un embed anidado con .eq()
     // haría desaparecer el mes ENTERO en cuanto una de sus semanas se archive.
-    const { data: mesesData } = await admin
+    //
+    // Las actividades interactivas y su PDF (20261021120000) viajan con la
+    // semana: ya pasaron el control de acceso del paso 3. Sin la migración
+    // (42703) se reintenta sin ellas y la materia se ve exactamente como antes.
+    const leerMeses = (conActividades: boolean) => admin
       .from('meses_contenido')
       .select(`
         id, numero_mes, titulo, descripcion,
-        semanas ( id, numero_semana, titulo, descripcion, contenido, video_url, video_url_2, video_url_3, tiempo_estimado_minutos, activa, semana_materiales ( id, nombre, tamano_bytes, orden, created_at ) )
+        semanas ( id, numero_semana, titulo, descripcion, contenido, video_url, video_url_2, video_url_3, tiempo_estimado_minutos, activa,${conActividades ? ' actividades, actividades_pdf_url,' : ''} semana_materiales ( id, nombre, tamano_bytes, orden, created_at ) )
       `)
       .eq('materia_id', params.id)
       .eq('activa', true)
       .order('numero_mes')
+    const conActividades = await leerMeses(true)
+    const mesesData = faltanColumnasActividades(conActividades.error)
+      ? (await leerMeses(false)).data
+      : conActividades.data
 
     type SemanaRow = {
       id: string; numero_semana: number; titulo: string
@@ -76,6 +93,8 @@ export async function GET(
       video_url: string | null; video_url_2: string | null; video_url_3: string | null
       tiempo_estimado_minutos: number
       activa: boolean
+      actividades?: unknown
+      actividades_pdf_url?: string | null
       semana_materiales: { id: string; nombre: string; tamano_bytes: number | null; orden: number | null; created_at: string }[]
     }
     type MesRow = {
@@ -126,6 +145,10 @@ export async function GET(
           .slice()
           .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || String(a.created_at).localeCompare(String(b.created_at)))
           .map(m => ({ id: m.id, nombre: m.nombre, tamano_bytes: m.tamano_bytes })),
+        // null = no hay (o no tiene la forma «actividades/1» / no es https): la
+        // página no pinta nada. Ver src/components/actividades/datos.ts.
+        actividades:         leerActividades(s.actividades),
+        actividades_pdf_url: urlPdf(s.actividades_pdf_url),
       }))
     )
 
@@ -190,6 +213,8 @@ export async function GET(
       bibliografia_en: [],
       semanas,
       evaluaciones,
+      // Licenciaturas: la misma URL del cuaderno de la carrera en todas sus materias.
+      cuaderno_pdf_url: urlPdf(materia.cuaderno_pdf_url),
     })
   } catch (err) {
     console.error('[api/alumno/materia/[id]]', err)

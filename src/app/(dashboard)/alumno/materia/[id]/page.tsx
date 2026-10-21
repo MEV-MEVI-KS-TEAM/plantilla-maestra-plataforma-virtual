@@ -19,6 +19,9 @@ import { CONFIG } from '@/lib/config'
 import { withAlpha } from '@/lib/utils'
 import { colorLegibleSobre } from '@/lib/contraste'
 import ContenidoMarkdown, { normalizarContenido } from '@/components/ContenidoMarkdown'
+import SeccionActividades from '@/components/actividades/SeccionActividades'
+import { BotonDescargaPdf } from '@/components/actividades/Descargas'
+import { urlPdf } from '@/components/actividades/datos'
 
 gsap.registerPlugin(useGSAP)
 
@@ -28,6 +31,9 @@ interface Semana {
   contenido: string; contenido_en: string
   url_en: string; videos: Video[]
   materiales: { id: string; nombre: string; tamano_bytes: number | null }[]
+  /** «actividades/1» ya validado por la API; null = no hay. */
+  actividades?: unknown
+  actividades_pdf_url?: string | null
 }
 interface Evaluacion {
   id: string; titulo: string; titulo_en: string; tipo: string; intentos_max: number
@@ -42,6 +48,8 @@ interface Materia {
   bibliografia_en?: BibItem[]
   semanas: Semana[]
   evaluaciones: Evaluacion[]
+  /** Cuaderno de actividades de toda la materia (en licenciatura, el de la carrera). */
+  cuaderno_pdf_url?: string | null
 }
 
 type Tab = 'contenido' | 'examen' | 'informacion'
@@ -235,6 +243,11 @@ export default function MateriaPage() {
             <div className="w-2 h-2 rounded-full" style={{ background: materia.color_hex || CONFIG.colores.primario }} />
           </div>
           <h1 className="text-xl font-bold text-gray-900 mt-1">{materia.nombre}</h1>
+          {urlPdf(materia.cuaderno_pdf_url) && (
+            <div className="mt-3">
+              <BotonDescargaPdf url={materia.cuaderno_pdf_url} texto="Descargar cuaderno completo" marca="cuaderno" />
+            </div>
+          )}
         </div>
       </div>
       </FadeIn>
@@ -381,6 +394,14 @@ export default function MateriaPage() {
                         </div>
                         )
                       })()}
+
+                      {/* Actividades interactivas + «Descargar PDF» de la semana.
+                          Sin actividades ni PDF no pinta nada. */}
+                      <SeccionActividades
+                        actividades={semana.actividades}
+                        pdfUrl={semana.actividades_pdf_url}
+                        acento={colorLegibleSobre(CONFIG.colores.acento, '#181C26')}
+                      />
 
                       {/* Mini quiz de refuerzo (sesión en API; alumnoId no requerido para montar) */}
                       <SemanaQuiz
