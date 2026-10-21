@@ -149,7 +149,10 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
     ? { label: 'Mis Pagos', href: RUTA_PAGOS_ALUMNO_SEMANAL, emoji: '💳', icon: CreditCard }
     : { label: 'Pagos', href: '/alumno/pagar', emoji: '💳', icon: CreditCard }
 
-  let itemsFinales = role === 'ALUMNO' && (semanal || CONFIG.pagos?.activo)
+  // #295: con `pagos.datosPagoEnMenu` la pantalla tiene los datos para
+  // transferir o depositar (tabla datos_pago), haya o no enlaces de cobro.
+  const datosPagoEnMenu = (CONFIG.pagos as { datosPagoEnMenu?: boolean } | undefined)?.datosPagoEnMenu === true
+  let itemsFinales = role === 'ALUMNO' && (semanal || CONFIG.pagos?.activo || datosPagoEnMenu)
     ? [...navItems, itemPagosAlumno]
     : navItems
 

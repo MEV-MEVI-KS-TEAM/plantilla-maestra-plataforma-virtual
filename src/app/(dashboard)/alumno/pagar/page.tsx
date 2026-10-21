@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react'
 import { CONFIG } from '@/lib/config'
 import { useSiteConfig } from '@/components/site-config-provider'
 import { canalEscuela } from '@/lib/contacto-ui'
+import { BloqueDatosPago } from '@/components/alumno/BloqueDatosPago'
+import type { DatosPago } from '@/lib/datos-pago-core'
 
 /**
  * Pagos del alumno.
@@ -35,6 +37,16 @@ export default function PagarPage() {
   // Nombre y WhatsApp son editables desde "Personalizar mi página"; `pagos`
   // (enlaces de cobro) no lo es y sigue leyendo CONFIG.
   const cfg = useSiteConfig()
+  // #295: transferencia o depósito. Los datos llegan del servidor con sesión
+  // (tabla datos_pago); nunca del config ni del site_config, que son públicos.
+  const [datosPago, setDatosPago] = useState<DatosPago | null>(null)
+
+  useEffect(() => {
+    fetch('/api/alumno/datos-pago', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: DatosPago | null) => setDatosPago(d?.activo ? d : null))
+      .catch(() => setDatosPago(null))
+  }, [])
 
   useEffect(() => {
     fetch('/api/alumno/perfil')
@@ -61,6 +73,11 @@ export default function PagarPage() {
   // botón no salía, o salía con un `wa.me/` vacío.
   const canal = canalEscuela(cfg)
   const porWhatsApp = canal?.tipo === 'whatsapp'
+  // «Enviar mi comprobante» del bloque de transferencia, con su propio mensaje.
+  const canalComprobante = canalEscuela(cfg, 'Hola, te envío mi comprobante de pago.')
+  const bloqueTransferencia = datosPago
+    ? <BloqueDatosPago datos={datosPago} comprobanteHref={canalComprobante?.href ?? null} />
+    : null
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -69,6 +86,11 @@ export default function PagarPage() {
         {/* D21b (OL1): la promesa de pagar aquí solo cuando HAY enlaces que le aplican.
             Mientras carga, o sin enlaces, no hay subtítulo: el recuadro de abajo dice
             lo que toca (escribir a la escuela o preguntar en ella). */}
+        {!cargando && datosPago && !(cfgPagos?.activo && enlaces.length > 0) && (
+          <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
+            Paga por transferencia o depósito y mándanos tu comprobante para registrar tu pago.
+          </p>
+        )}
         {!cargando && cfgPagos?.activo && enlaces.length > 0 && (
           <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
             Paga en línea con tarjeta desde aquí. Después envía tu comprobante para que
@@ -77,7 +99,9 @@ export default function PagarPage() {
         )}
       </div>
 
-      {!cfgPagos?.activo || enlaces.length === 0 ? (
+      {(!cfgPagos?.activo || enlaces.length === 0) && bloqueTransferencia && !cargando ? (
+        bloqueTransferencia
+      ) : !cfgPagos?.activo || enlaces.length === 0 ? (
         <div className="rounded-xl p-5"
           style={{ background: 'var(--color-fondo-alt, #F8FAFC)', border: '1px solid var(--color-borde)' }}>
           <p className="text-sm" style={{ color: 'var(--color-texto)' }}>
@@ -132,6 +156,8 @@ export default function PagarPage() {
           {/* Obligatorio donde el alumno ve lo que va a pagar. Se pinta solo si
               la escuela cobra en una moneda distinta del peso. */}
           <AvisoMoneda className="text-xs px-1" />
+
+          {bloqueTransferencia}
 
           <div className="rounded-xl p-5 space-y-3"
             style={{ background: 'var(--color-fondo-alt, #F8FAFC)', border: '1px solid var(--color-borde)' }}>

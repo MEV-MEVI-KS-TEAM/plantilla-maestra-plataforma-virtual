@@ -64,6 +64,23 @@ CREATE TABLE IF NOT EXISTS public.site_config (
 );
 ALTER TABLE public.site_config ENABLE ROW LEVEL SECURITY;
 
+-- Datos bancarios para pagar por transferencia o depósito (pedido de un cliente, #295).
+-- SOLO SERVIDOR: RLS sin políticas y sin GRANTs a anon/authenticated.
+-- Espejo de supabase/migrations/20261021120000_datos_pago.sql.
+CREATE TABLE IF NOT EXISTS public.datos_pago (
+  id          INTEGER     PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  activo      BOOLEAN     NOT NULL DEFAULT false,
+  banco       TEXT        NOT NULL DEFAULT '',
+  titular     TEXT        NOT NULL DEFAULT '',
+  clabe       TEXT        NOT NULL DEFAULT '' CHECK (clabe = '' OR clabe ~ '^[0-9]{18}$'),
+  tarjeta     TEXT        NOT NULL DEFAULT '' CHECK (tarjeta = '' OR tarjeta ~ '^[0-9]{16}$'),
+  cuenta      TEXT        NOT NULL DEFAULT '' CHECK (cuenta = '' OR cuenta ~ '^[0-9]{8,20}$'),
+  nota        TEXT        NOT NULL DEFAULT '',
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.datos_pago ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.datos_pago FROM anon, authenticated;
+
 CREATE TABLE IF NOT EXISTS public.alumnos (
   id                   UUID        PRIMARY KEY REFERENCES public.usuarios(id) ON DELETE CASCADE,
   matricula            TEXT        UNIQUE,

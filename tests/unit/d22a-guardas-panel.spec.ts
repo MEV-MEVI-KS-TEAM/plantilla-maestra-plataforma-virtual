@@ -9,7 +9,7 @@ import { SECCIONES_PANEL, INICIO_SECRETARIO, destinoSinPermiso, type SeccionPane
  * Dos guardianes que fallan con cualquier ruta NUEVA sin clasificar:
  *  - PÁGINAS: toda page.tsx de /admin cae en una sección de SECCIONES_PANEL, y
  *    las de nivel 'admin' tienen su guarda de servidor (exigirSeccion).
- *  - API: la tabla de abajo lista los 103 handlers de /api/admin con su nivel, y
+ *  - API: la tabla de abajo lista los 105 handlers de /api/admin con su nivel, y
  *    cada uno lo revisa en su cuerpo (verifyAdmin/verifyStaff/…, o la función
  *    SQL con es_staff() llamada con la sesión).
  */
@@ -102,6 +102,7 @@ const API: Record<string, Nivel> = {
   'cambiar-password POST': S,                       // D22a (decisión 6): cada quien la suya
   'cobranza/[alumnoId] GET': S, 'cobranza/[alumnoId] POST': M, 'cobranza GET': S,   // D22b
   'configuracion/logo POST': A, 'configuracion/logo DELETE': A,
+  'configuracion/datos-pago GET': A, 'configuracion/datos-pago PUT': A, // #295: datos bancarios, solo admin
   'configuracion GET': A,                            // D22a: antes staff (solo lectura)
   'configuracion PUT': A, 'configuracion DELETE': A,
   'contenido/[id] GET': A, 'contenido/orden PATCH': A, 'contenido GET': A,
@@ -157,7 +158,7 @@ function handlers(): Map<string, string> {
   return out
 }
 
-test('5. guardián de API: los 103 handlers están en la tabla, y cada uno revisa el rol que dice', () => {
+test('5. guardián de API: los 105 handlers están en la tabla, y cada uno revisa el rol que dice', () => {
   // Solo se admite la forma que el guardián sabe leer: `export async function MÉTODO`.
   const base = join('src', 'app', 'api', 'admin')
   for (const n of ['route.js', 'route.tsx', 'route.jsx']) expect(recorrer(base, n), n).toEqual([])
@@ -173,7 +174,7 @@ test('5. guardián de API: los 103 handlers están en la tabla, y cada uno revis
   }
   const h = handlers()
   expect([...h.keys()].sort()).toEqual(Object.keys(API).sort())
-  expect(h.size).toBe(103)
+  expect(h.size).toBe(105)
   for (const [clave, cuerpo] of h) {
     const nivel = API[clave]
     const adm = T_ADMIN.some(t => cuerpo.includes(t)), stf = T_STAFF.some(t => cuerpo.includes(t))
