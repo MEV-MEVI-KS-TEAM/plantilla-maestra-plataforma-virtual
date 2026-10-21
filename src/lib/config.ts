@@ -639,6 +639,16 @@ export const CONFIG = {
       niveles: readonly string[]
       url: string
     }>,
+    /** Datos para pagar por TRANSFERENCIA (IDAI, TICKET-2026-10-14-01). null =
+     *  la escuela no los publica. Con `activo: true` se muestran en
+     *  /alumno/pagar junto con (o en lugar de) los enlaces. La plataforma no
+     *  confirma nada: el pago lo registra el admin en /admin/pagos. */
+    transferencia: null as null | {
+      banco: string
+      titular: string
+      cuenta?: string
+      clabe?: string
+    },
   },
 
   cursosIngreso: {

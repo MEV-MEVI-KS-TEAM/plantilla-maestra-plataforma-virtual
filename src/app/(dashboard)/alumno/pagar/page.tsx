@@ -24,6 +24,47 @@ import { canalEscuela } from '@/lib/contacto-ui'
 
 type Perfil = { nivel?: string; carrera?: string }
 
+type Transferencia = NonNullable<typeof CONFIG.pagos.transferencia>
+
+/** Datos de la cuenta de la escuela; CLABE y cuenta con botón «Copiar». */
+function DatosTransferencia({ t }: { t: Transferencia }) {
+  const [copiado, setCopiado] = useState<string | null>(null)
+  async function copiar(valor: string) {
+    try {
+      await navigator.clipboard.writeText(valor.replace(/\s+/g, ''))
+      setCopiado(valor)
+      setTimeout(() => setCopiado(null), 1500)
+    } catch { /* sin portapapeles: el dato sigue a la vista */ }
+  }
+  const filas: { etiqueta: string; valor: string; copiable?: boolean }[] = [
+    { etiqueta: 'Banco', valor: t.banco },
+    { etiqueta: 'Titular', valor: t.titular },
+    ...(t.clabe ? [{ etiqueta: 'CLABE interbancaria', valor: t.clabe, copiable: true }] : []),
+    ...(t.cuenta ? [{ etiqueta: 'Número de cuenta', valor: t.cuenta, copiable: true }] : []),
+  ]
+  return (
+    <div className="rounded-xl p-5" style={{ background: '#fff', border: '1px solid var(--color-borde)' }}>
+      <p className="font-semibold mb-2" style={{ color: 'var(--color-texto)' }}>Datos para transferencia</p>
+      {filas.map(f => (
+        <div key={f.etiqueta} className="flex flex-wrap items-center justify-between gap-2 py-2"
+          style={{ borderBottom: '1px solid var(--color-borde)' }}>
+          <div className="min-w-0">
+            <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>{f.etiqueta}</p>
+            <p className="font-semibold break-all" style={{ color: 'var(--color-texto)' }}>{f.valor}</p>
+          </div>
+          {f.copiable && (
+            <button type="button" onClick={() => copiar(f.valor)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ border: '1px solid var(--color-borde)', color: 'var(--color-texto)' }}>
+              {copiado === f.valor ? 'Copiado ✓' : 'Copiar'}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const fmt = (n: number) =>
   formatearMoneda(n, CONFIG, { conCodigo: true })
 
@@ -56,6 +97,10 @@ export default function PagarPage() {
     e.niveles.length > 0 && (nivel === null ? true : e.niveles.includes(nivel)),
   )
 
+  // Datos de transferencia: no dependen del nivel (es la cuenta de la escuela),
+  // pero sí de `activo`, igual que los enlaces.
+  const transferencia = cfgPagos?.activo ? cfgPagos.transferencia : null
+
   // El canal que la escuela SÍ tiene: WhatsApp, o su correo si no hay número.
   // Sin ninguno no se ofrece escribir: antes se prometía «Escríbenos» y el
   // botón no salía, o salía con un `wa.me/` vacío.
@@ -75,9 +120,15 @@ export default function PagarPage() {
             registremos el pago en tu cuenta.
           </p>
         )}
+        {!cargando && transferencia && enlaces.length === 0 && (
+          <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
+            Realiza tu pago por transferencia o depósito. Después envía tu comprobante
+            para que registremos el pago en tu cuenta.
+          </p>
+        )}
       </div>
 
-      {!cfgPagos?.activo || enlaces.length === 0 ? (
+      {(!cfgPagos?.activo || enlaces.length === 0) && !(transferencia && !cargando) ? (
         <div className="rounded-xl p-5"
           style={{ background: 'var(--color-fondo-alt, #F8FAFC)', border: '1px solid var(--color-borde)' }}>
           <p className="text-sm" style={{ color: 'var(--color-texto)' }}>
@@ -101,7 +152,7 @@ export default function PagarPage() {
         </div>
       ) : (
         <>
-          <div className="space-y-3">
+          {enlaces.length > 0 && <div className="space-y-3">
             {enlaces.map(e => (
               <div key={e.id}
                 className="rounded-xl p-5 flex flex-wrap items-center justify-between gap-4"
@@ -127,7 +178,9 @@ export default function PagarPage() {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
+
+          {transferencia && <DatosTransferencia t={transferencia} />}
 
           {/* Obligatorio donde el alumno ve lo que va a pagar. Se pinta solo si
               la escuela cobra en una moneda distinta del peso. */}
@@ -143,7 +196,7 @@ export default function PagarPage() {
                 ? `Envíanos tu comprobante por ${porWhatsApp ? 'WhatsApp' : 'correo'} para registrar el pago en tu cuenta y abrirte el siguiente mes. El pago no se refleja solo.`
                 : 'Entrega tu comprobante en tu escuela para que registren el pago en tu cuenta y te abran el siguiente mes. El pago no se refleja solo.'}
             </p>
-            {cfgPagos.emisor && (
+            {cfgPagos.emisor && enlaces.length > 0 && (
               <p className="text-xs" style={{ color: 'var(--color-texto-secundario)' }}>
                 Al abrir el enlace verás el cobro a nombre de <strong>{cfgPagos.emisor}</strong>,
                 que es quien procesa los pagos de {cfg.nombre}.
