@@ -60,6 +60,16 @@ async function buildResponse(
     ? await admin.from('usuarios').select('id, nombre, apellidos').in('id', alumnoIds)
     : { data: [] }
 
+  // Nivel del alumno: licenciatura reutiliza el slot `certificado_secundaria`
+  // para el BACHILLERATO; sin el nivel, esta lista lo rotulaba «de Secundaria»
+  // mientras la ficha y el alumno veían «de Bachillerato» (Bug 94).
+  const { data: alumnosNivel } = alumnoIds.length > 0
+    ? await admin.from('alumnos').select('id, nivel').in('id', alumnoIds)
+    : { data: [] }
+  const nivelMap = new Map<string, string | null>(
+    (alumnosNivel ?? []).map((a: { id: string; nivel?: string | null }) => [a.id, a.nivel ?? null])
+  )
+
   const usuarioMap = new Map<string, string>(
     (usuarios ?? []).map((u: { id: string; nombre?: string; apellidos?: string }) => [
       u.id,
@@ -94,6 +104,7 @@ async function buildResponse(
         subido_en:        doc.subido_en,
         signed_url:       signed ?? doc.url,
         alumno_nombre:    usuarioMap.get(doc.alumno_id) ?? '—',
+        alumno_nivel:     nivelMap.get(doc.alumno_id) ?? null,
       }
     })
   )
