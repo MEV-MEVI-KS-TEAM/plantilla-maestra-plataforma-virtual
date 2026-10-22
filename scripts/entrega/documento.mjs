@@ -200,7 +200,7 @@ function marca(d) {
 function portada(d) {
   return `
 ${marca(d)}
-<h1 class="mt">${esc(d.nombreCompleto.toUpperCase())}</h1>
+<h1 class="mt">${esc(d.nombreCompleto)}</h1>
 <div class="sub">Documento de entrega oficial de tu plataforma educativa</div>
 ${d.tagline ? `<div class="quote mt">"${esc(d.tagline)}"</div>` : ''}
 <div class="hr"></div>
@@ -626,7 +626,7 @@ ${ul(d.primerosPasos)}`
 function cierre(d) {
   return `
 ${marca(d)}
-<h1 class="mt">${esc(d.nombreCompleto.toUpperCase())}</h1>
+<h1 class="mt">${esc(d.nombreCompleto)}</h1>
 ${d.taglineCierre ? `<div class="center" style="font-family:${d.fuentes.tituloCSS};font-style:italic;
      font-size:12pt;color:${d.P.acento2};margin-top:.06in;">${esc(d.taglineCierre)}</div>` : ''}
 <div class="hr"></div>
