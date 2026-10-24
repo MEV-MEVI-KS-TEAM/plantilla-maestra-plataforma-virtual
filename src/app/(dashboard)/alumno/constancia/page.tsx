@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { Loader2, Printer, Download } from 'lucide-react'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { CONFIG } from '@/lib/config'
+
+/** Domicilio de OFICINAS de la escuela (opt-in `CONFIG.domicilio`; vacío en la flota 100 % en línea). CIMA #251. */
+const DOMICILIO = ((CONFIG as { domicilio?: { completo?: string } }).domicilio?.completo ?? '').trim()
 
 type Estado = 'Acreditada' | 'No acreditada' | 'Pendiente'
 
@@ -383,6 +387,13 @@ export default function ConstanciaPage() {
                   {cfg.nombre}
                 </span>
               </div>
+              {/* Domicilio de OFICINAS, junto al nombre: solo si la escuela lo declara
+                  (sale de CONFIG, nunca escrito a mano). CIMA #251. */}
+              {DOMICILIO && (
+                <div style={{ fontSize: 9, color: '#64748b', marginTop: 6, maxWidth: 260, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+                  {DOMICILIO}
+                </div>
+              )}
             </div>
           </div>
 
@@ -428,6 +439,17 @@ export default function ConstanciaPage() {
 
           body * {
             visibility: hidden !important;
+          }
+
+          /* CIMA #251: un ancestro con \`transform\` (aunque sea la identidad que
+             deja la animación de entrada del panel) se vuelve el bloque
+             contenedor del \`position: absolute\` de abajo, y la constancia se
+             imprimía corrida ~285 px y cortada por la derecha. Al imprimir,
+             ningún ancestro de la constancia transforma ni anima. */
+          *:has(#constancia-print) {
+            transform: none !important;
+            animation: none !important;
+            filter: none !important;
           }
           #constancia-print,
           #constancia-print * {

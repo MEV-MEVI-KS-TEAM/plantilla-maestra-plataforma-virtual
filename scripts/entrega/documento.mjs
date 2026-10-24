@@ -595,7 +595,13 @@ function soporte(d) {
   return `
 ${d.validez ? `<h2>Validez oficial y respaldo</h2>
 <div class="rule"></div>
-<p class="lead">Tu página pública incluye una sección dedicada a la validez del
+${d.validezDocumentos === 0 ? `<p class="lead">Tu página pública incluye una sección dedicada a la validez del
+certificado, que resuelve la objeción más común de cualquier prospecto: "¿esto es real?".</p>
+${ul([
+      '<b>Validez oficial ante la SEP</b> — el certificado de Secundaria o de Preparatoria tiene validez oficial en todo México',
+      d.folioVerificable &&
+        '<b>Verifícalo tú mismo</b> — folio de ejemplo y enlace directo al portal SIGED de la SEP',
+    ])}` : `<p class="lead">Tu página pública incluye una sección dedicada a la validez del
 certificado, con ${d.folioVerificable ? 'tres bloques' : 'dos bloques'} que resuelven la objeción más común de cualquier
 prospecto: "¿esto es real?".</p>
 ${ul([
@@ -607,7 +613,7 @@ ${ul([
       // tampoco existe. El conteo de arriba se ajusta con él.
       d.folioVerificable &&
         '<b>Verifícalo tú mismo</b> — folio de ejemplo y enlace directo al portal SIGED de la SEP',
-    ])}
+    ])}`}
 <h2 class="mt2">Soporte técnico MEV</h2>` : '<h2>Soporte técnico MEV</h2>'}
 <div class="rule"></div>
 ${kv([
