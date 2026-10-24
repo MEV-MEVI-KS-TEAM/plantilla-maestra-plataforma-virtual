@@ -1365,7 +1365,7 @@ LANGUAGE sql
 IMMUTABLE
 AS $$
   SELECT COALESCE(p_nivel = 'demo', false)
-      OR COALESCE(p_nombre ILIKE '%tutor%', false);
+      OR COALESCE(p_nombre ~* '\mtutor[ií]a', false);
 $$;
 
 CREATE TABLE IF NOT EXISTS public.alumno_plan_eventos (

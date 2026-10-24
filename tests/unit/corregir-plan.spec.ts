@@ -150,12 +150,18 @@ test('la migración implementa los seis candados, con tutoriales excluidos en �
 })
 
 test('el predicado SQL es espejo de esTutorial: mismos dos marcadores, NULL bloquea', () => {
-  const sql = leer(MIGRACION)
+  // La definición vigente es la de la migración más reciente que lo redefine
+  // (20260923: tutorial por la palabra «tutoría», no por el substring «tutor»).
+  const sql = leer('supabase/migrations/20260923120000_tutoria_por_palabra.sql')
   const fn = sql.match(/CREATE OR REPLACE FUNCTION public\.es_materia_tutorial[\s\S]*?\$\$;/)?.[0] ?? ''
   expect(fn).not.toBe('')
   // Mismos dos marcadores que esTutorial() (acceso-materias.ts:95-97)
   expect(fn).toContain("p_nivel = 'demo'")
-  expect(fn).toContain("ILIKE '%tutor%'")
+  expect(fn).toContain("~* '\\mtutor[ií]a'")
+  expect(fn).not.toContain("ILIKE '%tutor%'")
+  for (const archivo of ['supabase/schema.sql', 'scripts/schema.sql']) {
+    expect(leer(archivo), archivo).toContain("~* '\\mtutor[ií]a'")
+  }
   // COALESCE a false: ante NULL la materia NO es tutorial y la fila bloquea
   expect(fn).toContain('COALESCE')
   // Predicado puro: sin acceso a tablas y estable
@@ -179,6 +185,13 @@ test('caso exacto: alumno de prepa que solo hizo "Tutoría de ingreso I" PASA; c
   expect([tutoriaPrepa, materiaDemo].some(cuentaComoAvance)).toBe(false)
   // Alumno con avance en una materia normal → la fila cuenta → candado bloquea
   expect([tutoriaPrepa, materiaDemo, materiaNormal].some(cuentaComoAvance)).toBe(true)
+})
+
+test('«padre o tutor» en el nombre NO convierte una materia en tutorial (diplomados CONOCER)', () => {
+  const consentimiento = { nivel: 'licenciatura', nombre: 'Consentimiento informado, cuestionario sanitario y autorización del padre o tutor' }
+  expect(esTutorial(consentimiento as never)).toBe(false)
+  expect(esTutorial({ nivel: 'preparatoria', nombre: 'Tutoría de ingreso I' } as never)).toBe(true)
+  expect(esTutorial({ nivel: 'preparatoria', nombre: 'TUTORIA DE INGRESO' } as never)).toBe(true)
 })
 
 test('la referencia cruzada de sincronía existe en los DOS lados del predicado', () => {

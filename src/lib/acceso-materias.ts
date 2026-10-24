@@ -111,7 +111,10 @@ export function materiasPorMesDePlan(
  * Un spec vigila la pareja (tests/unit/corregir-plan.spec.ts).
  */
 export function esTutorial(mat: Pick<MateriaVentana, 'nivel' | 'nombre'>): boolean {
-  return mat.nivel === 'demo' || mat.nombre.toLowerCase().includes('tutor')
+  // Por la PALABRA «tutoría», no por el substring «tutor»: las materias de
+  // consentimiento de los diplomados CONOCER dicen «padre o tutor» y quedaban
+  // abiertas sin pago y fuera de la ventana (MEDERI, 23-sep-2026).
+  return mat.nivel === 'demo' || /\btutor[ií]a/i.test(mat.nombre)
 }
 
 /**
