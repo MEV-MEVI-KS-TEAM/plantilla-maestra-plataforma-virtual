@@ -48,12 +48,20 @@ const fmtFecha = (fecha: string) => {
   return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Mexico_City' })
 }
 
+/**
+ * Firmante del recibo (`CONFIG.firmante`, opcional — #254): «Nombre — Cargo»
+ * al pie. Sin la clave no se pinta nada (el recibo de siempre).
+ */
+const FIRMANTE = (CONFIG as { firmante?: { nombre?: string; cargo?: string } }).firmante
+const LINEA_FIRMANTE = [FIRMANTE?.nombre?.trim(), FIRMANTE?.cargo?.trim()].filter(Boolean).join(' — ')
+
 const styles = StyleSheet.create({
   page:      { padding: 40, fontSize: 11, fontFamily: 'Helvetica', color: '#111827' },
   header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   logo:      { height: 40, objectFit: 'contain' },
   escuela:   { fontSize: 16, fontFamily: 'Helvetica-Bold' },
   tagline:   { fontSize: 9, color: '#6B7280', marginTop: 2 },
+  firmante:  { fontSize: 10, color: '#111827', marginTop: 28, textAlign: 'center' },
   divider:   { borderBottomWidth: 2, borderBottomColor: '#111827', marginVertical: 12 },
   titulo:    { fontSize: 13, fontFamily: 'Helvetica-Bold', letterSpacing: 1 },
   folioRow:  { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, marginBottom: 16 },
@@ -161,6 +169,7 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
           <Text style={styles.monto}>{fmtMoneda(data.monto, data.moneda)}</Text>
         </View>
 
+        {LINEA_FIRMANTE !== '' && <Text style={styles.firmante}>{LINEA_FIRMANTE}</Text>}
         <Text style={styles.footer}>
           {cfg.nombreCompleto} — Comprobante interno de pago. Folio {data.folio}. Documento generado electrónicamente.
         </Text>
