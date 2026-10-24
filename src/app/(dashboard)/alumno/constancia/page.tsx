@@ -456,8 +456,13 @@ export default function ConstanciaPage() {
                preferible a recortarlo: 32 filas no caben en carta sin dejar el
                texto ilegible. */
             zoom: 0.75 !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
+            /* TICKET-2026-10-20-04 (ATLANTIC, licenciatura de 32 materias): el
+               contenedor llevaba overflow hidden (inline, para la sombra en
+               pantalla) y break-inside avoid: algunos navegadores lo tratan
+               como un bloque indivisible y recortan todo lo que no cabe en la
+               primera hoja. En impresión se deja crecer y partir entre hojas;
+               las filas siguen sin cortarse a la mitad. */
+            overflow: visible !important;
           }
 
           /* Tabla compacta: es el bloque que crece con el avance del alumno y
@@ -468,8 +473,8 @@ export default function ConstanciaPage() {
           #constancia-print h1 { font-size: 26px !important; margin-bottom: 14px !important; }
           #constancia-print p { line-height: 1.55 !important; }
 
-          /* Nada dentro debe partirse a mitad entre dos hojas. */
-          #constancia-print table,
+          /* Ninguna fila ni imagen se parte a mitad entre dos hojas (la tabla sí
+             puede continuar en la siguiente). */
           #constancia-print tr,
           #constancia-print img {
             page-break-inside: avoid !important;
@@ -485,6 +490,37 @@ export default function ConstanciaPage() {
           /* Los botones de Imprimir y Descargar no van en el documento. */
           #constancia-acciones {
             display: none !important;
+          }
+        }
+
+        /* TICKET-2026-10-21-15 (ATLANTIC): con position absolute la constancia
+           quedaba dentro del <main> del dashboard (overflow-y auto) y del div
+           de PageTransition (GSAP le deja un transform, que lo vuelve su
+           contenedor): el navegador la recortaba a la altura de ese main y
+           solo salía una hoja, sin firma. Donde hay :has() se quita todo lo
+           que no es la constancia ni un ancestro suyo, los ancestros dejan de
+           recortar y la constancia fluye desde arriba y se parte entre hojas.
+           Sin :has() queda el comportamiento de arriba. */
+        @supports selector(:has(*)) {
+          @media print {
+            body *:not(:has(#constancia-print)):not(#constancia-print):not(#constancia-print *) {
+              display: none !important;
+            }
+            html, body, body *:has(#constancia-print) {
+              display: block !important;
+              position: static !important;
+              transform: none !important;
+              overflow: visible !important;
+              height: auto !important;
+              min-height: 0 !important;
+              max-height: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #fff !important;
+            }
+            #constancia-print {
+              position: static !important;
+            }
           }
         }
       `}</style>
