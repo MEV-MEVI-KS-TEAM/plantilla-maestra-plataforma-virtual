@@ -59,7 +59,7 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
   const precio = precioCatalogo(curso)
   const etiqueta = curso.tipo === 'diplomado' ? 'Diplomado' : 'Curso'
 
-  // Bug 191: la tarjeta es BLANCA fija y el marco/caja de precio van en `fondo`,
+  // Bug 291: la tarjeta es BLANCA fija y el marco/caja de precio van en `fondo`,
   // pero la letra salía de la paleta tal cual. Con una paleta oscura (CEVN:
   // texto #F5F1E6) la descripción quedaba en 1.1:1 sobre el blanco. Cada
   // superficie declara su terna de letra ajustada lo justo (`colorLegibleSobre`
