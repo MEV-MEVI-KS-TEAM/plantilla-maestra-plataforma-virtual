@@ -14,7 +14,9 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import type { CSSProperties } from 'react'
 import { getSiteConfig } from '@/lib/site-config'
+import { colorLegibleSobre } from '@/lib/contraste'
 import { AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, canalDiplomado, detallePublico, precioCatalogo } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
@@ -57,33 +59,47 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
   const precio = precioCatalogo(curso)
   const etiqueta = curso.tipo === 'diplomado' ? 'Diplomado' : 'Curso'
 
+  // Bug 191: la tarjeta es BLANCA fija y el marco/caja de precio van en `fondo`,
+  // pero la letra salía de la paleta tal cual. Con una paleta oscura (CEVN:
+  // texto #F5F1E6) la descripción quedaba en 1.1:1 sobre el blanco. Cada
+  // superficie declara su terna de letra ajustada lo justo (`colorLegibleSobre`
+  // es no-op si el color ya cumple AA: las paletas claras no cambian).
+  const { primario, texto, textoSecundario, fondo } = cfg.colores
+  const letraSobre = (sup: string) => ({
+    '--ficha-titulo': colorLegibleSobre(primario, sup),
+    '--ficha-texto':  colorLegibleSobre(texto, sup),
+    '--ficha-suave':  colorLegibleSobre(textoSecundario, sup),
+  }) as CSSProperties
+  const sobreFondo = letraSobre(fondo)
+  const sobreTarjeta = letraSobre('#FFFFFF')
+
   return (
-    <main className="min-h-screen" style={{ background: 'var(--color-fondo)' }}>
+    <main className="min-h-screen" style={{ background: 'var(--color-fondo)', ...sobreFondo }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10 sm:py-16">
 
-        <Link href="/#diplomados" className="text-sm font-semibold" style={{ color: 'var(--color-primario)' }}>
+        <Link href="/#diplomados" className="text-sm font-semibold" style={{ color: 'var(--ficha-titulo)' }}>
           ← Volver al catálogo
         </Link>
 
-        <div className="mt-6 rounded-2xl bg-white p-6 sm:p-10" style={{ border: '1px solid var(--color-borde)' }}>
-          <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'var(--color-primario)' }}>
+        <div className="mt-6 rounded-2xl bg-white p-6 sm:p-10" style={{ border: '1px solid var(--color-borde)', ...sobreTarjeta }}>
+          <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'var(--ficha-titulo)' }}>
             {etiqueta}
           </span>
-          <h1 className="text-2xl sm:text-4xl font-bold leading-tight mt-2" style={{ color: 'var(--color-primario)' }}>
+          <h1 className="text-2xl sm:text-4xl font-bold leading-tight mt-2" style={{ color: 'var(--ficha-titulo)' }}>
             {curso.nombre}
           </h1>
 
           {curso.descripcion && (
-            <p className="text-sm sm:text-base leading-relaxed mt-4 whitespace-pre-wrap" style={{ color: 'var(--color-texto)' }}>
+            <p className="text-sm sm:text-base leading-relaxed mt-4 whitespace-pre-wrap" style={{ color: 'var(--ficha-texto)' }}>
               {curso.descripcion}
             </p>
           )}
 
           {/* Datos duros. Se omite lo que sea NULL en vez de pintar "—". */}
-          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-sm" style={{ color: 'var(--color-texto-secundario)' }}>
-            {curso.horas !== null && <span><strong style={{ color: 'var(--color-primario)' }}>{curso.horas}</strong> horas</span>}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-sm" style={{ color: 'var(--ficha-suave)' }}>
+            {curso.horas !== null && <span><strong style={{ color: 'var(--ficha-titulo)' }}>{curso.horas}</strong> horas</span>}
             {curso.duracion_meses !== null && (
-              <span><strong style={{ color: 'var(--color-primario)' }}>{curso.duracion_meses}</strong> {curso.duracion_meses === 1 ? 'mes' : 'meses'}</span>
+              <span><strong style={{ color: 'var(--ficha-titulo)' }}>{curso.duracion_meses}</strong> {curso.duracion_meses === 1 ? 'mes' : 'meses'}</span>
             )}
           </div>
 
@@ -92,27 +108,27 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
               pagos, que es justo lo contrario. Se distinguen los dos casos. */}
           {precio.tipo !== 'informes' && (
             <div className="mt-6 rounded-xl p-4"
-              style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
+              style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)', ...sobreFondo }}>
               {precio.tipo === 'mensual' ? (
                 <>
-                  <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>
+                  <p className="text-xl font-bold" style={{ color: 'var(--ficha-titulo)' }}>
                     {precio.mensualidad}
-                    <span className="text-sm font-normal" style={{ color: 'var(--color-texto-secundario)' }}> / mes</span>
+                    <span className="text-sm font-normal" style={{ color: 'var(--ficha-suave)' }}> / mes</span>
                   </p>
                   {precio.inscripcion && (
-                    <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
+                    <p className="text-sm mt-1" style={{ color: 'var(--ficha-suave)' }}>
                       Inscripción de {precio.inscripcion}
                     </p>
                   )}
                 </>
               ) : (
                 <>
-                  <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>
+                  <p className="text-xl font-bold" style={{ color: 'var(--ficha-titulo)' }}>
                     {precio.monto}
                   </p>
-                  <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>Pago único</p>
+                  <p className="text-sm mt-1" style={{ color: 'var(--ficha-suave)' }}>Pago único</p>
                   {/* #208: el precio es el de la ficha, así que pago único aquí ⇔ acceso total al asignar. */}
-                  <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>{AVISO_PAGO_UNICO}</p>
+                  <p className="text-sm mt-1" style={{ color: 'var(--ficha-suave)' }}>{AVISO_PAGO_UNICO}</p>
                 </>
               )}
             </div>
@@ -122,10 +138,10 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
               canal de la escuela. Nunca «Sin costo» ni «$0». */}
           {precioCatalogo(curso).tipo === 'informes' && (
             <div className="mt-6 rounded-xl p-4"
-              style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
-              <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>{TEXTO_SIN_PRECIO}</p>
+              style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)', ...sobreFondo }}>
+              <p className="text-xl font-bold" style={{ color: 'var(--ficha-titulo)' }}>{TEXTO_SIN_PRECIO}</p>
               {canal && (
-                <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
+                <p className="text-sm mt-1" style={{ color: 'var(--ficha-suave)' }}>
                   Te damos el precio y las fechas por {canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}.
                 </p>
               )}
@@ -135,11 +151,11 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
           {/* TEMARIO: solo títulos de módulo. Nada de lecciones ni del examen. */}
           {curso.temario.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-bold mb-3" style={{ color: 'var(--color-primario)' }}>Temario</h2>
+              <h2 className="text-lg font-bold mb-3" style={{ color: 'var(--ficha-titulo)' }}>Temario</h2>
               <ol className="space-y-2">
                 {curso.temario.map((titulo, i) => (
-                  <li key={i} className="flex gap-3 text-sm" style={{ color: 'var(--color-texto)' }}>
-                    <span className="font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--color-texto-secundario)' }}>
+                  <li key={i} className="flex gap-3 text-sm" style={{ color: 'var(--ficha-texto)' }}>
+                    <span className="font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--ficha-suave)' }}>
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span>{titulo}</span>
@@ -162,7 +178,7 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
               >
                 {canal.tipo === 'whatsapp' ? 'Pedir informes por WhatsApp' : 'Pedir informes por correo'}
               </a>
-              <p className="text-xs text-center mt-3" style={{ color: 'var(--color-texto-secundario)' }}>
+              <p className="text-xs text-center mt-3" style={{ color: 'var(--ficha-suave)' }}>
                 Te contactamos para resolver dudas y darte de alta.
               </p>
             </>
