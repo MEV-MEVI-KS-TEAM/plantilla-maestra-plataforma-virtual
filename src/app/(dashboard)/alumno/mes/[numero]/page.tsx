@@ -75,7 +75,10 @@ export default function MesPage() {
         </button>
         <div>
           <h2 className="text-xl font-bold text-gray-900">
-            Mes {mes.numero}{mes.titulo ? ` — ${mes.titulo}` : ''}
+            {/* Hay títulos que ya traen «Mes N — …»: no repetir el prefijo. */}
+            {mes.titulo && /^mes\s+\d+/i.test(mes.titulo.trim())
+              ? mes.titulo
+              : `Mes ${mes.numero}${mes.titulo ? ` — ${mes.titulo}` : ''}`}
           </h2>
           <p className="text-sm mt-0.5" style={{ color: '#94A3B8' }}>
             {mes.materias.length} materia{mes.materias.length !== 1 ? 's' : ''}
@@ -105,10 +108,13 @@ export default function MesPage() {
               <div className="flex-1 p-5">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div>
-                    <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(21,101,192,0.15)', color: 'var(--color-acento)' }}>
-                      {mat.codigo}
-                    </span>
-                    <h3 className="text-sm font-semibold mt-2" style={{ color: '#F1F5F9' }}>{mat.nombre}</h3>
+                    {/* Sin código, el badge vacío se veía como un recuadro gris. */}
+                    {mat.codigo && (
+                      <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(21,101,192,0.15)', color: 'var(--color-acento)' }}>
+                        {mat.codigo}
+                      </span>
+                    )}
+                    <h3 className={`text-sm font-semibold${mat.codigo ? ' mt-2' : ''}`} style={{ color: '#F1F5F9' }}>{mat.nombre}</h3>
                   </div>
                 </div>
                 {mat.descripcion && (

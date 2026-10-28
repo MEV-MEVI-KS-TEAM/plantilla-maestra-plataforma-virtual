@@ -237,9 +237,11 @@ export default function MateriaPage() {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: withAlpha(CONFIG.colores.primario, 0.15), color: CONFIG.colores.acento }}>
-              {materia.codigo}
-            </span>
+            {materia.codigo && (
+              <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: withAlpha(CONFIG.colores.primario, 0.15), color: CONFIG.colores.acento }}>
+                {materia.codigo}
+              </span>
+            )}
             <div className="w-2 h-2 rounded-full" style={{ background: materia.color_hex || CONFIG.colores.primario }} />
           </div>
           <h1 className="text-xl font-bold text-gray-900 mt-1">{materia.nombre}</h1>
@@ -444,7 +446,10 @@ export default function MateriaPage() {
                       </div>
 
                       {/* Barra de progreso de lectura (flotante, como complemento) */}
+                      {/* key: al cambiar de semana se vuelve a montar; si no, «Semana
+                          completada» se quedaba hasta recargar. */}
                       <ReadingProgress
+                        key={semana.id}
                         semanaId={semana.id}
                         alumnoId={alumnoId}
                         lang="es"
