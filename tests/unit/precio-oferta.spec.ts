@@ -129,7 +129,7 @@ test('6. el registro anuncia el precio de la ficha: bajo «¿Cuál?» y en las o
   expect(src).not.toContain("from '@/lib/cursos/catalogo'")
   // Bajo el select del curso: la misma regla que la tarjeta de su oferta, con la inscripción.
   expect(src).toContain('precioDeCursoElegido(diplomadoId, ofertasIngreso, preciosPublicados)')
-  expect(src).toContain('lineaPrecio(precioElegido)')
+  expect(src).toContain('lineaPrecio(precioElegido, { id: diplomadoId })')
   expect(src).toContain('Inscripción de {precioElegido.inscripcion}')
   // La región aria-live está montada siempre (una que nace llena no se anuncia).
   expect(src).toContain('aria-describedby="precio-curso-elegido"')
@@ -152,7 +152,7 @@ test('7. la portada clásica usa la regla única: sin precio dice «Pide informe
   expect(src).toContain("from '@/lib/cursos/precio-curso'")
   expect(src).not.toContain("from '@/lib/cursos/catalogo'")
   expect(src).toContain('const precio = precioCatalogo(curso)')
-  expect(src).toContain('{TEXTO_SIN_PRECIO}')
+  expect(src).toContain('{textoSinPrecio(curso)}')
   expect(src).toContain('<PrecioTarjetaClasica curso={c} color={C.navy} />')
   expect(src).not.toMatch(/precioPublico\(c\.precio_/)
 })
@@ -166,7 +166,7 @@ test('8. /diplomados rotula el pago único; la ficha pide informes de «el curso
   expect(catalogo.mensajeDiplomado('Criminología', 'diplomado')).toBe('Hola, me interesa el diplomado "Criminología". ¿Me dan informes?')
   expect(catalogo.mensajeDiplomado('Sin tipo')).toContain('el diplomado')
   const animada = sinComentarios(leer('src/components/landing/animada/LandingAnimada.tsx'))
-  expect(animada).toContain('lineaPrecio(precioCatalogo(c))')
+  expect(animada).toContain('lineaPrecio(precioCatalogo(c), c)')
   // 'use client': valores del módulo puro; de catalogo.ts, solo tipos.
   expect(animada).toContain("from '@/lib/cursos/precio-curso'")
   expect(animada).not.toMatch(/^import \{[^}]*\} from '@\/lib\/cursos\/catalogo'/m)

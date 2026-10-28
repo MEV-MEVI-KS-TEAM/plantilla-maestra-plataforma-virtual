@@ -17,7 +17,7 @@ import { hexToRgb, ratioContraste } from '@/lib/contraste'
 import { paletaLanding, type Paleta } from '@/components/landing/paleta'
 // Del módulo puro, no de catalogo.ts: este componente es 'use client' y
 // catalogo.ts trae el cliente admin.
-import { AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, precioCatalogo } from '@/lib/cursos/precio-curso'
+import { AVISO_PAGO_UNICO, precioCatalogo, textoSinPrecio } from '@/lib/cursos/precio-curso'
 import { faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela, whatsappVisible } from '@/lib/contacto-ui'
 import { escuelaCertifica, inscripcionDe, mensualidadPropiaDe, subtituloProgramasClasica, varsInscripcionPorNivel } from '@/lib/precios-ui'
 
@@ -241,7 +241,7 @@ function Card3D({ children, className, style }: { children: React.ReactNode; cla
  * gratis: «Pide informes», nunca «$0».
  */
 function PrecioTarjetaClasica({ curso, color }: {
-  curso: { precio_inscripcion: number; precio_mensualidad: number }
+  curso: { id?: string; precio_inscripcion: number; precio_mensualidad: number }
   color: string
 }) {
   // `precio` y no `p`: el guardián de consumidores-precio-nivel vigila `p.inscripcion`
@@ -275,7 +275,7 @@ function PrecioTarjetaClasica({ curso, color }: {
       </>
     )
   }
-  return <p className="text-sm font-bold" style={{ color }}>{TEXTO_SIN_PRECIO}</p>
+  return <p className="text-sm font-bold" style={{ color }}>{textoSinPrecio(curso)}</p>
 }
 
 function FAQItem({ q, a }: { q: string; a: string }) {

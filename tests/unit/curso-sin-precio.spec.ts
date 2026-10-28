@@ -50,7 +50,8 @@ test.describe('guardianes: nadie anuncia un curso sin precio como gratis', () =>
     expect(indice).not.toMatch(/precioPublico\(c\.precio_inscripcion\)/)
     const ficha = sinComentarios(leer('src/app/diplomados/[id]/page.tsx'))
     expect(ficha).toContain("precioCatalogo(curso).tipo === 'informes'")
-    expect(ficha).toContain('TEXTO_SIN_PRECIO')
+    // El texto sale de textoSinPrecio(): «Pide informes» salvo CONFIG.cursosSinCosto.
+    expect(ficha).toContain('textoSinPrecio(curso)')
   })
 
   test('cambiar un precio purga también el ÍNDICE /diplomados', () => {

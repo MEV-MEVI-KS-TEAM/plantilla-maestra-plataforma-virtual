@@ -51,6 +51,19 @@ export function precioCursoNumerico(c: PreciosCurso): PrecioNumerico {
 export const TEXTO_SIN_PRECIO = 'Pide informes'
 
 /**
+ * Lo que dice un curso en 0/0 que la escuela REGALA a propósito. La tabla no
+ * tiene «gratis» (ver arriba), así que se declara curso por curso en
+ * `CONFIG.cursosSinCosto` (sus ids): sin la lista, todo 0/0 sigue siendo
+ * «Pide informes».
+ */
+export const TEXTO_SIN_COSTO = 'Sin costo'
+
+/** El texto de un curso en 0/0: «Sin costo» si su id está declarado, si no «Pide informes». */
+export function textoSinPrecioDe(id: string | null | undefined, sinCosto: readonly string[] | null | undefined): string {
+  return id && (sinCosto ?? []).includes(id) ? TEXTO_SIN_COSTO : TEXTO_SIN_PRECIO
+}
+
+/**
  * Aviso que acompaña a un curso de PAGO ÚNICO antes de pagar (#208, decisión de
  * Kevin): asignarlo da el curso completo (C3b) y los Términos lo excluyen del
  * reembolso una vez dado el acceso (sección 5).

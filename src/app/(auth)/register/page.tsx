@@ -669,7 +669,7 @@ export default function RegisterPage() {
                         {precioElegido && numElegido && (
                           <>
                             <p className="text-xs font-semibold" style={{ color: 'var(--color-acento-texto)' }}>
-                              {lineaPrecio(precioElegido)}
+                              {lineaPrecio(precioElegido, { id: diplomadoId })}
                               {numElegido.tipo === 'mensual' && <Equivalencia monto={numElegido.mensualidad} />}
                               {numElegido.tipo === 'unico' && <Equivalencia monto={numElegido.monto} />}
                             </p>

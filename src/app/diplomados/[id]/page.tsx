@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, canalDiplomado, detallePublico, precioCatalogo } from '@/lib/cursos/catalogo'
+import { AVISO_PAGO_UNICO, TEXTO_SIN_COSTO, canalDiplomado, detallePublico, precioCatalogo, textoSinPrecio } from '@/lib/cursos/catalogo'
 
 interface Props { params: { id: string } }
 
@@ -123,8 +123,8 @@ export default async function DiplomadoPublicoPage({ params }: Props) {
           {precioCatalogo(curso).tipo === 'informes' && (
             <div className="mt-6 rounded-xl p-4"
               style={{ background: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
-              <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>{TEXTO_SIN_PRECIO}</p>
-              {canal && (
+              <p className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>{textoSinPrecio(curso)}</p>
+              {canal && textoSinPrecio(curso) !== TEXTO_SIN_COSTO && (
                 <p className="text-sm mt-1" style={{ color: 'var(--color-texto-secundario)' }}>
                   Te damos el precio y las fechas por {canal.tipo === 'whatsapp' ? 'WhatsApp' : 'correo'}.
                 </p>

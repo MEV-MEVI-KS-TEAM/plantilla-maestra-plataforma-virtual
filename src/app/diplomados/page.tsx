@@ -16,7 +16,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSiteConfig } from '@/lib/site-config'
-import { AVISO_PAGO_UNICO, TEXTO_SIN_PRECIO, listarCatalogoPublico, precioCatalogo, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
+import { AVISO_PAGO_UNICO, listarCatalogoPublico, precioCatalogo, textoSinPrecio, type CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela } from '@/lib/contacto-ui'
 
 // Título, logo y WhatsApp son editables desde "Personalizar mi página": salen
@@ -53,7 +53,7 @@ function PrecioTarjeta({ curso }: { curso: CursoCatalogoPublico }) {
       </>
     )
   }
-  return <>{TEXTO_SIN_PRECIO}</>
+  return <>{textoSinPrecio(curso)}</>
 }
 
 export default async function DiplomadosPage() {

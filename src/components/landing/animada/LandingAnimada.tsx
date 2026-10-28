@@ -415,7 +415,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // Un curso sin precio NO se anuncia «Sin costo»: la tabla guarda 0 cuando
   // nadie capturó el precio (ver `precioCatalogo`). Dice «Pide informes».
   // La línea sale de lineaPrecio, la misma que usa el registro.
-  const precioCurso = (c: CursoCatalogoPublico) => lineaPrecio(precioCatalogo(c))
+  const precioCurso = (c: CursoCatalogoPublico) => lineaPrecio(precioCatalogo(c), c)
 
   return (
     <div className="la-landing" style={{ background: paleta.blanco, color: paleta.tinta, minHeight: '100vh' }}>
