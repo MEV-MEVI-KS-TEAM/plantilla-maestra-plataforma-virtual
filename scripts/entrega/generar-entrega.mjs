@@ -968,7 +968,11 @@ log(`✓ PDF   → entrega/${path.basename(pdfPath)}`)
 /* ── 7. Mensaje de WhatsApp ──────────────────────────────────────────────── */
 if (!flag('solo-pdf')) {
   const L = []
-  L.push(`¡Hola ${D.adminNombre.split(' ')[0]}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
+  // Con título delante («Dr. David…», «Lic. Ana…») el saludo lleva título y
+  // nombre: solo la primera palabra dejaba «¡Hola Dr.!».
+  const palabras = D.adminNombre.trim().split(/\s+/)
+  const conTitulo = /^(dr|dra|lic|ing|mtro|mtra|prof|profa|arq|c\.?p)\.?$/i.test(palabras[0] ?? '') && palabras.length > 1
+  L.push(`¡Hola ${conTitulo ? palabras.slice(0, 2).join(' ') : palabras[0]}! 🎉 Tu plataforma de ${datos.nombreCompleto} ya está lista.`, '')
   L.push('🌐 TU PLATAFORMA', URL_BASE, '')
   L.push('👤 ACCESO ADMINISTRADOR', `Usuario: ${D.adminEmail}`, `Contraseña: ${D.adminPassword}`, `Panel: ${URL_BASE}/admin`, '')
   // Bloque E2: lo que tu página enseña para que te contacten (ya con lo

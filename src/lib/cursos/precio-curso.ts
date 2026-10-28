@@ -14,11 +14,11 @@ import { formatearMoneda } from '@/lib/moneda'
 // oferta viven en precio-regla.ts, sin imports, para que el generador de la
 // entrega (Node, sin alias '@/') use los MISMOS.
 import {
-  precioCursoNumerico, resolverPrecioOferta, ofertaAbreTodo, TEXTO_SIN_PRECIO, AVISO_PAGO_UNICO,
+  precioCursoNumerico, resolverPrecioOferta, ofertaAbreTodo, TEXTO_SIN_PRECIO, TEXTO_SIN_COSTO, textoSinPrecioDe, AVISO_PAGO_UNICO,
   type PreciosCurso, type PrecioNumerico, type PrecioOferta, type OfertaConPrecio,
 } from './precio-regla'
 export {
-  precioCursoNumerico, resolverPrecioOferta, ofertaAbreTodo, TEXTO_SIN_PRECIO, AVISO_PAGO_UNICO,
+  precioCursoNumerico, resolverPrecioOferta, ofertaAbreTodo, TEXTO_SIN_PRECIO, TEXTO_SIN_COSTO, textoSinPrecioDe, AVISO_PAGO_UNICO,
   type PreciosCurso, type PrecioNumerico, type PrecioOferta, type OfertaConPrecio,
 }
 
@@ -59,10 +59,16 @@ export function precioCatalogo(c: PreciosCurso): PrecioCatalogo {
  * con las mismas palabras. La inscripción de un mensual no va aquí: el
  * registro la pinta en su propia línea (con la equivalencia junto a SU monto).
  */
-export function lineaPrecio(p: PrecioCatalogo): string {
+export function lineaPrecio(p: PrecioCatalogo, curso?: { id?: string | null }): string {
   if (p.tipo === 'mensual') return `${p.mensualidad} al mes`
   if (p.tipo === 'unico') return `${p.monto} · pago único`
-  return TEXTO_SIN_PRECIO
+  return textoSinPrecio(curso)
+}
+
+/** «Sin costo» para un curso de `CONFIG.cursosSinCosto`; «Pide informes» para el resto. */
+export function textoSinPrecio(curso?: { id?: string | null }): string {
+  const sinCosto = (CONFIG as unknown as { cursosSinCosto?: readonly string[] }).cursosSinCosto
+  return textoSinPrecioDe(curso?.id, sinCosto)
 }
 
 /**

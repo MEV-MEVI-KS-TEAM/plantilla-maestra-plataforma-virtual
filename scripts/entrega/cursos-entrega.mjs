@@ -15,7 +15,11 @@
  * aborta; en las demás se avisa fuerte. Y si el registro vende algo que el
  * documento diría distinto, se aborta con el motivo.
  */
-import { precioCursoNumerico, resolverPrecioOferta, TEXTO_SIN_PRECIO } from '../../src/lib/cursos/precio-regla.ts'
+import { precioCursoNumerico, resolverPrecioOferta, TEXTO_SIN_PRECIO, TEXTO_SIN_COSTO, textoSinPrecioDe } from '../../src/lib/cursos/precio-regla.ts'
+import { CONFIG } from '../../src/lib/config.ts'
+
+/** El texto de un curso en 0/0, con la lista `CONFIG.cursosSinCosto` (la MISMA de la página). */
+const sinPrecioDe = (c) => textoSinPrecioDe(c?.id, CONFIG.cursosSinCosto)
 import { normalizarOfertas } from '../../src/lib/cursos/oferta-regla.ts'
 
 /** La columna no existe (base sin la migración B1): el mismo criterio que acceso-total.ts. */
@@ -88,7 +92,7 @@ export function precioDeCurso(c, mxn) {
     const mes = c.meses > 0 ? `${mxn(p.mensualidad)} al mes × ${c.meses} ${c.meses === 1 ? 'mes' : 'meses'}` : `${mxn(p.mensualidad)} al mes`
     return p.inscripcion !== null ? `${mxn(p.inscripcion)} de inscripción + ${mes}` : mes
   }
-  return TEXTO_SIN_PRECIO
+  return sinPrecioDe(c)
 }
 
 /** Lo que el registro anuncia de una oferta, en palabras. */
@@ -151,7 +155,7 @@ export function revisarCursos({ lectura, ing, mxn, menu = 'Gestionar Cursos', mo
   }
 
   for (const c of lista) {
-    if (precioCursoNumerico(preciosDe(c)).tipo === 'informes') {
+    if (precioCursoNumerico(preciosDe(c)).tipo === 'informes' && sinPrecioDe(c) !== TEXTO_SIN_COSTO) {
       avisos.push(`«${c.nombre}» no tiene precio: /diplomados y este documento dicen «${TEXTO_SIN_PRECIO}», y al asignarlo se abre solo el mes 1. Si se vende, ponle precio en ${fichaPrecio}.`)
     }
   }

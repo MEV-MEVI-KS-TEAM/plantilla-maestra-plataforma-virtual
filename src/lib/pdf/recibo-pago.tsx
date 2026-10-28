@@ -54,6 +54,7 @@ const styles = StyleSheet.create({
   logo:      { height: 40, objectFit: 'contain' },
   escuela:   { fontSize: 16, fontFamily: 'Helvetica-Bold' },
   tagline:   { fontSize: 9, color: '#6B7280', marginTop: 2 },
+  direccion: { fontSize: 8, color: '#6B7280', marginTop: 2, maxWidth: 380 },
   divider:   { borderBottomWidth: 2, borderBottomColor: '#111827', marginVertical: 12 },
   titulo:    { fontSize: 13, fontFamily: 'Helvetica-Bold', letterSpacing: 1 },
   folioRow:  { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, marginBottom: 16 },
@@ -99,6 +100,12 @@ function logoSrc(cfg: ReciboBranding): string | null {
   return existsSync(abs) ? abs : null
 }
 
+// Correo y domicilio son opcionales: una escuela sin `direccion` en CONFIG
+// imprime el recibo igual que antes.
+const extraRecibo = CONFIG as unknown as { contactoEmail?: string; direccion?: string }
+const correoRecibo = (extraRecibo.contactoEmail ?? '').trim()
+const direccionRecibo = (extraRecibo.direccion ?? '').trim()
+
 export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBranding }) {
   const logo = logoSrc(cfg)
   return (
@@ -109,6 +116,8 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
             <Text style={styles.escuela}>{cfg.nombreCompleto}</Text>
             {/* Sin WhatsApp, solo el sitio: nada de «· WhatsApp » con la palabra colgando. */}
             <Text style={styles.tagline}>{lineaContactoRecibo(CONFIG.urlBase, cfg)}</Text>
+            {correoRecibo && <Text style={styles.tagline}>{correoRecibo}</Text>}
+            {direccionRecibo && <Text style={styles.direccion}>{direccionRecibo}</Text>}
           </View>
           {/* Image de @react-pdf/renderer, no <img> de HTML: no acepta `alt`. */}
           {/* eslint-disable-next-line jsx-a11y/alt-text */}

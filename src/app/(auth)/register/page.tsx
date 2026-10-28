@@ -214,11 +214,11 @@ function LeftPanel() {
           borderRadius: 16, padding: 4, display: 'inline-block',
           border: '1px solid rgba(255,255,255,0.25)',
         }}>
-          <Image src={cfg.logo} alt={cfg.nombre} width={68} height={68}
+          <Image src={cfg.logoOscuro} alt={cfg.nombre} width={68} height={68}
             style={{ borderRadius: 12, objectFit: 'contain', display: 'block' }} priority />
         </div>
         <p className="mt-4 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', letterSpacing: '0.06em' }}>
-          {cfg.nombreCompleto.toUpperCase()}
+          {cfg.nombreCompleto}
         </p>
       </div>
 
@@ -310,7 +310,12 @@ export default function RegisterPage() {
   // ⚠️ `nivel` guarda el VALOR DE LA OPCIÓN, no el nivel de BD. «Diplomados» es
   // presentación de `nivel='licenciatura'`; se traduce con nivelDeOpcion() justo
   // antes de mandar. Ver src/lib/niveles.ts (TICKET-2026-09-07-52).
-  const opcionesNivel  = getOpcionesNivel(diplomados.length > 0)
+  // Un curso que ya es oferta de ingreso se pide en su bloque propio: listarlo
+  // también en «¿Cuál?» lo mostraba dos veces (criterio RHEMA/LION). Los precios
+  // siguen saliendo del catálogo completo (`preciosPublicados`).
+  const idsOferta      = new Set(ofertasIngreso.flatMap(o => o.cursoIds ?? []))
+  const catalogoLibre  = diplomados.filter(d => !idsOferta.has(d.id))
+  const opcionesNivel  = getOpcionesNivel(catalogoLibre.length > 0)
   const esDiplomadoLic = esOpcionDiplomadoLic(nivel)
   const esDiplomado = esOpcionCurso(nivel)
 
@@ -492,7 +497,7 @@ export default function RegisterPage() {
           <Image src={cfg.logo} alt={cfg.nombre} width={60} height={60}
             style={{ borderRadius: 12, objectFit: 'contain', border: '1px solid #E2E8F0' }} priority />
           <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)', letterSpacing: '0.05em' }}>
-            {cfg.nombreCompleto.toUpperCase()}
+            {cfg.nombreCompleto}
           </p>
         </div>
 
@@ -650,7 +655,7 @@ export default function RegisterPage() {
                         style={selectStyle} onFocus={onFocus} onBlur={onBlur}
                         aria-describedby="precio-curso-elegido">
                         <option value="">Selecciona…</option>
-                        {diplomados.map(d => (
+                        {catalogoLibre.map(d => (
                           <option key={d.id} value={d.id}>{d.nombre}</option>
                         ))}
                       </select>
@@ -664,7 +669,7 @@ export default function RegisterPage() {
                         {precioElegido && numElegido && (
                           <>
                             <p className="text-xs font-semibold" style={{ color: 'var(--color-acento-texto)' }}>
-                              {lineaPrecio(precioElegido)}
+                              {lineaPrecio(precioElegido, { id: diplomadoId })}
                               {numElegido.tipo === 'mensual' && <Equivalencia monto={numElegido.mensualidad} />}
                               {numElegido.tipo === 'unico' && <Equivalencia monto={numElegido.monto} />}
                             </p>

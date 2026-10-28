@@ -107,7 +107,7 @@ export default async function RootLayout({
   // Cliente solo configura src/lib/config.ts y la plataforma toma su paleta.
   // Desde F1 la paleta viene ya fusionada con los overrides del editor.
   const c = cfg.colores as typeof cfg.colores & Partial<Record<
-    'sidebarActivo' | 'sidebarActivoTexto' | 'sidebarHover' | 'sidebarRealce'
+    'sidebarActivo' | 'sidebarActivoTexto' | 'sidebarHover' | 'sidebarRealce' | 'sidebarRealceTexto'
     | 'sidebarBorde' | 'sidebarBordeFuerte', string>>
 
   const cssVars = {
@@ -157,6 +157,7 @@ export default async function RootLayout({
     '--color-sidebar-activo-texto':  c.sidebarActivoTexto,
     '--color-sidebar-hover':         c.sidebarHover,
     '--color-sidebar-realce':        c.sidebarRealce,
+    '--color-sidebar-realce-texto':  c.sidebarRealceTexto,
     '--color-sidebar-borde':         c.sidebarBorde,
     '--color-sidebar-borde-fuerte':  c.sidebarBordeFuerte,
 

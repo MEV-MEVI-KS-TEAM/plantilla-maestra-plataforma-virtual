@@ -12,5 +12,9 @@ export function createAdminClient() {
 
   return createClient(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    // Sin esto el Data Cache de Next guarda la primera respuesta (p. ej. el
+    // catálogo vacío antes de publicar cursos) y la sirve aunque la base cambie
+    // (EDUHCO #197, LKA #202, LION #204). El service role nunca se cachea.
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) },
   })
 }

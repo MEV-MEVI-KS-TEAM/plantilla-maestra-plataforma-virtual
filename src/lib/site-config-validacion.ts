@@ -811,7 +811,9 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
         // las tres claves juntas). Sin esta excepción el default de fábrica
         // («521 234-567-8901») hacía obligatorio ese texto y la escuela no podía
         // publicar «no uso WhatsApp» desde el panel. Con número sigue obligatorio.
-        admiteVacio: defaultBase === '' || (ruta === 'whatsappDisplay' && ctx.sinWhatsApp),
+        // `landing.ciudad` vacía = se omite el segmento del badge (lo dice su ayuda):
+        // siempre se admite, también en una escuela que sí la publica.
+        admiteVacio: defaultBase === '' || ruta === 'landing.ciudad' || (ruta === 'whatsappDisplay' && ctx.sinWhatsApp),
       })
     case 'hex':
       return validarHex(valor, campo.etiqueta)
