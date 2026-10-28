@@ -75,7 +75,7 @@ export default async function DiplomadosPage() {
           }}>
             {cfg.landing.catalogoTitulo}
           </h1>
-          <p style={{ fontSize: 16, color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 16, color: '#475569', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
             {cfg.landing.catalogoSubtitulo}
           </p>
         </div>
@@ -94,7 +94,7 @@ export default async function DiplomadosPage() {
                 escribir (antes: botón con `href` vacío o `wa.me/` roto). */}
             {canal && (
               <>
-                <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>
+                <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
                   Escríbenos y con gusto te contamos qué estamos preparando.
                 </p>
                 <a href={canal.href} target="_blank" rel="noopener noreferrer"
@@ -142,7 +142,7 @@ export default async function DiplomadosPage() {
                 )}
                 <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid #f1ece0' }}>
                   {(c.horas || c.duracion_meses) && (
-                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 6px' }}>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 6px' }}>
                       {[c.horas ? `${c.horas} horas` : null,
                         c.duracion_meses ? `${c.duracion_meses} ${c.duracion_meses === 1 ? 'mes' : 'meses'}` : null]
                         .filter(Boolean).join(' · ')}
@@ -158,7 +158,7 @@ export default async function DiplomadosPage() {
         )}
 
         <div style={{ textAlign: 'center', marginTop: 48 }}>
-          <Link href="/" style={{ fontSize: 14, color: '#64748b', textDecoration: 'none' }}>
+          <Link href="/" style={{ fontSize: 14, color: '#475569', textDecoration: 'none' }}>
             ← Volver al inicio
           </Link>
         </div>
