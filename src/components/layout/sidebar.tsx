@@ -234,7 +234,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   const sidebarBg     = 'var(--color-primario)'
   const sidebarBorder = 'var(--color-sidebar-borde, rgba(30,136,229,0.22))'
   const activeBg      = 'var(--color-sidebar-activo, var(--color-acento))'
-  const activeColor   = '#fff'
+  const activeColor   = 'var(--color-sidebar-activo-texto, #fff)'
   const inactiveColor = 'rgba(255,255,255,0.65)'
   const hoverBg       = 'var(--color-sidebar-hover, rgba(21,101,192,0.28))'
   const hoverColor    = '#fff'
@@ -328,7 +328,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
                 style={{ border: '2px solid var(--color-sidebar-borde-fuerte, rgba(30,136,229,0.45))' }} />
             ) : (
               <div className="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0 text-xs font-bold"
-                style={{ background: 'var(--color-sidebar-realce, rgba(21,101,192,0.35))', color: '#fff', border: '2px solid var(--color-sidebar-borde-fuerte, rgba(30,136,229,0.45))' }}>
+                style={{ background: 'var(--color-sidebar-realce, rgba(21,101,192,0.35))', color: 'var(--color-sidebar-realce-texto, #fff)', border: '2px solid var(--color-sidebar-borde-fuerte, rgba(30,136,229,0.45))' }}>
                 {initials}
               </div>
             )}
@@ -338,7 +338,7 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
               </p>
               {nivelLabel && (
                 <span className="inline-block mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium"
-                  style={{ background: 'var(--color-sidebar-realce, rgba(21,101,192,0.35))', color: '#fff', fontSize: 10 }}>
+                  style={{ background: 'var(--color-sidebar-realce, rgba(21,101,192,0.35))', color: 'var(--color-sidebar-realce-texto, #fff)', fontSize: 10 }}>
                   {nivelLabel}
                 </span>
               )}

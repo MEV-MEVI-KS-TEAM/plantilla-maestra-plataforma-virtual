@@ -76,7 +76,7 @@ function LeftPanel() {
           border: '1px solid rgba(255,255,255,0.25)',
         }}>
           <Image
-            src={cfg.logo}
+            src={cfg.logoOscuro}
             alt={cfg.nombre}
             width={72}
             height={72}
@@ -85,7 +85,7 @@ function LeftPanel() {
           />
         </div>
         <p className="mt-4 text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.88)', letterSpacing: '0.05em' }}>
-          {cfg.nombreCompleto.toUpperCase()}
+          {cfg.nombreCompleto}
         </p>
       </div>
 
@@ -194,7 +194,7 @@ export default function LoginPage() {
           <Image src={cfg.logo} alt={cfg.nombre} width={64} height={64}
             style={{ borderRadius: 12, objectFit: 'contain', border: '1px solid #E2E8F0' }} priority />
           <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--color-texto-secundario)', letterSpacing: '0.05em' }}>
-            {cfg.nombreCompleto.toUpperCase()}
+            {cfg.nombreCompleto}
           </p>
         </div>
 

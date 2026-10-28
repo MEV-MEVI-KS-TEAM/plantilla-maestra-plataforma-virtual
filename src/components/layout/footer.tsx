@@ -2,7 +2,7 @@
 
 import { CONFIG } from '@/lib/config'
 import { getNivelLabel } from '@/lib/modalidades'
-import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { getCarrerasDiplomado, getCarrerasLicenciatura, licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
@@ -18,8 +18,12 @@ function ofertaDelCliente(): string {
   const niveles = getNivelLabel()
   if (niveles) partes.push(niveles)
   if (licenciaturasActivas()) {
-    const n = getCarreras().length
-    if (n > 0) partes.push(n === 1 ? getCarreras()[0].nombre : `${n} cursos y diplomados`)
+    // Licenciaturas y diplomados viajan por el mismo riel pero se anuncian
+    // aparte: el alumno de licenciatura no compró «cursos y diplomados».
+    const lic = getCarrerasLicenciatura()
+    const dip = getCarrerasDiplomado()
+    if (lic.length > 0) partes.push(lic.length === 1 ? lic[0].nombre : `${lic.length} licenciaturas`)
+    if (dip.length > 0) partes.push(dip.length === 1 ? dip[0].nombre : `${dip.length} diplomados`)
   }
   partes.push('100% en línea')
   return partes.join(' · ')
@@ -39,10 +43,10 @@ export function Footer() {
         borderTop: '1px solid #2A2F3E',
       }}
     >
-      <p className="text-xs font-semibold" style={{ color: '#475569' }}>
+      <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>
         {cfg.nombre}
       </p>
-      <p className="text-xs" style={{ color: '#374151' }}>
+      <p className="text-xs" style={{ color: '#94A3B8' }}>
         {ofertaDelCliente()}
       </p>
       <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1">
@@ -51,9 +55,9 @@ export function Footer() {
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs transition-colors"
-          style={{ color: '#374151' }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
+          style={{ color: '#94A3B8' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF' }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8' }}
         >
           {CONFIG.dominio}
         </a>
@@ -65,9 +69,9 @@ export function Footer() {
             <a
               href={mailto}
               className="text-xs transition-colors"
-              style={{ color: '#374151' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
+              style={{ color: '#94A3B8' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8' }}
             >
               {cfg.contactoEmail}
             </a>
@@ -79,16 +83,16 @@ export function Footer() {
             <a
               href={wa}
               className="text-xs transition-colors"
-              style={{ color: '#374151' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#1565C0' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
+              style={{ color: '#94A3B8' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8' }}
             >
               {cfg.whatsappDisplay || cfg.contactoTelefono}
             </a>
           </>
         )}
       </div>
-      <p className="text-xs" style={{ color: '#374151' }}>
+      <p className="text-xs" style={{ color: '#94A3B8' }}>
         © {new Date().getFullYear()} {cfg.nombre}. Todos los derechos reservados.
       </p>
     </footer>

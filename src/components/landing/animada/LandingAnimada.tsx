@@ -43,7 +43,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import {
   AlertCircle, ArrowRight, BadgeCheck, BookOpen, Briefcase, CalendarDays, CheckCircle2, Clock,
-  FileCheck, GraduationCap, Laptop, Mail, Menu, MessageCircle, Quote,
+  FileCheck, GraduationCap, Laptop, Mail, MapPin, Menu, MessageCircle, Quote,
   ShieldCheck, X, XCircle, type LucideIcon,
 } from 'lucide-react'
 
@@ -246,6 +246,12 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   )
   const telefonoVisible = config.whatsappDisplay || config.whatsapp
   const correo = config.contactoEmail || config.email
+  // Llaves OPCIONALES (vacías = como de fábrica): domicilio, 2º botón del hero
+  // y textos de la franja. No se editan desde el panel.
+  const extra = CONFIG as unknown as { direccion?: string; landing: { hero_cta_secundario?: string; indicadores_textos?: readonly string[] } }
+  const direccion = (extra.direccion ?? '').trim()
+  const ctaSecundario = (extra.landing.hero_cta_secundario ?? '').trim() || 'Conoce los planes'
+  const indicadoresTextos = (extra.landing.indicadores_textos ?? []).filter(s => s.trim() !== '')
   const mailto = mailtoEscuela(correo)
   const anio = new Date().getFullYear()
 
@@ -375,7 +381,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
   // La franja oscura. 🛑 Ni colores de marca ni el gris del papel: letra
   // blanca, íconos en el realce del bloque y divisores en su borde.
-  const indicadores: Array<{ Icono: LucideIcon; dato: string }> = [
+  const ICONOS_FRANJA: LucideIcon[] = [Laptop, ShieldCheck, BadgeCheck, GraduationCap]
+  const indicadores: Array<{ Icono: LucideIcon; dato: string }> = indicadoresTextos.length > 0
+    ? indicadoresTextos.map((dato, i) => ({ Icono: ICONOS_FRANJA[i % ICONOS_FRANJA.length], dato }))
+    : [
     { Icono: Laptop, dato: '100% en línea' },
     ...(validezActiva ? [{ Icono: ShieldCheck, dato: 'Validez oficial' }] : []),
     // ⚠️ Con licenciaturas, «en ambos planes» dejaría de ser verdad para TODOS
@@ -385,7 +394,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
       ? [{ Icono: BadgeCheck, dato: hayLicenciaturas ? `Mismo precio total en ${nivelesTexto(niveles)}` : 'Mismo precio total en ambos planes' }]
       : []),
     { Icono: GraduationCap, dato: programasTexto },
-  ]
+    ]
 
   // Tarjetas de la escena del hero: lo que vende, con precios y duraciones
   // CALCULADOS. 🛑 Ninguna ofrece servicios que el combo no incluye.
@@ -581,7 +590,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   {sinFlecha(texto(L.hero_cta_primario))}<ArrowRight size={18} aria-hidden className="la-flecha" />
                 </Link>
                 <a href="#planes" className={`${BOTON} whitespace-nowrap`} style={estiloBoton(tHero.btn2Fondo, tHero.btn2Texto, tHero.btn2Borde)}>
-                  Conoce los planes
+                  {ctaSecundario}
                 </a>
                 {urlWhatsApp && (
                   <a href={urlWhatsApp} target="_blank" rel="noopener noreferrer" className={`${BOTON} whitespace-nowrap`}
@@ -1250,6 +1259,21 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                     nota={urlWhatsApp ? undefined : 'Te respondemos para orientarte sobre niveles, planes y documentos.'} />
                 </li>
               )}
+              {direccion && (
+                <li data-la-reveal="der" style={retraso(3)}>
+                  <div className="la-card flex items-center gap-4 rounded-2xl p-5"
+                    style={{ background: tContacto.superficie, border: `1px solid ${tContacto.borde}` }}>
+                    <span className="la-icono-card flex items-center justify-center rounded-2xl flex-shrink-0"
+                      style={{ width: 48, height: 48, background: tContacto.btn2Fondo, border: `1.5px solid ${tContacto.btn2Fondo}` }}>
+                      <MapPin size={22} aria-hidden style={{ color: tContacto.btn2Texto }} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium" style={{ color: tContacto.textoSuave }}>Domicilio</span>
+                      <span className="block font-semibold" style={{ color: tContacto.titulo }}>{direccion}</span>
+                    </span>
+                  </div>
+                </li>
+              )}
             </ul>
           </div>
         </section>
@@ -1301,6 +1325,11 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                     style={{ color: tPie.texto }}>
                     <Mail size={16} aria-hidden style={{ color: tPie.decorativo }} />{correo}
                   </a>
+                </li>
+              )}
+              {direccion && (
+                <li className="inline-flex items-start gap-2 max-w-md" style={{ color: tPie.texto }}>
+                  <MapPin size={16} aria-hidden className="mt-0.5 flex-shrink-0" style={{ color: tPie.decorativo }} />{direccion}
                 </li>
               )}
             </ul>
