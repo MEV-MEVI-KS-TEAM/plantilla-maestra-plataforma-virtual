@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Loader2, Printer, Download } from 'lucide-react'
-import { getPlanNombre } from '@/lib/licenciatura-utils'
+import { esSoloLicenciaturas, getPlanNombre } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
 
 type Estado = 'Acreditada' | 'No acreditada' | 'Pendiente'
@@ -160,7 +160,10 @@ export default function ConstanciaPage() {
                   backgroundClip: 'text', lineHeight: 1.2,
                 }}>{cfg.nombreCompleto}</span>
                 <span style={{ fontSize: 9, letterSpacing: '0.2em', color: '#64748b', fontWeight: 500, textTransform: 'uppercase', marginTop: 4 }}>
-                  {cfg.cct?.trim()
+                  {/* Solo-Licenciaturas (#311): la escuela no es un centro de acreditación. */}
+                  {esSoloLicenciaturas()
+                    ? <>Constancia de avance académico</>
+                    : cfg.cct?.trim()
                     ? <>Centro de Apoyo para la Acreditación de Conocimientos &nbsp;·&nbsp; CCT: {cfg.cct.trim()}</>
                     : <>Centro de Apoyo para la Acreditación de Conocimientos</>}
                 </span>
@@ -246,7 +249,11 @@ export default function ConstanciaPage() {
               <strong style={{ color: '#0f172a', fontWeight: 600 }}>{datos.matricula}</strong>,{' '}
               está inscrito en el programa{' '}
               <strong style={{ color: '#0f172a', fontWeight: 600 }}>
-                {datos.plan_nombre}
+                {/* Licenciatura: la carrera y su plan («… en Administración, plan de
+                    18 meses»), no «18 Meses» a secas. */}
+                {datos.nivel === 'licenciatura' && datos.carrera
+                  ? `${getPlanNombre(datos.nivel, datos.carrera)}, plan de ${datos.duracion_meses} meses`
+                  : datos.plan_nombre}
               </strong>{' '}
               {` de ${cfg.nombre}.`}
             </p>
@@ -390,8 +397,15 @@ export default function ConstanciaPage() {
           <div style={{ padding: '0 48px 24px', textAlign: 'center' }}>
             <p style={{ fontSize: 10, color: '#64748b', fontStyle: 'italic', lineHeight: 1.7 }}>
               Este documento es de carácter informativo y refleja el avance académico del alumno dentro de la plataforma.{' '}
-              <strong style={{ fontWeight: 700 }}>No constituye certificación oficial ni es válido para trámites ante la SEP u otras instituciones.</strong>{' '}
-              Para obtener el certificado oficial con validez SEP, debe completar el proceso de certificación correspondiente.
+              {esSoloLicenciaturas() ? (
+                // Solo-Licenciaturas: sin SEP ni certificado de Sec/Prepa.
+                <strong style={{ fontWeight: 700 }}>No sustituye al título ni a la cédula profesional, que se gestionan al concluir el plan de estudios.</strong>
+              ) : (
+                <>
+                  <strong style={{ fontWeight: 700 }}>No constituye certificación oficial ni es válido para trámites ante la SEP u otras instituciones.</strong>{' '}
+                  Para obtener el certificado oficial con validez SEP, debe completar el proceso de certificación correspondiente.
+                </>
+              )}
             </p>
           </div>
 

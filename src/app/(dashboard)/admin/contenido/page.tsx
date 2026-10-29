@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BookOpen, Award, ChevronDown, ChevronRight, Loader2, Eye, Plus, X, AlertCircle } from 'lucide-react'
 import { NIVELES } from '@/lib/estructura-contenido'
-import { getCarreras } from '@/lib/licenciatura-utils'
+import { getCarreras, esSoloLicenciaturas } from '@/lib/licenciatura-utils'
 
 interface MateriaItem {
   id: string
@@ -44,6 +44,13 @@ const ETIQUETA_NIVEL: Record<string, string> = {
   demo: 'Demo', licenciatura: 'Licenciatura',
 }
 
+// Solo-Licenciaturas: Secundaria/Preparatoria no existen en esta escuela, así
+// que el alta solo ofrece licenciatura (y demo) y arranca en licenciatura.
+const SOLO_LIC = esSoloLicenciaturas()
+const NIVELES_ALTA = SOLO_LIC
+  ? NIVELES.filter(n => n === 'licenciatura' || n === 'demo')
+  : NIVELES
+
 export default function ContenidoPage() {
   const router = useRouter()
   const [meses, setMeses] = useState<MesItem[]>([])
@@ -59,7 +66,7 @@ export default function ContenidoPage() {
   const sinCarreras = carreras.length === 0
   const [nueva, setNueva] = useState(false)
   const [nombre, setNombre] = useState('')
-  const [nivel, setNivel] = useState<string>('secundaria')
+  const [nivel, setNivel] = useState<string>(SOLO_LIC ? 'licenciatura' : 'secundaria')
   const [carrera, setCarrera] = useState<string>('')
   const [creando, setCreando] = useState(false)
   const [errorCrear, setErrorCrear] = useState<string | null>(null)
@@ -170,7 +177,7 @@ export default function ContenidoPage() {
                 {/* Sin carreras en el CONFIG, licenciatura no se puede elegir: el
                     servidor rechazaría el alta por falta de carrera y el admin
                     no sabría por qué. */}
-                {NIVELES.map(n => (
+                {NIVELES_ALTA.map(n => (
                   <option
                     key={n}
                     value={n}

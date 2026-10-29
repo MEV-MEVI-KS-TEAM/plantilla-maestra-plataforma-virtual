@@ -3,7 +3,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getSiteConfig } from '@/lib/site-config'
 import { getMesesByModalidad } from '@/lib/modalidades'
 import { esSoloCursos } from '@/lib/modo'
-import { licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { licenciaturasActivas, esSoloLicenciaturas, getCarrerasLicenciatura } from '@/lib/licenciatura-utils'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { exigirSeccion } from '@/lib/permisos-panel'
 import { contarDocumentosPendientes } from '@/lib/admin/documentos-admin'
@@ -105,6 +105,26 @@ export default async function AdminDashboardPage() {
     totalLicenciatura = lic ?? 0
   }
 
+  // Solo-Licenciaturas: la tarjeta de Preparatoria/Secundaria marcaría 0 y 0.
+  // Se sustituye por el total de licenciatura con su desglose por carrera.
+  const soloLic = !soloCursos && esSoloLicenciaturas()
+  let desgloseCarreras = ''
+  if (soloLic) {
+    const { data: filas } = await supabase
+      .from('alumnos')
+      .select('carrera')
+      .eq('nivel', 'licenciatura')
+    const cuenta = new Map<string, number>()
+    for (const f of filas ?? []) {
+      const c = (f as { carrera: string | null }).carrera
+      if (c) cuenta.set(c, (cuenta.get(c) ?? 0) + 1)
+    }
+    desgloseCarreras = getCarrerasLicenciatura()
+      .filter(c => cuenta.has(c.slug))
+      .map(c => `${c.nombre}: ${cuenta.get(c.slug)}`)
+      .join(' · ') || 'Aún sin alumnos inscritos'
+  }
+
   // B7 — cifras del vertical de diplomados, solo en solo_cursos. Se consultan
   // únicamente en ese modo para no agregar dos queries por carga a los 144
   // clientes tradicionales, que no las van a mostrar.
@@ -189,12 +209,14 @@ export default async function AdminDashboardPage() {
             Preparatoria/Secundaria marcaría 0 y 0 al lado de «Total alumnos
             300». Se sustituye por lo que sí significa algo en este modo.
             En tradicional queda exactamente la de siempre. */}
-        {soloCursos
+        {soloLic
+          ? <StatCard emoji="🎓" label="Licenciaturas" value={totalLicenciatura ?? 0} sub={desgloseCarreras} color="var(--color-primario)" />
+          : soloCursos
           ? <StatCard emoji="🎓" label="Inscripciones activas" value={inscripcionesActivas ?? 0} sub={`${totalDiplomados ?? 0} diplomado${totalDiplomados === 1 ? '' : 's'} publicado${totalDiplomados === 1 ? '' : 's'}`} color="var(--color-primario)" />
           : <StatCard emoji="🎓" label="Preparatoria"        value={totalPrepa ?? 0}   sub={`${totalSecundaria ?? 0} en Secundaria`} color="var(--color-primario)" />}
         {/* El tercer programa va en su propia tarjeta: meterlo como `sub` de
             Preparatoria escondería la cifra detrás de otras dos. */}
-        {!soloCursos && totalLicenciatura !== null && (
+        {!soloCursos && !soloLic && totalLicenciatura !== null && (
           <StatCard emoji="⚖️" label="Licenciatura" value={totalLicenciatura} color="var(--color-acento)" />
         )}
         <StatCard emoji="📅" label="Registros este mes"  value={esteMes ?? 0}      color="#22C55E" />

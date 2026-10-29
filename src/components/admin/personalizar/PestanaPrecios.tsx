@@ -73,6 +73,7 @@ import {
   titulacionLicEditable,
 } from '@/lib/precios-licenciatura'
 import { unirConO } from '@/components/landing/animada/textos-licenciatura'
+import { esSoloLicenciaturas } from '@/lib/licenciatura-utils'
 import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
   clavesPorNivelDePlan,
@@ -229,6 +230,10 @@ export function PestanaPrecios({
     : inscripcionLicEnPanel ? AYUDA_INSCRIPCION_SEC_PREPA
     : inscripcionLicenciaturaDe(tablaLic as Parameters<typeof inscripcionLicenciaturaDe>[0]) !== null ? AYUDA_INSCRIPCION_SEC_PREPA_SIN_CAMPO
     : AYUDA_INSCRIPCION_TAMBIEN_LIC
+  // Solo-Licenciaturas: la escuela no vende Secundaria ni Preparatoria, así que
+  // las tarjetas de Inscripción y Planes generales (los de 3 y 6 meses) no
+  // cobran nada a nadie. Se ocultan; sus claves siguen en el catálogo.
+  const soloLic = conLic && licEditable && inscripcionLicEnPanel && esSoloLicenciaturas()
   /** «12 o 18 meses», «6, 12 o 18 meses»: por su duración, nunca por periodos. */
   const ritmosLic = `${unirConO([...new Set(planesLic.map((p) => p.meses))].sort((a, b) => a - b).map(String))} meses`
 
@@ -364,6 +369,7 @@ export function PestanaPrecios({
 
   return (
     <div className="space-y-5">
+      {!soloLic && (<>
       <Tarjeta
         titulo={tituloSecPrepa('Inscripción', conLic)}
         icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}
@@ -503,6 +509,8 @@ export function PestanaPrecios({
             semanas pendientes y vencidas con la cuota vigente. */}
         {semanal && <Ayuda>{AYUDA_CUOTA_SEMANAL}</Ayuda>}
       </Tarjeta>
+
+      </>)}
 
       {/* 🛑 GATEADA POR `ofreceCertificacion` (Bug P-8). Una escuela que no
           certifica no debe ver en su panel una tarjeta que le pide ponerle

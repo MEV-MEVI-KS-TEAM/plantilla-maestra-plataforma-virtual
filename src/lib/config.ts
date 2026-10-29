@@ -87,6 +87,11 @@ export const CONFIG = {
   },
 
   // === NIVELES ACADÉMICOS ===
+  // SOLO-LICENCIATURAS (#311): `niveles: ['licenciatura'] as const` +
+  // `licenciaturas.activas: true` con al menos una carrera. `esSoloLicenciaturas()`
+  // apaga entonces todo lo de Secundaria/Preparatoria (portada, acceso, legales,
+  // constancia, panel y Personalizar). 🛑 NO vacíes `modalidades`: el editor
+  // exige al menos un plan activo (validarModalidades) aunque no se vendan.
   niveles: ['secundaria', 'preparatoria', 'licenciatura'] as const,
 
   // === MODALIDADES (cliente activa/desactiva) ===

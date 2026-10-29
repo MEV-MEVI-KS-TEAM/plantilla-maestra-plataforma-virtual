@@ -67,6 +67,52 @@ export function getCarrerasLicenciatura(): readonly CarreraCfg[] {
   return getCarreras().filter(c => c.esDiplomado !== true)
 }
 
+/**
+ * Escuela que SOLO vende licenciaturas: add-on encendido, con carreras, y sin
+ * Secundaria ni Preparatoria en `niveles`. Apaga en toda la app lo que es de
+ * Sec/Prepa (planes de 3/6 meses, certificación SEP, sección de niveles…).
+ *
+ * Se enciende con `niveles: ['licenciatura']` + `licenciaturas.activas: true`.
+ * 🛑 `CONFIG.modalidades` NO se vacía: los tipos y la validación del editor
+ * dependen de él; con esta función en `true` simplemente no se pinta.
+ * Con Sec/Prepa en `niveles` devuelve `false` y la app queda igual que siempre.
+ */
+export function esSoloLicenciaturas(): boolean {
+  const niveles = (CONFIG.niveles as readonly string[] | undefined) ?? []
+  return licenciaturasActivas() && getCarrerasLicenciatura().length > 0
+    && !niveles.includes('secundaria') && !niveles.includes('preparatoria')
+}
+
+/** «12 o 18 meses»: los planes de licenciatura que se venden. */
+export function ritmosLicenciatura(): string {
+  const meses = Array.from(new Set(getDesglosesLicenciatura().map(p => p.meses))).sort((a, b) => a - b).map(String)
+  if (meses.length === 0) return ''
+  return `${meses.length === 1 ? meses[0] : `${meses.slice(0, -1).join(', ')} o ${meses[meses.length - 1]}`} meses`
+}
+
+/**
+ * Lo que vende una escuela Solo-Licenciaturas, en una frase corta:
+ * «Licenciaturas», «Licenciaturas e Ingeniería» (si alguna carrera es una
+ * ingeniería) o el nombre de la carrera si solo hay una.
+ */
+export function ofertaSoloLicenciaturas(): string {
+  const carreras = getCarrerasLicenciatura()
+  if (carreras.length === 1) return carreras[0].nombre
+  const plural = getEtiquetaLicenciatura().split(' ').map(w => (/[aeiouáéíóú]$/i.test(w) ? `${w}s` : w)).join(' ')
+  return carreras.some(c => /^Ingenier/i.test(c.nombre)) ? `${plural} e Ingeniería` : plural
+}
+
+/** Viñetas de las pantallas de acceso para una escuela Solo-Licenciaturas. */
+export function beneficiosAccesoSoloLicenciaturas(): string[] {
+  const ritmos = ritmosLicenciatura()
+  return [
+    `${ofertaSoloLicenciaturas()} 100% en línea`,
+    'Estudia desde casa, a tu ritmo',
+    ...(ritmos ? [`Planes de ${ritmos}`] : []),
+    'Acompañamiento hasta tu titulación',
+  ]
+}
+
 /** Solo los diplomados montados sobre el riel de licenciaturas. */
 export function getCarrerasDiplomado(): readonly CarreraCfg[] {
   return getCarreras().filter(c => c.esDiplomado === true)

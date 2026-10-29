@@ -8,6 +8,7 @@ import { landingAnimadaActiva } from "@/lib/landing-estilo";
 import { Providers } from "@/components/providers";
 import { SiteConfigProvider } from "@/components/site-config-provider";
 import { getSiteConfig, toPublicSiteConfig } from "@/lib/site-config";
+import { esSoloLicenciaturas, getCarrerasLicenciatura, ritmosLicenciatura } from "@/lib/licenciatura-utils";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -40,7 +41,26 @@ const manrope = Manrope({
   display: "swap",
 });
 
-const description = "Estudia Secundaria o Preparatoria desde casa. Acompañamiento en la gestión de tu certificación con validez oficial. 100% en línea, a tu ritmo, sin examen final."
+const descriptionFabrica = "Estudia Secundaria o Preparatoria desde casa. Acompañamiento en la gestión de tu certificación con validez oficial. 100% en línea, a tu ritmo, sin examen final."
+
+/** «A, B y C» / «A o B». */
+const unir = (xs: readonly string[], y: string) =>
+  xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} ${y} ${xs[xs.length - 1]}`
+
+/**
+ * La descripción de buscadores. Con Sec/Prepa, la de siempre. Una escuela
+ * Solo-Licenciaturas no puede anunciar Secundaria ni certificación SEP: se
+ * arma con sus carreras y sus planes («Licenciaturas en línea, en 12 o 18
+ * meses: Administración y Psicología.»).
+ */
+function descripcionSitio(): string {
+  if (!esSoloLicenciaturas()) return descriptionFabrica
+  const carreras = getCarrerasLicenciatura().map(c => c.nombre.replace(/^Licenciatura (Ejecutiva )?en /, ''))
+  const ingenieria = carreras.some(c => /^Ingenier/.test(c))
+  // Las duraciones no se editan desde el panel: config.ts basta (ritmosLicenciatura).
+  const ritmos = ritmosLicenciatura()
+  return `Licenciaturas${ingenieria ? ' e Ingeniería' : ''} en línea, en ${ritmos}: ${unir(carreras, 'y').replace(/ y (?=I)/, ' e ')}.`
+}
 
 // "Personalizar mi página" (F1): themeColor, título y paleta salen de
 // getSiteConfig() — config.ts + overrides de site_config —, por eso viewport y
@@ -67,9 +87,11 @@ export async function generateViewport(): Promise<Viewport> {
 
 export async function generateMetadata(): Promise<Metadata> {
   const cfg = await getSiteConfig()
+  const description = descripcionSitio()
   return {
     title: {
-      default: `${cfg.nombre} | ${cfg.tagline}`,
+      // Sin eslogan el título no termina en « | ».
+      default: cfg.tagline ? `${cfg.nombre} | ${cfg.tagline}` : cfg.nombre,
       template: `%s | ${cfg.nombre}`,
     },
     description,

@@ -31,6 +31,7 @@ import {
 } from '@/lib/contacto-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import { licenciaturaEfectiva, type OverrideLicenciaturas } from '@/lib/precios-licenciatura'
+import { esSoloLicenciaturas } from '@/lib/licenciatura-utils'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -1065,9 +1066,33 @@ export function toPublicSiteConfig(cfg: SiteConfig): PublicSiteConfig {
     contactoEmail: cfg.contactoEmail,
     contactoTelefono: cfg.contactoTelefono,
     redes: cfg.redes,
-    precios: cfg.precios,
+    precios: esSoloLicenciaturas() ? sinClavesSecPrepa(cfg.precios) : cfg.precios,
     modalidades: cfg.modalidades,
   }
+}
+
+/**
+ * Solo-Licenciaturas (#311): las claves de precio de Secundaria/Preparatoria
+ * no cobran nada en esa escuela, pero viajaban en el HTML de cada página (el
+ * payload del provider) con sus nombres y cifras de fábrica. Se quitan del
+ * recorte PÚBLICO; los lectores (`inscripcionDe`, `certificacionDe`…) tratan
+ * la clave ausente igual que `null`. El editor y el servidor no pasan por aquí.
+ */
+const CLAVE_SEC_PREPA = /secundaria|preparatoria|prepa/i
+function sinClavesSecPrepa<T extends object>(o: T): T {
+  return Object.fromEntries(Object.entries(o).filter(([k]) => !CLAVE_SEC_PREPA.test(k))) as T
+}
+
+/**
+ * El `landing` que viaja a la portada Solo-Licenciaturas: sin las claves de
+ * Sec/Prepa y, con la validez oficial apagada, sin sus textos ni imágenes (la
+ * portada la lee de CONFIG y no la pinta; en el HTML solo dejaba «SEP»).
+ */
+function landingPublico(landing: SiteConfig['landing']): SiteConfig['landing'] {
+  if (!esSoloLicenciaturas()) return landing
+  const l = sinClavesSecPrepa(landing as unknown as ObjetoPlano) as unknown as { validezOficial?: { activa?: unknown } }
+  if (l.validezOficial && l.validezOficial.activa !== true) l.validezOficial = { activa: false }
+  return l as unknown as SiteConfig['landing']
 }
 
 /**
@@ -1118,7 +1143,7 @@ export function toLandingConfig(cfg: SiteConfig): LandingConfig {
   const efectiva = proyeccionLicenciatura((cfg as unknown as ObjetoPlano).licenciaturas)
   const deFabrica = proyeccionLicenciatura((CONFIG as unknown as ObjetoPlano).licenciaturas)
   const publicada = efectiva !== undefined && JSON.stringify(efectiva) !== JSON.stringify(deFabrica)
-  return { ...toPublicSiteConfig(cfg), landing: cfg.landing, ...(publicada ? { licenciaturas: efectiva } : {}) }
+  return { ...toPublicSiteConfig(cfg), landing: landingPublico(cfg.landing), ...(publicada ? { licenciaturas: efectiva } : {}) }
 }
 
 // ─── Placeholders de los textos de la landing ────────────────────────────────

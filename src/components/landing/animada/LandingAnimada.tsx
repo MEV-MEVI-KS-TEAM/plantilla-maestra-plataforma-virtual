@@ -57,7 +57,7 @@ import { resolverLanding } from '@/lib/landing-textos'
 import { AVISO_PAGO_UNICO, lineaPrecio, precioCatalogo } from '@/lib/cursos/precio-curso'
 import type { CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela, faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
-import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
+import { esSoloLicenciaturas, getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
 import { subtituloMarca } from '@/lib/marca'
 import { etiquetaNivel, etiquetaNivelConArticulo, listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import {
@@ -225,8 +225,16 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     planesDe(n).length === planes.length &&
     planes.every(m => mensualidadDe(n, m, precios) === mensualidadDe(nivelReferencia, m, precios)))
 
+  // ⭐ SOLO-LICENCIATURAS (#311): sin Secundaria ni Preparatoria la página no
+  // pinta niveles, planes de 3/6 meses ni nada de Sec/Prepa. Con Sec/Prepa en
+  // `niveles` es `false` y todo queda como siempre.
+  const solo = esSoloLicenciaturas()
+  const ritmosSolo = solo
+    ? `${unirConO(getDesglosesLicenciatura(config.licenciaturas).map(p => String(p.meses)))} meses`
+    : ''
+
   const vars = {
-    duracion: getDuracionLabel(config.modalidades),
+    duracion: solo ? ritmosSolo : getDuracionLabel(config.modalidades),
     nombre: config.nombre,
     nombreCompleto: config.nombreCompleto,
     whatsapp: config.whatsappDisplay || config.whatsapp,
@@ -242,7 +250,12 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   //    ALUMNO y sigue activo en el panel.
   const urlWhatsApp = urlWhatsAppEscuela(
     config.whatsapp,
-    `Hola, quiero información sobre ${listaConY(niveles.map(etiquetaNivelConArticulo))} en línea de ${config.nombre}.`,
+    solo
+      // Sin niveles la frase de fábrica quedaba «sobre  en línea» (hueco).
+      ? `Hola, quiero información sobre ${getCarrerasLicenciatura().length > 1
+        ? `las ${pluralEtiqueta(getEtiquetaLicenciatura()).toLowerCase()}`
+        : `la ${getEtiquetaLicenciatura().toLowerCase()}`} en línea de ${config.nombreCompleto}.`
+      : `Hola, quiero información sobre ${listaConY(niveles.map(etiquetaNivelConArticulo))} en línea de ${config.nombre}.`,
   )
   const telefonoVisible = config.whatsappDisplay || config.whatsapp
   const correo = config.contactoEmail || config.email
@@ -266,9 +279,12 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const etiquetaLic = hayLicenciaturas ? (carrerasLic.length > 1 ? pluralEtiqueta(getEtiquetaLicenciatura()) : getEtiquetaLicenciatura()) : ''
   const ritmosLic = hayLicenciaturas ? `${unirConO(planesLic.map(p => String(p.meses)))} meses` : ''
   /** «Secundaria y Preparatoria» · «Secundaria, Preparatoria y Licenciaturas». */
-  const programasTexto = hayLicenciaturas
-    ? `${niveles.map(etiquetaNivel).join(', ')} y ${carrerasLic.length > 1 ? 'Licenciaturas' : 'Licenciatura'}`
-    : nivelesTexto(niveles)
+  // Solo-Licenciaturas: sin niveles el texto empezaba con « y Licenciaturas».
+  const programasTexto = solo
+    ? etiquetaLic
+    : hayLicenciaturas
+      ? `${niveles.map(etiquetaNivel).join(', ')} y ${carrerasLic.length > 1 ? 'Licenciaturas' : 'Licenciatura'}`
+      : nivelesTexto(niveles)
   // Textos de la sección: los automáticos de siempre, con lo que la escuela
   // haya escrito en "Textos de mi página" encima, campo por campo
   // (TICKET-2026-09-22-08). Las cifras del panel del costo no se editan.
@@ -289,7 +305,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // Pregunta sobre los planes, CALCULADA de los precios: si el admin cambia uno,
   // la respuesta cambia con él y la página no afirma algo que ya no es cierto.
   const faqPlanes: Array<{ q: string; a: string }> = []
-  if (planes.length >= 2) {
+  // Solo-Licenciaturas: los planes de Sec/Prepa no se venden; las preguntas de
+  // los planes de licenciatura las da `preguntasLicenciatura`.
+  if (!solo && planes.length >= 2) {
     const materias = planes.map(m => m.meses * m.materiasPorMes)
     const mismasMaterias = materias.every(x => x === materias[0])
     const detalle = planes
@@ -335,7 +353,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     catalogo: hayCatalogo,
     faq: faqs.length > 0,
   }
-  const secciones = secuenciaSecciones(presentes)
+  const secciones = secuenciaSecciones(presentes, solo ? ['niveles', 'planes'] : [])
   const seccion = (id: IdSeccion) => secciones.find(s => s.id === id) ?? { id, variante: 'claro' as const }
   const tokens = (id: IdSeccion) => tokensDe(seccion(id).variante, paleta)
   /** `data-variant`, fondo y letra de una sección, y el margen para el menú fijo. */
@@ -364,8 +382,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const tPie = tokens('pie')
 
   const enlacesMenu = [
-    { href: '#niveles', etiqueta: 'Niveles' },
-    { href: '#planes', etiqueta: 'Planes' },
+    ...(solo ? [] : [{ href: '#niveles', etiqueta: 'Niveles' }, { href: '#planes', etiqueta: 'Planes' }]),
     ...(hayLicenciaturas ? [{ href: '#licenciaturas', etiqueta: 'Licenciaturas' }] : []),
     ...(validezActiva ? [{ href: '#validez', etiqueta: 'Validez oficial' }] : []),
     ...(presentes.faq ? [{ href: '#preguntas', etiqueta: 'Preguntas' }] : []),
@@ -375,7 +392,13 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
   // La franja oscura. 🛑 Ni colores de marca ni el gris del papel: letra
   // blanca, íconos en el realce del bloque y divisores en su borde.
-  const indicadores: Array<{ Icono: LucideIcon; dato: string }> = [
+  const indicadores: Array<{ Icono: LucideIcon; dato: string }> = solo ? [
+    // Solo-Licenciaturas: lo que vende, calculado de carreras y planes.
+    { Icono: GraduationCap, dato: carrerasLic.length === 1 ? carrerasLic[0].nombre : `${carrerasLic.length} carreras` },
+    { Icono: Laptop, dato: '100% en línea' },
+    { Icono: CalendarDays, dato: `Planes de ${ritmosLic}` },
+    ...(planesLic[0]?.titulacion > 0 ? [{ Icono: BadgeCheck, dato: 'Titulación al concluir' }] : []),
+  ] : [
     { Icono: Laptop, dato: '100% en línea' },
     ...(validezActiva ? [{ Icono: ShieldCheck, dato: 'Validez oficial' }] : []),
     // ⚠️ Con licenciaturas, «en ambos planes» dejaría de ser verdad para TODOS
@@ -389,7 +412,11 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
   // Tarjetas de la escena del hero: lo que vende, con precios y duraciones
   // CALCULADOS. 🛑 Ninguna ofrece servicios que el combo no incluye.
-  const tarjetasHero: Array<{ Icono: LucideIcon; titulo: string; detalle: string }> = [
+  const tarjetasHero: Array<{ Icono: LucideIcon; titulo: string; detalle: string }> = solo ? [
+    { Icono: GraduationCap, titulo: etiquetaLic, detalle: `${carrerasLic.length === 1 ? carrerasLic[0].nombre : `${carrerasLic.length} carreras`} · ${ritmosLic}` },
+    { Icono: Laptop, titulo: '100% en línea', detalle: 'A tu ritmo, las 24 horas' },
+    ...(planesLic[0]?.titulacion > 0 ? [{ Icono: BadgeCheck, titulo: 'Titulación', detalle: 'Título y cédula profesional al concluir' }] : []),
+  ] : [
     ...niveles.map(n => ({
       Icono: BookOpen,
       titulo: etiquetaNivel(n),
@@ -580,8 +607,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   style={estiloBoton(tHero.btnFondo, tHero.btnTexto, tHero.btnFondo, tHero.btnHover)}>
                   {sinFlecha(texto(L.hero_cta_primario))}<ArrowRight size={18} aria-hidden className="la-flecha" />
                 </Link>
-                <a href="#planes" className={`${BOTON} whitespace-nowrap`} style={estiloBoton(tHero.btn2Fondo, tHero.btn2Texto, tHero.btn2Borde)}>
-                  Conoce los planes
+                <a href={solo ? '#licenciaturas' : '#planes'} className={`${BOTON} whitespace-nowrap`} style={estiloBoton(tHero.btn2Fondo, tHero.btn2Texto, tHero.btn2Borde)}>
+                  {solo ? 'Conoce las carreras' : 'Conoce los planes'}
                 </a>
                 {urlWhatsApp && (
                   <a href={urlWhatsApp} target="_blank" rel="noopener noreferrer" className={`${BOTON} whitespace-nowrap`}
@@ -692,6 +719,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             marca, cuerpo en tinta y datos secundarios en gris. Cada
             cifra se lee con `mensualidadDe(nivel, …)`, que respeta el precio
             por nivel. */}
+        {!solo && (
         <section id="niveles" {...marco('niveles')}>
           <div className={CONTENEDOR}>
             <Encabezado t={tNiveles} kicker={hayLicenciaturas ? 'Programas' : 'Niveles'} titulo={programasTexto}
@@ -796,6 +824,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             </div>
           </div>
         </section>
+        )}
 
         {/* ── 5. PLANES Y PRECIOS (suave) ─────────────────────────────────────
             ⭐ Aquí vive el argumento de la escuela: en cada nivel, los dos totales
@@ -803,6 +832,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             🛑 Todas las tarjetas llevan el mismo tratamiento: ninguna se destaca y
             ninguna lleva insignia de preferencia. Cada una dice solo lo que es
             verdad de ella (chips calculados por `etiquetasPlan`). */}
+        {!solo && (
         <section id="planes" {...marco('planes')}>
           <div className={CONTENEDOR}>
             <Encabezado t={tPlanes}
@@ -931,6 +961,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             </div>
           </div>
         </section>
+
+        )}
 
         {/* ── LICENCIATURAS (claro, con panel oscuro dentro) — add-on ────── */}
         {hayLicenciaturas && textosLic && (

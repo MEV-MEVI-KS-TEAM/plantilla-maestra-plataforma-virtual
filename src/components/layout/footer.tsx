@@ -2,7 +2,7 @@
 
 import { CONFIG } from '@/lib/config'
 import { getNivelLabel } from '@/lib/modalidades'
-import { getCarreras, licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { esSoloLicenciaturas, getCarreras, getCarrerasDiplomado, getCarrerasLicenciatura, licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
@@ -15,11 +15,19 @@ import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
  */
 function ofertaDelCliente(): string {
   const partes: string[] = []
-  const niveles = getNivelLabel()
+  // Solo-Licenciaturas: el nivel «Licenciatura» sobra delante de las carreras.
+  const niveles = esSoloLicenciaturas() ? '' : getNivelLabel()
   if (niveles) partes.push(niveles)
   if (licenciaturasActivas()) {
-    const n = getCarreras().length
-    if (n > 0) partes.push(n === 1 ? getCarreras()[0].nombre : `${n} cursos y diplomados`)
+    // Antes contaba TODAS las carreras como «N cursos y diplomados»: una escuela
+    // con cinco licenciaturas leía «5 cursos y diplomados» al pie.
+    const carreras = getCarrerasLicenciatura().length
+    const diplomados = getCarrerasDiplomado().length
+    if (carreras + diplomados === 1) partes.push(getCarreras()[0].nombre)
+    else {
+      if (carreras > 0) partes.push(carreras === 1 ? getCarrerasLicenciatura()[0].nombre : `${carreras} carreras`)
+      if (diplomados > 0) partes.push(diplomados === 1 ? getCarrerasDiplomado()[0].nombre : `${diplomados} diplomados`)
+    }
   }
   partes.push('100% en línea')
   return partes.join(' · ')

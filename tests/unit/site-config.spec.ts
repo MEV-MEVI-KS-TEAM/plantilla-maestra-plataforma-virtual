@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ES_PLANTILLA } from './es-plantilla'
+import { esSoloLicenciaturas } from '@/lib/licenciatura-utils'
 import { CONFIG } from '@/lib/config'
 import {
   CLAVES_EDITABLES,
@@ -247,7 +248,9 @@ test('10b. toLandingConfig = el recorte público + landing, y nada más', () => 
   expect(Object.keys(landingCfg).sort()).toEqual([...CLAVES_PUBLICAS, 'landing'].sort())
   // Mismas reglas que toPublicSiteConfig: no clona, comparte referencias con el
   // clon fresco del merge.
-  expect(landingCfg.landing).toBe(cfg.landing)
+  // Solo-Licenciaturas recorta Sec/Prepa del `landing` público (ver
+  // solo-licenciaturas.spec.ts): ahí es otro objeto; en el resto, el mismo.
+  if (!esSoloLicenciaturas()) expect(landingCfg.landing).toBe(cfg.landing)
   expect(landingCfg.colores).toBe(cfg.colores)
   // Y sigue sin llevar lo no editable.
   for (const prohibida of ['pagos', 'licenciaturas', 'dominio', 'modo', 'niveles']) {
@@ -536,9 +539,15 @@ test('toLandingConfig transporta los VALORES sobreescritos, no solo las claves',
   expect(pub.landing.hero_titulo).toBe('Hola')
   expect(pub.landing.hero_badges).toEqual(['uno'])
   expect(pub.precios.inscripcion).toBe(750)
-  expect(pub.precios.certificacionSecundaria).toBe(4321)
-  expect(pub.precios.certificacion_secundaria).toBe(4321)
-  expect(pub.landing.certificacion_secundaria).toBe(4321)
+  // En una escuela Solo-Licenciaturas las claves de Sec/Prepa no viajan.
+  if (!esSoloLicenciaturas()) {
+    expect(pub.precios.certificacionSecundaria).toBe(4321)
+    expect(pub.precios.certificacion_secundaria).toBe(4321)
+    expect(pub.landing.certificacion_secundaria).toBe(4321)
+  } else {
+    expect(pub.precios).not.toHaveProperty('certificacionSecundaria')
+    expect(pub.landing).not.toHaveProperty('certificacion_secundaria')
+  }
   expect(pub.modalidades.find((m) => m.id === '6_meses')!.mensualidad).toBe(999)
   expect(pub.precios.plan6mMensualidad).toBe(999)
   expect(pub.redes.instagram).toBe('https://instagram.com/x')

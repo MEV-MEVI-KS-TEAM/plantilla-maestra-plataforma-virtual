@@ -234,7 +234,9 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   const sidebarBg     = 'var(--color-primario)'
   const sidebarBorder = 'var(--color-sidebar-borde, rgba(30,136,229,0.22))'
   const activeBg      = 'var(--color-sidebar-activo, var(--color-acento))'
-  const activeColor   = '#fff'
+  // Letra del ítem activo: con un realce claro (blanco) va oscura. Sin la
+  // variable, el blanco de siempre.
+  const activeColor   = 'var(--color-sidebar-activo-texto, #fff)'
   const inactiveColor = 'rgba(255,255,255,0.65)'
   const hoverBg       = 'var(--color-sidebar-hover, rgba(21,101,192,0.28))'
   const hoverColor    = '#fff'
