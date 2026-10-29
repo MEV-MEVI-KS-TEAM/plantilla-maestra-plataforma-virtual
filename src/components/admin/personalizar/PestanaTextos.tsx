@@ -27,7 +27,14 @@ import { escribirRuta, estaSobrescrito, quitarRuta, valorEfectivo } from '@/lib/
 import { CampoEntero, CampoTexto } from './CampoTexto'
 import { ListaObjetos, ListaTexto } from './ListaEditable'
 import { Aviso, TXT_SUAVE, TXT_TENUE, Tarjeta, type PropsPestana } from './Comunes'
-import { licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { licenciaturasActivas, esSoloLicenciaturas } from '@/lib/licenciatura-utils'
+
+// Solo-Licenciaturas: los comodines por nivel de Secundaria/Preparatoria no
+// significan nada en esta escuela; se dejan de anunciar (siguen funcionando).
+const SOLO_LIC = esSoloLicenciaturas()
+const COMODINES_VISIBLES = SOLO_LIC
+  ? PLACEHOLDERS.filter((p) => p !== 'inscripcionSecundaria' && p !== 'inscripcionPreparatoria')
+  : PLACEHOLDERS
 import { ComodinesLicenciatura, ListasLicenciaturas, autoLicenciaturas } from './TextosLicenciaturas'
 import { COMODINES_LICENCIATURA, usaComodinLicenciaturaFuera } from '@/components/landing/animada/textos-licenciatura'
 
@@ -217,7 +224,7 @@ export function PestanaTextos({
       <Aviso>
         Puedes usar estas etiquetas en cualquier texto y se sustituyen solas al
         publicar:{' '}
-        {PLACEHOLDERS.map((p, i) => (
+        {COMODINES_VISIBLES.map((p, i) => (
           <span key={p}>
             {i > 0 && ', '}
             <code style={{ color: TXT_SUAVE }}>{`{${p}}`}</code>
@@ -226,9 +233,15 @@ export function PestanaTextos({
         .{' '}
         <span style={{ color: TXT_TENUE }}>
           Por ejemplo, <code>{'{duracion}'}</code> escribe los meses de tus planes activos,{' '}
-          <code>{'{inscripcion}'}</code> el precio de inscripción general y{' '}
-          <code>{'{inscripcionSecundaria}'}</code> o <code>{'{inscripcionPreparatoria}'}</code> el de
-          ese nivel (si no tiene precio propio, el general).
+          {SOLO_LIC ? (
+            <><code>{'{inscripcion}'}</code> el precio de inscripción.</>
+          ) : (
+            <>
+              <code>{'{inscripcion}'}</code> el precio de inscripción general y{' '}
+              <code>{'{inscripcionSecundaria}'}</code> o <code>{'{inscripcionPreparatoria}'}</code> el de
+              ese nivel (si no tiene precio propio, el general).
+            </>
+          )}
         </span>
       </Aviso>
 

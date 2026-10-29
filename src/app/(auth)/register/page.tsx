@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, Phone, User, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { planesPorNivel, getModalidadesLicenciatura } from '@/lib/modalidades'
-import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatura-utils'
+import { beneficiosAccesoSoloLicenciaturas, esSoloLicenciaturas, getCarrerasLicenciatura, getCarrerasDiplomado, ofertaSoloLicenciaturas } from '@/lib/licenciatura-utils'
 import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
 import { getOfertasIngreso } from '@/lib/cursos/oferta'
@@ -22,6 +22,8 @@ import { aperturaAlAsignar } from '@/lib/cursos/acceso'
 import { useSiteConfig } from '@/components/site-config-provider'
 import { urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { mensajeRegistro } from '@/lib/registro-mensajes'
+import { useDesgloseLicenciatura } from '@/components/desglose-licenciatura-provider'
+import { formatearMoneda } from '@/lib/moneda'
 
 // La última viñeta enumera la oferta real de la escuela en vez de una frase
 // fija: si el cliente activa o retira un programa, el copy lo sigue solo.
@@ -33,7 +35,9 @@ function ofertaTexto(): string {
   return `${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}`
 }
 
-const BENEFITS = [
+// Solo-Licenciaturas (#311): sin SEP ni Sec/Prepa; con Sec/Prepa, las de siempre.
+const SOLO_LIC = esSoloLicenciaturas()
+const BENEFITS = SOLO_LIC ? beneficiosAccesoSoloLicenciaturas() : [
   'Acompañamiento para tu certificado SEP',
   'Estudia desde casa, a tu ritmo',
   'Centro de Apoyo para la Acreditación de Conocimientos',
@@ -199,7 +203,7 @@ function LeftPanel() {
       style={{
         width: '38%',
         minHeight: '100vh',
-        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento-profundo) 55%, var(--color-primario) 100%)',
+        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento-profundo) 55%, var(--color-primario) 100%), var(--color-primario)',
         position: 'relative',
         overflow: 'hidden',
         flexShrink: 0,
@@ -243,8 +247,8 @@ function LeftPanel() {
 
       <div className="relative z-10">
         <div style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12, padding: '12px 16px' }}>
-          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>CENTRO DE APOYO</p>
-          <p className="text-sm font-bold" style={{ color: '#fff' }}>Acreditación de Conocimientos</p>
+          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>{SOLO_LIC ? '100% EN LÍNEA' : 'CENTRO DE APOYO'}</p>
+          <p className="text-sm font-bold" style={{ color: '#fff' }}>{SOLO_LIC ? ofertaSoloLicenciaturas() : 'Acreditación de Conocimientos'}</p>
         </div>
       </div>
     </div>
@@ -268,7 +272,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPass,        setShowPass]        = useState(false)
   const [showConfirm,     setShowConfirm]     = useState(false)
-  const [nivel,           setNivel]           = useState('')
+  // Solo-Licenciaturas: un solo programa, preseleccionado (el selector no se pinta).
+  const [nivel,           setNivel]           = useState(SOLO_LIC ? 'licenciatura' : '')
   const [modalidad,       setModalidad]       = useState('')
   const [carrera,         setCarrera]         = useState('')
   const [cursoIngreso,    setCursoIngreso]    = useState('')
@@ -334,6 +339,10 @@ export default function RegisterPage() {
   // Las carreras ofrecidas dependen de la opción: quien eligió «Diplomados» no
   // debe ver las licenciaturas, ni al revés.
   const carrerasOfrecidas = esDiplomadoLic ? getCarrerasDiplomado() : getCarrerasLicenciatura()
+  // Costo completo del plan elegido (solo en una escuela Solo-Licenciaturas).
+  const desgloses = useDesgloseLicenciatura()
+  const desgloseElegido = SOLO_LIC && esLicenciatura ? desgloses.find(d => d.modalidadId === modalidad) ?? null : null
+  const carreraElegida = carrerasOfrecidas.find(c => c.slug === carrera)
 
   /**
    * Los planes que ESTE nivel vende de verdad.
@@ -626,6 +635,7 @@ export default function RegisterPage() {
                     ingreso deja el plan en blanco, y el atributo lo bloquearía
                     con un tooltip del navegador antes de llegar al submit. La
                     regla plan-o-curso se valida en handleSubmit y en el servidor. */}
+                {!SOLO_LIC && (
                 <div>
                   <Label text="Nivel educativo" required={!pidioCurso} />
                   <select value={nivel} onChange={e => { setNivel(e.target.value); setModalidad('') }}
@@ -640,6 +650,7 @@ export default function RegisterPage() {
 
                   </select>
                 </div>
+                )}
                 <div>
                   {/* Un curso no tiene modalidad: su ritmo lo fija el propio
                       curso. En su lugar se pregunta CUÁL. */}
@@ -735,6 +746,29 @@ export default function RegisterPage() {
                   </div>
                 )}
               </div>
+
+              {/* Solo-Licenciaturas: el costo COMPLETO del plan elegido, con la
+                  titulación dentro del total (es la parte más grande). */}
+              {desgloseElegido && (
+                <div className="mt-1 mb-3 rounded-xl px-4 py-3 text-sm" aria-live="polite"
+                  style={{ background: 'var(--color-fondo-alt)', border: '1px solid var(--color-borde)', color: 'var(--color-texto)' }}>
+                  <p className="font-semibold mb-2" style={{ color: 'var(--color-primario)' }}>
+                    {carreraElegida ? `${carreraElegida.nombre} · ` : ''}{desgloseElegido.meses} meses
+                  </p>
+                  <dl className="space-y-1">
+                    {[
+                      ['Inscripción única', formatearMoneda(desgloseElegido.inscripcion, cfg)],
+                      [`Mensualidad ${formatearMoneda(desgloseElegido.mensualidad, cfg)} × ${desgloseElegido.meses}`, formatearMoneda(desgloseElegido.colegiatura, cfg)],
+                      ['Titulación (al concluir)', formatearMoneda(desgloseElegido.titulacion, cfg)],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex justify-between gap-3"><dt>{k}</dt><dd className="font-semibold tabular-nums">{v}</dd></div>
+                    ))}
+                    <div className="flex justify-between gap-3 pt-1.5 mt-1.5 font-bold" style={{ borderTop: '1px solid var(--color-borde)', color: 'var(--color-primario)' }}>
+                      <dt>Total</dt><dd className="tabular-nums">{formatearMoneda(desgloseElegido.total, cfg)}</dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
 
               {/* ─── Curso de ingreso (opcional) ──────────────────────────
                   Producto de pago único, aparte del plan. Se puede llevar solo,

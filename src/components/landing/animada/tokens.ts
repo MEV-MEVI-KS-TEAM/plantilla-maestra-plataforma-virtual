@@ -273,8 +273,13 @@ const esClara = (s?: Seccion): boolean => s !== undefined && s.variante !== 'osc
  *    panel —que quita una sección entera— no deja dos fondos iguales pegados. Lo
  *    verifica `secuenciaValida` para las 512 combinaciones posibles.
  */
-export function secuenciaSecciones(presentes: Partial<Record<SeccionOpcional, boolean>> = {}): Seccion[] {
-  const ids = ORDEN_SECCIONES.filter(id =>
+export function secuenciaSecciones(
+  presentes: Partial<Record<SeccionOpcional, boolean>> = {},
+  // Secciones fijas que esta escuela no pinta (Solo-Licenciaturas: sin niveles
+  // ni planes de Sec/Prepa). Vacío = el orden de siempre.
+  omitidas: readonly IdSeccion[] = [],
+): Seccion[] {
+  const ids = ORDEN_SECCIONES.filter(id => !omitidas.includes(id)).filter(id =>
     !(SECCIONES_OPCIONALES as readonly IdSeccion[]).includes(id) || presentes[id as SeccionOpcional] === true)
   const salida: Seccion[] = []
   for (const id of ids) {

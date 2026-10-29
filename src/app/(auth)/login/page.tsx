@@ -11,8 +11,11 @@ import { ROLE_REDIRECTS } from '@/lib/constants'
 // provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
 import { useSiteConfig } from '@/components/site-config-provider'
 import { urlWhatsAppEscuela } from '@/lib/contacto-ui'
+import { beneficiosAccesoSoloLicenciaturas, esSoloLicenciaturas, ofertaSoloLicenciaturas } from '@/lib/licenciatura-utils'
 
-const BENEFITS = [
+// Solo-Licenciaturas (#311): sin SEP ni Sec/Prepa; con Sec/Prepa, las de siempre.
+const SOLO_LIC = esSoloLicenciaturas()
+const BENEFITS = SOLO_LIC ? beneficiosAccesoSoloLicenciaturas() : [
   'Acompañamiento para tu certificado SEP',
   'Estudia desde casa, a tu ritmo',
   'Centro de Apoyo para la Acreditación de Conocimientos',
@@ -48,7 +51,7 @@ function LeftPanel() {
       style={{
         width: '40%',
         minHeight: '100vh',
-        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento-profundo) 55%, var(--color-primario) 100%)',
+        background: 'linear-gradient(160deg, var(--color-primario) 0%, var(--color-acento-profundo) 55%, var(--color-primario) 100%), var(--color-primario)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -96,7 +99,9 @@ function LeftPanel() {
           <span style={{ color: 'var(--color-acento-sobre-oscuro)' }}>a tu ritmo</span>
         </h2>
         <p className="text-base mb-8" style={{ color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
-          Estudia desde la comodidad de tu hogar y obtén acompañamiento en tu certificación.
+          {SOLO_LIC
+            ? 'Estudia tu carrera desde la comodidad de tu hogar, con acompañamiento hasta tu titulación.'
+            : 'Estudia desde la comodidad de tu hogar y obtén acompañamiento en tu certificación.'}
         </p>
 
         <div className="flex flex-col gap-3">
@@ -118,10 +123,10 @@ function LeftPanel() {
           padding: '12px 16px',
         }}>
           <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>
-            CENTRO DE APOYO
+            {SOLO_LIC ? '100% EN LÍNEA' : 'CENTRO DE APOYO'}
           </p>
           <p className="text-sm font-bold" style={{ color: '#fff' }}>
-            Acreditación de Conocimientos
+            {SOLO_LIC ? ofertaSoloLicenciaturas() : 'Acreditación de Conocimientos'}
           </p>
         </div>
       </div>

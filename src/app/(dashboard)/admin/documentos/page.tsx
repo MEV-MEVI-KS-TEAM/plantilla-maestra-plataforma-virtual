@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { FileText, Search, CheckCircle, XCircle, Clock, Loader2, ExternalLink } from 'lucide-react'
+import { esSoloLicenciaturas } from '@/lib/licenciatura-utils'
+
+// Solo-Licenciaturas: todos los alumnos son de licenciatura, así que el slot
+// `certificado_secundaria` siempre es el bachillerato y el filtro lo nombra así.
+const SOLO_LIC = esSoloLicenciaturas()
 
 type DocEstado = 'pendiente' | 'aprobado' | 'rechazado'
 type DocTipo =
@@ -177,7 +182,9 @@ export default function DocumentosAdminPage() {
           <option value="">Todos los tipos</option>
           {Object.entries(DOC_LABELS).map(([key, label]) => (
             <option key={key} value={key}>
-              {key === 'certificado_secundaria' ? 'Certificado de Secundaria / Bachillerato' : label}
+              {key === 'certificado_secundaria'
+                ? (SOLO_LIC ? 'Certificado de Bachillerato' : 'Certificado de Secundaria / Bachillerato')
+                : label}
             </option>
           ))}
         </select>

@@ -5,6 +5,7 @@ import { getSiteConfig } from '@/lib/site-config'
 import { getNivelLabel } from '@/lib/modalidades'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
+import { esSoloLicenciaturas } from '@/lib/licenciatura-utils'
 
 // Los programas que la escuela vende, leídos de CONFIG.niveles (Bug 283, CÚSPIDE #285).
 // Se filtra a secundaria/preparatoria porque la plantilla trae 'licenciatura' en
@@ -146,6 +147,10 @@ export default async function AvisoPrivacidadPage() {
                 <>
                   <li>Verificar que la documentación académica que subes esté completa y sea legible.</li>
                   <li>Registrar tu avance académico y emitir tus constancias de avance.</li>
+                  {/* Solo-Licenciaturas (#311): la titulación se gestiona al concluir. */}
+                  {esSoloLicenciaturas() && (
+                    <li>Gestionar, al concluir tu plan de estudios, el trámite de tu título y cédula profesional.</li>
+                  )}
                 </>
               )}
               <li>Procesar pagos y gestionar cobranza.</li>
@@ -175,6 +180,9 @@ export default async function AvisoPrivacidadPage() {
             <ul>
               <li><strong style={{ color: '#fff' }}>Supabase Inc.</strong> — infraestructura de base de datos y autenticación (servidores en EE.UU.). Cumple con el marco SCCs / adecuación GDPR.</li>
               <li><strong style={{ color: '#fff' }}>Vercel Inc.</strong> — plataforma de hospedaje y distribución del sitio web.</li>
+              {!CERTIFICA && esSoloLicenciaturas() && (
+                <li><strong style={{ color: '#fff' }}>Instancias que intervienen en la titulación</strong> — exclusivamente los datos necesarios para el trámite de tu título y cédula profesional, al concluir tu plan de estudios.</li>
+              )}
               {CERTIFICA && (
                 <li><strong style={{ color: '#fff' }}>Autoridades educativas (SEP / instituciones convenio)</strong> — exclusivamente los datos necesarios para el trámite de certificación oficial.</li>
               )}
@@ -185,7 +193,7 @@ export default async function AvisoPrivacidadPage() {
               al artículo 37 de la LFPDPPP, por ser necesarias para la relación jurídica o estar
               previstas en otras leyes.
             </p>
-            {!CERTIFICA && (
+            {!CERTIFICA && !esSoloLicenciaturas() && (
               <p>
                 <strong style={{ color: '#fff' }}>No transferimos tus datos a autoridades educativas.</strong>{' '}
                 {RAZON_SOCIAL} no realiza trámites de acreditación ni de certificación ante la Secretaría

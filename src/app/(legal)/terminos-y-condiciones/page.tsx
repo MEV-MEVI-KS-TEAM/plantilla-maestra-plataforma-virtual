@@ -3,6 +3,8 @@ import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig } from '@/lib/site-config'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
+import { esSoloLicenciaturas, getCarrerasLicenciatura, getDesglosesLicenciatura, ritmosLicenciatura, tablaLicenciaturas } from '@/lib/licenciatura-utils'
+import { formatearMoneda } from '@/lib/moneda'
 
 // Nombre y correo son editables desde "Personalizar mi página", así que se
 // leen de la config fusionada por petición. El dominio no es editable (cambia
@@ -52,6 +54,17 @@ export default async function TerminosCondicionesPage() {
    * secciones 2, 4, 5 se lee como un documento al que le falta una página.
    */
   const CERTIFICA = CONFIG.ofreceCertificacion
+
+  /**
+   * Solo-Licenciaturas (#311): el servicio es la licenciatura, no Secundaria ni
+   * Preparatoria. Se describe con sus carreras, sus planes y su costo completo
+   * (la titulación incluida), sin SEP ni acreditación. Con Sec/Prepa en
+   * `niveles` es `false` y el contrato sale como siempre.
+   */
+  const SOLO_LIC = esSoloLicenciaturas()
+  const carrerasLic = getCarrerasLicenciatura().map(c => c.nombre)
+  const planesLic = SOLO_LIC ? getDesglosesLicenciatura(tablaLicenciaturas(cfg)) : []
+  const dinero = (n: number) => formatearMoneda(n, cfg)
 
   /**
    * 🛑 EL CORREO, GATEADO POR EL DATO (Bug P-8c). Aquí se pintaba siempre
@@ -115,7 +128,36 @@ export default async function TerminosCondicionesPage() {
           </Section>
 
           <Section title="2. Descripción del Servicio">
-            {CERTIFICA ? (
+            {SOLO_LIC ? (
+              <>
+                <p>
+                  {RAZON_SOCIAL} ofrece programas de <strong style={{ color: '#fff' }}>licenciatura en línea</strong>:{' '}
+                  {carrerasLic.length > 1 ? `${carrerasLic.slice(0, -1).join(', ')} y ${carrerasLic[carrerasLic.length - 1]}` : carrerasLic[0]}.
+                  Cada carrera se cursa materia por materia, con material de estudio, evaluaciones y acompañamiento
+                  académico, en planes de {ritmosLicenciatura()}. Nuestros servicios incluyen:
+                </p>
+                <ul>
+                  <li>Acceso a la plataforma de aprendizaje en línea durante la vigencia del plan contratado.</li>
+                  <li>Material de estudio, evaluaciones y seguimiento de tu avance.</li>
+                  <li>Acompañamiento académico y atención al alumno.</li>
+                  <li>Emisión de constancias de avance dentro de la plataforma.</li>
+                  <li>Al concluir el plan de estudios, gestión administrativa de tu título y cédula profesional.</li>
+                  <li>Soporte técnico.</li>
+                </ul>
+                <p>
+                  <strong style={{ color: '#fff' }}>Costo del programa.</strong>{' '}
+                  {planesLic.map(p =>
+                    `Plan de ${p.meses} meses: inscripción de ${dinero(p.inscripcion)}, ${p.meses} mensualidades de ${dinero(p.mensualidad)} y titulación de ${dinero(p.titulacion)} al concluir, ${dinero(p.total)} en total.`,
+                  ).join(' ')}
+                </p>
+                <p>
+                  <strong style={{ color: '#fff' }}>Alcance del servicio.</strong> Las constancias que emite la
+                  plataforma acreditan el <strong style={{ color: '#fff' }}>avance del alumno dentro del
+                  programa</strong>. La titulación se cubre al concluir el plan de estudios y sus tiempos dependen
+                  de los plazos administrativos de las instancias que intervienen en el trámite.
+                </p>
+              </>
+            ) : CERTIFICA ? (
               <>
                 <p>
                   {RAZON_SOCIAL} ofrece programas de educación a distancia para la obtención de certificados
@@ -297,7 +339,18 @@ export default async function TerminosCondicionesPage() {
             </p>
             <ul>
               <li>Interrupciones del servicio por mantenimiento, fuerza mayor o fallas de terceros.</li>
-              {CERTIFICA ? (
+              {SOLO_LIC ? (
+                <>
+                  <li>
+                    Demoras en la emisión del título y la cédula profesional causadas por los plazos
+                    administrativos de las instancias que intervienen en el trámite.
+                  </li>
+                  <li>
+                    Decisiones de terceros —instituciones, empleadores o autoridades— sobre el valor que
+                    den a las constancias de avance emitidas por la Plataforma.
+                  </li>
+                </>
+              ) : CERTIFICA ? (
                 <li>
                   Demoras en la emisión del certificado oficial causadas por los plazos de la SEP
                   o instituciones de convenio.

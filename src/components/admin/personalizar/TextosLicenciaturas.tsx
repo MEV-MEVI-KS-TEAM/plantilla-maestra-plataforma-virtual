@@ -21,6 +21,7 @@
  *    `CONFIG.licenciaturas` y no se tocan desde aquí.
  */
 import { CONFIG } from '@/lib/config'
+import { esSoloLicenciaturas } from '@/lib/licenciatura-utils'
 import type { Campo } from '@/lib/site-config-campos'
 import { formatearMoneda } from '@/lib/moneda'
 import { textoInscripcion } from '@/lib/precios-ui'
@@ -95,12 +96,12 @@ export function ComodinesLicenciatura({
         {hoy.inscripcionLicenciatura ? ` (hoy ${hoy.inscripcionLicenciatura})` : ''} y{' '}
         <code style={{ color: TXT_SUAVE }}>{'{titulacion}'}</code>
         {hoy.titulacion ? ` (hoy ${hoy.titulacion})` : ''}. Aquí <code>{'{inscripcion}'}</code> sigue siendo la
-        inscripción general de Secundaria y Preparatoria.
+        inscripción general{esSoloLicenciaturas() ? '' : ' de Secundaria y Preparatoria'}.
       </Ayuda>
       {usaInscripcionGeneral(landing) && (
         <Aviso tono="alerta">
           Uno de tus textos de licenciatura usa <code>{'{inscripcion}'}</code>: esa es la inscripción general
-          (Secundaria y Preparatoria), no la de licenciatura. Para la de licenciatura escribe{' '}
+          {esSoloLicenciaturas() ? '' : ' (Secundaria y Preparatoria)'}, no la de licenciatura. Para la de licenciatura escribe{' '}
           <code>{'{inscripcionLicenciatura}'}</code>.
         </Aviso>
       )}
