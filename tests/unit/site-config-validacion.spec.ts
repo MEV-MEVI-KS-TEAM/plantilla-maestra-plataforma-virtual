@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
+import { esNombreLargo } from '@/lib/marca'
 import { ES_PLANTILLA } from './es-plantilla'
 import { etiquetaNivel } from '@/lib/niveles-ui'
 import { planesPorNivel } from '@/lib/modalidades'
@@ -327,11 +328,14 @@ test('21. los defaults de CONFIG (recortados) pasan la validación sin cambios',
   const defaults = recortarAEditables(BASE()) as unknown as Record<string, unknown>
   // `modalidades` en el cuerpo va por id, no como arreglo; `whatsappUrl` se deriva.
   const cuerpo: Record<string, unknown> = { ...defaults }
+  // Nombre largo de fábrica: el editor no lo reenvía si nadie lo teclea (ver
+  // test 6 de site-config-campos), así que tampoco va en este cuerpo.
+  if (esNombreLargo(CONFIG.nombre)) delete cuerpo.nombre
   cuerpo.modalidades = Object.fromEntries(
     CONFIG.modalidades.map((m) => [m.id, { mensualidad: m.mensualidad, activa: m.activa }]),
   )
   const r = ok(v(cuerpo, ORIGEN))
-  expect(r.nombre).toBe(CONFIG.nombre)
+  if (!esNombreLargo(CONFIG.nombre)) expect(r.nombre).toBe(CONFIG.nombre)
   expect(r.logo).toBe(CONFIG.logo)
   expect(r.whatsappUrl).toBe(`https://wa.me/${CONFIG.whatsapp}`)
   expect((r.landing as Record<string, unknown>).faq_items).toEqual(CONFIG.landing.faq_items)

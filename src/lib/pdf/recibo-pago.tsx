@@ -51,7 +51,11 @@ const fmtFecha = (fecha: string) => {
 const styles = StyleSheet.create({
   page:      { padding: 40, fontSize: 11, fontFamily: 'Helvetica', color: '#111827' },
   header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  logo:      { height: 40, objectFit: 'contain' },
+  // El bloque del nombre cede ancho y el logo no: un nombre largo parte en dos
+  // renglones en vez de encimarse con el logo. react-pdf no conoce el ancho de
+  // la imagen hasta pintarla: la caja del logo lleva ancho fijo.
+  marca:     { flex: 1, paddingRight: 16 },
+  logo:      { width: 120, height: 40, objectFit: 'contain', flexShrink: 0 },
   escuela:   { fontSize: 16, fontFamily: 'Helvetica-Bold' },
   tagline:   { fontSize: 9, color: '#6B7280', marginTop: 2 },
   divider:   { borderBottomWidth: 2, borderBottomColor: '#111827', marginVertical: 12 },
@@ -105,7 +109,7 @@ export function ReciboPagoPDF({ data, cfg }: { data: ReciboData; cfg: ReciboBran
     <Document title={`Recibo ${data.folio}`} author={cfg.nombreCompleto}>
       <Page size="A5" orientation="landscape" style={styles.page}>
         <View style={styles.header}>
-          <View>
+          <View style={styles.marca}>
             <Text style={styles.escuela}>{cfg.nombreCompleto}</Text>
             {/* Sin WhatsApp, solo el sitio: nada de «· WhatsApp » con la palabra colgando. */}
             <Text style={styles.tagline}>{lineaContactoRecibo(CONFIG.urlBase, cfg)}</Text>

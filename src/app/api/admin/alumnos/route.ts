@@ -219,7 +219,7 @@ export async function GET() {
         const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
         return {
           id:                   a.id,
-          matricula:            a.matricula ?? `${CONFIG.nombre}-0000`,
+          matricula:            a.matricula ?? `${CONFIG.prefijoMatricula}-0000`,
           nivel:                a.nivel ?? null,
           carrera:              a.carrera ?? null,
           plan_nombre:          getPlanNombre(a.nivel, a.carrera),
@@ -285,7 +285,7 @@ export async function GET() {
         const u = Array.isArray(a.usuarios) ? a.usuarios[0] : a.usuarios
         return {
           id:                   a.id,
-          matricula:            a.matricula ?? `${CONFIG.nombre}-0000`,
+          matricula:            a.matricula ?? `${CONFIG.prefijoMatricula}-0000`,
           nivel:                a.nivel ?? null,
           carrera:              a.carrera ?? null,
           plan_nombre:          getPlanNombre(a.nivel, a.carrera),
@@ -332,7 +332,7 @@ export async function GET() {
       if (u && !esRolAlumno((u as { rol?: unknown }).rol)) continue
       resultFallback.push({
         id:                   a.id,
-        matricula:            a.matricula ?? `${CONFIG.nombre}-0000`,
+        matricula:            a.matricula ?? `${CONFIG.prefijoMatricula}-0000`,
         nivel:                a.nivel ?? null,
         carrera:              a.carrera ?? null,
         plan_nombre:          getPlanNombre(a.nivel, a.carrera),

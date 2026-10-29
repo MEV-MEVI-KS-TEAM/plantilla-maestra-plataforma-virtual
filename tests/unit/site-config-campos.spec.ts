@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { ES_PLANTILLA } from './es-plantilla'
 import { CONFIG } from '@/lib/config'
+import { esNombreLargo } from '@/lib/marca'
 import { CLAVES_EDITABLES, PLACEHOLDERS, type ClaveEditable } from '@/lib/site-config-core'
 import {
   CAMPOS,
@@ -206,6 +207,10 @@ test('6. los defaults de config.ts caben en los límites del catálogo', () => {
   // formulario sin tocar: el admin vería "no guarda" en un campo que nunca editó.
   for (const c of CAMPOS) {
     if (sinDefaultQueMedir(c.clave)) continue
+    // Nombre largo de fábrica (la escuela no tiene nombre corto, ver
+    // `esNombreLargo`): el editor solo reenvía lo que se teclea, así que el
+    // default no pasa por el límite; lo tecleado sigue limitado a 40.
+    if (c.clave === 'nombre' && esNombreLargo(CONFIG.nombre)) continue
     const v = leer(c.clave)
     switch (c.tipo) {
       case 'entero':

@@ -58,7 +58,7 @@ import { AVISO_PAGO_UNICO, lineaPrecio, precioCatalogo } from '@/lib/cursos/prec
 import type { CursoCatalogoPublico } from '@/lib/cursos/catalogo'
 import { canalEscuela, faqSegunWhatsApp, mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura, getEtiquetaLicenciatura } from '@/lib/licenciatura-utils'
-import { subtituloMarca } from '@/lib/marca'
+import { esNombreLargo, subtituloMarca } from '@/lib/marca'
 import { etiquetaNivel, etiquetaNivelConArticulo, listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import {
   certificacionDe, escuelaCertifica, etiquetasPlan, fraseMensualidades, inscripcionEnLanding, mensualidadDe, textoInscripcion,
@@ -195,6 +195,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const hayCatalogo = Boolean(CONFIG.landing.mostrarCatalogoCursos) && catalogo.length > 0
 
   const subtitulo = subtituloMarca(config.nombre, config.nombreCompleto)
+  // Nombre que es una frase (sin sigla): cabecera en dos renglones, H1 más
+  // chico con el logo arriba y sin mayúsculas espaciadas. Ver `esNombreLargo`.
+  const nombreLargo = esNombreLargo(config.nombre)
   const niveles = NIVELES.filter(n => (CONFIG.niveles as readonly string[]).includes(n))
   const planesDe = (nivel: string) => planesPorNivel(nivel, config.modalidades)
   const nivelReferencia = niveles.includes('preparatoria') ? 'preparatoria' : (niveles[0] ?? 'preparatoria')
@@ -432,7 +435,11 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 el nombre al lado es lo que funciona con cualquier arte. */}
             <Image src={config.logo} alt="" aria-hidden width={LOGO.ancho} height={LOGO.alto} priority
               className="h-11 w-auto object-contain flex-shrink-0" />
-            <span className="font-bold truncate" style={{ color: tHeader.titulo, fontFamily: 'var(--font-heading)', fontSize: '1.35rem', letterSpacing: '0.04em' }}>
+            <span className={nombreLargo ? 'font-bold min-w-0' : 'font-bold truncate'}
+              style={nombreLargo
+                ? { color: tHeader.titulo, fontFamily: 'var(--font-heading)', whiteSpace: 'normal', lineHeight: 1.15, letterSpacing: 0,
+                    fontSize: 'clamp(0.85rem, 1.25vw, 1.05rem)', maxWidth: '22rem', paddingBlock: '0.12em' }
+                : { color: tHeader.titulo, fontFamily: 'var(--font-heading)', fontSize: '1.35rem', letterSpacing: '0.04em' }}>
               {config.nombre}
             </span>
           </Link>
@@ -519,14 +526,16 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
               {/* Logo + nombre como un solo bloque. El <h1> es TEXTO REAL —lo leen
                   los buscadores y los lectores de pantalla— con el subtítulo
                   derivado del nombre completo debajo. */}
-              <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <div className={`mt-6 flex flex-col gap-4 ${nombreLargo ? '' : 'sm:flex-row sm:items-center sm:gap-6'}`}>
                 <Image src={config.logo} alt={`Logotipo de ${config.nombreCompleto}`}
                   width={LOGO.ancho} height={LOGO.alto} priority
                   sizes="(min-width: 640px) 200px, 150px"
-                  className="la-entrada la-entrada--escala la-logo-hero w-auto h-[120px] sm:h-[150px] lg:h-[160px] flex-shrink-0 self-start sm:self-center" />
+                  className={`la-entrada la-entrada--escala la-logo-hero w-auto flex-shrink-0 self-start ${nombreLargo ? 'h-[90px] sm:h-[110px] lg:h-[120px]' : 'h-[120px] sm:h-[150px] lg:h-[160px] sm:self-center'}`} />
                 <div className="min-w-0">
                   <h1 className="la-entrada font-bold"
-                    style={{ ...retraso(1, 90), color: tHero.titulo, fontSize: 'clamp(2.75rem, 7vw, 4.25rem)', lineHeight: 1.02, letterSpacing: '0.08em' }}>
+                    style={{ ...retraso(1, 90), color: tHero.titulo, ...(nombreLargo
+                      ? { fontSize: 'clamp(1.9rem, 4.2vw, 3.1rem)', lineHeight: 1.12, letterSpacing: 0, textWrap: 'balance' as const }
+                      : { fontSize: 'clamp(2.75rem, 7vw, 4.25rem)', lineHeight: 1.02, letterSpacing: '0.08em' }) }}>
                     {config.nombre}
                     {subtitulo && <span className="sr-only"> {subtitulo}</span>}
                   </h1>
@@ -1018,7 +1027,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
               <div className="grid md:grid-cols-2 gap-6 mt-12 max-w-5xl mx-auto">
                 <div data-la-reveal="izq" className="rounded-2xl p-7 sm:p-8"
                   style={{ background: tTransf.superficie, border: `1px solid ${tTransf.borde}` }}>
-                  <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em]" style={{ color: tTransf.textoSuave }}>
+                  <p className={`flex items-center gap-2 font-bold ${nombreLargo ? 'text-base normal-case tracking-normal' : 'text-sm uppercase tracking-[0.16em]'}`} style={{ color: tTransf.textoSuave }}>
                     <XCircle size={18} aria-hidden /> Sin {config.nombre}
                   </p>
                   <ul className="mt-6 space-y-4">
@@ -1032,7 +1041,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 </div>
                 <div data-la-reveal="der" data-variant="oscuro" className="la-card rounded-2xl p-7 sm:p-8"
                   style={{ ...retraso(1), background: tOscuro.fondo, border: `1px solid ${tOscuro.fondo}` }}>
-                  <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em]" style={{ color: tOscuro.titulo }}>
+                  <p className={`flex items-center gap-2 font-bold ${nombreLargo ? 'text-base normal-case tracking-normal' : 'text-sm uppercase tracking-[0.16em]'}`} style={{ color: tOscuro.titulo }}>
                     <GraduationCap size={18} aria-hidden style={{ color: tOscuro.decorativo }} /> Con {config.nombre}
                   </p>
                   <ul className="mt-6 space-y-4">
