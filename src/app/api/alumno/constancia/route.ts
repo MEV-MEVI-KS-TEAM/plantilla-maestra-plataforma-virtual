@@ -182,7 +182,7 @@ export async function GET() {
       nombre:              usuario?.nombre   ?? '',
       apellidos:           usuario?.apellidos ?? '',
       foto_url:            fotoPerfilUrl,
-      matricula:           alumno.matricula   ?? `${CONFIG.nombre}-0000`,
+      matricula:           alumno.matricula   ?? `${CONFIG.prefijoMatricula}-0000`,
       nivel:               acceso.nivel       ?? null,
       // Necesaria para que el encabezado no anuncie «Preparatoria • Secundaria»
       // a un alumno de licenciatura (Bug 94 · TICKET-2026-09-07-49).

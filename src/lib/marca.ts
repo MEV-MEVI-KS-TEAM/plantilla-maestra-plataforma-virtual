@@ -26,3 +26,17 @@ export function subtituloMarca(nombre: string, nombreCompleto: string): string {
   if (c.endsWith(sigla)) return c.slice(0, c.length - sigla.length).replace(/[\s,.\-–—|]+$/, '').trim()
   return ''
 }
+
+/**
+ * ¿El nombre de marca es una FRASE y no una sigla? Pasa cuando la escuela no
+ * tiene nombre corto y `CONFIG.nombre` es el nombre completo (IELAD #313: 55
+ * caracteres). Un nombre así no cabe en la cabecera truncado, no se lee en el
+ * H1 a 68 px con 0.08em de tracking ni en mayúsculas con tracking en «Sin/Con».
+ * Más de 28 caracteres = nombre largo (el más largo de la flota con sigla o
+ * nombre corto mide 28).
+ */
+export const LIMITE_NOMBRE_CORTO = 28
+
+export function esNombreLargo(nombre: string | null | undefined): boolean {
+  return (nombre ?? '').trim().length > LIMITE_NOMBRE_CORTO
+}
