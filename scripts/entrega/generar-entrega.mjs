@@ -1182,7 +1182,7 @@ if (!flag('solo-pdf')) {
     OFERTA_INFORMATIVA?.programas && `• Catálogo informativo de ${OFERTA_INFORMATIVA.programas} licenciaturas, sin registro en línea${anclaEnLanding('licenciaturas') ? `: ${URL_BASE}/#licenciaturas` : ''}`,
     // Las secciones de la oferta, si la landing las tiene: el cliente las enseña
     // a sus prospectos y el mensaje solo nombraba la validez.
-    !OFERTA_INFORMATIVA?.personalizados.length && anclaEnLanding('planes') && `• Tus niveles y planes, con sus precios: ${URL_BASE}/#planes`,
+    !SOLO_LIC && !OFERTA_INFORMATIVA?.personalizados.length && anclaEnLanding('planes') && `• Tus niveles y planes, con sus precios: ${URL_BASE}/#planes`,
     CARRERAS.length && !OFERTA_INFORMATIVA?.programas && anclaProgramas && `• ${ETIQUETA_PROGRAMAS}${DESGLOSES_LIC.length ? ', con su costo completo y la titulación desglosada' : ''}: ${URL_BASE}/#${anclaProgramas}`,
     VALIDAR_CONSTANCIAS && `• Verificación de constancias: quien reciba una constancia de tu escuela confirma su folio en ${URL_BASE}/validar`,
     PAGINAS_LEGALES.length && `• ${PAGINAS_LEGALES.join(', ')}, redactados y publicados`,
