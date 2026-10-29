@@ -609,8 +609,39 @@ const anclaEnLanding = (id) => TEXTO_LANDING.includes(`id="${id}"`)
 
 // Tabla de precios. La mensual sale de planes.mjs (pura y probada): cada nivel
 // con SUS planes; en la oferta simétrica, fila por fila la de siempre.
-const FRASES_MENSUALES = SEMANAL ? null : frasesMensuales(CONFIG, nivelesPrograma, PRECIOS)
-const tablaMensual = SEMANAL ? null : tablaPreciosMensual(CONFIG, nivelesPrograma, PRECIOS)
+// 🐞 Solo-Licenciaturas (MTY #311): sin niveles escolares, las frases y la tabla
+// mensual caían a las modalidades de FÁBRICA («3 meses — Express / 6 meses —
+// Estándar») que la escuela no vende. Ahí la oferta son los planes de
+// licenciatura con su desglose real (inscripción + colegiatura + titulación).
+const SOLO_LIC = !SEMANAL && !nivelesPrograma.length && CONFIG.modo !== 'solo_cursos' &&
+  CARRERAS.length > 0 && DESGLOSES_LIC.length > 0
+const durLic = unirConY(DESGLOSES_LIC.map(d => `${d.meses}`)).replace(/ y /, ' o ')
+const FRASES_LIC = SOLO_LIC ? {
+  frasePrecios: DESGLOSES_LIC.length === 1
+    ? `Tu escuela ofrece un plan de ${DESGLOSES_LIC[0].meses} meses, con la titulación incluida en el costo total. Así quedó cargado:`
+    : `Tu escuela ofrece ${DESGLOSES_LIC.length} planes de ${durLic} meses, con la titulación incluida en el costo total. Así quedaron cargados:`,
+  notaPrecios: 'El total suma inscripción + mensualidades del plan + titulación. Los montos se muestran solos en tu página pública. ' +
+    'Al marcar la inscripción como pagada, el panel muestra la cifra del programa del alumno. El monto de cada pago lo capturas tú.',
+  notaModalidades: DESGLOSES_LIC.length === 1
+    ? 'Tu plataforma ofrece un solo plan, así que el alumno no elige duración al registrarse: se le asigna automáticamente.'
+    : 'El alumno elige su programa y su plan al registrarse, y el ritmo de apertura de materias se ajusta solo.',
+  incluye: DESGLOSES_LIC.length === 1
+    ? `Plan único de ${DESGLOSES_LIC[0].meses} meses`
+    : `${DESGLOSES_LIC.length} planes de estudio (${durLic} meses)`,
+} : null
+const FRASES_MENSUALES = SEMANAL ? null : SOLO_LIC ? FRASES_LIC : frasesMensuales(CONFIG, nivelesPrograma, PRECIOS)
+const tablaMensual = SEMANAL ? null : SOLO_LIC
+  ? {
+      cols: ['Concepto', ...DESGLOSES_LIC.map(d => d.label)],
+      filas: [
+        ['Inscripción', ...DESGLOSES_LIC.map(d => mxn(d.inscripcion))],
+        ['Mensualidad', ...DESGLOSES_LIC.map(d => `${mxn(d.mensualidad)} × ${d.meses} meses`)],
+        ['Colegiatura', ...DESGLOSES_LIC.map(d => mxn(d.colegiatura))],
+        ['Titulación', ...DESGLOSES_LIC.map(d => mxn(d.titulacion))],
+        ['Total', ...DESGLOSES_LIC.map(d => mxn(d.total))],
+      ],
+    }
+  : tablaPreciosMensual(CONFIG, nivelesPrograma, PRECIOS)
 const preciosCols = SEMANAL ? [] : [...tablaMensual.cols]
 const preciosFilas = SEMANAL ? [] : [...tablaMensual.filas]
 
@@ -625,7 +656,7 @@ if (SEMANAL) {
 
 // Tabla de modalidades contratadas: una fila por plan que el nivel VENDE.
 const modalidadesCols = ['Modalidad', 'Duración', 'Mensualidad', 'Ritmo de apertura']
-const modalidadesFilas = SEMANAL ? [] : filasModalidadesMensual(CONFIG, nivelesPrograma, { mens, ritmo: ritmoDeApertura })
+const modalidadesFilas = SEMANAL || SOLO_LIC ? [] : filasModalidadesMensual(CONFIG, nivelesPrograma, { mens, ritmo: ritmoDeApertura })
 // Escuela semanal: una fila por plan REAL, con su cuota a la semana.
 if (SEMANAL) {
   modalidadesCols.splice(0, modalidadesCols.length, ...colsModalidades)
@@ -822,10 +853,14 @@ const datos = {
   // Usa la palabra que el cliente eligió para su institución —academia,
   // instituto, centro— en lugar de "instituto" en duro, y nombra también los
   // programas de pago único: son parte de lo que se le está entregando.
-  frasePrograma: `tu ${D.palabraInstitucion || 'instituto'} en línea — ${listaNiveles}${
+  frasePrograma: SOLO_LIC
+    ? `tu ${D.palabraInstitucion || 'instituto'} en línea — ${unirConY(CARRERAS.map(c => c.nombre))}`
+    : `tu ${D.palabraInstitucion || 'instituto'} en línea — ${listaNiveles}${
     CARRERAS.length ? `, ${unirConY(CARRERAS.map(c => c.nombre))}` : ''}`,
-  fraseIntro: `Una sola plataforma que atiende tus ${nivelesPrograma.length === 1 ? 'alumnos' : `${nivelesPrograma.length} niveles`}: ${listaNiveles}${
-    CARRERAS.length ? `, más ${nombrarProgramas(CARRERAS)}` : ''
+  fraseIntro: `${SOLO_LIC
+    ? `Una sola plataforma para ${nombrarProgramas(CARRERAS)}: ${unirConY(CARRERAS.map(c => c.nombre))}`
+    : `Una sola plataforma que atiende tus ${nivelesPrograma.length === 1 ? 'alumnos' : `${nivelesPrograma.length} niveles`}: ${listaNiveles}${
+    CARRERAS.length ? `, más ${nombrarProgramas(CARRERAS)}` : ''}`
   }. El alumno se registra, elige ${CARRERAS.length ? 'qué quiere estudiar' : 'su nivel'} y avanza mes a mes; tú lo administras todo desde un único panel.`,
   frasePrecios: (SEMANAL ? FRASES_SEMANALES : FRASES_MENSUALES).frasePrecios,
   notaPrecios: (SEMANAL ? FRASES_SEMANALES : FRASES_MENSUALES).notaPrecios,
@@ -863,7 +898,7 @@ const datos = {
     'Comparte tu dirección y el video "Así se estudia" con cada nuevo estudiante',
   ].filter(Boolean),
   incluye: [
-    `Programa académico de ${listaNiveles}`,
+    !SOLO_LIC && `Programa académico de ${listaNiveles}`,
     (SEMANAL ? FRASES_SEMANALES : FRASES_MENSUALES).incluye,
     // Lo que el cliente ya tiene cargado va ANTES del módulo vacío: es lo que
     // acaba de comprar y lo primero que quiere ver confirmado.
@@ -999,7 +1034,9 @@ if (!flag('solo-pdf')) {
     L.push(...lineasPreciosWhatsApp(PLANES_SEMANALES, nivelesPrograma))
   } else {
     // Cada nivel con SUS planes: en una oferta asimétrica no se inventan combinaciones.
-    L.push(...lineasPreciosMensualWhatsApp(CONFIG, nivelesPrograma, PRECIOS))
+    // Solo-Licenciaturas: el desglose real va en el bloque de programas, abajo.
+    if (SOLO_LIC) L.push(`${FRASES_LIC.incluye}, con la titulación incluida en el costo total.`, "")
+    else L.push(...lineasPreciosMensualWhatsApp(CONFIG, nivelesPrograma, PRECIOS))
   }
 
   // Los programas de pago único van con su propio bloque: son otro producto,
@@ -1119,7 +1156,7 @@ if (!flag('solo-pdf')) {
       // que el secretario no puede.
       `• Quien tenga el rol de secretario también da de alta alumnos y los marca como contactados, asigna, activa y cobra los cursos, abre meses y emite constancias${CONFIG.modo === 'solo_cursos' ? '' : ' (en su menú, «Cursos»)'}; crear cursos, cambiar precios, cancelar, reactivar o quitar una inscripción, borrar pagos y borrar alumnos quedan solo en tu cuenta`,
     ] : ['• Crear tus propios Cursos y Diplomados cuando quieras']),
-    ...(CARRERAS.length
+    ...(CARRERAS.length && !SOLO_LIC
       ? [`• Gestionar a los alumnos de ${CARRERAS.length === 1 ? 'tu programa' : 'tus programas'} igual que a los de ${listaNiveles}`]
       : []),
     // Lo hecho a medida también se opera desde el panel, y si no se nombra el
