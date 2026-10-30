@@ -181,6 +181,11 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const desplazado = useDesplazado(8)
 
   const L = resolverLanding(config.landing)
+  // Misión institucional: llaves opcionales de `landing` (no editables, por eso
+  // no pasan por `resolverLanding`); las escuelas sin ellas no pintan nada.
+  const mision = (config.landing ?? {}) as { mision_titulo?: unknown; mision_texto?: unknown }
+  const misionTitulo = typeof mision.mision_titulo === 'string' ? mision.mision_titulo.trim() : ''
+  const misionTexto = typeof mision.mision_texto === 'string' ? mision.mision_texto.trim() : ''
   const precios = config.precios as unknown as Record<string, unknown>
   const paleta = paletaDesde(config.colores)
 
@@ -1117,6 +1122,22 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             <div aria-hidden className="la-halo la-halo--izq" style={variable('--la-color', tBenef.decorativo)} />
             <div aria-hidden className="la-halo la-halo--der" style={variable('--la-color', tBenef.textoSuave)} />
             <div className={`relative ${CONTENEDOR}`}>
+              {/* Misión institucional (opcional): al inicio de la sección, con el
+                  color de títulos (nunca el acento: es un párrafo) y un filete
+                  decorativo que la separa de los beneficios. Vacía = no se pinta. */}
+              {misionTexto && (
+                <div data-la-reveal className="max-w-3xl mx-auto text-center mb-14">
+                  {misionTitulo && (
+                    <p className="flex items-center justify-center gap-3 text-sm font-bold tracking-[0.06em]" style={{ color: tBenef.textoSuave }}>
+                      <span aria-hidden className="la-filete" style={{ background: tBenef.decorativo }} />
+                      {misionTitulo}
+                      <span aria-hidden className="la-filete" style={{ background: tBenef.decorativo }} />
+                    </p>
+                  )}
+                  <p className="mt-5 text-lg" style={{ color: tBenef.titulo, lineHeight: 1.6 }}>{misionTexto}</p>
+                  <span aria-hidden className="block mx-auto mt-10 rounded-full" style={{ width: 64, height: 3, background: tBenef.decorativo }} />
+                </div>
+              )}
               <Encabezado t={tBenef} kicker="Beneficios" titulo={texto(L.beneficios_titulo)} bajada={texto(L.beneficios_subtitulo)} />
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
                 {L.beneficios_items.map((b, i) => (

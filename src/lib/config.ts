@@ -482,6 +482,11 @@ export const CONFIG = {
     //     `nombre` es solo el nombre VISIBLE en la tarjeta de la landing; el
     //     nombre real (registro, admin, constancias) sigue en `licenciaturas`.
     //   · licenciaturas_pasos: hasta 4, en orden; un campo vacío = automático.
+    // Misión institucional (llaves OPCIONALES; vacías = no se pinta el bloque).
+    // Va al inicio de Beneficios, con el color de títulos de esa sección.
+    // Todavía no se editan desde Personalizar mi página.
+    mision_titulo:              '',
+    mision_texto:               '',
     licenciaturas_kicker:       '',
     licenciaturas_titulo:       '',
     licenciaturas_subtitulo:    '',
