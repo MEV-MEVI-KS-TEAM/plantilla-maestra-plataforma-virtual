@@ -198,7 +198,8 @@ WITH tablas_sin_policy AS (
     -- RLS deny-all POR DISEÑO: el acceso va por service role o SECURITY DEFINER.
     --   keep_alive_log → solo anon INSERT, sin SELECT (keep-alive, Bug 46)
     --   ajustes        → ver src/lib/matricula.ts
-    AND c.relname NOT IN ('keep_alive_log', 'ajustes')
+    --   datos_pago     → CLABE/tarjeta: solo servidor, sin políticas ni GRANTs (#295)
+    AND c.relname NOT IN ('keep_alive_log', 'ajustes', 'datos_pago')
   GROUP BY c.relname
   HAVING COUNT(p.oid) = 0
 )
