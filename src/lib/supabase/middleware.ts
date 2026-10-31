@@ -120,7 +120,8 @@ export async function updateSession(request: NextRequest) {
     // Las pantallas hacen fetch + r.json() sobre estos endpoints: al seguir el
     // redirect recibian HTML, json() lanzaba y se caia la vista entera.
     if (request.nextUrl.pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      // no-store: un 401 de API nunca se cachea (lo exige /api/alumno/datos-pago, #295).
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401, headers: { 'Cache-Control': 'no-store, max-age=0' } })
     }
 
     const url = request.nextUrl.clone()
