@@ -626,6 +626,12 @@ export const CONFIG = {
   // nadie, útil para dejar cargado un cobro que todavía no aplica.
   pagos: {
     activo: false,
+    /** #295: true = «Pagos» sale en el menú del alumno aunque no haya enlaces de
+     *  cobro, porque la escuela cobra por transferencia o depósito con los datos
+     *  de la tabla `datos_pago` (solo servidor; se capturan en Personalizar →
+     *  «Datos de pago»). Aquí NUNCA van datos bancarios: este archivo termina en
+     *  el bundle público. */
+    datosPagoEnMenu: false,
     /** Marca con la que la pasarela emite los enlaces, si no es la de la escuela.
      *  Se le avisa al alumno para que no dude al llegar al checkout. */
     emisor: '',

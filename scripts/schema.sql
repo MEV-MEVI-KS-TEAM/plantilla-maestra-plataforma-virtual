@@ -1136,6 +1136,30 @@ REVOKE SELECT ON public.site_config FROM anon, authenticated;
 GRANT SELECT (id, data, updated_at) ON public.site_config TO anon, authenticated;
 
 --
+-- Name: datos_pago; Type: TABLE; Schema: public; Owner: -
+--
+-- Datos bancarios para pagar por transferencia o deposito (pedido de un cliente, #295).
+-- SOLO SERVIDOR: RLS activa, ninguna politica y ningun GRANT a anon ni a
+-- authenticated; la leen y escriben las API con el service role. Fila unica.
+-- Espejo de supabase/migrations/20261030120000_datos_pago.sql.
+--
+
+CREATE TABLE IF NOT EXISTS public.datos_pago (
+    id integer DEFAULT 1 NOT NULL PRIMARY KEY CHECK ((id = 1)),
+    activo boolean DEFAULT false NOT NULL,
+    banco text DEFAULT ''::text NOT NULL,
+    titular text DEFAULT ''::text NOT NULL,
+    clabe text DEFAULT ''::text NOT NULL CHECK (((clabe = ''::text) OR (clabe ~ '^[0-9]{18}$'::text))),
+    tarjeta text DEFAULT ''::text NOT NULL CHECK (((tarjeta = ''::text) OR (tarjeta ~ '^[0-9]{16}$'::text))),
+    cuenta text DEFAULT ''::text NOT NULL CHECK (((cuenta = ''::text) OR (cuenta ~ '^[0-9]{8,20}$'::text))),
+    nota text DEFAULT ''::text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE public.datos_pago ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.datos_pago FROM anon, authenticated;
+
+--
 -- Name: alumnos; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
