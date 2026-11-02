@@ -1,14 +1,15 @@
 -- ============================================================
 -- seed-preguntas-evaluaciones-universal.sql
 -- ============================================================
--- Versión: 1.1 (post-Bug 33, 5-may-2026)
--- Fecha: 2026-05-04
--- Total preguntas: 265 (25 materias × ~10-25 preguntas)
--- Origen: dump EDUXA (cliente #12, contenido validado en producción)
+-- GENERADO desde banco-materias-sec-prepa (scripts/aplicar_reactivos.py --plantilla).
+-- NO editar aquí: se corrige reactivos/ en el banco, se regenera y se vuelve a copiar.
+--
+-- 240 preguntas (24 materias × 10), con al menos 1 de cada semana con tema.
+-- Más las 25 del demo, que no se generan: se conservan tal cual.
 -- ============================================================
 -- IDEMPOTENTE en 2 capas:
---   1. DELETE inicial elimina preguntas con patrón Bug C (opcion_a
---      idéntica en >=3 preguntas de la misma evaluación).
+--   1. DELETE inicial elimina preguntas con patrón Bug C
+--      (opcion_a idéntica en >=3 preguntas de la misma evaluación).
 --   2. ON CONFLICT (evaluacion_id, pregunta) DO NOTHING — requiere la
 --      UNIQUE constraint preguntas_evaluacion_pregunta_unique definida
 --      en schema.sql (Bug 33 fix). Sin esa constraint el ON CONFLICT
@@ -29,1447 +30,1449 @@ WHERE evaluacion_id IN (
 );
 
 -- 2. Insertar preguntas reales matcheando por título evaluación + nombre materia
---    Total: 265 preguntas en 25 evaluaciones
+--    Total: 240 preguntas en 24 evaluaciones
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la unidad estructural y funcional de todos los seres vivos?', 'El órgano', 'El tejido', 'El sistema', 'La célula', 'd', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué proceso realizan las plantas para producir su propio alimento?', 'Fermentación', 'Digestión', 'Respiración', 'Fotosíntesis', 'd', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál de los siguientes NO es un macronutriente indispensable para el organismo?', 'Carbohidratos', 'Lípidos', 'Vitamina C', 'Proteínas', 'c', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué órgano del cuerpo humano bombea la sangre hacia todo el organismo?', 'El hígado', 'El riñón', 'El pulmón', 'El corazón', 'd', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo se llama el proceso por el cual los organismos obtienen energía de los alimentos?', 'Respiración celular', 'Osmosis', 'Transpiración', 'Fotosíntesis', 'a', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función principal del sistema esquelético?', 'Transportar oxígeno', 'Producir hormonas', 'Sostener y proteger el cuerpo', 'Regular la temperatura', 'c', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué molécula transporta el oxígeno en la sangre?', 'Insulina', 'Hemoglobina', 'Glucosa', 'Adrenalina', 'b', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué tipo de reproducción produce organismos genéticamente idénticos al progenitor?', 'Asexual', 'Alternada', 'Sexual', 'Mixta', 'a', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la relación entre productores, consumidores y descomponedores en un ecosistema?', 'Forman una cadena alimentaria', 'Son organismos independientes', 'Compiten por el mismo nicho', 'Se reproducen conjuntamente', 'a', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Una planta colocada en la oscuridad pierde su color verde. ¿Qué proceso se ve afectado?', 'La reproducción', 'La absorción de agua', 'La respiración celular', 'La fotosíntesis', 'd', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué explica la selección natural según Darwin?', 'La extinción planeada de especies débiles', 'El proceso por el que organismos con características ventajosas sobreviven y se reproducen más', 'La mutación aleatoria de genes', 'La reproducción artificial de organismos', 'b', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función del ADN en los seres vivos?', 'Producir energía directamente', 'Regular la temperatura corporal', 'Almacenar y transmitir información genética', 'Transportar oxígeno', 'c', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué tipo de energía aprovechan los paneles solares para generar electricidad?', 'Energía nuclear', 'Energía cinética', 'Energía química', 'Energía luminosa', 'd', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo afecta el efecto invernadero al clima terrestre?', 'Reduce la humedad ambiental', 'No tiene efecto medible', 'Eleva la temperatura global', 'Enfría la atmósfera', 'c', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué partículas subatómicas forman el núcleo de un átomo?', 'Electrones y protones', 'Protones y neutrones', 'Solo protones', 'Neutrones y electrones', 'b', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre una mezcla homogénea y una heterogénea?', 'En la heterogénea siempre hay agua', 'En la homogénea los componentes son del mismo color', 'En la heterogénea los componentes no se pueden separar', 'En la homogénea los componentes no se distinguen a simple vista', 'd', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué ocurre durante una reacción química exotérmica?', 'Se libera energía hacia el entorno', 'Se consume siempre oxígeno', 'No hay cambio de energía', 'Se absorbe energía del entorno', 'a', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la biodiversidad y por qué es importante?', 'La variedad de especies, genes y ecosistemas que sostienen los equilibrios naturales', 'El número de animales en extinción', 'La cantidad total de plantas en un ecosistema', 'La velocidad de reproducción de los seres vivos', 'a', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Un alumno añade vinagre a bicarbonato de sodio y observa burbujas. ¿Qué tipo de cambio ocurre?', 'Nuclear, porque hay liberación de partículas', 'Biológico, porque intervienen seres vivos', 'Químico, porque se forman nuevas sustancias', 'Físico, porque cambia la forma', 'c', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo contribuye la biotecnología al campo de la medicina?', 'Fabricando robots quirúrgicos únicamente', 'Desarrollando vacunas, antibióticos y terapias génicas', 'Reemplazando a los médicos completamente', 'Eliminando enfermedades solo mediante cirugía', 'b', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué estudia la geografía humana?', 'Las características físicas del relieve', 'Los fenómenos meteorológicos', 'La formación de los océanos', 'La distribución de las poblaciones y sus actividades en el espacio', 'd', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál fue el principal motor económico de las civilizaciones mesoamericanas?', 'La minería de oro', 'La crianza de ganado', 'El comercio marítimo', 'La agricultura, especialmente el maíz', 'd', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es una democracia representativa?', 'Un sistema donde los ciudadanos eligen representantes para gobernar', 'Un régimen sin partidos políticos', 'Un gobierno dirigido por militares', 'Un sistema donde todos los ciudadanos votan cada decisión', 'a', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué se entiende por derechos humanos fundamentales?', 'Beneficios exclusivos para ciudadanos', 'Normativas internacionales opcionales', 'Privilegios otorgados por el gobierno', 'Derechos inherentes a toda persona por su condición humana', 'd', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué provocó principalmente el surgimiento del movimiento de Independencia de México?', 'Un desastre natural devastador', 'Una invasión extranjera planificada', 'El descontento de criollos y mestizos ante las injusticias del régimen colonial', 'La caída del precio del petróleo', 'c', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función del Poder Legislativo en México?', 'Ejecutar las leyes', 'Dirigir las fuerzas armadas', 'Administrar la justicia', 'Crear y aprobar las leyes', 'd', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo influye la globalización en las culturas locales?', 'Aísla a las culturas del mundo', 'Solo produce beneficios económicos', 'Puede generar tanto enriquecimiento cultural como pérdida de identidad', 'Las culturas locales desaparecen automáticamente', 'c', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un mapa temático?', 'Un mapa que representa información específica como clima, población o recursos', 'Un mapa solo para uso militar', 'Un mapa que muestra únicamente fronteras políticas', 'Un mapa físico del relieve terrestre', 'a', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si la desigualdad económica aumenta en un país, ¿qué consecuencias sociales se pueden esperar?', 'Más participación ciudadana', 'Posible aumento de conflictos, migración y pobreza extrema', 'Mayor cohesión social', 'Reducción automática del crimen', 'b', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es importante preservar el patrimonio cultural de un pueblo?', 'Porque genera ingresos turísticos exclusivamente', 'Porque fortalece la identidad, la memoria histórica y la cohesión social', 'Porque lo exige la ley internacional', 'Porque impide el cambio social', 'b', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el PIB (Producto Interno Bruto)?', 'El presupuesto del gobierno federal', 'El número de empresas en un país', 'Los ingresos totales de las exportaciones', 'El valor total de bienes y servicios producidos en un país durante un año', 'd', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál fue la consecuencia más inmediata de la Revolución Industrial?', 'La reducción de la población urbana', 'La desaparición de la agricultura', 'La abolición del comercio internacional', 'El surgimiento de la clase obrera y la producción en serie', 'd', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la segregación racial?', 'La separación voluntaria de grupos culturales', 'La separación legal o social forzada de personas por su raza', 'Un fenómeno exclusivo del siglo XX', 'Una política de integración cultural', 'b', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuáles son los Objetivos de Desarrollo Sostenible (ODS) de la ONU?', 'Metas globales para erradicar la pobreza, proteger el planeta y garantizar bienestar para 2030', 'Normas comerciales entre empresas', 'Metas económicas solo para países ricos', 'Acuerdos militares internacionales', 'a', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué papel juegan los medios de comunicación en una sociedad democrática?', 'Actuar como cuarto poder fiscalizando al gobierno e informando a la ciudadanía', 'Solo entretener a la población', 'Ninguno significativo', 'Reemplazar al sistema judicial', 'a', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué distingue a una economía de mercado de una economía planificada?', 'En la de mercado las decisiones las toman compradores y vendedores; en la planificada, el Estado', 'El nivel de pobreza', 'El tipo de gobierno que las rige', 'La moneda que utilizan', 'a', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el impacto de las migraciones en los países de destino?', 'Pueden aportar mano de obra, diversidad cultural e innovación, aunque también generan desafíos', 'Solo representan una carga económica', 'Siempre provocan conflictos graves', 'No tienen ningún impacto significativo', 'a', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué se considera que la Segunda Guerra Mundial transformó el orden mundial?', 'Porque solo afectó a Europa', 'Porque eliminó todos los imperios coloniales', 'Porque redefinió fronteras, dio origen a la ONU y estableció el orden bipolar de la Guerra Fría', 'Porque unificó Europa bajo un solo gobierno', 'c', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si un gobierno recorta servicios públicos con políticas de austeridad, ¿qué sectores se ven más afectados?', 'Los más vulnerables con menor acceso a recursos privados', 'Los más ricos', 'Los turistas extranjeros', 'Los empleados gubernamentales únicamente', 'a', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo se relacionan la educación y el desarrollo económico de un país?', 'La educación reduce el PIB a corto plazo', 'Una mayor educación tiende a aumentar la productividad, la innovación y la movilidad social', 'La educación solo beneficia a individuos, no a países', 'No tienen relación directa', 'b', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la idea principal de un texto?', 'El título del texto', 'El argumento central que el autor quiere comunicar', 'La primera oración de cada párrafo', 'Un detalle que apoya el tema', 'b', 1
+SELECT e.id, 'Una crónica dice: «Tras la sequía, la cosecha de maíz de la comunidad cayó a la mitad y varias familias dejaron el pueblo». ¿Qué afirmación es producto de una lectura inferencial?', 'Varias familias dejaron el pueblo después de la sequía', 'La cosecha de maíz cayó a la mitad tras la sequía', 'La mala cosecha pudo empujar a esas familias a irse', 'La crónica exagera y debería citar datos oficiales', 'c', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre un texto informativo y uno argumentativo?', 'El informativo es siempre más largo', 'El informativo presenta datos objetivos; el argumentativo busca convencer al lector de una postura', 'El informativo usa ilustraciones y el argumentativo no', 'El argumentativo no tiene estructura definida', 'b', 2
+SELECT e.id, 'Karla necesita encontrar, en un informe de 40 páginas, el año en que se fundó una cooperativa. ¿Qué tipo de lectura le conviene?', 'Lectura extensiva', 'Scanning', 'Skimming', 'Lectura intensiva', 'b', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la inferencia en la lectura?', 'Identificar el vocabulario desconocido', 'Deducir información que no está explícita en el texto a partir de lo leído', 'Resumir el texto con otras palabras', 'Copiar literalmente lo que dice el texto', 'b', 3
+SELECT e.id, 'En una noticia sobre un nuevo tren, una reportera pone primero la fecha de arranque y la ruta, y deja para después los detalles del diseño de los vagones. ¿Qué principio sigue?', 'La jerarquía de fuentes', 'La estructura argumentativa', 'La pirámide invertida', 'Las 5W del periodismo', 'c', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué estrategia permite identificar el significado de palabras desconocidas por el contexto?', 'Lectura en voz alta', 'Lectura veloz', 'Subrayado literal', 'Inferencia contextual', 'd', 4
+SELECT e.id, 'En un texto argumentativo, ¿para qué menciona el autor posiciones contrarias a su tesis?', 'Para mostrar que no tiene una postura propia', 'Para aportar datos concretos a sus argumentos', 'Para cambiar su tesis por una más moderada', 'Para refutarlas dentro de su argumentación', 'd', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función de los conectores discursivos como "sin embargo" o "por lo tanto"?', 'Indicar relaciones lógicas entre ideas como contraste o consecuencia', 'Decorar el texto', 'Señalar el final del texto', 'Introducir ejemplos únicamente', 'a', 5
+SELECT e.id, 'Un comentarista de radio rechaza un estudio sobre el río Lerma diciendo: «¿Qué va a saber de agua esa investigadora, si ni siquiera es de aquí?». ¿Qué falacia comete?', 'Apelación a la autoridad', 'Pendiente resbaladiza', 'Ad hominem', 'Falso dilema', 'c', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué nivel de lectura implica evaluar críticamente la intención del autor?', 'Lectura crítica', 'Lectura literal', 'Lectura veloz', 'Lectura inferencial', 'a', 6
+SELECT e.id, 'Una guía turística de Puebla dice: «El volcán vigila a la ciudad desde hace siglos». ¿Qué figura literaria aparece?', 'Símil o comparación', 'Personificación', 'Antítesis', 'Hipérbole', 'b', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo se diferencia un resumen de una paráfrasis?', 'La paráfrasis solo aplica a textos poéticos', 'El resumen reduce el texto manteniendo las ideas principales; la paráfrasis lo reescribe sin necesariamente acortarlo', 'El resumen siempre usa las palabras del autor sin cambiarlas', 'No tienen diferencia', 'b', 7
+SELECT e.id, 'Una candidata promete «abrir las puertas del mañana». ¿Para qué le sirve a quien la escucha reconocer el recurso que usa?', 'Para darse cuenta de cómo busca persuadirlo', 'Para saber si la candidata cumplirá su promesa', 'Para convertir la frase en un dato verificable', 'Para decidir si el discurso es literario o político', 'a', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el propósito comunicativo de un texto?', 'La intención del autor: informar, persuadir, entretener o instruir', 'El formato tipográfico utilizado', 'La extensión del documento', 'El número de párrafos', 'a', 8
+SELECT e.id, 'Un vecino dice: «Toda la colonia usa ese remedio, así que debe funcionar». ¿Qué sesgo cognitivo muestra?', 'Sesgo de anclaje', 'Efecto halo', 'Sesgo de confirmación', 'Efecto bandwagon', 'd', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Al leer un artículo de opinión sobre cambio climático, ¿qué implica una lectura crítica?', 'Ignorar las opiniones y quedarse con los datos', 'Creerlo todo porque está publicado', 'Identificar los argumentos, evidencias y posibles sesgos del autor', 'Solo buscar datos estadísticos', 'c', 9
+SELECT e.id, 'Un reportaje presume cuántos jóvenes recibieron una beca, pero nunca dice cuántos la solicitaron. ¿Qué pregunta del pensador crítico conviene hacerse?', '¿Qué información falta?', '¿Quién dice esto?', '¿La lógica es correcta?', '¿Qué evidencia presenta?', 'a', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es importante identificar el tipo de texto antes de leerlo?', 'Porque el tipo de texto determina la estructura, el lenguaje y la estrategia de lectura más adecuada', 'Solo para realizar tareas académicas', 'Para memorizar el vocabulario específico del área', 'Para decidir si vale la pena leerlo', 'a', 10
+SELECT e.id, '¿Qué distingue a la síntesis del resumen?', 'La síntesis integra varios textos; el resumen condensa uno', 'La síntesis copia frases del autor; el resumen las cambia', 'La síntesis omite las fuentes; el resumen siempre las cita', 'La síntesis condensa un texto; el resumen integra varios', 'a', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comprensión lectora I' AND e.titulo = 'Examen Final — Comprensión lectora I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la brecha digital?', 'Un protocolo de comunicación obsoleto', 'La desigualdad en el acceso y uso de las tecnologías de información entre personas o regiones', 'Un tipo de virus informático', 'La diferencia de velocidad entre internet y redes móviles', 'b', 1
+SELECT e.id, '¿Qué función cumple el sistema operativo en una computadora?', 'Es la placa que conecta sus componentes', 'Es el software principal que la controla', 'Es la pantalla con íconos y barra de tareas', 'Es la memoria que guarda lo que se usa', 'b', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la principal característica de la comunicación asincrónica?', 'Los mensajes no requieren que el receptor esté disponible en el mismo momento', 'Requiere conexión permanente a internet', 'Solo funciona con video', 'Los participantes se comunican en tiempo real', 'a', 2
+SELECT e.id, 'Sandra tiene doce pestañas abiertas y quiere cerrar la que ya no usa sin tocar el ratón. ¿Qué atajo emplea?', 'Ctrl+L', 'Ctrl+D', 'Ctrl+W', 'Ctrl+T', 'c', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el "phishing"?', 'Una técnica de programación avanzada', 'Un protocolo de seguridad web', 'Un tipo de antivirus', 'Una estafa digital que busca obtener información personal mediante engaños', 'd', 3
+SELECT e.id, 'Tomás quiere resultados sobre Benito Juárez que provengan solo de Wikipedia. ¿Qué búsqueda escribe?', 'Benito Juárez -wikipedia.org', 'filetype:wikipedia.org Benito Juárez', '"wikipedia.org Benito Juárez"', 'site:wikipedia.org Benito Juárez', 'd', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la importancia de la netiqueta en entornos digitales?', 'Limitar el tiempo de uso de internet', 'Filtrar contenido inapropiado automáticamente', 'Regular el acceso a redes sociales', 'Establecer normas de comportamiento respetuoso y apropiado en espacios virtuales', 'd', 4
+SELECT e.id, 'Fernanda redacta un reclamo y pone todo en mayúsculas para que se note su molestia. ¿Qué indica la etiqueta digital?', 'Debe usarlo solo con personas de confianza', 'Debe evitarlo, porque equivale a gritar', 'Puede hacerlo si el tema es urgente de verdad', 'Puede hacerlo si antes revisa la ortografía', 'b', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué son las fake news y cómo pueden identificarse?', 'Artículos de opinión publicados en redes', 'Noticias antiguas que se republican', 'Noticias extranjeras mal traducidas', 'Información falsa o engañosa difundida como si fuera real; se identifican verificando fuentes', 'd', 5
+SELECT e.id, 'Ana Ruiz abre una cuenta de correo para solicitar una beca. ¿Qué dirección sigue el consejo de usar un usuario profesional?', 'ana.ruiz.m@gmail.com', 'reina_ana99@gmail.com', 'lachida07@gmail.com', 'anita_bonita@gmail.com', 'a', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué implica la huella digital de una persona?', 'El registro físico de sus movimientos', 'Un documento de identidad electrónico', 'El rastro de datos que deja al navegar por internet y usar aplicaciones digitales', 'Una contraseña cifrada para proteger su identidad', 'c', 6
+SELECT e.id, 'Marcos escribió los títulos de su ensayo con negritas a 18 puntos. ¿Qué debe hacer, según lo visto en la semana?', 'Aplicar los estilos de encabezado a sus títulos', 'Subir el tamaño hasta que se distingan mejor', 'Subrayarlos con Ctrl+U para que sobresalgan', 'Cambiarlos a una fuente distinta a la del texto', 'a', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre derecho de autor y dominio público?', 'No hay diferencia legal entre ambos', 'El derecho de autor protege la obra; el dominio público permite usar libremente obras cuya protección expiró', 'El dominio público solo aplica a música', 'El derecho de autor es nacional y el dominio público es internacional', 'b', 7
+SELECT e.id, 'Un equipo revisa una presentación: títulos de 40 puntos, cuerpo de 20 puntos, texto negro sobre fondo blanco y una sola fuente. ¿Qué debe corregir?', 'La fuente, porque cada parte requiere otra', 'El fondo, porque el contraste pide uno oscuro', 'El cuerpo, porque el mínimo es de 24 puntos', 'Los títulos, porque el máximo es de 36 puntos', 'c', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la identidad digital y por qué gestionarla es importante?', 'La representación de una persona en el entorno digital, que afecta su reputación y privacidad', 'Un certificado de seguridad informática', 'Un tipo de contraseña cifrada', 'El nombre de usuario en redes sociales', 'a', 8
+SELECT e.id, 'Frente a guardar solo en su computadora, ¿qué ventaja obtiene Héctor al usar la nube?', 'Sus archivos solo abren en la computadora donde los creó', 'Abre sus archivos en cualquier lugar aunque no tenga internet', 'Sus archivos quedan dentro de la memoria RAM de su equipo', 'Abre sus archivos desde cualquier dispositivo con internet', 'd', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Recibes un correo de tu banco pidiéndote ingresar tu contraseña en un enlace. ¿Cuál es la acción correcta?', 'Responder el correo con tus datos', 'Ignorarlo completamente sin reportarlo', 'No hacer clic, contactar directamente al banco y reportar el intento de phishing', 'Ingresar inmediatamente para proteger tu cuenta', 'c', 9
+SELECT e.id, 'Antes de subir un comentario agresivo sobre un maestro, Sebastián aplica el consejo sobre la huella digital. ¿Qué se pregunta?', '¿Cuántos likes y comentarios podría conseguir con esto?', '¿Mi contraseña es distinta en este sitio?', '¿Se borrará esto cuando cierre mi sesión?', '¿Me sentiría cómodo si mi futuro jefe viera esto?', 'd', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es relevante el pensamiento crítico al consumir información en redes sociales?', 'Porque los medios tradicionales siempre son más confiables', 'Porque las redes sociales siempre publican información falsa', 'Porque está prohibido compartir noticias sin verificar', 'Porque los algoritmos priorizan contenido viral sobre veraz, y sin criterio se difunde desinformación', 'd', 10
+SELECT e.id, 'Arturo pega en su ensayo dos párrafos de un sitio y los presenta como suyos, sin citar de dónde salieron. ¿Qué falta comete?', 'Ciberbullying', 'Phishing', 'Plagio', 'Spam', 'c', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Comunicación digital' AND e.titulo = 'Examen Final — Comunicación digital'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el resultado de resolver la ecuación 3x - 7 = 11?', 'x = 6', 'x = 2', 'x = 8', 'x = 4', 'a', 1
+SELECT e.id, '¿Cuál de estos números no se puede escribir como fracción a/b?', '0.333...', '-3', '0.75', '√2', 'd', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un número primo?', 'Un número siempre positivo mayor que 10', 'Un número que termina en 0', 'Un número divisible por 2', 'Un número mayor que 1 divisible solo por 1 y por sí mismo', 'd', 2
+SELECT e.id, '¿Cuánto vale 20 - 12 ÷ 4 + 1?', '16', '3', '18', '17.6', 'c', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el área de un triángulo con base 8 cm y altura 5 cm?', '20 cm²', '80 cm²', '40 cm²', '13 cm²', 'a', 3
+SELECT e.id, 'Una cinta mide 5/6 de metro y se corta un pedazo de 1/4 de metro. ¿Cuánto queda?', '7/12 de metro', '2/3 de metro', '5/12 de metro', '7/24 de metro', 'a', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué propiedad matemática expresa a(b + c) = ab + ac?', 'Conmutativa', 'Asociativa', 'Transitiva', 'Distributiva', 'd', 4
+SELECT e.id, '¿Cuál es el resultado de 4/7 × 2/3?', '6/10', '12/14', '8/21', '8/10', 'c', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo se expresa 0.75 como fracción en su mínima expresión?', '15/20', '75/100', '7/10', '3/4', 'd', 5
+SELECT e.id, 'En la expresión 7x² - 4x + 5, ¿cuál es el coeficiente del término con exponente 2?', '5', '7', '-4', '2', 'b', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el Mínimo Común Múltiplo (MCM) de 4 y 6?', '6', '12', '24', '8', 'b', 6
+SELECT e.id, '¿Cuál es la solución de 3(x - 2) = x + 8?', 'x = 5', 'x = 7', 'x = 3.5', 'x = 1', 'b', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Un rectángulo tiene perímetro de 30 cm y su largo es 10 cm. ¿Cuál es su ancho?', '5 cm', '10 cm', '20 cm', '15 cm', 'a', 7
+SELECT e.id, 'En 4x - 9 = 31, ¿qué paso deja sola a la expresión 4x sin romper la igualdad?', 'Restar 4 a ambos lados', 'Sumar 9 solo al lado izquierdo', 'Restar 9 a ambos lados', 'Sumar 9 a ambos lados', 'd', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuánto es 2³ + √25?', '15', '8', '10', '13', 'd', 8
+SELECT e.id, 'Unos tenis de $800 tienen 15% de descuento. ¿Cuál es su precio final?', '$920', '$680', '$120', '$785', 'b', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuánto es el 15% de 200?', '15', '300', '30', '3', 'c', 9
+SELECT e.id, '¿Cuál de estas igualdades forma una proporción?', '3/5 = 6/10', '3/5 = 5/10', '3/5 = 4/10', '3/5 = 6/15', 'a', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'En una encuesta, 45 de 150 estudiantes prefieren matemáticas. ¿Qué porcentaje representa?', '45%', '30%', '25%', '33%', 'b', 10
+SELECT e.id, 'Una jardinera con forma de trapecio tiene base mayor de 11 m, base menor de 7 m y altura de 4 m. ¿Cuál es su área?', '36 m²', '22 m²', '72 m²', '44 m²', 'a', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático I' AND e.titulo = 'Examen Final — Conocimiento matemático I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la pendiente de la recta que pasa por los puntos (1,3) y (3,7)?', '4', '2', '3', '1', 'b', 1
+SELECT e.id, '¿Cuál es el resultado de (5x + 7)(5x - 7)?', '25x² - 49', '5x² - 7', '25x² - 70x + 49', '25x² + 49', 'a', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué indica el discriminante b² - 4ac en la fórmula cuadrática?', 'La naturaleza de las raíces de la ecuación cuadrática', 'El coeficiente principal', 'El vértice de la parábola', 'El eje de simetría', 'a', 2
+SELECT e.id, '¿Cómo se factoriza 36x² - 49?', '(18x + 7)(18x - 7)', '(6x - 7)²', '(36x + 7)(x - 7)', '(6x + 7)(6x - 7)', 'd', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuánto es log₁₀(1000)?', '10', '100', '2', '3', 'd', 3
+SELECT e.id, 'Factoriza por completo 6x² - 54. ¿Qué resultado es correcto?', '6(x + 3)(x - 3)', '3(x + 3)(x - 3)', '6(x - 3)(x - 3)', '6(x + 9)(x - 9)', 'a', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la suma de los ángulos internos de un pentágono?', '720°', '360°', '180°', '540°', 'd', 4
+SELECT e.id, '¿Qué expresión se obtiene al simplificar 7 - (3x - 2)?', '5 + 3x', '9 - 3x', '9 + 3x', '5 - 3x', 'b', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es una función lineal?', 'Una función con raíz cuadrada', 'Una función con exponente cuadrático', 'Una función cuya gráfica es una línea recta con la forma f(x)=mx+b', 'Una función periódica', 'c', 5
+SELECT e.id, 'Una torta y un refresco cuestan $65; una torta y tres refrescos cuestan $105. ¿Cuánto cuesta un refresco?', '$40', '$35', '$20', '$45', 'c', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si f(x) = 2x² - 3x + 1, ¿cuánto es f(2)?', '3.5', '5', '4', '3', 'd', 6
+SELECT e.id, '¿Qué intervalo es la solución de 1 ≤ 2x - 3 < 9?', '[2, 6]', '(2, 6]', '[2, 6)', '(2, 6)', 'c', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el volumen de un cilindro con radio 3 cm y altura 7 cm?', '63π cm³', '42π cm³', '21π cm³', '66π cm³', 'a', 7
+SELECT e.id, '¿Cómo se representa x ≤ -1 en la recta numérica?', 'Círculo vacío en -1 y flecha a la izquierda', 'Círculo lleno en -1 y flecha a la izquierda', 'Círculo lleno en -1 y flecha a la derecha', 'Círculo vacío en -1 y flecha a la derecha', 'b', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es una progresión aritmética?', 'Una secuencia donde la diferencia entre términos consecutivos es constante', 'Una serie de números primos', 'Una secuencia de términos negativos', 'Una secuencia donde cada término se multiplica por una constante', 'a', 8
+SELECT e.id, '¿Qué ecuación describe la recta de pendiente 4 que contiene al punto (2, -1)?', 'y = 4x + 7', 'y = 4x - 9', 'y = 4x + 9', 'y = 4x - 7', 'b', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'En un triángulo rectángulo con catetos de 6 y 8 cm, ¿cuánto mide la hipotenusa?', '12 cm', '14 cm', '10 cm', '8 cm', 'c', 9
+SELECT e.id, 'Si una recta tiene pendiente 3/4, ¿qué pendiente tiene cualquier recta perpendicular a ella?', '-3/4', '4/3', '3/4', '-4/3', 'd', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Para qué sirve la estadística descriptiva?', 'Para calcular probabilidades exactas', 'Para predecir eventos futuros', 'Para demostrar teoremas matemáticos', 'Para organizar, resumir y describir conjuntos de datos', 'd', 10
+SELECT e.id, '¿Qué ecuación tiene la recta que une P(1, 6) con Q(3, 12)?', 'y = 2x + 4', 'y = 3x + 6', 'y = 3x + 3', 'y = 3x - 3', 'c', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Conocimiento matemático II' AND e.titulo = 'Examen Final — Conocimiento matemático II'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuáles son los elementos básicos del proceso de comunicación?', 'Idioma, código y contexto', 'Texto, título y autor', 'Habla, escritura y señas', 'Emisor, mensaje y receptor', 'd', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el sustantivo en gramática?', 'Una palabra que describe acciones', 'Una palabra que conecta oraciones', 'Una palabra que nombra personas, animales, lugares o cosas', 'Una palabra que modifica al verbo', 'c', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función del adjetivo en una oración?', 'Reemplazar al sustantivo', 'Conectar dos frases distintas', 'Modificar o describir al sustantivo', 'Indicar la acción principal', 'c', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la sinonimia?', 'El estudio del origen de las palabras', 'La repetición de sonidos en un texto', 'La relación entre palabras de significado opuesto', 'La relación entre palabras de igual o similar significado', 'd', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre la comunicación oral y la escrita?', 'La oral es más precisa que la escrita', 'Solo la escrita tiene gramática', 'La oral usa palabras y la escrita no', 'La oral es efímera y contextual; la escrita es permanente y más formal', 'd', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un párrafo de introducción?', 'El párrafo que presenta el tema y orienta al lector sobre el contenido', 'El párrafo más largo del texto', 'El último párrafo del texto', 'Un párrafo con solo ejemplos', 'a', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la coherencia textual?', 'La propiedad que hace que las ideas de un texto estén lógicamente relacionadas', 'Usar muchas palabras distintas', 'Tener buena ortografía únicamente', 'Usar párrafos cortos siempre', 'a', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué tipo de texto es una receta de cocina?', 'Instructivo', 'Descriptivo', 'Argumentativo', 'Narrativo', 'a', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el orden correcto para redactar un texto expositivo?', 'Introducción, conclusión, desarrollo', 'Desarrollo, conclusión, introducción', 'Conclusión, desarrollo, introducción', 'Introducción, desarrollo y conclusión', 'd', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es importante revisar la ortografía al escribir un texto?', 'Porque la gramática es más importante que el contenido', 'Solo para obtener buena calificación', 'Solo para textos de carácter formal', 'Los errores ortográficos dificultan la comprensión y afectan la credibilidad del texto', 'd', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuáles son las principales características del texto narrativo?', 'Una estructura sin introducción ni conclusión', 'Uso de tecnicismos y datos', 'Solo el uso de diálogos entre personajes', 'La presencia de personajes, narrador, tiempo, espacio y una secuencia de hechos', 'd', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el narrador omnisciente?', 'El lector del texto que interpreta la historia', 'El narrador que solo cuenta lo que observa directamente', 'El narrador que conoce los pensamientos y acciones de todos los personajes', 'El personaje principal de la historia', 'c', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la metáfora como figura retórica?', 'La personificación de objetos inanimados', 'La comparación directa entre dos elementos sin usar "como"', 'La repetición de palabras o frases', 'El uso exagerado de adjetivos', 'b', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la estructura de un ensayo académico?', 'Solo introducción y conclusión', 'Narración, clímax y desenlace', 'Pregunta, hipótesis y experimento', 'Planteamiento del tema, desarrollo argumentado y conclusión', 'd', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la ironía como recurso literario?', 'Describir algo con muchos detalles', 'Imitar el lenguaje de otra persona o estilo', 'Exagerar una característica para causar efecto', 'Decir lo contrario de lo que se piensa con intención crítica o humorística', 'd', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué distingue a la crónica periodística de la noticia?', 'Solo el formato visual que usan', 'Solo la extensión del texto', 'La crónica narra los hechos con subjetividad del autor; la noticia busca ser objetiva', 'El tema específico que cada una trata', 'c', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función del diálogo en un texto narrativo?', 'Introducir datos estadísticos', 'Resumir el argumento de la obra', 'Revelar la personalidad de los personajes y hacer avanzar la trama', 'Alargar innecesariamente la historia', 'c', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la cohesión textual y cómo se logra?', 'La unión fluida de las ideas mediante pronombres, sinónimos y conectores', 'Usar siempre el mismo tiempo verbal', 'Tener solo oraciones cortas y simples', 'La belleza literaria del texto', 'a', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Al analizar un poema, ¿qué es la rima consonante?', 'El ritmo regular de los versos sin rima', 'La coincidencia de vocales y consonantes desde la última vocal acentuada en dos o más versos', 'La repetición de palabras completas en distintos versos', 'La repetición solo de vocales al final del verso', 'b', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si debes argumentar por escrito tu postura sobre el uso de teléfonos en el aula, ¿qué elementos son esenciales?', 'Solo datos estadísticos del tema', 'Tesis, argumentos con evidencias y conclusión bien estructurada', 'Narración de una experiencia personal únicamente', 'Solo tu opinión personal sin más', 'b', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la intertextualidad en la literatura?', 'Cambiar el final de una obra clásica', 'La referencia explícita o implícita de un texto a otra obra o texto', 'Usar palabras de otros idiomas', 'Copiar párrafos de otros autores', 'b', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función del narrador en primera persona?', 'El narrador es un personaje dentro de la historia que cuenta su propia experiencia', 'Contar la historia desde afuera con omnisciencia', 'Anticipar el desenlace al lector', 'Describir el entorno sin participar en los hechos', 'a', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué caracteriza al teatro como género literario?', 'Está diseñado para ser representado en escena mediante diálogos y acotaciones', 'Su estructura siempre es en verso', 'Solo trata temas históricos o mitológicos', 'No tiene personajes definidos', 'a', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el realismo como movimiento literario?', 'Un movimiento que usa elementos fantásticos', 'Una corriente que idealiza la realidad', 'Una corriente exclusivamente poética', 'Una corriente que busca representar la realidad cotidiana con fidelidad y objetividad', 'd', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre lengua y habla?', 'La lengua es el sistema compartido por una comunidad; el habla es el uso individual de ese sistema', 'El habla es más formal que la lengua', 'La lengua solo existe en la escritura formal', 'Son términos completamente equivalentes', 'a', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un arcaísmo en el lenguaje?', 'Una palabra tomada de otro idioma', 'Una palabra de reciente creación tecnológica', 'Una palabra o expresión que ha caído en desuso en el lenguaje cotidiano actual', 'Un término técnico de una disciplina', 'c', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el propósito de la crítica literaria?', 'Reescribir la obra con mejoras estilísticas', 'Analizar, interpretar y valorar una obra literaria considerando su contexto y recursos', 'Resumir la trama de una obra', 'Solo dar una opinión personal sin fundamento', 'b', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el flujo de conciencia como técnica narrativa?', 'Un monólogo teatral con estructura definida', 'Un estilo de escritura completamente objetivo', 'Una técnica que reproduce el flujo desordenado de pensamientos y emociones del personaje', 'Una descripción detallada del entorno físico', 'c', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Al escribir un informe de lectura, ¿qué diferencia existe entre la síntesis y el análisis?', 'El análisis solo aplica a textos científicos', 'La síntesis resume el contenido; el análisis interpreta sus elementos, técnicas e implicaciones', 'La síntesis es siempre más larga que el análisis', 'No hay diferencia relevante entre ambos', 'b', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué el contexto histórico es importante para interpretar una obra literaria?', 'Porque el contexto histórico influye en los temas, el lenguaje y los conflictos que el autor aborda', 'Para conocer únicamente la biografía del autor', 'No tiene relevancia para la interpretación', 'Solo es importante para las obras antiguas', 'a', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuáles son los tres pilares de un estilo de vida saludable?', 'Ejercicio intenso, suplementos y sueño prolongado', 'Alimentación balanceada, actividad física regular y descanso adecuado', 'Estudio, trabajo y descanso', 'Dieta, medicamentos y reposo absoluto', 'b', 1
+SELECT e.id, '¿Qué describe mejor la dimensión espiritual de la salud?', 'Tener propósito y valores, con o sin religión', 'Mantener relaciones sanas y redes de apoyo', 'Practicar una religión de manera constante', 'Manejar las emociones y pensar con claridad', 'a', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el Índice de Masa Corporal (IMC)?', 'La cantidad total de músculo en el cuerpo', 'La velocidad metabólica de una persona', 'La medida de la grasa corporal total', 'Un indicador que relaciona el peso y la talla para evaluar el estado nutricional', 'd', 2
+SELECT e.id, 'Según el valor normal estudiado, ¿qué lectura de presión arterial está dentro de lo normal?', '118/85 mmHg', '120/80 mmHg', '118/76 mmHg', '132/78 mmHg', 'c', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre macronutrientes y micronutrientes?', 'Los macronutrientes aportan energía; los micronutrientes se necesitan en pequeñas cantidades para funciones específicas', 'Los macronutrientes son vitaminas y los micronutrientes son proteínas', 'No hay diferencia real entre ambos', 'Los macronutrientes solo se encuentran en carnes', 'a', 3
+SELECT e.id, '¿Qué recomendación sobre el agua corresponde a lo estudiado?', '6 a 8 vasos diarios, más si hay ejercicio o calor', '6 a 8 vasos diarios, sin importar ejercicio ni calor', '3 a 4 vasos diarios, más si hay ejercicio o calor', '10 a 12 vasos diarios, sin importar ejercicio ni calor', 'a', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es importante la actividad física regular?', 'Mejora la salud cardiovascular, el estado de ánimo, el sueño y reduce el riesgo de enfermedades crónicas', 'Solo para deportistas profesionales', 'Para aumentar el apetito', 'Solo para perder peso rápidamente', 'a', 4
+SELECT e.id, '¿Qué lista reúne solo fuentes de grasas insaturadas?', 'Frituras, manteca, nueces y aceite de oliva', 'Aguacate, aceite de oliva, nueces y pescado', 'Aguacate, manteca, frituras y pescado', 'Comida ultraprocesada, frituras y manteca', 'b', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el estrés crónico y cómo afecta la salud?', 'Un tipo de ejercicio intensivo', 'Un trastorno solo psicológico sin efectos físicos', 'Una respuesta prolongada al estrés que puede causar problemas cardiovasculares, insomnio y debilitamiento inmune', 'Un estado de alta energía beneficioso', 'c', 5
+SELECT e.id, 'Según lo estudiado, ¿qué suele provocar saltarse comidas para bajar de peso?', 'Dejar de sentir hambre con el paso de los días', 'Comer más después por hambre extrema', 'Quemar primero la grasa acumulada', 'Bajar de peso sin efecto sobre el hambre', 'b', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuántas horas de sueño se recomiendan para un adolescente?', '8 a 10 horas', '12 a 14 horas', '5 a 6 horas', '4 a 5 horas', 'a', 6
+SELECT e.id, '¿Cuál de estas situaciones es una señal de que te estás excediendo con el ejercicio?', 'Mareo o náusea durante el ejercicio', 'Cansancio que se recupera al descansar', 'Frecuencia cardíaca elevada al correr', 'Molestia muscular normal tras entrenar', 'a', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la salud mental?', 'La capacidad de memorizar información con precisión', 'La ausencia total de enfermedades físicas', 'El estado de bienestar emocional, psicológico y social que permite afrontar el estrés y contribuir a la sociedad', 'Solo el tratamiento de enfermedades mentales graves', 'c', 7
+SELECT e.id, '¿Qué sistema activa la respiración profunda y qué efecto produce?', 'El digestivo, que procesa los alimentos', 'El endocrino, que libera hormonas', 'El simpático, que prepara para la acción', 'El parasimpático, que produce calma', 'd', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el impacto del consumo excesivo de azúcar en la salud?', 'Puede provocar obesidad, diabetes tipo 2, caries y problemas cardiovasculares', 'Mejora el rendimiento físico a corto plazo', 'Ninguno si se hace ejercicio regularmente', 'Solo afecta negativamente a los dientes', 'a', 8
+SELECT e.id, 'Un compañero lleva tres semanas con síntomas de ansiedad que le impiden ir a clases. ¿Qué es lo más adecuado?', 'Pedir ayuda profesional solo si presenta síntomas físicos', 'Limitar sus redes sociales y esperar a que desaparezcan', 'Esperar a que se cumplan 2 meses antes de buscar ayuda', 'Buscar ayuda profesional, pues ya pasaron más de 2 semanas', 'd', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Un estudiante duerme 5 horas, estudia 8 horas y no hace ejercicio. ¿Qué cambio prioritario se le recomienda?', 'Solo cambiar la alimentación diaria', 'Reducir el tiempo de estudio', 'Incorporar actividad física y aumentar el descanso para mejorar el rendimiento y la salud', 'Estudiar más horas al día', 'c', 9
+SELECT e.id, 'Una estudiante lleva 25 minutos en la cama sin poder dormir. ¿Qué conviene hacer?', 'Quedarse acostada hasta que por fin llegue el sueño', 'Revisar el celular en la cama hasta sentir cansancio', 'Levantarse y hacer algo tranquilo hasta tener sueño', 'Hacer ejercicio intenso para cansar el cuerpo', 'c', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué las enfermedades no transmisibles son consideradas problemas de salud pública?', 'Porque no tienen ningún tratamiento médico', 'Porque se contagian fácilmente entre personas', 'Porque solo afectan a personas mayores', 'Porque afectan a millones de personas, son prevenibles con hábitos saludables y generan grandes costos sociales', 'd', 10
+SELECT e.id, 'Mateo quiere ser enfermero, tiene planeados sus próximos años de estudio y evita el alcohol porque podría estorbarle. ¿Qué factor de protección muestra?', 'Información veraz sobre sustancias', 'Proyecto de vida claro', 'Redes de apoyo con familia y amigos', 'Manejo saludable del estrés', 'b', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Estilo de vida saludable' AND e.titulo = 'Examen Final — Estilo de vida saludable'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el origen histórico de las universidades en el mundo occidental?', 'Las universidades fueron creadas en el siglo XX', 'Las universidades surgieron en Asia en el siglo V', 'Las universidades surgieron durante la Revolución Industrial', 'Las primeras universidades surgieron en Europa medieval durante los siglos XI y XII', 'd', 1
+SELECT e.id, 'Un joven mexica quiere dedicarse al canto y la danza. ¿Qué escuela estaba dedicada a lo que le interesa?', 'Calmécac', 'Telpochcalli', 'Cuicacalli', 'Colegio de Tlatelolco', 'c', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la identidad universitaria?', 'El logotipo de la institución educativa', 'El uniforme obligatorio de los estudiantes', 'Las reglas del reglamento escolar', 'El conjunto de valores, tradiciones, misión y pertenencia que comparten los miembros de una institución', 'd', 2
+SELECT e.id, '¿Qué muestra el Colegio de Santa Cruz de Tlatelolco sobre la educación superior en la colonia?', 'Se reservó a frailes franciscanos y dominicos', 'Se abrió a indígenas, pero solo a los nobles', 'Se abrió a indígenas de cualquier origen social', 'Se reservó a peninsulares y criollos', 'b', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál fue la función original de las universidades medievales?', 'Preservar y transmitir el conocimiento filosófico, teológico y jurídico', 'Formar soldados y líderes militares', 'Desarrollar tecnologías industriales', 'Organizar el comercio internacional', 'a', 3
+SELECT e.id, '¿Qué hecho permite reconocer la etapa de consumación de la Independencia?', 'Morelos escribe y convoca al Congreso de Chilpancingo', 'Iturbide se une a la causa y surge el Plan de Iguala', 'Guerrero sostiene la lucha mediante guerrillas', 'Hidalgo da el Grito y arranca un movimiento popular', 'b', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué son los valores institucionales en el contexto universitario?', 'Los principios que guían el comportamiento y las decisiones de todos los miembros de la comunidad', 'Las calificaciones mínimas requeridas para aprobar', 'Las normas de vestimenta del plantel', 'Los premios académicos anuales', 'a', 4
+SELECT e.id, 'Un criollo de 1810 lee textos que defienden la libertad y la igualdad. ¿Qué causa de la Independencia ilustra?', 'La desigualdad de las castas', 'La crisis económica en la colonia', 'Las ideas de la Ilustración', 'La invasión de Napoleón', 'c', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué importancia tiene la educación superior para el desarrollo de un país?', 'Solo beneficia a quienes estudian individualmente', 'Genera profesionales capaces de impulsar la investigación, la economía y el bienestar social', 'No tiene impacto directo en el desarrollo', 'Aumenta el desempleo a largo plazo', 'b', 5
+SELECT e.id, '¿Qué describe mejor el panorama de México en los años previos a la Reforma?', 'Caos político: Benito Juárez gobernó 11 veces', 'Paz política: Santa Anna gobernó durante 35 años', 'Paz política: Benito Juárez gobernó durante 35 años', 'Caos político: Santa Anna gobernó 11 veces', 'd', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el reglamento escolar y por qué existe?', 'Un manual de materias obligatorias', 'Una lista de actividades extracurriculares permitidas', 'Una lista de calificaciones mínimas', 'Un conjunto de normas que regulan la convivencia, derechos y responsabilidades dentro de la institución', 'd', 6
+SELECT e.id, 'Un historiador busca la norma de la Reforma en la que quedó la separación total entre la Iglesia y el Estado. ¿Cuál debe consultar?', 'La Ley de Nacionalización (1859)', 'La Ley Juárez (1855)', 'La Ley Lerdo (1856)', 'La Constitución de 1857', 'a', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cómo contribuye la tutoría universitaria al éxito académico?', 'Reemplaza al docente titular en sus funciones', 'No tiene ningún impacto real', 'Proporciona orientación, acompañamiento y apoyo para superar dificultades académicas y de adaptación', 'Solo sirve para alumnos con problemas graves', 'c', 7
+SELECT e.id, '¿Qué combinación resume las causas de la Revolución Mexicana?', 'Intervención francesa, castas y fueros eclesiásticos', 'Dictadura, desigualdad, represión y explotación laboral', 'Invasión extranjera, crisis agraria y pérdida de territorio', 'Reelección de Juárez, castas y analfabetismo', 'b', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la autonomía universitaria?', 'La ausencia de evaluaciones obligatorias', 'La libertad total de horarios para los estudiantes', 'La independencia financiera de los alumnos', 'El derecho de la institución a gobernarse, organizar sus estudios y presupuesto sin interferencia externa', 'd', 8
+SELECT e.id, 'De las medidas educativas de la lección, ¿cuál cambió el enfoque educativo en lugar de extender la obligatoriedad de un nivel?', 'La Nueva Escuela Mexicana (2019)', 'La creación de la SEP (1921)', 'La secundaria obligatoria (1993)', 'El bachillerato obligatorio (2012)', 'a', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es importante conocer la historia de tu institución educativa?', 'Para memorizar datos en exámenes únicamente', 'Solo por curiosidad personal', 'Porque permite comprender los valores, logros y retos que forjaron la identidad institucional', 'Para cumplir un requisito burocrático de ingreso', 'c', 9
+SELECT e.id, 'Una alumna vive en una ranchería sin plantel cercano y trabaja por las tardes. Según la lección, ¿por qué le conviene el bachillerato virtual?', 'Supera barreras geográficas y de tiempo', 'Solo tiene validez para quienes ya trabajan', 'Es más barato que cualquier otra modalidad en todos los casos', 'No exige entregar tareas ni presentar exámenes', 'a', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Un estudiante tiene dificultades para adaptarse al ritmo universitario. ¿Qué recurso institucional debe consultar?', 'Estudiar más horas sin descanso', 'Abandonar la materia inmediatamente', 'El servicio de tutoría y orientación académica de la institución', 'Pedir ayuda solo a un compañero', 'c', 10
+SELECT e.id, 'En el extranjero, mucha gente identifica el mariachi, el tequila y la charrería como lo mexicano. ¿Qué ilustra esto según la lección?', 'Que son tradiciones recientes de la vida urbana', 'Que esos símbolos nacieron en la Ciudad de México colonial', 'Que Jalisco los adoptó de otras regiones del país', 'Que la cultura de Jalisco dio forma a esos símbolos', 'd', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Historia e identidad universitaria' AND e.titulo = 'Examen Final — Historia e identidad universitaria'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which greeting is appropriate for a formal situation?', 'Hey, what''s up?', 'Good morning, how do you do?', 'Yo, what''s going on?', 'Hiya, how are ya?', 'b', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What is the correct form of "to be" for the subject "They"?', 'are', 'am', 'was', 'is', 'a', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'How do you say "¿Cuántos años tienes?" in English?', 'How old is he?', 'How many years you have?', 'What is your age, please?', 'How old are you?', 'd', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which sentence is in the Simple Present tense?', 'She ate lunch yesterday.', 'She eats lunch every day.', 'She will eat lunch tomorrow.', 'She is eating lunch right now.', 'b', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What does the word "beautiful" mean in Spanish?', 'Feo/a', 'Hermoso/a', 'Pequeño/a', 'Grande', 'b', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'How do you correctly introduce yourself in English?', 'My name is Ana and I am from Mexico.', 'My name is Ana and I from Mexico.', 'I name Ana and from Mexico.', 'My name Ana, I am from Mexico.', 'a', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which of the following words is a color?', 'Run', 'Table', 'Blue', 'Slowly', 'c', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What is the plural of "child"?', 'Childre', 'Childes', 'Childs', 'Children', 'd', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'If someone asks "Where are you from?" what is the correct response?', 'I am from Mexico.', 'I is from Mexico.', 'I from Mexico.', 'I am from to Mexico.', 'a', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'A student wants to ask for permission in class. Which phrase is correct?', 'Me go bathroom please.', 'I want go to bathroom.', 'May I go to the bathroom, please?', 'Can go I bathroom now?', 'c', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What is the correct past tense of the verb "go"?', 'Goed', 'Went', 'Goes', 'Gone', 'b', 1
+SELECT e.id, 'Llegas a las 9 de la noche a una cena familiar. ¿Cómo saludas en inglés?', 'Good afternoon', 'Good evening', 'See you later', 'Good night', 'b', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'How do you form a question in the Simple Past with "did"?', 'She go to school yesterday?', 'Did she go to school?', 'She did go to school?', 'Did she goes to school?', 'b', 2
+SELECT e.id, 'Convierte en pregunta la oración «You are from Mexico.»', 'Are you from Mexico?', 'Is you from Mexico?', 'Am you from Mexico?', 'You are from Mexico?', 'a', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which sentence correctly uses the Present Continuous?', 'She read a book now.', 'She is reading a book right now.', 'She reading a book.', 'She reads a book now.', 'b', 3
+SELECT e.id, '¿Qué mes llega justo después de June?', 'January', 'August', 'May', 'July', 'd', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What does "I used to play soccer" mean in Spanish?', 'Yo juego fútbol', 'Yo jugué fútbol ayer', 'Yo solía jugar fútbol', 'Yo jugaré fútbol', 'c', 4
+SELECT e.id, 'Hablas de una manzana específica, la que está en la mesa. ¿Qué frase usas?', 'An apple on the table', 'The apple on the table', 'A apple on the table', 'Apple on the table', 'b', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which preposition correctly completes: "The meeting is ___ Monday"?', 'at', 'by', 'in', 'on', 'd', 5
+SELECT e.id, 'Escribes «dos pies» en inglés. ¿Cuál es la forma correcta?', 'two feet', 'two footes', 'two foots', 'two feets', 'a', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'How do you say "tengo hambre" in English?', 'I have hunger.', 'I am hungry.', 'I am hunger.', 'I have hungry.', 'b', 6
+SELECT e.id, 'Completa con el verbo go: «Ana ___ to school on Mondays.»', 'goies', 'gos', 'go', 'goes', 'd', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which sentence is grammatically correct?', 'She isn''t like coffee.', 'She don''t like coffee.', 'She doesn''t like coffee.', 'She not like coffee.', 'c', 7
+SELECT e.id, '¿En cuál de estos casos se usa el presente simple?', 'Algo que ocurre justo ahora', 'Un plan para el próximo año', 'Una acción que hiciste ayer', 'Lo que haces todos los lunes', 'd', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What is the comparative form of the adjective "good"?', 'Betterer', 'Gooder', 'More good', 'Better', 'd', 8
+SELECT e.id, 'Alguien pregunta «Do they like music?» y la respuesta es no. ¿Cuál es la respuesta corta correcta?', 'No, they doesn''t.', 'No, they don''t.', 'No, they aren''t.', 'No, they not.', 'b', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'A student writes: "Yesterday I go to the market." What is the error?', '"Yesterday" is incorrect', '"go" should be "went"', '"the" should be "a"', '"market" is incorrect', 'b', 9
+SELECT e.id, '¿Cómo se dice en inglés «Nosotros no vivimos aquí»?', 'We aren''t live here.', 'We doesn''t live here.', 'We don''t live here.', 'We don''t lives here.', 'c', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which connecting word shows contrast?', 'Therefore', 'Furthermore', 'However', 'Additionally', 'c', 10
+SELECT e.id, 'Vas a tomar un avión. ¿A qué lugar vas?', 'Supermarket', 'Bus station', 'Airport', 'Library', 'c', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 1' AND e.titulo = 'Examen Final — Inglés nivel 1'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which sentence correctly uses the Present Perfect?', 'I have went to Paris.', 'I have go to Paris.', 'I was to Paris last year.', 'I have been to Paris.', 'd', 1
+SELECT e.id, 'Convierte en pregunta la oración «They are sleeping.»', 'Are they sleep?', 'Do they are sleeping?', 'Are they sleeping?', 'Do they sleeping?', 'c', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What is the main difference between "will" and "going to" for future?', 'Going to is only used for past actions', 'They mean exactly the same', 'Will is always more formal', 'Will expresses spontaneous decisions; going to expresses planned intentions', 'd', 2
+SELECT e.id, 'Quieres saber si Ana bailó ayer. ¿Qué pregunta es correcta?', 'Did Ana dance yesterday?', 'Danced Ana yesterday?', 'Did Ana danced yesterday?', 'Does Ana dance yesterday?', 'a', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'How do you form a Type 1 Conditional sentence?', 'If + past + would', 'If + present simple + will/can + base verb', 'If + will + infinitive', 'If + had + past participle', 'b', 3
+SELECT e.id, '¿A qué verbo base y significado corresponde el pasado «thought»?', 'think: pensar', 'take: tomar', 'find: encontrar', 'tell: contar', 'a', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which of the following is a modal verb?', 'Beautiful', 'Must', 'Speak', 'Quickly', 'b', 4
+SELECT e.id, 'Quieres decir que tú y tus amigos no estaban cansados ayer. ¿Qué oración es correcta?', 'We wasn''t tired yesterday.', 'We aren''t tired yesterday.', 'We didn''t tired yesterday.', 'We weren''t tired yesterday.', 'd', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What does the passive voice express?', 'That the sentence is negative', 'That the action is in the future', 'That the subject performs the action', 'That the subject receives the action', 'd', 5
+SELECT e.id, '¿Cuál es la forma negativa de «We will open it.»?', 'We willn''t open it.', 'We will don''t open it.', 'We don''t will open it.', 'We won''t open it.', 'd', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'How do you correctly rewrite "The teacher explains the lesson" in passive voice?', 'The lesson explains the teacher.', 'The teacher is explained the lesson.', 'The lesson was explain by the teacher.', 'The lesson is explained by the teacher.', 'd', 6
+SELECT e.id, 'Ya agendaste ver a Luis hoy a las 5. ¿Qué oración expresa ese plan confirmado?', 'I meet Luis at 5.', 'I was meeting Luis at 5.', 'I''m meeting Luis at 5.', 'I''m meet Luis at 5.', 'c', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'What is the function of a relative clause with "who" or "which"?', 'To give additional information about a noun', 'To express time references', 'To show contrast between ideas', 'To introduce a conditional statement', 'a', 7
+SELECT e.id, 'Compara «Students must arrive on time» con «I have to work tomorrow». ¿Qué las distingue?', 'Must suele pedir algo con formalidad; have to, expresar algo ya terminado', 'Must suele venir de una regla escrita; have to, de las circunstancias', 'Must suele hablar de una habilidad; have to, de un permiso de quien habla', 'Must suele expresar un consejo amable; have to, una prohibición escrita', 'b', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Which phrasal verb means "to continue"?', 'Carry on', 'Give up', 'Get up', 'Take off', 'a', 8
+SELECT e.id, 'Quieres decir que sabías manejar cuando tenías 20 años. ¿Qué oración es correcta?', 'I could drive when I was 20.', 'I can drive when I was 20.', 'I should drive when I was 20.', 'I must drive when I was 20.', 'a', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'A student wants to write: "If I study hard, I will pass." Is this correct?', 'No, should use "would" instead of "will"', 'No, should use "had studied"', 'Yes, it is a correct Type 1 conditional', 'Yes, but only in spoken English', 'c', 9
+SELECT e.id, '¿Cuál es la traducción correcta de «hombros, espalda y rodillas»?', 'shoulders, chest and knees', 'shoulders, back and knees', 'neck, back and legs', 'arms, stomach and knees', 'b', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Why is reading authentic English texts important for language learning?', 'It completely replaces all other forms of study', 'Only grammar exercises matter for fluency', 'It is not useful for language development', 'It exposes learners to natural grammar patterns, vocabulary, and cultural context', 'd', 10
+SELECT e.id, 'Lees este fragmento: «I''m going to live in a small apartment near the campus. My parents said they will help me with the rent.» ¿Quién ayudará con la renta?', 'Los hermanos de quien escribe', 'Los amigos de quien escribe', 'Los padres de quien escribe', 'Los maestros de quien escribe', 'c', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Inglés nivel 2' AND e.titulo = 'Examen Final — Inglés nivel 2'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuáles son las funciones del lenguaje según Roman Jakobson?', 'Informar, narrar y describir', 'Oral, escrita y gestual', 'Referencial, emotiva, conativa, fática, metalingüística y poética', 'Hablar, escribir y escuchar', 'c', 1
+SELECT e.id, 'Un locutor de radio hace una pregunta al aire y una oyente le da su respuesta por teléfono. ¿Qué elemento de la comunicación es esa respuesta?', 'El código', 'El canal', 'La retroalimentación', 'El contexto', 'c', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la variación lingüística?', 'El cambio de idioma al viajar', 'El vocabulario técnico de cada profesión', 'Los errores gramaticales más frecuentes', 'Las diferencias en el uso de una misma lengua según región, grupo social, edad u otras variables', 'd', 2
+SELECT e.id, 'Una estudiante graba un podcast en el que explica un tema con sus propias palabras. ¿Qué tipo de lenguaje usa principalmente?', 'Verbal oral', 'No verbal kinésico', 'Verbal escrito', 'No verbal proxémico', 'a', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre lengua oral y lengua escrita?', 'La oral es espontánea y efímera; la escrita es planificada y permanente', 'La escrita es exclusiva de grupos académicos', 'La oral no tiene ninguna gramática', 'No presentan diferencias relevantes', 'a', 3
+SELECT e.id, '¿Qué diferencia principal hay entre un texto expositivo y uno argumentativo?', 'El expositivo narra una historia; el argumentativo describe con adjetivos', 'El expositivo detalla cómo es algo; el argumentativo cuenta unos hechos', 'El expositivo busca convencer; el argumentativo informa con objetividad', 'El expositivo informa con objetividad; el argumentativo busca convencer', 'd', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el registro formal en el lenguaje?', 'El uso de palabras técnicas de un área', 'El idioma oficial reconocido de un país', 'El estilo lingüístico cuidado y apropiado para contextos académicos, profesionales o solemnes', 'Hablar en voz alta y clara', 'c', 4
+SELECT e.id, 'Para hallar la idea principal, Iván subraya de inmediato la primera oración del párrafo. ¿Qué debió hacer primero?', 'Anotar los datos más curiosos', 'Leer el texto completo una vez sin detenerse', 'Comprobar si la fuente es confiable', 'Reescribir el párrafo con sus palabras', 'b', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la función del sujeto en una oración?', 'Señalar el tiempo de la acción', 'Indicar de quién o qué se habla; el elemento sobre el que recae la predicación', 'Conectar dos oraciones distintas', 'Expresar la finalidad de la acción verbal', 'b', 5
+SELECT e.id, 'Un alumno afirma que «mesa» carece de acento porque no lleva tilde. ¿Por qué se equivoca?', 'Olvida que «mesa» se escribe con tilde diacrítica', 'Confunde la tilde, que es fuerza de voz, con el acento', 'Olvida que toda palabra grave lleva tilde sin excepción', 'Confunde el acento, que es fuerza de voz, con la tilde', 'd', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el morfema en el estudio de la lengua?', 'La unidad mínima de sonido', 'La unidad mínima con significado gramatical o léxico', 'Una oración completa simple', 'Un párrafo con unidad temática', 'b', 6
+SELECT e.id, 'Para decidir si una palabra esdrújula lleva tilde, ¿qué hay que revisar en su terminación?', 'Que no termine en N, S o vocal, como las graves', 'Que termine en N, S o vocal, como las agudas', 'Que exista otra palabra igual con otro significado', 'Nada, porque las esdrújulas siempre llevan tilde', 'd', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuáles son las características del lenguaje científico?', 'Abundancia de adjetivos subjetivos', 'Precisión, objetividad, uso de tecnicismos y estructura lógica', 'Uso de metáforas y rima poética', 'Lenguaje coloquial e informal', 'b', 7
+SELECT e.id, 'En «Los alumnos de segundo, entregaron la tarea», ¿qué error tiene la coma?', 'Separa el sujeto del verbo, algo que no se permite', 'Marca un vocativo, aunque nadie es llamado aquí', 'Cierra un inciso que no se abrió con otra coma', 'Enumera elementos sin colocar la conjunción final', 'a', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la denotación de una palabra?', 'Solo el significado poético de la palabra', 'El significado emocional o subjetivo asociado', 'El significado literal, objetivo y primario de la palabra', 'El significado que cambia según el contexto', 'c', 8
+SELECT e.id, 'Una alumna escribe sobre los volcanes de México y, al acabar una idea, quiere pasar a un tema distinto. ¿Qué signo debe poner al final de esa oración?', 'Punto y coma, porque une dos ideas relacionadas', 'Punto y aparte, porque empieza una idea diferente', 'Punto y seguido, porque sigue en el mismo párrafo', 'Punto final, porque con él termina el texto entero', 'b', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Un alumno usa "tú" al escribirle a su jefe en un correo formal. ¿Qué error comete?', 'Un error ortográfico', 'Un error de registro: usa un trato informal en un contexto que requiere formalidad', 'Un error de coherencia textual', 'Un error gramatical de conjugación', 'b', 9
+SELECT e.id, 'Un alumno entrega este párrafo: «El café de Chiapas se cultiva en zonas de montaña. Sus granos se cosechan a mano. Mi primo juega beisbol en la escuela. Después, los granos se secan al sol». ¿Qué error tiene?', 'Es demasiado largo para ser un párrafo', 'Es demasiado corto para ser un párrafo', 'Cambia de tema sin avisar al lector', 'Repite varias veces la misma idea', 'c', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es importante adaptar el lenguaje al contexto y al interlocutor?', 'Para hablar más rápido y eficientemente', 'Solo en contextos académicos formales', 'Para demostrar superioridad intelectual', 'Porque el lenguaje apropiado asegura la comprensión, el respeto y la efectividad comunicativa', 'd', 10
+SELECT e.id, 'Una alumna resume un artículo y agrega al final: «Me pareció exagerado». ¿Qué regla del resumen rompe?', 'Debe medir más de la mitad del original', 'No debe incluir opiniones personales', 'Debe cerrar reafirmando una postura', 'Debe copiar literal las ideas del texto', 'b', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Lengua y comunicación I' AND e.titulo = 'Examen Final — Lengua y comunicación I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el resultado de resolver: 2(x + 3) = 14?', 'x = 3', 'x = 8', 'x = 7', 'x = 4', 'd', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es una función matemática?', 'Un tipo de ecuación siempre cuadrática', 'Un conjunto de números enteros', 'Una tabla de valores aleatorios', 'Una relación donde a cada elemento del dominio le corresponde exactamente un elemento del rango', 'd', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál de las siguientes es una propiedad de los números reales?', 'Entre dos números reales siempre existe otro número real', 'Todo número real es positivo', 'Los números reales son finitos', 'Los números reales no incluyen decimales', 'a', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuánto es la raíz cuadrada de 144?', '16', '14', '11', '12', 'd', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el máximo común divisor (MCD) de dos números?', 'El mayor número que divide exactamente a ambos', 'El número más grande de los dos', 'La suma de ambos números', 'El producto de ambos números', 'a', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si la probabilidad de sacar un 6 en un dado es 1/6, ¿cuántas veces se espera obtenerlo en 120 lanzamientos?', '30', '12', '6', '20', 'd', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la forma general de una ecuación lineal?', 'ax² + bx + c = 0', 'y = mx²', 'ax + b = 0', 'x/y = c', 'c', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un número irracional?', 'Un número que no puede expresarse como fracción de enteros', 'Un número siempre negativo', 'Un número con parte decimal finita', 'Un número mayor que 1 000 000', 'a', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Una tienda descuenta 20% a un artículo de $850 pesos. ¿Cuánto se paga?', '$720', '$630', '$680', '$700', 'c', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre media, mediana y moda?', 'La media es el valor más frecuente', 'Son lo mismo en cualquier conjunto de datos', 'La media es el promedio, la mediana el valor central y la moda el valor más frecuente', 'Solo la media se usa en estadística descriptiva', 'c', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es una función cuadrática y cómo se reconoce?', 'Una función con dos variables independientes', 'Una función solo con valores positivos', 'Una función de la forma f(x)=ax²+bx+c cuya gráfica es una parábola', 'Una función que tiene logaritmo', 'c', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el vértice de la parábola f(x) = x² - 4x + 3?', '(2, 1)', '(2, -1)', '(4, 3)', '(0, 3)', 'b', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué representa la "b" en la ecuación y = mx + b?', 'El punto máximo de la función', 'La intersección de la recta con el eje y', 'La pendiente de la recta', 'La variable independiente', 'b', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuánto es sen(30°)?', '√2/2', '√3/2', '1/2', '1', 'c', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el valor de cos(90°)?', '1', '-1', '0', '√2/2', 'c', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué teorema relaciona los lados de un triángulo rectángulo?', 'Teorema del valor medio', 'Teorema de Tales', 'Teorema de Bayes', 'Teorema de Pitágoras', 'd', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'En una función exponencial f(x) = 2^x, ¿qué sucede cuando x tiende a infinito?', 'f(x) se mantiene constante', 'f(x) tiende a -1', 'f(x) tiende a infinito', 'f(x) tiende a 0', 'c', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el logaritmo natural de e?', '2', '1', 'e', '0', 'b', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si se tiene un triángulo con ángulos 30°, 60° y 90°, ¿cómo se clasifica?', 'Escaleno obtuso', 'Equilátero', 'Isósceles acutángulo', 'Triángulo rectángulo especial', 'd', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la utilidad de calcular áreas bajo una curva?', 'Es exclusivo de ingeniería aeroespacial', 'Solo se usa en geometría básica', 'Permite calcular trabajo, distancias, volúmenes, probabilidades y modelar fenómenos físicos', 'No tiene aplicaciones fuera de matemáticas puras', 'c', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el límite de una función en el cálculo?', 'La derivada de la función en ese punto', 'El valor al que se aproxima f(x) cuando x se acerca a un punto específico', 'El valor máximo de la función', 'El punto donde la función no está definida', 'b', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué expresa la derivada de una función?', 'El área bajo la curva', 'La distancia entre dos puntos de la gráfica', 'La tasa de cambio instantánea de la función en un punto', 'El valor promedio de la función', 'c', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la derivada de f(x) = x³?', 'x²', 'x⁴', '3x²', '3x', 'c', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es una integral definida?', 'La pendiente en un punto de la curva', 'El valor máximo de la función', 'El área bajo la curva de una función entre dos límites determinados', 'La antiderivada de una función indefinida', 'c', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuánto es la derivada de f(x) = 5 (constante)?', '0', 'x', '1', '5', 'a', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la regla de la cadena en derivación?', 'Una técnica para derivar funciones compuestas: [f(g(x))]'' = f''(g(x))·g''(x)', 'Una propiedad de las series numéricas', 'Una fórmula para calcular integrales', 'Una propiedad de los logaritmos', 'a', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el significado geométrico de la derivada en un punto?', 'La pendiente de la recta tangente a la curva en ese punto', 'La longitud del arco de curva', 'El radio de curvatura en ese punto', 'El área del triángulo formado', 'a', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué indica que f''(x) > 0 en un intervalo?', 'La función es creciente en ese intervalo', 'La función es constante en ese intervalo', 'La función tiene un mínimo en ese punto', 'La función decrece en ese intervalo', 'a', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Si f''(x) = 4x - 6, ¿en qué punto la función f(x) = 2x² - 6x tiene un mínimo?', 'x = 4', 'x = 6', 'x = 2', 'x = 1.5', 'd', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué el cálculo integral es fundamental en física?', 'Permite calcular trabajo, energía, áreas de superficies y modelar fenómenos físicos continuos', 'Es exclusivo de termodinámica avanzada', 'Solo se usa para cálculos de velocidad', 'No se utiliza en física aplicada', 'a', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el pensamiento computacional?', 'La habilidad de usar computadoras', 'Un conjunto de habilidades para resolver problemas mediante descomposición, abstracción y algoritmos', 'Un lenguaje de programación específico', 'El diseño de hardware y circuitos', 'b', 1
+SELECT e.id, 'Una tiendita revisa sus ventas y nota que los refrescos se agotan cada quincena, así que decide pedir más antes de esas fechas. ¿Qué pilar le permitió detectarlo?', 'Reconocimiento de patrones', 'Abstracción', 'Descomposición', 'Diseño de algoritmos', 'a', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un algoritmo?', 'Una secuencia ordenada de pasos para resolver un problema o realizar una tarea', 'Un protocolo de red', 'Un programa de computadora completo', 'Un tipo de base de datos', 'a', 2
+SELECT e.id, 'En el algoritmo del sándwich, ¿por qué no se puede agregar el jamón antes de sacar el pan?', 'Porque las mismas entradas dan el mismo resultado', 'Porque cada paso debe estar definido claramente', 'Porque los pasos van en una secuencia lógica', 'Porque el algoritmo debe tener un inicio y un fin', 'c', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre una variable y una constante en programación?', 'Una constante puede cambiar y una variable no', 'Son lo mismo en la práctica', 'Las variables solo almacenan números', 'Una variable puede cambiar su valor durante la ejecución; una constante siempre mantiene el mismo valor', 'd', 3
+SELECT e.id, 'Si x vale 9, ¿qué comparación devuelve verdadero?', 'x != 9', 'x >= 9', 'x < 9', 'x > 9', 'b', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un condicional (if-else) en programación?', 'Una variable de tipo booleano', 'Un tipo de función matemática', 'Una estructura que ejecuta código diferente según si una condición es verdadera o falsa', 'Un ciclo que repite instrucciones', 'c', 4
+SELECT e.id, 'Dentro de un SI hay que revisar si turno vale 2. ¿Qué operador se usa y por qué?', '==, porque guarda el valor 2 en turno', '=, porque guarda el valor 2 en turno', '=, porque compara turno con el valor 2', '==, porque compara turno con el valor 2', 'd', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Para qué sirve un ciclo "for" o "while" en programación?', 'Para repetir un bloque de código un número determinado de veces o mientras se cumpla una condición', 'Para declarar nuevas variables', 'Para definir nuevas funciones', 'Para importar librerías externas', 'a', 5
+SELECT e.id, 'SI nota >= 9 ENTONCES ESCRIBIR «Excelente» SINO SI nota >= 7 ENTONCES ESCRIBIR «Bueno» FIN SI. Con nota 5, el programa no escribe nada. ¿Qué error común muestra?', 'Poner una condición que nunca se cumple', 'No cubrir todos los casos posibles', 'Confundir la asignación con la comparación', 'Repetir la misma condición dos veces', 'b', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la depuración (debugging) en programación?', 'El proceso de identificar y corregir errores en un programa', 'Documentar el código existente', 'Optimizar el código para mayor velocidad', 'Escribir nuevo código desde cero', 'a', 6
+SELECT e.id, 'En la tabla de multiplicar con ciclo PARA, el usuario escribe 9. ¿Qué resultado se imprime cuando i vale 4?', '90', '13', '36', '45', 'c', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la ventaja del pensamiento modular en programación?', 'Aumenta el tamaño del programa final', 'Permite dividir un problema complejo en partes manejables y reutilizables', 'Solo funciona en lenguajes orientados a objetos', 'Dificulta la colaboración entre programadores', 'b', 7
+SELECT e.id, 'Una app debe mostrar el mismo aviso 200 veces. ¿Qué ventaja da usar un ciclo?', 'Repite la acción sin duplicar la instrucción', 'Guarda los 200 avisos en una misma variable de texto', 'Decide entre dos acciones según una sola condición', 'Hace que cada aviso se muestre con un texto distinto', 'a', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el pseudocódigo?', 'Una representación informal de los pasos de un algoritmo usando lenguaje natural con estructura lógica', 'Un tipo de comentario en el código', 'Un diagrama de flujo gráfico', 'Un lenguaje de programación específico', 'a', 8
+SELECT e.id, 'En la base de datos de la escuela que presenta el tema, ¿qué campo conecta la tabla Calificaciones con la tabla Alumnos?', 'email', 'materia_id', 'matrícula', 'alumno_id', 'd', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Un programa debe mostrar "Hola" 5 veces pero solo lo hace 4. ¿Qué tipo de error tiene?', 'Error de sintaxis en el código', 'Error lógico en la condición del ciclo', 'Error de red o conexión', 'Error de compilación del programa', 'b', 9
+SELECT e.id, 'Un rango tiene 5 celdas con números, 2 con texto y 3 vacías. ¿Qué valor da =CONTARA en ese rango?', '3', '10', '5', '7', 'd', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es útil aprender fundamentos de programación aunque no se sea programador?', 'Es obligatorio para graduarse en todas las carreras', 'Desarrolla el pensamiento lógico, la resolución de problemas y comprensión de cómo funciona la tecnología', 'No es útil fuera de la informática', 'Solo sirve para hacer páginas web', 'b', 10
+SELECT e.id, 'Frente a los cambios de la IA en el mercado laboral, ¿qué señala el tema como lo más importante?', 'Aprender a trabajar con la IA como herramienta', 'Aprender a programar IA para no depender de ella', 'Cambiar a un trabajo sin tareas repetitivas', 'Esperar a que llegue la IA General para adaptarse', 'a', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Pensamiento digital y programación básica' AND e.titulo = 'Examen Final — Pensamiento digital y programación básica'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué diferencia existe entre sexo biológico y género?', 'Solo el sexo tiene implicaciones sociales', 'El género es biológico y el sexo es cultural', 'El sexo biológico se refiere a características anatómicas; el género es una construcción social y cultural', 'Son sinónimos completamente equivalentes', 'c', 1
+SELECT e.id, 'Un cantante usa falda y maquillaje en sus presentaciones. Con ese único dato, ¿qué se puede afirmar?', 'Que esa ropa indica un cambio en su sexo biológico', 'Que esa ropa forma parte de su expresión de género', 'Que esa ropa define cuál es su orientación sexual', 'Que esa ropa revela cuál es su identidad de género', 'b', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué son los estereotipos de género?', 'Diagnósticos médicos sobre la identidad', 'Leyes que regulan el comportamiento social', 'Ideas preconcebidas y generalizadas sobre cómo deben comportarse las personas según su género', 'Roles libremente elegidos por cada persona', 'c', 2
+SELECT e.id, '¿Qué estructuras del aparato reproductor masculino producen el líquido seminal?', 'Las vesículas seminales y la próstata', 'La uretra y el epidídimo', 'El epidídimo y los conductos deferentes', 'Los testículos y el escroto', 'a', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la perspectiva de género?', 'Un enfoque analítico que visibiliza las desigualdades entre géneros y busca relaciones más equitativas', 'Una opinión personal sobre las mujeres', 'Un movimiento político exclusivo de mujeres', 'Una materia diseñada solo para mujeres', 'a', 3
+SELECT e.id, '¿Qué doble función cumplen los ovarios?', 'Transportar los óvulos hacia el útero y recibir la fecundación', 'Alojar el embarazo y conectar las trompas con la vagina', 'Producir óvulos y hormonas como estrógeno y progesterona', 'Producir óvulos, pero ninguna hormona sexual', 'c', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuáles son los derechos sexuales y reproductivos?', 'Obligaciones establecidas por la religión', 'Derechos humanos que garantizan decidir libremente sobre la propia sexualidad, reproducción y salud sexual', 'Solo el derecho a tener hijos', 'Normas legales de cada país sin aplicación universal', 'b', 4
+SELECT e.id, 'Un joven empieza a preguntarse quién es, qué le gusta y qué quiere para su vida. ¿A qué cambio emocional de la adolescencia corresponde?', 'Mayor necesidad de privacidad', 'Cambios de humor frecuentes', 'Inseguridad sobre la apariencia', 'Búsqueda de identidad propia', 'd', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la violencia de género?', 'Un conflicto entre personas del mismo sexo', 'Una situación exclusiva de parejas casadas', 'Cualquier forma de violencia dirigida contra una persona por razón de su género de forma desproporcionada', 'Un término legal sin implicaciones sociales reales', 'c', 5
+SELECT e.id, '¿Qué característica de la clamidia y la gonorrea complica detectarlas a tiempo?', 'Se curan solas sin necesidad de tratamiento', 'Solo aparecen en personas que ya tienen VIH', 'Los antibióticos no sirven para tratarlas', 'A menudo no presentan síntomas', 'd', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la importancia de la educación sexual integral?', 'Reemplaza completamente la educación en el hogar', 'Promueve el libertinaje entre jóvenes', 'Proporciona información científica, valores y habilidades para tomar decisiones libres, informadas y responsables', 'Es solo para adolescentes con problemas', 'c', 6
+SELECT e.id, '¿Qué infección es la ITS más común y cuenta con una vacuna?', 'Herpes genital', 'VPH', 'VIH', 'Sífilis', 'b', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la identidad de género?', 'Una opción de vida completamente reversible', 'Un estado de confusión temporal en adolescentes', 'La vivencia interna e individual del género que puede o no corresponder con el sexo asignado al nacer', 'El sexo biológico de una persona', 'c', 7
+SELECT e.id, 'Al revisar a dónde acudir, ¿qué instancia corresponde específicamente a las denuncias penales?', 'Un centro de salud público', 'El DIF', 'La Línea de la Vida', 'La Fiscalía del estado', 'd', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el machismo y cuáles son sus consecuencias?', 'Un sistema de valores positivos para la sociedad', 'Solo afecta a las mujeres directamente', 'Una forma de disciplina familiar aceptable', 'Un sistema de creencias que establece la superioridad masculina, generando discriminación, violencia y desigualdad', 'd', 8
+SELECT e.id, 'Un jefe invita a salir a su empleada, quien teme perder el trabajo si se niega. ¿Por qué ese consentimiento no sería válido?', 'Porque existe una relación de poder desigual', 'Porque la persona está bajo efectos de sustancias', 'Porque aceptar una cosa implica aceptar todo', 'Porque falta información sobre lo que va a pasar', 'a', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Una persona recibe menos salario que sus colegas con el mismo puesto únicamente por ser mujer. ¿Qué tipo de discriminación es?', 'Resultado de una negociación salarial normal', 'Discriminación de género en el ámbito laboral', 'Discriminación por edad', 'Preferencia empresarial legítima', 'b', 9
+SELECT e.id, 'Dos personas en pareja deben decidir si se mudan de ciudad por el trabajo de una de ellas. ¿Qué forma de decidir refleja una relación saludable?', 'Decide la persona que aporta más dinero para el hogar', 'Decide la persona con más experiencia para evitar discusiones', 'Lo platican y deciden juntos, con igual peso para cada opinión', 'Deciden por turnos, aunque en cada turno una persona no esté de acuerdo', 'c', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es importante el consentimiento en las relaciones interpersonales?', 'Para evitar únicamente conflictos menores', 'Porque garantiza que todas las interacciones sean libres, voluntarias y respetuosas de la autonomía de cada persona', 'Solo en relaciones formales o legales', 'Solo es relevante desde el punto de vista legal', 'b', 10
+SELECT e.id, '¿Por qué la frase «el rosa es de niñas, el azul de niños» es un estereotipo de género?', 'Porque refleja la identidad interna de cada persona', 'Porque generaliza cómo deben ser niñas y niños', 'Porque la establece una ley mexicana de igualdad', 'Porque describe una diferencia biológica del sexo', 'b', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Sexualidad y género' AND e.titulo = 'Examen Final — Sexualidad y género'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la inteligencia artificial (IA)?', 'Un robot humanoide autónomo', 'Un lenguaje de programación avanzado', 'Un sistema operativo de última generación', 'La capacidad de las máquinas para realizar tareas que normalmente requieren inteligencia humana', 'd', 1
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el Internet de las Cosas (IoT)?', 'Una red social para expertos en tecnología', 'Una plataforma de comercio electrónico', 'La interconexión de objetos físicos con sensores y software que les permite recopilar e intercambiar datos', 'Un tipo de virus informático moderno', 'c', 2
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre almacenamiento local y en la nube?', 'El almacenamiento local guarda datos en el dispositivo; la nube los almacena en servidores remotos accesibles por internet', 'El almacenamiento local siempre es ilimitado', 'La nube es siempre gratuita e ilimitada', 'No hay diferencia entre ambos', 'a', 3
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el ciberacoso y cómo puede prevenirse?', 'Un error de configuración del sistema', 'El acoso intencional y repetido mediante dispositivos digitales; se previene con educación, denuncia y bloqueo', 'Una forma de juego competitivo en línea', 'Un virus que ataca redes sociales', 'b', 4
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es un sistema operativo?', 'El software que gestiona los recursos del hardware y proporciona servicios a las aplicaciones', 'Un programa exclusivo para navegar internet', 'Un tipo de procesador de alto rendimiento', 'Una aplicación de mensajería instantánea', 'a', 5
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el impacto de las redes sociales en la salud mental de los jóvenes?', 'No tienen ningún impacto demostrado', 'Pueden generar tanto conexión social como ansiedad, baja autoestima y adicción sin autorregulación', 'Solo producen efectos negativos inevitables', 'Solo producen efectos positivos', 'b', 6
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el cifrado de datos y por qué es importante?', 'Un proceso que convierte datos en un formato ilegible para proteger la privacidad e integridad de la información', 'Un método de almacenamiento eficiente', 'Un tipo de compresión de archivos', 'Una tecnología de impresión digital', 'a', 7
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la brecha tecnológica y qué consecuencias genera?', 'Una falla en la red eléctrica', 'La desigualdad en el acceso y uso de tecnologías entre personas o regiones, ampliando brechas sociales', 'La diferencia de velocidad de internet entre zonas', 'Un tipo de software desactualizado', 'b', 8
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Recibes solicitud de un desconocido que ofrece premios a cambio de datos personales. ¿Qué haces?', 'Aceptas si el premio parece valioso', 'Compartes solo nombre y correo', 'Preguntas a un amigo antes de decidir', 'Rechazas, no compartes datos y reportas el perfil como posible estafa', 'd', 9
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué es relevante entender cómo funcionan los algoritmos de las redes sociales?', 'No es relevante para usuarios comunes', 'Porque influyen en qué información vemos, conformando percepciones y opiniones sin que seamos conscientes', 'Solo importa para quienes programan las plataformas', 'Para aumentar el número de seguidores', 'b', 10
-FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
-WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
-ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
-
-INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es el propósito principal de la tutoría de ingreso en la universidad?', 'Reemplazar las clases formales del programa', 'Apoyar al estudiante en su adaptación al entorno universitario orientando en aspectos académicos y personales', 'Asignar calificaciones adicionales automáticamente', 'Seleccionar a los mejores estudiantes del grupo', 'b', 1
+SELECT e.id, 'Según la semana, ¿por qué el bachillerato virtual requiere más autodisciplina que el presencial?', 'Porque sus exámenes se aplican en horarios fijos y sin aviso', 'Porque su plan incluye más materias que el presencial', 'Porque los tutores revisan a diario el avance de cada uno', 'Porque estudiar es responsabilidad total del alumno', 'd', 1
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es el aprendizaje autónomo?', 'Estudiar sin ningún apoyo externo', 'La capacidad de gestionar el propio proceso de aprendizaje: establecer metas, planificar y evaluar el progreso', 'Asistir a todas las clases sin faltar nunca', 'Solo leer libros en casa sin guía', 'b', 2
+SELECT e.id, 'Karla aprende mejor con diagramas, aunque también le ayuda mucho tomar notas a mano. ¿Cómo se interpreta su caso según lo visto sobre VARK?', 'Su estilo real es el kinestésico, porque usa mucho las manos', 'Aún no descubre cuál es el único estilo que le corresponde', 'Tiene un estilo dominante y uno secundario, como la mayoría', 'Debe dejar uno de los dos estilos para no confundir lo aprendido', 'c', 2
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué estrategia de estudio implica el método Cornell?', 'Leer y subrayar todo el texto', 'Escuchar audios del tema repetidamente', 'Dividir las notas en sección de apuntes, preguntas clave y resumen para facilitar la revisión activa', 'Solo hacer mapas mentales del tema', 'c', 3
+SELECT e.id, 'Según la semana, ¿para qué tipo de temas son excelentes los mapas mentales?', 'Para ideas que caben en una sola oración', 'Para temas con muchas conexiones entre sí', 'Para datos sueltos que solo se memorizan', 'Para ejercicios de cálculo paso por paso', 'b', 3
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la gestión del tiempo en el contexto académico?', 'Evitar toda actividad extracurricular', 'Trabajar más horas al día sin descanso', 'Reducir el tiempo dedicado al estudio', 'La planificación y distribución eficiente de las actividades para cumplir responsabilidades académicas y personales', 'd', 4
+SELECT e.id, 'Ana y Brenda dedican 6 horas a un mismo tema: Ana las reparte en varios días cada vez más separados y Brenda las hace todas la noche antes del examen. ¿Quién retiene mejor y por qué?', 'Brenda, porque un maratón evita olvidar lo ya leído', 'Brenda, porque tiene todo fresco el día del examen', 'Ana, porque se retiene mejor con repasos espaciados', 'Ana, porque descansa más entre sesiones y se cansa menos', 'c', 4
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la diferencia entre objetivos a corto y largo plazo en el aprendizaje?', 'Los de corto plazo son logros inmediatos; los de largo plazo definen metas futuras que guían el proceso educativo', 'Los de corto plazo requieren siempre más tiempo', 'No hay diferencia relevante en la práctica', 'Los de largo plazo son menos importantes', 'a', 5
+SELECT e.id, '¿Qué tarea corresponde al cuadrante de «Hacer YA» en la Matriz de Eisenhower?', 'Un examen importante de la próxima semana', 'Una revisión de redes sociales sin prisa alguna', 'Un mensaje de WhatsApp que pide respuesta', 'Un examen importante que se presenta mañana', 'd', 5
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué son las habilidades socioemocionales y por qué importan en la universidad?', 'Solo importan en la vida laboral posterior', 'Se aprenden automáticamente con la edad', 'Habilidades deportivas exclusivamente', 'Competencias como empatía, autocontrol y comunicación asertiva que favorecen el bienestar y las relaciones positivas', 'd', 6
+SELECT e.id, 'Pablo solo necesita una lista de pendientes para ir marcando lo que termina. ¿Qué herramienta de organización le sirve?', 'Google Calendar', 'Forest App', 'Todoist', 'Alarmas del celular', 'c', 6
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Qué es la procrastinación y cómo afecta el rendimiento académico?', 'Estudiar con mucha anticipación', 'Posponer tareas importantes generando acumulación de trabajo, estrés y bajo rendimiento', 'Un método de organización del tiempo', 'Una técnica de memorización eficiente', 'b', 7
+SELECT e.id, 'Ximena no pudo estudiar ayer por un imprevisto. Para proteger su hábito de estudio, ¿qué le conviene hacer?', 'Cambiar cada día su hora de estudio para variar', 'Retomar hoy, para que no sean dos días seguidos', 'Esperar al lunes y volver a empezar su hábito', 'Duplicar hoy sus horas para pagar el día perdido', 'b', 7
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Cuál es la importancia de asistir a asesorías y tutorías institucionales?', 'Son obligatorias sin ninguna excepción', 'Permiten aclarar dudas, recibir retroalimentación personalizada y fortalecer el aprendizaje con apoyo especializado', 'Son exclusivamente para alumnos con bajo rendimiento', 'No tienen valor adicional al estudio individual', 'b', 8
+SELECT e.id, 'Hugo nunca ha estudiado a diario y quiere crear el hábito. Según la semana, ¿con qué le conviene empezar?', 'Con solo 5 minutos de estudio', 'Con todo el temario de la semana', 'Con dos horas de estudio al día', 'Con una sesión larga cada domingo', 'a', 8
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, 'Un estudiante universitario nuevo no puede llevar el ritmo de las materias. ¿Qué recomiendas?', 'Estudiar toda la noche constantemente', 'Abandonar una materia inmediatamente', 'Pedir a un compañero que haga sus tareas', 'Buscar apoyo en tutoría, organizar su tiempo y hablar con sus profesores sobre sus dificultades', 'd', 9
+SELECT e.id, 'Un equipo de estudio quiere ver en un tablero qué tareas están por hacer, en progreso y hechas. ¿Qué herramienta recomienda la semana?', 'Todoist', 'OneNote', 'Google Calendar', 'Trello', 'd', 9
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
-SELECT e.id, '¿Por qué la autoevaluación es una herramienta valiosa en el aprendizaje universitario?', 'Permite identificar fortalezas y áreas de mejora, ajustando estrategias de estudio para un aprendizaje más efectivo', 'Solo la realizan los profesores al final del curso', 'No es útil ya que solo importan las calificaciones finales', 'Es solo para preparar exámenes finales', 'a', 10
+SELECT e.id, 'Beto trabaja todo el día y se propone terminar todas sus materias en dos semanas. ¿Qué característica SMART incumple con más claridad?', 'Alcanzable, porque no parece realista', 'Específica, porque no dice qué lograr', 'Con plazo, porque no dice para cuándo', 'Medible, porque no se puede comprobar', 'a', 10
 FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
 WHERE m.nombre = 'Tutoría de ingreso I' AND e.titulo = 'Examen Final — Tutoría de ingreso I'
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Por qué las células de tu cuerpo no tienen todas la misma forma?', 'Porque unas células son más viejas que otras', 'Porque cambian de forma según lo que comes', 'Porque cada órgano tiene un ADN diferente', 'Porque cada forma sirve para una función', 'd', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué trabajo hace el sistema urinario?', 'Produce hormonas que regulan las funciones', 'Procesa alimentos y absorbe sus nutrientes', 'Filtra la sangre y elimina desechos líquidos', 'Transporta oxígeno y nutrientes a las células', 'c', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cómo se llaman los movimientos del esófago que empujan el alimento hacia abajo?', 'Agitación del estómago', 'Masticación', 'Mezcla de la lengua', 'Peristaltismo', 'd', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Por qué comer y nutrirse no son lo mismo?', 'Porque se puede comer mucho y nutrirse mal', 'Porque comer es un proceso del cuerpo y nutrirse no', 'Porque nutrirse ocurre solo en el estómago', 'Porque nutrirse es comer solo frutas y verduras', 'a', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En el plato del bien comer, ¿en qué grupo conviene preferir los integrales?', 'Cereales y tubérculos', 'Leguminosas y origen animal', 'Verduras y leguminosas', 'Verduras y frutas', 'a', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué tiene la tráquea que la hace parecida a una manguera flexible?', 'Vellos nasales y moco', 'Pequeños sacos de aire', 'Anillos de cartílago', 'Cuerdas vocales', 'c', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿En qué parte del sistema respiratorio ocurre la infección de la neumonía?', 'En la laringe', 'En los alvéolos', 'En los bronquios', 'En la tráquea', 'b', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué componente de la sangre defiende al cuerpo contra las infecciones?', 'El plasma', 'Los glóbulos rojos', 'Los glóbulos blancos', 'Las plaquetas', 'c', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué parte del sistema circulatorio lleva la sangre del corazón hacia el cuerpo?', 'Los capilares', 'Las arterias', 'Las válvulas', 'Las venas', 'b', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué herramienta de salud pública ha eliminado o controlado enfermedades como la viruela, la polio y el sarampión?', 'Las revisiones médicas', 'Las vacunas', 'Los exámenes de laboratorio', 'El lavado de manos', 'b', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales I' AND e.titulo = 'Examen Final — Ciencias Naturales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En un lago, una alumna anota la temperatura, el pH y la luz solar que recibe. ¿A qué componentes del ecosistema corresponden?', 'Bióticos', 'Productores', 'Abióticos', 'Descomponedores', 'c', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Una comunidad protege una especie aunque no le deje ganancias, porque cree que tiene derecho a existir. ¿Qué valor de la biodiversidad defiende?', 'Valor ético', 'Valor económico', 'Valor científico', 'Valor ecológico', 'a', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Un maestro explica que la biodiversidad no es solo la cantidad de especies. ¿Qué más incluye?', 'La cantidad de agua y de minerales', 'La diversidad de genes y de ecosistemas', 'La extensión de las selvas y de los desiertos', 'La diversidad de climas y de suelos', 'b', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Un búho caza ratones, lagartijas e insectos, y cada una de sus presas come varias cosas. ¿Qué describe mejor estas relaciones?', 'Un nivel trófico', 'Una especie clave', 'Una cadena simple', 'Una red trófica', 'd', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Como gran parte de la energía se pierde entre niveles tróficos, ¿qué grupo suele ser más abundante en un ecosistema?', 'Los herbívoros', 'Los carnívoros', 'Los depredadores tope', 'Las plantas', 'd', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Según lo estudiado, ¿qué medidas ayudaron a reducir la contaminación del aire en la Ciudad de México?', 'La reforestación de bosques y la limpieza de los ríos', 'La restricción vehicular y la reconversión de combustibles', 'El racionamiento del agua y la separación de la basura', 'El reciclaje obligatorio y el ahorro de agua y electricidad', 'b', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué grupo reúne solo gases de efecto invernadero?', 'CO₂, metano y vapor de agua', 'CO₂, oxígeno y vapor de agua', 'Metano, oxígeno y nitrógeno', 'Oxígeno, nitrógeno y helio', 'a', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué tienen en común el petróleo, el carbón y la plata como recursos naturales?', 'Se regeneran si no se explotan de más', 'Se producen por fotosíntesis en las algas', 'Se renuevan con el agua de cada lluvia', 'Se formaron durante millones de años', 'd', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuál es la idea central de la definición de desarrollo sustentable lanzada en 1987?', 'Proteger el futuro aunque hoy no se cubran las necesidades básicas', 'Detener todo crecimiento económico hasta cumplir con 2030', 'Cubrir el presente sin comprometer a las generaciones futuras', 'Cubrir el presente aunque se agoten los recursos del futuro', 'c', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'La energía contenida en los alimentos, como una tortilla, y en los combustibles, como la gasolina, se llama:', 'Energía térmica', 'Energía química', 'Energía cinética', 'Energía radiante', 'b', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Naturales II' AND e.titulo = 'Examen Final — Ciencias Naturales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué ciudad fue la más grande de toda América en su época?', 'Chichén Itzá', 'Palenque', 'Teotihuacán', 'Monte Albán', 'c', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué significa que la religión mexica era politeísta?', 'Que no tenían dioses ni ritos', 'Que solo los nobles tenían fe', 'Que adoraban solo a un dios', 'Que adoraban a muchos dioses', 'd', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Para qué formaron los mexicas una alianza con Texcoco y Tlacopan?', 'Para defenderse de los españoles', 'Para expandirse y conquistar territorio', 'Para volver juntos al lugar mítico de Aztlán', 'Para hacer chinampas en otros lagos', 'b', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué buscaba España en la época en que llegó la expedición de Cortés?', 'Riquezas y nuevas rutas comerciales', 'Aliarse con Portugal para repartirse América', 'Tierras para sus campesinos y fin de la monarquía', 'Expandir la religión y dejar el comercio de lado', 'a', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Según lo que estudiaste, ¿qué tres grupos se mezclaron en la época colonial para dar origen a lo mexicano?', 'Españoles, africanos y portugueses', 'Españoles, indígenas y africanos', 'Españoles, indígenas y franceses', 'Indígenas, africanos y franceses', 'b', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Para qué fueron traídos los africanos a la Nueva España?', 'Para trabajar como esclavos en minas y haciendas', 'Para evangelizar a los pueblos originarios', 'Para estudiar en las universidades', 'Para ocupar cargos altos de gobierno', 'a', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué fue la Ilustración?', 'Un ejército de campesinos con machetes', 'Un plan de Napoleón para gobernar', 'Una corriente intelectual europea del siglo XVIII', 'Una conspiración de criollos en Querétaro', 'c', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué hizo el Ejército Trigarante el 27 de septiembre de 1821?', 'Organizó el Congreso de Chilpancingo', 'Tomó la Alhóndiga de Granaditas', 'Capturó y fusiló a Morelos', 'Entró triunfante a la Ciudad de México', 'd', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué pasó con la guerra en la etapa de resistencia (1815-1821)?', 'Se fragmentó, con Guerrero en el sur', 'Se unificó bajo el mando de Iturbide', 'Terminó cuando Guerrero se rindió en el sur', 'Se concentró en Guanajuato con nuevos líderes', 'a', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuál es el estado más pequeño de México?', 'Chihuahua', 'Morelos', 'Colima', 'Tlaxcala', 'd', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales I' AND e.titulo = 'Examen Final — Ciencias Sociales I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuál fue el desenlace de la Intervención Francesa en 1867?', 'Hubo un acuerdo y Maximiliano compartió el poder con Juárez', 'Ganó Francia y Juárez siguió resistiendo desde el norte', 'Ganaron los republicanos y Juárez restableció la República', 'Ganaron los conservadores y Maximiliano siguió en el trono', 'c', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En 1908, Díaz dijo en una entrevista que México estaba listo para la democracia. ¿Qué efecto tuvo?', 'Logró que hubiera elecciones limpias ese año', 'Encendió el debate y alentó a la oposición', 'Acabó con la oposición y reforzó a su gobierno', 'Calmó el debate y debilitó a la oposición', 'b', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué líder comandó la División del Norte?', 'Francisco I. Madero', 'Venustiano Carranza', 'Emiliano Zapata', 'Pancho Villa', 'd', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuál fue el papel de Madero en la Revolución?', 'Dirigió la lucha agraria del sur con el Plan de Ayala', 'Convocó al Congreso que redactó la Constitución', 'Comandó la División del Norte contra el gobierno', 'Inició la revolución, pero no controló lo que desató', 'd', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En 1994, México firmó un acuerdo con EE.UU. y Canadá que transformó su economía. ¿De qué tipo era?', 'Un tratado de libre comercio entre los tres países', 'Un acuerdo para cancelar la deuda externa de México', 'Un pacto de seguridad militar entre los tres países', 'Un plan para repartir el petróleo de PEMEX', 'a', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué ocurrió en la Plaza de Tlatelolco el 2 de octubre de 1968?', 'Una colecta popular para pagar la deuda petrolera', 'Una masacre de estudiantes que protestaban', 'La inauguración de los Juegos Olímpicos', 'Un mitin para festejar la alternancia', 'b', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿De qué movimiento histórico fue resultado la Constitución vigente?', 'La Guerra de Reforma', 'La Intervención Francesa', 'La Revolución Mexicana', 'La Independencia', 'c', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Una comunidad reclama su derecho a un medio ambiente sano. ¿Qué artículo de la Constitución lo reconoce?', 'El Artículo 24', 'El Artículo 6.º', 'El Artículo 27', 'El Artículo 4.º', 'd', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuál es la diferencia entre la queja y el amparo cuando una autoridad viola tus derechos?', 'La queja va a la CNDH y el amparo es la vía judicial', 'La queja la recibe el Congreso y el amparo es la vía política', 'La queja va a la ONU y el amparo es la vía internacional', 'La queja va al INE y el amparo es la vía electoral', 'a', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué significa el principio de sufragio universal?', 'Que solo votan quienes saben leer, escribir y pagan impuestos', 'Que todos los ciudadanos adultos tienen derecho a votar', 'Que cualquier persona del mundo puede votar aquí', 'Que el poder se renueva con elecciones limpias', 'b', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Ciencias Sociales II' AND e.titulo = 'Examen Final — Ciencias Sociales II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'El municipio publica en el periódico la fecha de una feria. ¿Qué elemento de la comunicación es el periódico?', 'El canal', 'El código', 'El contexto', 'El receptor', 'a', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué elementos tiene un texto narrativo?', 'Razones, evidencias, postura y punto de vista', 'Temas, definiciones, datos y explicaciones objetivas', 'Personajes, lugar, tiempo y secuencia de eventos', 'Pasos ordenados, instrucciones, materiales y resultados', 'c', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Al terminar un artículo sobre el transporte de tu ciudad, te preguntas si es objetivo y si estás de acuerdo con él. ¿Qué nivel de comprensión aplicas?', 'Comprensión crítica', 'Comprensión literal', 'Comprensión semántica', 'Comprensión inferencial', 'a', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué es lo más importante al leer un texto?', 'Memorizar el texto', 'Pronunciar bien cada palabra', 'Comprender lo que lees', 'Leer a gran velocidad', 'c', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuál de estos casos se escribe con mayúscula inicial?', 'El nombre de un mes', 'El nombre de un día', 'El gentilicio de un estado', 'El título de una obra', 'd', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Quieres buscar «tamal» en un diccionario impreso. ¿Qué haces primero?', 'Usas la segunda letra para abrir el diccionario', 'Lees las entradas desde el inicio del diccionario', 'Identificas la primera letra y vas a esa sección', 'Revisas las palabras guía de la primera página', 'c', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En un diccionario, ¿qué significa «s. m.» junto a una palabra?', 'Sinónimo más usado', 'Sílaba marcada', 'Significado múltiple', 'Sustantivo masculino', 'd', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En «El perro de mi tía ladra toda la noche», ¿cuál es el núcleo del sujeto?', 'tía', 'noche', 'ladra', 'perro', 'd', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué le falta a «El coche rojo de mi vecino» para ser una oración completa?', 'Una mayúscula', 'Un verbo', 'Un sustantivo', 'Un sujeto', 'b', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Un párrafo de seis oraciones pasa de las lluvias a un partido de fútbol y luego al precio del gas. ¿Qué error tiene?', 'Empieza siempre con el mismo sujeto', 'Habla de muchas ideas sin conexión', 'No desarrolla su idea por ser corto', 'Le falta su oración de cierre', 'b', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español I' AND e.titulo = 'Examen Final — Español I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En el párrafo «Leer enriquece el vocabulario. Por ejemplo, quien lee novelas conoce palabras nuevas.», ¿qué es la segunda oración?', 'La idea principal, porque da un ejemplo', 'La idea principal, porque resume el tema', 'Una idea secundaria, porque da un ejemplo', 'Una idea secundaria, porque resume el tema', 'c', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Ya subrayaste las ideas de un texto y vas a redactar tu resumen. ¿Cómo debes escribirlas?', 'Con tus palabras y conectadas con enlaces', 'Con tu opinión al final de cada idea', 'Con todos los ejemplos que trae el texto', 'Con las frases exactas del autor', 'a', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Mariana toma una idea de un libro para su trabajo, la escribe con sus palabras y menciona al autor. ¿Qué logra al parafrasear así?', 'Reproducir las palabras exactas de ese autor', 'Añadir datos que el libro no incluye', 'Evitar el plagio al usar una idea ajena', 'Reducir a la mitad la extensión del libro', 'c', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Quieres reproducir en tu trabajo una frase tal como la escribió una autora. ¿Cómo lo haces?', 'Reformulas su idea con otras palabras', 'Cambias una o dos palabras de su frase', 'Copias sus palabras sin dar su nombre', 'Copias sus palabras exactas entre comillas', 'd', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En «La directora, la maestra Luna, llegó temprano», ¿para qué sirven las comas?', 'Para separar el sujeto del verbo', 'Para añadir información no esencial', 'Para marcar a quién te diriges', 'Para separar una enumeración', 'b', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En «No sé si contarle a mi mamá...», ¿qué indican los puntos suspensivos?', 'Que terminó el texto por completo', 'Que se omitió una parte de una cita', 'Que sigue una enumeración de elementos', 'Una pausa expresiva o algo inconcluso', 'd', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Completa: «___ mochila está en el salón; ¿___ la dejaste ahí?»', 'Tú / tu', 'Tu / tú', 'Tu / tu', 'Tú / tú', 'b', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'La palabra «relámpago» se acentúa en la antepenúltima sílaba. ¿Qué tipo de palabra es y qué pasa con su tilde?', 'Grave; lleva tilde si no termina en vocal', 'Aguda; lleva tilde si termina en vocal', 'Esdrújula; siempre lleva tilde', 'Sobreesdrújula; siempre lleva tilde', 'c', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Ya escribiste el primer párrafo de una carta formal con tu presentación y tu propósito. ¿Qué va en el segundo párrafo?', 'El desarrollo del tema', 'La firma y el nombre completo', 'El lugar y la fecha de la carta', 'El saludo al destinatario', 'a', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Vas a empezar a redactar un informe. ¿En qué parte explicas el contexto y para qué se hizo?', 'En la introducción', 'En los anexos', 'En las conclusiones', 'En las recomendaciones', 'a', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español II' AND e.titulo = 'Examen Final — Español II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cómo debe ser la conclusión de un texto argumentativo?', 'Un cierre que retoma la tesis y la refuerza', 'Una lista de las fuentes consultadas', 'Una tesis nueva que abre otra discusión', 'Un resumen de cada argumento del texto', 'a', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Para defender que la escuela abra un taller de lectura, Sofía da una sola razón, verdadera y relacionada con el tema. ¿Qué le falta a sus argumentos?', 'Ser verificables', 'Ser suficientes', 'Ser relevantes', 'Ser más emotivos', 'b', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Un texto sigue un formato rígido e incluye muchos datos y referencias, sin voz personal. ¿A qué tipo de texto corresponde?', 'Artículo académico', 'Noticia', 'Artículo de opinión', 'Ensayo', 'a', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Frente al ensayo, ¿cómo es un artículo de opinión?', 'Más largo y reflexivo', 'Más académico y extenso', 'Más breve y directo', 'Más neutral y objetivo', 'c', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cómo se describen las fuentes terciarias?', 'Son opiniones personales, como un blog de internet', 'Son documentos originales, como las leyes', 'Son análisis de un estudio, como un artículo de revista', 'Son compilaciones, como las enciclopedias', 'd', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Estás tomando notas de un libro y un capítulo te parece muy útil. ¿Qué te conviene hacer?', 'Anotar su idea central, los datos que usarás y la referencia', 'Escribir tu opinión sobre el capítulo sin apuntar de qué libro salió', 'Copiar todo el capítulo en tu libreta para no perder nada', 'Anotar solo el título del capítulo y confiar en tu memoria', 'a', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Karla toma ideas de un artículo de internet y las entrega como suyas, sin decir de quién son. ¿Qué hizo?', 'Cita directa, porque usó ideas de otra autora', 'Paráfrasis, porque no usó comillas', 'Refutación, porque tomó postura ante un texto', 'Plagio, porque usó ideas ajenas sin dar crédito', 'd', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Gracias a tus citas, una lectora interesada en el tema pudo ir al libro original y leer más. ¿Qué razón para citar se cumplió?', 'Credibilidad', 'Honestidad', 'Utilidad', 'Ética académica', 'c', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Según lo estudiado, ¿cómo conviene practicar una exposición oral antes de presentarla?', 'En silencio, solo leyendo tus notas una y otra vez', 'En voz alta, ante un espejo o con alguien de confianza', 'Frente a las diapositivas, memorizando palabra por palabra', 'Sin practicar, para que salga de forma más espontánea', 'b', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Por qué conviene dejar pasar tiempo entre escribir el borrador y revisarlo?', 'Porque las ideas se ordenan solas', 'Porque así olvidas lo que escribiste', 'Porque así queda libre de errores', 'Porque con ojos frescos ves más errores', 'd', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Español III' AND e.titulo = 'Examen Final — Español III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Cuando te preguntan "How old are you?" y tienes 15 años, ¿qué contestas?', 'I''m 15 years', 'I have 15 age', 'I have 15 years', 'I''m 15 years old', 'd', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Te preguntan "Are they students?" y no lo son. ¿Cuál respuesta corta es correcta?', 'No, they aren''t.', 'No, they not.', 'No, are they.', 'No, they isn''t.', 'a', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Completa la oración negativa con su forma corta: "We ___ happy."', 'amn''t', 'aren''t', 'not are', 'isn''t', 'b', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cómo se dice "cuñada" en inglés?', 'Son-in-law', 'Sister', 'Brother-in-law', 'Sister-in-law', 'd', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Completa para decir "Mi cumpleaños es en enero": My birthday is in ___.', 'March', 'January', 'July', 'June', 'b', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cómo se pregunta en inglés si a alguien le gusta el mango?', 'Do like you mango?', 'You do like mango?', 'Do you like mango?', 'Are you like mango?', 'c', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿En cuál oración está bien colocada la palabra de frecuencia?', 'Always we eat dinner at home', 'We eat dinner always at home', 'We eat always dinner at home', 'We always eat dinner at home', 'd', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuál es la pregunta correcta para saber si Laura vive en Monterrey?', 'Do Laura live in Monterrey?', 'Does Laura live in Monterrey?', 'Does Laura lives in Monterrey?', 'Is Laura live in Monterrey?', 'b', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué significa en español la pregunta "What do you do?"', '¿Dónde trabajas?', '¿Cómo te llamas?', '¿A qué te dedicas?', '¿Qué estás haciendo?', 'c', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cómo se dice "Son las 8" en inglés?', 'It''s 8 o''clock', 'It''s 8 hours', 'Are 8 o''clock', 'I''m 8 o''clock', 'a', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Inglés Básico' AND e.titulo = 'Examen Final — Inglés Básico'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En la recta numérica, ¿dónde queda el 9 respecto al 4?', 'A la derecha del 4, porque 9 es menor', 'A la izquierda del 4, porque 9 es mayor', 'A la izquierda del 4, porque 9 es menor', 'A la derecha del 4, porque 9 es mayor', 'd', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Si 59 ÷ 8 da 7 con residuo 3, ¿qué cuenta sirve para comprobarlo?', '7 × 8 − 3 = 53', '7 × 3 + 8 = 29', '7 × 8 + 3 = 59', '7 + 8 + 3 = 18', 'c', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En la jerarquía de operaciones, ¿qué se resuelve justo después de los paréntesis?', 'Lo que esté más a la izquierda', 'Las potencias y las raíces', 'Las sumas y las restas', 'Las multiplicaciones y las divisiones', 'b', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuánto da (−8) × (+3)?', '−24', '−11', '−5', '+24', 'a', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En la sierra de Chihuahua, el termómetro marca −5 °C y la temperatura baja 6 grados más. ¿Cuánto marca ahora?', '+11 °C', '−11 °C', '−1 °C', '+1 °C', 'b', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Por qué 2 × 25 todavía no es la descomposición en factores primos de 50?', 'Porque los factores no se pueden repetir', 'Porque falta multiplicar por 1', 'Porque debe tener tres factores', 'Porque 25 no es primo', 'd', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Con cuál de estas sumas de dígitos un número es divisible entre 9?', '15', '27', '21', '24', 'b', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Para saber si 583 es divisible entre 11 se hace la resta alternada de sus dígitos. ¿Qué resulta?', 'Da 0, así que no es divisible', 'Da 16, así que no es divisible', 'Da 16, así que sí es divisible', 'Da 0, así que sí es divisible', 'd', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Don Beto tiene 32 mangos y 48 guayabas, y quiere armar canastas idénticas usando toda la fruta. ¿Cuántas canastas puede armar como máximo?', '16', '8', '4', '96', 'a', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'El MCD de 8 y 14 es 2. Usando la relación entre MCM y MCD, ¿cuánto vale el MCM de 8 y 14?', '16', '22', '56', '112', 'c', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas I' AND e.titulo = 'Examen Final — Matemáticas I'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Al pasar estas fracciones a un denominador común, ¿cuál resulta la mayor?', '1/2', '3/4', '5/8', '7/16', 'b', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué fracción representa la misma cantidad que 3/7?', '3/14', '6/10', '9/21', '6/7', 'c', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'A un costal con 7/9 de kg de maíz se le saca 1/6 de kg. ¿Cuánto maíz queda?', '6/9 de kg', '4/9 de kg', '11/18 de kg', '17/18 de kg', 'c', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué número decimal corresponde a la fracción 2/5?', '0.4', '0.2', '0.25', '2.5', 'a', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Con 10% de descuento pagaste $360 por unos tenis. ¿Cuál era el precio original?', '$324', '$400', '$396', '$3,600', 'b', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'La renta de un local es de $5,000 y aumenta 6%. ¿Cuánto se paga ahora?', '$5,006', '$4,700', '$5,030', '$5,300', 'd', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En un taller hay 9 carpinteros y 2 ayudantes. ¿Cuál es la razón de ayudantes a carpinteros?', '2:9', '9:2', '9:11', '2:11', 'a', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Al repartir un mismo pastel, mientras más invitados hay, menos pastel le toca a cada uno. ¿Qué tipo de regla de tres aplica?', 'Directa, porque las dos cantidades aumentan', 'Directa, porque hay más invitados y más pastel', 'Compuesta, porque intervienen dos cantidades', 'Inversa, porque una aumenta y la otra disminuye', 'd', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Un jardín circular tiene 7 m de radio. ¿Cuál es su área? Usa π ≈ 3.1416 y redondea a dos decimales.', '43.98 m²', '21.99 m²', '153.94 m²', '307.88 m²', 'c', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Un depósito cilíndrico tiene 2 m de radio y 7 m de altura. ¿Cuál es su volumen? Usa π ≈ 3.1416 y redondea a dos decimales.', '87.96 m³', '175.93 m³', '43.98 m³', '29.32 m³', 'a', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas II' AND e.titulo = 'Examen Final — Matemáticas II'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué pareja está formada por términos semejantes?', '4a y 4b', '4a y 7a', '4a y 4a²', '4 y 4a', 'b', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuántos términos tiene la expresión 2a + 3b − c + 8?', '4', '3', '5', '2', 'a', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Por qué x² + 5 = 9 no es una ecuación de primer grado?', 'Porque su variable tiene exponente 2', 'Porque el resultado es un número impar', 'Porque su variable está a la izquierda', 'Porque tiene dos números distintos', 'a', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Resuelve la ecuación 9x + 2 = 4x + 17.', 'x = 3.8', 'x = 5', 'x = 15', 'x = 3', 'd', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cómo se llama el punto donde se cruzan el eje X y el eje Y?', 'Coordenada', 'Cuadrante', 'Origen', 'Par ordenado', 'c', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Las tallas de calzado de ocho personas son 24, 26, 25, 24, 27, 24, 26 y 24. ¿Cuál es la frecuencia del dato 24?', '8', '4', '2', '24', 'b', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué medida conviene para representar los ingresos de un grupo con unos cuantos valores muy altos?', 'Todas dan el mismo resultado', 'Promedio', 'Mediana', 'Moda', 'c', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Una tienda vendió gorras de estos colores: roja, azul, roja, negra, azul, roja. ¿Cuál es la moda?', 'Sin moda', 'Roja', 'Azul', 'Negra', 'b', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Al leer una gráfica de pastel, ¿qué debes verificar?', 'Que la línea suba mes con mes', 'Que todas las rebanadas sean del mismo tamaño', 'Que el eje Y empiece en 0', 'Que todas las rebanadas sumen 100%', 'd', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Al lanzar un dado una sola vez, ¿qué pareja de eventos es mutuamente excluyente?', 'Sacar un 2 y sacar un par', 'Sacar un par y sacar menor que 3', 'Sacar un 2 y sacar un 5', 'Sacar un 5 y sacar un impar', 'c', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Matemáticas III' AND e.titulo = 'Examen Final — Matemáticas III'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué componente es el «cerebro» de la computadora porque realiza los cálculos?', 'El procesador', 'El sistema operativo', 'El disco duro', 'La memoria RAM', 'a', 1
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Quieres pasar tus fotos a una memoria externa. ¿En qué puerto la conectas?', 'Ethernet', 'Auriculares / micrófono', 'HDMI', 'USB', 'd', 2
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Qué pasa con un archivo que está en la papelera de reciclaje mientras no la vacías?', 'Todavía se puede recuperar', 'Se queda abierto en el escritorio', 'Se copia en una memoria USB', 'Ya se borró para siempre', 'a', 3
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Una página te pide tu dirección y tu teléfono solo para leer una noticia. ¿Qué señal de desconfianza es esa?', 'Pide datos personales sin justificación', 'Todavía no está guardada en tus marcadores', 'Se abrió en una pestaña aparte del navegador', 'Su dirección de internet lleva letras y números', 'a', 4
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Quieres separar en tu correo los mensajes de la escuela y los de tu familia. ¿Qué usas?', 'La bandeja de enviados', 'La carpeta de spam', 'Etiquetas o carpetas', 'La copia oculta', 'c', 5
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿En qué unidad se mide el tamaño de la fuente?', 'En gigabytes (GB)', 'En gigahertz (GHz)', 'En puntos (pt)', 'En centímetros (cm)', 'c', 6
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'En el nombre de la celda C10, ¿qué indica la letra C?', 'La fila', 'La columna', 'La fórmula', 'El rango', 'b', 7
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Las celdas B1 a B3 tienen 6, 8 y 10. ¿Qué número muestra =PROMEDIO(B1:B3)?', '24', '6', '10', '8', 'd', 8
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, 'Alguien te llama, dice ser de soporte técnico y te pide tu contraseña. ¿Qué haces?', 'La mandas mejor por correo electrónico', 'No la compartes con nadie por llamada', 'La dictas si luego la vas a cambiar', 'La das si te llaman a tu celular', 'b', 9
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
+SELECT e.id, '¿Cuántos caracteres debe tener, como mínimo, una contraseña segura?', '10 caracteres', '8 caracteres', '6 caracteres', '12 caracteres', 'd', 10
+FROM evaluaciones e JOIN materias m ON m.id = e.materia_id
+WHERE m.nombre = 'Tecnología y Vida Digital' AND e.titulo = 'Examen Final — Tecnología y Vida Digital'
+ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
+
+-- Demo: Tutoría de Ingreso I (conservadas tal cual)
 
 INSERT INTO preguntas (evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden)
 SELECT e.id, '¿Cuál es la principal ventaja del bachillerato virtual?', 'Es más fácil que el presencial', 'Tiene flexibilidad de horarios y acceso 24/7', 'No tiene exámenes', 'No requiere estudiar', 'b', 1
@@ -1622,14 +1625,3 @@ WHERE m.nombre = 'Tutoría de Ingreso I' AND e.titulo = 'Examen Final — Tutor�
 ON CONFLICT (evaluacion_id, pregunta) DO NOTHING;
 
 COMMIT;
-
--- Verificación post-seed
-SELECT
-  m.nombre AS materia,
-  e.titulo AS evaluacion,
-  COUNT(p.id) AS preguntas
-FROM evaluaciones e
-JOIN materias m ON m.id = e.materia_id
-LEFT JOIN preguntas p ON p.evaluacion_id = e.id
-GROUP BY m.nombre, e.titulo
-ORDER BY m.nombre;

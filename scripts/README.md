@@ -69,6 +69,21 @@ cliente tiene esa evaluación, así que una escuela con otro catálogo de materi
 siembra menos. `post-setup-check.sql` lo verifica con `>=`, no con `=`, por lo
 mismo.
 
+#### Quizzes y exámenes: se generan desde el banco (Bug B1)
+
+`seed-quiz-semanal-universal.sql`, `seed-preguntas-evaluaciones-universal.sql` (las
+25 filas del demo se conservan) y las 24 guías de semana 8 de
+`seed-contenido-semanas.sql` salen de `banco-materias-sec-prepa`:
+
+```
+python scripts/aplicar_reactivos.py --plantilla <ruta de este repo>   # desde el banco
+```
+
+**No se editan aquí:** un cambio se hace en `reactivos/` del banco, pasa por
+`scripts/validar_cobertura.py` (cada reactivo corresponde a su semana) y se vuelve
+a generar. Los clientes ya sembrados no cambian con este seed; ver
+`retrofit/B1-retrofit-flota-PROPUESTA.md` en el banco.
+
 ## Archivos NO incluidos automáticamente
 
 | Archivo | Razón |
