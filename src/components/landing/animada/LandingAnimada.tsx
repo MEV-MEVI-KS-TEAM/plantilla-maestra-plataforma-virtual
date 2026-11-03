@@ -332,7 +332,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     proceso: L.proceso_pasos.length > 0,
     testimonios: testimonios.length > 0,
     beneficios: L.beneficios_items.length > 0,
-    catalogo: hayCatalogo,
+    // Los cursos NUNCA van en sección suelta: viven dentro de Niveles, debajo
+    // de los niveles (regla MEV, 3-nov-2026). Ver el bloque `#diplomados`.
+    catalogo: false,
     faq: faqs.length > 0,
   }
   const secciones = secuenciaSecciones(presentes)
@@ -357,7 +359,6 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const tProceso = tokens('proceso')
   const tTestim = tokens('testimonios')
   const tBenef = tokens('beneficios')
-  const tCatalogo = tokens('catalogo')
   const tFaq = tokens('faq')
   const tCta = tokens('cta')
   const tContacto = tokens('contacto')
@@ -365,6 +366,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
   const enlacesMenu = [
     { href: '#niveles', etiqueta: 'Niveles' },
+    ...(hayCatalogo ? [{ href: '#diplomados', etiqueta: 'Cursos' }] : []),
     { href: '#planes', etiqueta: 'Planes' },
     ...(hayLicenciaturas ? [{ href: '#licenciaturas', etiqueta: 'Licenciaturas' }] : []),
     ...(validezActiva ? [{ href: '#validez', etiqueta: 'Validez oficial' }] : []),
@@ -794,6 +796,36 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 )
               })()}
             </div>
+            {/* ── CURSOS Y DIPLOMADOS: DENTRO de Niveles, debajo de los niveles.
+                🛑 Regla MEV (3-nov-2026): si la escuela tiene cursos, van aquí,
+                después de sus niveles, nunca en una sección aparte. Sin cursos
+                publicados (o con el flag apagado) el bloque no existe. */}
+            {hayCatalogo && (
+              <div id="diplomados" className="mt-16 sm:mt-20" style={{ scrollMarginTop: 96 }}>
+                <Encabezado t={tNiveles} kicker="Cursos" titulo={texto(L.catalogoTitulo)} bajada={texto(L.catalogoSubtitulo)} />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
+                  {catalogo.map((c, i) => (
+                    <div key={c.id} data-la-reveal="sube" style={retraso(i % 3, 100)}>
+                      <Link href={`/diplomados/${c.id}`} className="la-card rounded-2xl p-6 block h-full"
+                        style={{ background: tNiveles.superficie, border: `1px solid ${tNiveles.borde}`, color: tNiveles.texto }}>
+                        <h3 className="text-lg font-bold" style={{ color: tNiveles.titulo }}>{c.nombre}</h3>
+                        {c.descripcion && (
+                          <p className="mt-2 text-sm line-clamp-3" style={{ color: tNiveles.textoSuave }}>{c.descripcion}</p>
+                        )}
+                        <p className="mt-4 text-sm font-semibold flex items-center gap-1.5" style={{ color: tNiveles.titulo }}>
+                          {precioCurso(c)}
+                          <ArrowRight size={15} aria-hidden />
+                        </p>
+                        {/* #208: el precio es el de la ficha, así que pago único ⇔ acceso total al asignar. */}
+                        {precioCatalogo(c).tipo === 'unico' && (
+                          <p className="mt-1 text-xs" style={{ color: tNiveles.textoSuave }}>{AVISO_PAGO_UNICO}</p>
+                        )}
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1129,36 +1161,6 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                     <h3 className="mt-4 text-lg font-bold" style={{ color: tBenef.titulo }}>{texto(b.titulo)}</h3>
                     <p className="mt-2 text-sm sm:text-base leading-relaxed" style={{ color: tBenef.textoSuave }}>{texto(b.desc)}</p>
                   </article>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── CATÁLOGO (solo con cursos publicados) ────────────────────────── */}
-        {hayCatalogo && (
-          <section id="diplomados" {...marco('catalogo')}>
-            <div className={CONTENEDOR}>
-              <Encabezado t={tCatalogo} kicker="Cursos" titulo={texto(L.catalogoTitulo)} bajada={texto(L.catalogoSubtitulo)} />
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-                {catalogo.map((c, i) => (
-                  <div key={c.id} data-la-reveal="sube" style={retraso(i % 3, 100)}>
-                    <Link href={`/diplomados/${c.id}`} className="la-card rounded-2xl p-6 block h-full"
-                      style={{ background: tCatalogo.superficie, border: `1px solid ${tCatalogo.borde}`, color: tCatalogo.texto }}>
-                      <h3 className="text-lg font-bold" style={{ color: tCatalogo.titulo }}>{c.nombre}</h3>
-                      {c.descripcion && (
-                        <p className="mt-2 text-sm line-clamp-3" style={{ color: tCatalogo.textoSuave }}>{c.descripcion}</p>
-                      )}
-                      <p className="mt-4 text-sm font-semibold flex items-center gap-1.5" style={{ color: tCatalogo.titulo }}>
-                        {precioCurso(c)}
-                        <ArrowRight size={15} aria-hidden />
-                      </p>
-                      {/* #208: el precio es el de la ficha, así que pago único ⇔ acceso total al asignar. */}
-                      {precioCatalogo(c).tipo === 'unico' && (
-                        <p className="mt-1 text-xs" style={{ color: tCatalogo.textoSuave }}>{AVISO_PAGO_UNICO}</p>
-                      )}
-                    </Link>
-                  </div>
                 ))}
               </div>
             </div>
