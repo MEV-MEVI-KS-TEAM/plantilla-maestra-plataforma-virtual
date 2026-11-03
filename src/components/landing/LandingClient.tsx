@@ -688,6 +688,59 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
               </div>
               )}
             </div>
+            {/* ── CURSOS Y DIPLOMADOS: DENTRO de la sección de niveles, debajo
+                de los niveles. 🛑 Regla MEV (3-nov-2026): nunca en una sección
+                aparte. Sin cursos publicados (o con el flag apagado) no existe. */}
+            {catalogo.length > 0 && (
+              <div id="diplomados" className="mt-20" style={{ scrollMarginTop: 96 }}>
+                <div data-reveal className="text-center mb-12">
+                  <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
+                    style={{ background: `${C.royal}10`, color: C.royalTexto }}>Cursos</span>
+                  <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
+                    {texto(L.catalogoTitulo)}
+                  </h2>
+                  <p className="text-sm sm:text-base mt-3 max-w-xl mx-auto" style={{ color: '#64748B' }}>
+                    {texto(L.catalogoSubtitulo)}
+                  </p>
+                </div>
+
+                {/* Móvil primero: una columna, y solo a partir de sm se reparte. */}
+                <div data-reveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {catalogo.map(c => (
+                    <Link
+                      key={c.id}
+                      href={`/diplomados/${c.id}`}
+                      className="flex flex-col rounded-2xl p-6 bg-white transition-shadow hover:shadow-lg"
+                      style={{ border: '1px solid #E2E8F0' }}
+                    >
+                      <span className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: C.royalTexto }}>
+                        {c.tipo === 'diplomado' ? 'Diplomado' : 'Curso'}
+                      </span>
+                      <h3 className="text-lg font-bold leading-snug mb-2" style={{ color: C.navy }}>
+                        {c.nombre}
+                      </h3>
+                      {c.descripcion && (
+                        <p className="text-sm leading-relaxed line-clamp-3 mb-4" style={{ color: '#64748B' }}>
+                          {c.descripcion}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mb-4" style={{ color: '#94A3B8' }}>
+                        {c.horas !== null && <span>{c.horas} horas</span>}
+                        {c.duracion_meses !== null && (
+                          <span>{c.duracion_meses} {c.duracion_meses === 1 ? 'mes' : 'meses'}</span>
+                        )}
+                      </div>
+
+                      <div className="mt-auto pt-4" style={{ borderTop: '1px solid #F1F5F9' }}>
+                        <PrecioTarjetaClasica curso={c} color={C.navy} />
+                        <p className="text-xs font-semibold mt-2" style={{ color: C.royalTexto }}>Ver temario →</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Solo se pinta si la escuela NO cobra en pesos (ver AvisoMoneda). */}
             <AvisoMoneda className="mt-8 text-center text-xs" style={{ color: C.navySuave }} />
           </div>
@@ -910,64 +963,6 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
           </div>
         </section>
 
-        {/* ── CATÁLOGO DE DIPLOMADOS ───────────────────────────────── */}
-        {/*
-          Solo se renderiza si el cliente encendió el flag Y hay cursos
-          publicados. Con catalogo vacío no queda un hueco ni un título
-          huérfano: la sección no existe.
-        */}
-        {catalogo.length > 0 && (
-          <section id="diplomados" className="py-24 sm:py-32 px-4 sm:px-8" style={{ background: '#F8FAFF' }}>
-            <div className="max-w-6xl mx-auto">
-              <div data-reveal className="text-center mb-12">
-                <span className="inline-block px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4"
-                  style={{ background: `${C.royal}10`, color: C.royalTexto }}>Programas</span>
-                <h2 className={`text-3xl sm:text-4xl font-bold ${playfair.className}`} style={{ color: C.navy }}>
-                  {texto(L.catalogoTitulo)}
-                </h2>
-                <p className="text-sm sm:text-base mt-3 max-w-xl mx-auto" style={{ color: '#64748B' }}>
-                  {texto(L.catalogoSubtitulo)}
-                </p>
-              </div>
-
-              {/* Móvil primero: una columna, y solo a partir de sm se reparte. */}
-              <div data-reveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {catalogo.map(c => (
-                  <Link
-                    key={c.id}
-                    href={`/diplomados/${c.id}`}
-                    className="flex flex-col rounded-2xl p-6 bg-white transition-shadow hover:shadow-lg"
-                    style={{ border: '1px solid #E2E8F0' }}
-                  >
-                    <span className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: C.royalTexto }}>
-                      {c.tipo === 'diplomado' ? 'Diplomado' : 'Curso'}
-                    </span>
-                    <h3 className="text-lg font-bold leading-snug mb-2" style={{ color: C.navy }}>
-                      {c.nombre}
-                    </h3>
-                    {c.descripcion && (
-                      <p className="text-sm leading-relaxed line-clamp-3 mb-4" style={{ color: '#64748B' }}>
-                        {c.descripcion}
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mb-4" style={{ color: '#94A3B8' }}>
-                      {c.horas !== null && <span>{c.horas} horas</span>}
-                      {c.duracion_meses !== null && (
-                        <span>{c.duracion_meses} {c.duracion_meses === 1 ? 'mes' : 'meses'}</span>
-                      )}
-                    </div>
-
-                    <div className="mt-auto pt-4" style={{ borderTop: '1px solid #F1F5F9' }}>
-                      <PrecioTarjetaClasica curso={c} color={C.navy} />
-                      <p className="text-xs font-semibold mt-2" style={{ color: C.royalTexto }}>Ver temario →</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* ── FAQ ──────────────────────────────────────────────────── */}
         <section className="py-24 sm:py-32 px-4 sm:px-8 bg-white">
