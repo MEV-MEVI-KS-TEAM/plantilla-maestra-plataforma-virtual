@@ -167,6 +167,7 @@ li::before{ content:''; position:absolute; left:.02in; top:.075in; width:6px; he
 .note ul{ margin:.06in 0 0 .16in; padding:0; }
 .note li{ font-size:8.6pt; color:${P.suave}; line-height:1.5; margin:.02in 0; }
 .center{ text-align:center; } .mt{ margin-top:.2in; } .mt2{ margin-top:.3in; }
+a{ color:${P.acento2}; text-decoration:underline; white-space:nowrap; }
 `
 
 /** Tabla clave/valor. */
@@ -186,6 +187,9 @@ function dt(cols, filas) {
 }
 
 const ul = (items) => `<ul>${items.filter(Boolean).map(i => `<li>${i}</li>`).join('')}</ul>`
+
+/** Texto con URLs: Chromium solo deja clicable en el PDF lo que es un <a> de verdad. */
+const conEnlaces = (t) => esc(t).replace(/https?:\/\/\S+/g, (u) => `<a href="${u}">${u}</a>`)
 
 /* ── Páginas ─────────────────────────────────────────────────────────────── */
 
@@ -616,9 +620,10 @@ ${kv([
     ['Canal', d.soporte.canal],
   ])}
 <h3>Academia MEV — video tutoriales</h3>
-<p class="small">Antes de operar tu plataforma, dedica unos minutos a la Academia
-MEV: nuestra biblioteca de micro-tutoriales oficiales.</p>
-${ul(d.tutoriales)}
+<p class="small">Aprende a manejar tu plataforma paso a paso, en videos de 2 minutos:</p>
+${ul(d.tutoriales.map(conEnlaces))}
+${d.tutorialesAlumnos?.length ? `<p class="small"><b>Para tus alumnos nuevos</b> (compártelos tal cual, no llevan nuestra marca):</p>
+${ul(d.tutorialesAlumnos.map(conEnlaces))}` : ''}
 <h3>Tus primeros pasos</h3>
 ${ul(d.primerosPasos)}`
 }
