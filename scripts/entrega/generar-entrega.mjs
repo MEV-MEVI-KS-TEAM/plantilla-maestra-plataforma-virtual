@@ -85,9 +85,14 @@ const abortar = (msg, ayuda) => {
 }
 
 /* ── Constantes de la línea MEV ──────────────────────────────────────────── */
+// Academia MEV de las plataformas entregadas desde oct-2026. La flota sigue con
+// la playlist anterior (PLWcWYoZvoCwk): su soporte no se toca desde aquí.
 const TUTORIALES = {
-  playlist: 'https://www.youtube.com/playlist?list=PLWcWYoZvoCwk',
-  alumno: 'https://youtu.be/yWtejlC2t_U',
+  bienvenida: 'https://youtu.be/5zpq32arAaE',
+  playlist: 'https://www.youtube.com/playlist?list=PLLNJywqLhB-w',
+  postrix: 'https://www.youtube.com/playlist?list=PLD_J6ltjvKYA',
+  alumnoEstudio: 'https://youtu.be/v3XVBHS93rQ',
+  alumnoActividades: 'https://youtu.be/0bellPiURco',
 }
 const SOPORTE = {
   horario: 'Lunes a viernes · 9:00 — 18:00 (hora de México)',
@@ -849,8 +854,13 @@ const datos = {
   folioVerificable: FOLIO_VERIFICABLE,
   soporte: D.soporte || SOPORTE,
   tutoriales: [
-    `Playlist completa: ${TUTORIALES.playlist}`,
-    `"Así se estudia en tu plataforma" — compártelo con tus alumnos nuevos: ${TUTORIALES.alumno}`,
+    `Empieza aquí: ${TUTORIALES.bienvenida}`,
+    `Todos los tutoriales: ${TUTORIALES.playlist}`,
+    `POSTRIX (incluido, para difundir tu escuela en grupos): ${TUTORIALES.postrix}`,
+  ],
+  tutorialesAlumnos: [
+    `Así se estudia en tu plataforma: ${TUTORIALES.alumnoEstudio}`,
+    `Actividades para practicar: ${TUTORIALES.alumnoActividades}`,
   ],
   primerosPasos: [
     SEMANAL
@@ -1171,11 +1181,14 @@ if (!flag('solo-pdf')) {
     CUENTAS_CLIENTE
       ? `Guárdalo: ahí tienes tus accesos, también los de ${nombresDeCuentas(CUENTAS_CLIENTE, REGISTRADOR)}, y el resumen completo de tu plataforma.`
       : 'Guárdalo, ahí tienes tus accesos y el resumen completo de tu plataforma.', '')
-  L.push('🎬 ACADEMIA MEV — TUS TUTORIALES', '',
-    'Antes de empezar, dedica unos minutos a nuestros micro-tutoriales oficiales:',
-    `▶️ ${TUTORIALES.playlist}`, '',
-    'Y este compártelo con cada alumno nuevo — le explica cómo estudiar en la plataforma:',
-    `▶️ ${TUTORIALES.alumno}`, '')
+  L.push('🎬 *VIDEO TUTORIALES — ACADEMIA MEV*',
+    'Aprende a manejar tu plataforma paso a paso, en videos de 2 minutos:',
+    `▶️ Empieza aquí: ${TUTORIALES.bienvenida}`,
+    `▶️ Todos los tutoriales: ${TUTORIALES.playlist}`,
+    `▶️ POSTRIX (incluido, para difundir tu escuela en grupos): ${TUTORIALES.postrix}`,
+    '👩‍🎓 *Para tus alumnos nuevos* (compártelos tal cual, no llevan nuestra marca):',
+    `• Así se estudia en tu plataforma: ${TUTORIALES.alumnoEstudio}`,
+    `• Actividades para practicar: ${TUTORIALES.alumnoActividades}`, '')
   L.push('Cualquier duda, quedo al pendiente 🙌')
 
   const txt = path.join(SALIDA, 'ENTREGA-WHATSAPP.txt')
