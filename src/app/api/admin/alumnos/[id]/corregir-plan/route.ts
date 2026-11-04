@@ -5,6 +5,7 @@ import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { validarCorreccionPlan, mensajeCandado } from '@/lib/corregir-plan'
 import { getSiteConfig } from '@/lib/site-config'
+import { guardarEdadTutor } from '@/lib/admin/edad-tutor-alumno'
 
 // Corrige la CAPTURA del plan de estudio (nivel/carrera/modalidad) de un
 // alumno que aún no comienza. La UI esconde el botón cuando algún candado
@@ -33,7 +34,7 @@ export async function POST(
     if (!validacion.ok) {
       return NextResponse.json({ error: validacion.error }, { status: 400 })
     }
-    const { nivel, carrera, modalidad } = validacion.plan
+    const { nivel, carrera, modalidad, edadTutor } = validacion.plan
 
     const admin = createAdminClient()
     // #187: esta ruta es de ALUMNOS. Sobre personal (admin o secretario) o sobre
@@ -77,6 +78,17 @@ export async function POST(
         { error: mensajeCandado(resultado.candado ?? ''), candado: resultado.candado },
         { status: 409 },
       )
+    }
+
+    // Después de los candados: si el plan no se corrigió, tampoco se toca esto.
+    if (edadTutor) {
+      const errorEdad = await guardarEdadTutor(admin, objetivo.alumno.id, edadTutor)
+      if (errorEdad) {
+        return NextResponse.json(
+          { error: 'El plan se corrigió, pero no se guardaron la fecha de nacimiento ni los datos del tutor. Captúralos en la ficha.' },
+          { status: 500 },
+        )
+      }
     }
 
     return NextResponse.json(resultado)

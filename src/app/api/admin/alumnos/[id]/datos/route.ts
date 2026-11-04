@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
+import { primariaActiva } from '@/lib/modalidades'
+import { guardarEdadTutor, revisarEdadTutorDelAlumno } from '@/lib/admin/edad-tutor-alumno'
+import { CAMPOS_EDAD_TUTOR, type DatosEdadTutor, type EdadTutorLimpio } from '@/lib/registro-reglas'
 
 /**
  * PATCH /api/admin/alumnos/[id]/datos — edición de los datos del alumno.
@@ -18,6 +21,7 @@ import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
  *   usuarios   -> nombre, apellidos, email, telefono
  *   auth.users -> email  ← ES CON EL QUE SE INICIA SESIÓN
  *   (alumnos -> nivel, modalidad, carrera: NO se editan aquí, ver abajo)
+ *   alumnos    -> fecha de nacimiento y tutor, solo en un combo con Primaria
  *
  * 🛑 EL CORREO ES LA LLAVE DE ACCESO. Cambiarlo solo en `usuarios` deja al
  * alumno entrando con el viejo y viendo el nuevo en pantalla: parece que
@@ -48,7 +52,7 @@ const CAMPOS_USUARIO = ['nombre', 'apellidos', 'telefono'] as const
 const CAMPOS_PLAN = ['nivel', 'modalidad', 'carrera'] as const
 
 type Cuerpo = Partial<Record<
-  (typeof CAMPOS_USUARIO)[number] | (typeof CAMPOS_PLAN)[number] | 'email',
+  (typeof CAMPOS_USUARIO)[number] | (typeof CAMPOS_PLAN)[number] | (typeof CAMPOS_EDAD_TUTOR)[number] | 'email',
   string | null
 >>
 
@@ -81,6 +85,15 @@ export async function PATCH(
     const anterior = objetivo.alumno
     // El id tal como está en la BD: con él van Auth y la tabla.
     const alumnoId = anterior.id
+
+    // ── Edad y tutor: la regla del registro, ANTES de tocar Auth ────────────
+    // Sin Primaria encendida estas claves no se leen, como cualquier otra desconocida.
+    let edadTutor: EdadTutorLimpio | null = null
+    if (primariaActiva() && CAMPOS_EDAD_TUTOR.some(campo => campo in body)) {
+      const revision = await revisarEdadTutorDelAlumno(admin, alumnoId, body as DatosEdadTutor)
+      if (!revision.ok) return NextResponse.json({ error: revision.error }, { status: revision.status })
+      edadTutor = revision.datos
+    }
 
     // ── Correo: validar y comprobar que no lo tenga otra cuenta ─────────────
     const emailNuevo = typeof body.email === 'string' ? body.email.trim().toLowerCase() : null
@@ -118,6 +131,17 @@ export async function PATCH(
       }
     }
 
+    if (edadTutor) {
+      const errorEdad = await guardarEdadTutor(admin, alumnoId, edadTutor)
+      if (errorEdad) {
+        // Misma reversión que abajo: Auth no se queda con un correo que la tabla no tiene.
+        if (cambiaEmail && anterior.email) {
+          await admin.auth.admin.updateUserById(alumnoId, { email: anterior.email })
+        }
+        return NextResponse.json({ error: errorEdad }, { status: 500 })
+      }
+    }
+
     // ── usuarios ────────────────────────────────────────────────────────────
     const parcheUsuario: Record<string, string | null> = {}
     for (const campo of CAMPOS_USUARIO) {
@@ -146,7 +170,8 @@ export async function PATCH(
       alumno: alumnoId,
       editado_por: user.id,
       cuando: new Date().toISOString(),
-      campos: Object.keys(parcheUsuario),
+      // Solo los nombres de los campos: los valores son datos personales.
+      campos: edadTutor ? [...Object.keys(parcheUsuario), ...CAMPOS_EDAD_TUTOR] : Object.keys(parcheUsuario),
     }))
 
     return NextResponse.json({ success: true, email_de_acceso_actualizado: cambiaEmail })

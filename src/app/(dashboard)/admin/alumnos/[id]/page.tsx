@@ -13,7 +13,9 @@ import { useToast, ToastContainer } from '@/components/ui/toast'
 import { useSiteConfig } from '@/components/site-config-provider'
 // Mismos catálogos que el select de alta: el modal de corrección ofrece
 // exactamente lo que el alta ofrece, ni más ni menos.
-import { getModalidadesActivas, getModalidadesLicenciatura, getModalidadesPrimaria } from '@/lib/modalidades'
+import { getModalidadesActivas, getModalidadesLicenciatura, getModalidadesPrimaria, primariaActiva } from '@/lib/modalidades'
+import { pideEdadYTutor, revisarEdadTutor } from '@/lib/registro-reglas'
+import { CamposEdadTutor, EditarEdadTutor, valoresEdadTutor } from '@/components/admin/alumnos/CamposEdadTutor'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
 import { CursosDelAlumno } from '@/components/admin/alumnos/CursosDelAlumno'
@@ -230,7 +232,9 @@ export default function AlumnoDetallePage() {
   const [modalCorregirPlan, setModalCorregirPlan] = useState(false)
   const [corrigiendo, setCorrigiendo] = useState(false)
   const [corregirError, setCorregirError] = useState<string | null>(null)
-  const [corregirForm, setCorregirForm] = useState({ nivel: '', carrera: '', modalidad: '' })
+  const [corregirForm, setCorregirForm] = useState({ nivel: '', carrera: '', modalidad: '', ...valoresEdadTutor({}) })
+  // Fecha de nacimiento y tutor: solo en un combo con Primaria.
+  const [modalEdadTutor, setModalEdadTutor] = useState(false)
   // Documentos
   const [documentos, setDocumentos] = useState<DocumentoAdmin[]>([])
   const [docEdits, setDocEdits] = useState<Record<string, { estado: DocEstado; comentario: string }>>({})
@@ -504,6 +508,7 @@ export default function AlumnoDetallePage() {
       nivel:     alumno.nivel ?? '',
       carrera:   alumno.carrera ?? '',
       modalidad: alumno.modalidad ?? '',
+      ...valoresEdadTutor(alumno),
     })
     setModalCorregirPlan(true)
   }
@@ -517,6 +522,10 @@ export default function AlumnoDetallePage() {
       return
     }
     if (!corregirForm.modalidad) { setCorregirError('Selecciona la modalidad.'); return }
+    const revisionEdad = pideEdadYTutor(corregirForm.nivel, primariaActiva())
+      ? revisarEdadTutor(corregirForm, corregirForm.nivel)
+      : null
+    if (revisionEdad && !revisionEdad.ok) { setCorregirError(revisionEdad.error); return }
     setCorrigiendo(true)
     try {
       const res = await fetch(`/api/admin/alumnos/${id}/corregir-plan`, {
@@ -526,6 +535,7 @@ export default function AlumnoDetallePage() {
           nivel:     corregirForm.nivel,
           carrera:   corregirForm.nivel === 'licenciatura' ? corregirForm.carrera : null,
           modalidad: corregirForm.modalidad,
+          ...(revisionEdad?.ok ? revisionEdad.datos : {}),
         }),
       })
       const data = await res.json()
@@ -877,7 +887,7 @@ export default function AlumnoDetallePage() {
           )}
         </div>
         {/* Edad y tutor: solo llegan en un combo con Primaria. */}
-        {(alumno.fecha_nacimiento || alumno.tutor_nombre) && (
+        {(alumno.fecha_nacimiento || alumno.tutor_nombre || (primariaActiva() && pideEdadYTutor(alumno.nivel, true))) && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm pt-3" style={{ borderTop: '1px solid #2A2F3E' }}>
             {alumno.fecha_nacimiento && (
               <div><p style={{ color: '#94A3B8' }}>Fecha de nacimiento</p><p className="mt-0.5 font-medium" style={{ color: '#F1F5F9' }}>{alumno.fecha_nacimiento}</p></div>
@@ -887,6 +897,17 @@ export default function AlumnoDetallePage() {
             )}
             {alumno.tutor_telefono && (
               <div><p style={{ color: '#94A3B8' }}>Teléfono del tutor</p><p className="mt-0.5 font-medium" style={{ color: '#F1F5F9' }}>{alumno.tutor_telefono}</p></div>
+            )}
+            {primariaActiva() && pideEdadYTutor(alumno.nivel, true) && alumno.viewer_rol === 'ADMIN' && (
+              <div className="sm:col-span-3">
+                {!alumno.fecha_nacimiento && <p className="mb-2 text-xs" style={{ color: '#FBBF24' }}>Falta la fecha de nacimiento.</p>}
+                <button type="button" onClick={() => setModalEdadTutor(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: 'rgba(21,101,192,0.12)', color: 'var(--color-acento)', border: '1px solid rgba(21,101,192,0.25)' }}>
+                  <Pencil className="w-3.5 h-3.5" />
+                  Corregir fecha y tutor
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -1499,10 +1520,17 @@ export default function AlumnoDetallePage() {
         </div>
       )}
 
+      {modalEdadTutor && alumno && (
+        <EditarEdadTutor alumnoId={id} nivel={alumno.nivel} inicial={valoresEdadTutor(alumno)}
+          cardStyle={CARD_STYLE} inputStyle={INPUT_STYLE}
+          onCerrar={() => setModalEdadTutor(false)}
+          onGuardado={() => { setModalEdadTutor(false); showToast('Datos actualizados', 'success'); cargar() }} />
+      )}
+
       {/* Modal Corregir Plan de Estudio */}
       {modalCorregirPlan && alumno && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl" style={CARD_STYLE}>
+          <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl${primariaActiva() ? ' max-h-[90vh] overflow-y-auto' : ''}`} style={CARD_STYLE}>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-lg font-bold text-gray-100">Corregir plan de estudio</h3>
@@ -1582,6 +1610,11 @@ export default function AlumnoDetallePage() {
                   ))}
                 </select>
               </div>
+
+              {pideEdadYTutor(corregirForm.nivel, primariaActiva()) && (
+                <CamposEdadTutor valores={corregirForm} inputStyle={INPUT_STYLE}
+                  onCambio={(campo, valor) => setCorregirForm(prev => ({ ...prev, [campo]: valor }))} />
+              )}
 
               {corregirError && (
                 <div

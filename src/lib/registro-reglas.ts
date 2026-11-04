@@ -138,6 +138,9 @@ export const EDAD_MINIMA_REGISTRO = 5
 /** El plan de Primaria dice «12 años en adelante». Secundaria sigue con la general. */
 export const EDAD_MINIMA_PRIMARIA = 12
 
+/** Las cuatro columnas de `alumnos` que guardan la edad y el tutor. */
+export const CAMPOS_EDAD_TUTOR = ['fecha_nacimiento', 'tutor_nombre', 'tutor_telefono', 'tutor_parentesco'] as const
+
 /** Los parentescos que ofrece el formulario. */
 export const PARENTESCOS_TUTOR = ['Madre', 'Padre', 'Tutor o tutora legal', 'Abuela o abuelo', 'Otro familiar'] as const
 
@@ -189,6 +192,7 @@ export const MENSAJES_EDAD_TUTOR = {
   sinTutorNombre: 'El alumno es menor de 18 años: escribe el nombre de su madre, padre o tutor.',
   sinTutorTelefono: 'El alumno es menor de 18 años: escribe un teléfono de 10 dígitos de su madre, padre o tutor.',
   sinParentesco: 'El alumno es menor de 18 años: elige el parentesco de su madre, padre o tutor.',
+  noAplica:      'La fecha de nacimiento y los datos del tutor solo aplican a alumnos de Primaria y Secundaria.',
 } as const
 
 const texto = (v: unknown, max: number): string =>
@@ -233,6 +237,22 @@ export function revisarEdadTutor(
     return { ok: false, error: MENSAJES_EDAD_TUTOR.sinParentesco }
   }
   return { ok: true, datos: { fecha_nacimiento: fecha, tutor_nombre, tutor_telefono, tutor_parentesco } }
+}
+
+/**
+ * Una corrección desde la ficha: lo guardado con lo que llega encima, y la regla del
+ * registro sobre el resultado. Así corregir solo el teléfono no pierde lo demás, y
+ * quitar el nombre del tutor de un menor se rechaza igual que en el alta.
+ */
+export function revisarEdicionEdadTutor(
+  cuerpo: DatosEdadTutor,
+  fila: DatosEdadTutor & { nivel?: unknown },
+  hoy: string = hoyEnMexico(),
+): { ok: true; datos: EdadTutorLimpio } | { ok: false; error: string } {
+  if (!pideEdadYTutor(fila.nivel, true)) return { ok: false, error: MENSAJES_EDAD_TUTOR.noAplica }
+  const combinado: DatosEdadTutor = { ...fila }
+  for (const campo of CAMPOS_EDAD_TUTOR) if (campo in cuerpo) combinado[campo] = cuerpo[campo]
+  return revisarEdadTutor(combinado, fila.nivel, hoy)
 }
 
 /** Mensajes del alta del admin (D9): a él sí se le puede pedir que corrija el formulario. */

@@ -437,11 +437,16 @@ test('24. «Restaurar diseño» conserva los precios y el texto legal de Primari
 
 test('25. encendida, «Corregir plan» acepta Primaria solo con un plan suyo', () => {
   conPrimaria(() => {
-    expect(validarCorreccionPlan({ nivel: 'primaria', carrera: null, modalidad: '6_meses_pri' }))
-      .toEqual({ ok: true, plan: { nivel: 'primaria', carrera: null, modalidad: '6_meses_pri' } })
+    // Mayor de edad: la fecha basta (el tutor lo prueba primaria-revision.spec.ts).
+    const adulto = { fecha_nacimiento: '1990-01-01' }
+    expect(validarCorreccionPlan({ nivel: 'primaria', carrera: null, modalidad: '6_meses_pri', ...adulto }))
+      .toEqual({ ok: true, plan: {
+        nivel: 'primaria', carrera: null, modalidad: '6_meses_pri',
+        edadTutor: { fecha_nacimiento: '1990-01-01', tutor_nombre: null, tutor_telefono: null, tutor_parentesco: null },
+      } })
     expect(validarCorreccionPlan({ nivel: 'primaria', carrera: null, modalidad: '3_meses' }).ok).toBe(false)
     expect(validarCorreccionPlan({ nivel: 'secundaria', carrera: null, modalidad: '3_meses_pri' }).ok).toBe(false)
-    expect(validarCorreccionPlan({ nivel: 'secundaria', carrera: null, modalidad: '3_meses' }).ok).toBe(true)
+    expect(validarCorreccionPlan({ nivel: 'secundaria', carrera: null, modalidad: '3_meses', ...adulto }).ok).toBe(true)
   })
 })
 

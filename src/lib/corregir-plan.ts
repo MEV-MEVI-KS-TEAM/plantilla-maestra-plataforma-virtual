@@ -12,6 +12,13 @@ import {
   primariaActiva,
   type ModalidadPrograma,
 } from '@/lib/modalidades'
+import {
+  CAMPOS_EDAD_TUTOR,
+  pideEdadYTutor,
+  revisarEdadTutor,
+  type DatosEdadTutor,
+  type EdadTutorLimpio,
+} from '@/lib/registro-reglas'
 
 export const CAMPOS_PERMITIDOS = ['nivel', 'carrera', 'modalidad'] as const
 
@@ -26,6 +33,8 @@ export interface CorreccionPlan {
   /** Slug de carrera. Solo licenciatura; null en el resto. */
   carrera: string | null
   modalidad: string
+  /** Solo en un combo con Primaria, si el nivel nuevo es Primaria o Secundaria. */
+  edadTutor?: EdadTutorLimpio
 }
 
 export type ResultadoValidacion =
@@ -59,9 +68,11 @@ export function validarCorreccionPlan(
     return { ok: false, error: 'El cuerpo de la petición debe ser un objeto con nivel, carrera y modalidad.' }
   }
 
-  const extras = Object.keys(body).filter(
-    k => !(CAMPOS_PERMITIDOS as readonly string[]).includes(k),
-  )
+  // Edad y tutor: solo existen con el add-on. Apagado, son claves desconocidas.
+  const permitidos: readonly string[] = primariaActiva()
+    ? [...CAMPOS_PERMITIDOS, ...CAMPOS_EDAD_TUTOR]
+    : CAMPOS_PERMITIDOS
+  const extras = Object.keys(body).filter(k => !permitidos.includes(k))
   if (extras.length > 0) {
     return { ok: false, error: `Campo no permitido: ${extras.join(', ')}. Solo se aceptan nivel, carrera y modalidad.` }
   }
@@ -99,6 +110,14 @@ export function validarCorreccionPlan(
   ).map(m => m.id)
   if (typeof modalidad !== 'string' || !modalidadesValidas.includes(modalidad)) {
     return { ok: false, error: `modalidad es requerida (${modalidadesValidas.join(', ')})` }
+  }
+
+  // Pasar a Primaria, o a Secundaria con el add-on, pide lo mismo que el registro:
+  // si no, un menor queda inscrito sin tutor y el aviso de privacidad no se cumple.
+  if (pideEdadYTutor(nivelValido, primariaActiva())) {
+    const revision = revisarEdadTutor(body as DatosEdadTutor, nivelValido)
+    if (!revision.ok) return { ok: false, error: revision.error }
+    return { ok: true, plan: { nivel: nivelValido, carrera: carreraNormalizada, modalidad, edadTutor: revision.datos } }
   }
 
   return { ok: true, plan: { nivel: nivelValido, carrera: carreraNormalizada, modalidad } }
