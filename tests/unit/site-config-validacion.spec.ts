@@ -921,7 +921,7 @@ test('31. recortarAEditables: solo claves editables, modalidades completas, sin 
   // tarjeta (Bloque B, B3).
   expect(r).not.toHaveProperty('licenciaturas')
   for (const ruta of CLAVES_EDITABLES) {
-    if (ruta === 'modalidades' || ruta.startsWith('licenciaturas.')) continue
+    if (ruta === 'modalidades' || ruta.startsWith('licenciaturas.') || ruta.startsWith('primaria.')) continue
     let actual: unknown = r
     for (const seg of ruta.split('.')) actual = (actual as Record<string, unknown>)[seg]
     expect(actual, ruta).not.toBeUndefined()

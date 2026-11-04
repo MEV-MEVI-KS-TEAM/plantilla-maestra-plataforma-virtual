@@ -136,7 +136,7 @@ test('NIVELES es exactamente el CHECK de materias_nivel_check', () => {
 })
 
 test('un nivel fuera del CHECK se rechaza', () => {
-  for (const nivel of ['bachillerato', 'Secundaria', 'primaria', '', 7, null]) {
+  for (const nivel of ['bachillerato', 'Secundaria', 'Primaria', '', 7, null]) {
     const r = validarMateria({ nombre: 'Álgebra', nivel }, { crear: true })
     expect(r.ok, `aceptó nivel ${JSON.stringify(nivel)}`).toBe(false)
   }

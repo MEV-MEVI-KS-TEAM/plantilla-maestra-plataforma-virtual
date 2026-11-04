@@ -29,7 +29,7 @@ import {
 
 const TIPOS: ReadonlyArray<TipoCampo> = [
   'texto', 'textarea', 'hex', 'url', 'telefono', 'email', 'entero', 'decimal', 'lista-texto', 'lista-objetos', 'modalidades',
-  'modalidades-lic',
+  'modalidades-lic', 'modalidades-pri',
 ]
 const TIPOS_SUB: ReadonlyArray<TipoSubcampo> = ['texto', 'textarea', 'entero']
 const SECCIONES_VALIDAS: ReadonlyArray<SeccionCampo> = [
@@ -145,7 +145,7 @@ test('3. tipos y secciones válidos; toda lista tiene maxItems; lista-objetos ti
     }
 
     if (c.tipo === 'lista-texto') expect(c.max, `${c.clave}: lista-texto sin max por elemento`).toBeGreaterThan(0)
-    if (c.tipo === 'entero' || c.tipo === 'decimal' || c.tipo === 'modalidades' || c.tipo === 'modalidades-lic') {
+    if (c.tipo === 'entero' || c.tipo === 'decimal' || c.tipo === 'modalidades' || c.tipo === 'modalidades-lic' || c.tipo === 'modalidades-pri') {
       expect(c.min, `${c.clave}: sin min`).toBeDefined()
       expect(c.max, `${c.clave}: sin max`).toBeDefined()
       expect(c.min!).toBeLessThanOrEqual(c.max!)
@@ -188,6 +188,7 @@ test('4. el tipo del descriptor coincide con el tipo del default en CONFIG', () 
       }
       case 'modalidades':
       case 'modalidades-lic':
+      case 'modalidades-pri':
         expect(Array.isArray(v), c.clave).toBe(true)
         break
       default:
@@ -225,6 +226,7 @@ test('6. los defaults de config.ts caben en los límites del catálogo', () => {
           expect(m.mensualidad, `modalidades.${m.id}`).toBeLessThanOrEqual(c.max!)
         }
         break
+      case 'modalidades-pri':
       case 'modalidades-lic':
         // Un plan en 0 es «sin precio todavía»: el admin se lo pone desde el panel.
         for (const m of v as Array<{ id: string; mensualidad: unknown }>) {

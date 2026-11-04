@@ -127,7 +127,8 @@ test('guardián: las dos portadas preguntan escuelaCertifica() antes de anunciar
   const clasica = leer('src/components/landing/LandingClient.tsx')
   expect(clasica).toContain('const certifica = escuelaCertifica()')
   expect(clasica).not.toMatch(/^\s*\{ label: 'Certificación'/m)
-  expect(clasica.match(/\.\.\.\(certifica \? \[\{ label: 'Certificación'/g)?.length).toBe(2)
+  // Tres tarjetas: Primaria, Preparatoria y Secundaria.
+  expect(clasica.match(/\.\.\.\(certifica \? \[\{ label: 'Certificación'/g)?.length).toBe(3)
   const animada = leer('src/components/landing/animada/LandingAnimada.tsx')
   expect(animada).toContain('const certifica = escuelaCertifica()')
   expect(animada).toContain('const certificacion = certifica ? certificacionDe(nivel, precios) : 0')

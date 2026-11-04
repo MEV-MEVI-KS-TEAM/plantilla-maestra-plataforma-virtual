@@ -146,7 +146,7 @@ test('4. la ficha pinta la cifra que calcula el servidor, con el config publicad
   expect(ficha).not.toMatch(/\binscripcionDe\(/)
   const api = sinComentarios(leer('src/app/api/admin/alumnos/[id]/route.ts'))
   expect(api).toMatch(/import \{[^}]*\bgetSiteConfig\b[^}]*\} from '@\/lib\/site-config'/)
-  expect(api).toContain('inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg))')
+  expect(api).toContain('inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg), tablaPrimaria(cfg))')
 })
 
 test('4b. ningún consumidor de src/app le pide a inscripcionDe la inscripción de un ALUMNO', () => {
@@ -162,7 +162,7 @@ test('4c. una sola certificacionDe: la de precios-nivel.ts', () => {
   const con = archivosDe('src').filter(f => /function certificacionDe\b/.test(leer(f)))
   expect(con).toEqual(['src/lib/precios-nivel.ts'])
   const ruta = sinComentarios(leer('src/app/api/alumno/pagos/route.ts'))
-  expect(ruta).toContain('certificacion: certificacionDelAlumno(nivel, precios, lic),')
+  expect(ruta).toContain('certificacion: certificacionDelAlumno(nivel, precios, lic, pri),')
 })
 
 test('4d. precios-licenciatura.ts se puede importar desde Node: sin imports de valor, sin enum ni namespace', () => {
