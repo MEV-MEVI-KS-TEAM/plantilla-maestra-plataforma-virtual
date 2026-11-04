@@ -26,6 +26,9 @@ export function rebotaConSesion(pathname: string): boolean {
   if (pathname.startsWith('/diplomados')) return false
   if (pathname.startsWith('/api/')) return false
   if (pathname === '/validar' || pathname.startsWith('/validar/')) return false
+  // El recibo de pago que llega por WhatsApp (TICKET-2026-11-04-03): el alumno
+  // suele tener sesión abierta en el teléfono y debe ver el PDF, no su panel.
+  if (pathname.startsWith('/recibo/')) return false
   return true
 }
 
@@ -77,7 +80,10 @@ export async function updateSession(request: NextRequest) {
     // constancia es un tercero —una empresa que contrata, otra escuela— que no
     // tiene ni debe tener cuenta aquí. Sin esto el middleware las mandaría a
     // /login y la validación sería inútil.
-    '/validar', '/api/validar']
+    '/validar', '/api/validar',
+    // `/recibo/<pago>` la abre el alumno desde WhatsApp; la protege la firma del
+    // enlace (`recibo-enlace.ts`), no la sesión.
+    '/recibo/']
   const isPublicRoute = publicRoutes.some(route =>
     route === '/'
       ? request.nextUrl.pathname === '/'

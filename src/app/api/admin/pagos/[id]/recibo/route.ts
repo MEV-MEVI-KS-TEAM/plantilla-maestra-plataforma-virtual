@@ -8,6 +8,7 @@ import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { renderReciboPdf } from '@/lib/pdf/recibo-pago'
 import { mensajeRecibo, waUrl } from '@/lib/whatsapp'
 import { conceptoMensajeRecibo } from '@/lib/pagos/conceptos'
+import { firmarEnlaceRecibo } from '@/lib/pagos/recibo-enlace'
 
 // Misma ventana que las constancias (86400s = 24h): el alumno abre el link
 // desde WhatsApp, a veces horas después de recibirlo.
@@ -45,7 +46,7 @@ async function totalSemanasDe(
  * la URL wa.me con el mensaje prellenado. Staff: admin y secretario.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -174,7 +175,10 @@ export async function GET(
       alumnoNombre,
       conceptoLabel,
       montoFmt,
-      url: signed.signedUrl,
+      // El alumno recibe el enlace con el dominio de la escuela (/recibo/[id]),
+      // no la URL firmada de Storage con la ref del proyecto (TICKET-2026-11-04-03).
+      // El origen es el de la petición: el dominio desde el que trabaja el staff.
+      url: firmarEnlaceRecibo(request.nextUrl.origin, pago.id, process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''),
     })
     const whatsappUrl = waUrl(alumnoUsuario?.telefono, mensaje)
 
