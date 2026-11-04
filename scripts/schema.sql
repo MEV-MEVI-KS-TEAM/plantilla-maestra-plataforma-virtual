@@ -264,6 +264,9 @@ CASE modalidad
     WHEN '18_meses'::text THEN 18
     WHEN '24_meses'::text THEN 24
     WHEN '36_meses'::text THEN 36
+    WHEN '3_meses_pri'::text THEN 3
+    WHEN '6_meses_pri'::text THEN 6
+    WHEN '9_meses_pri'::text THEN 9
     ELSE 6
 END) STORED,
     fecha_inscripcion timestamp with time zone,
@@ -276,17 +279,26 @@ END) STORED,
     -- activarle. Guarda el id de la OFERTA (src/lib/cursos/oferta.ts), no un
     -- UUID de `cursos`: hay clientes que venden varios como paquete unico.
     curso_solicitado text,
+    -- Edad y tutor (20261104120000): solo se piden en combos con Primaria, a
+    -- alumnos de Primaria y Secundaria. NULL en el resto.
+    fecha_nacimiento date,
+    tutor_nombre text,
+    tutor_telefono text,
+    tutor_parentesco text,
     -- Con los planes de licenciatura (20260812): sin ampliarlo, dar de alta un
     -- alumno en '9_meses'+ falla con 23514 y la ruta de alta borra el usuario
     -- de Auth que acababa de crear (Bug 68).
     -- '6_meses_lic' (20260925120000): el plan de 6 meses de LICENCIATURA, con id
     -- propio porque '6_meses' es el de Sec/Prepa (Bug 121).
-    CONSTRAINT alumnos_modalidad_check CHECK ((modalidad IS NULL OR modalidad = ANY (ARRAY['3_meses'::text, '6_meses'::text, '6_meses_lic'::text, '9_meses'::text, '12_meses'::text, '18_meses'::text, '24_meses'::text, '36_meses'::text]))),
+    -- '*_pri' (20261104120000): los planes de Primaria, por la misma razón. En el
+    -- orden en que esa migración los escribe.
+    CONSTRAINT alumnos_modalidad_check CHECK ((modalidad IS NULL OR modalidad = ANY (ARRAY['12_meses'::text, '18_meses'::text, '24_meses'::text, '36_meses'::text, '3_meses'::text, '3_meses_pri'::text, '6_meses'::text, '6_meses_lic'::text, '6_meses_pri'::text, '9_meses'::text, '9_meses_pri'::text]))),
     -- 'diplomado' habilita la línea Solo-Cursos (B1). Debe coincidir con
     -- supabase/migrations/20260730120000_b1_fundacion_solo_cursos.sql
     -- ⚠️ NO copiar el CHECK de 20260812120000_licenciaturas.sql, que lo recrea
     -- SIN 'diplomado' (Bug 98 del playbook).
-    CONSTRAINT alumnos_nivel_check CHECK ((nivel = ANY (ARRAY['secundaria'::text, 'preparatoria'::text, 'licenciatura'::text, 'diplomado'::text])))
+    -- 'primaria' (20261104120000), en el orden en que esa migración lo escribe.
+    CONSTRAINT alumnos_nivel_check CHECK ((nivel = ANY (ARRAY['diplomado'::text, 'licenciatura'::text, 'preparatoria'::text, 'primaria'::text, 'secundaria'::text])))
 );
 
 --
@@ -411,7 +423,7 @@ CREATE TABLE public.materias (
     -- 20261021120000 (actividades): cuaderno completo de actividades de la
     -- materia (https). En licenciatura, la misma URL de la carrera en todas.
     cuaderno_pdf_url text,
-    CONSTRAINT materias_nivel_check CHECK ((nivel = ANY (ARRAY['secundaria'::text, 'preparatoria'::text, 'demo'::text, 'licenciatura'::text])))
+    CONSTRAINT materias_nivel_check CHECK ((nivel = ANY (ARRAY['demo'::text, 'licenciatura'::text, 'preparatoria'::text, 'primaria'::text, 'secundaria'::text])))
 );
 
 CREATE INDEX IF NOT EXISTS idx_materias_carrera
