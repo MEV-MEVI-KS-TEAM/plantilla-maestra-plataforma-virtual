@@ -32,6 +32,12 @@ const enLista = (xs) => xs.length > 1
 
 /** Los planes activos que vende un nivel. La misma regla que `planesPorNivel()`. */
 export function planesDeNivel(config, nivel) {
+  // Primaria tiene tabla propia: un plan sin `nivel` es de Sec/Prepa y no le aplica.
+  if (nivel === 'primaria') {
+    return config?.primaria?.activa === true
+      ? (config.primaria.modalidades || []).filter(m => m && typeof m === 'object' && m.activa !== false)
+      : []
+  }
   return (config?.modalidades || [])
     .filter(m => m && typeof m === 'object' && m.activa)
     .filter(m => !m.nivel || m.nivel === nivel)

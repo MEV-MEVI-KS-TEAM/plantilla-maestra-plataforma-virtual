@@ -2,6 +2,7 @@
  * create-test-student.mjs — alumno de prueba para demos y QA.
  *
  * Uso:  node --env-file=.env.local scripts/create-test-student.mjs
+ *       node --env-file=.env.local scripts/create-test-student.mjs --nivel=primaria --modalidad=3_meses_pri
  *
  * ⚠️ EL ALTA VA POR LA API DE ADMIN DE AUTH, NUNCA POR INSERT A `auth.users`.
  * Es el Bug 76 del PLAYBOOK y ya costó un incidente en VERTIX: GoTrue mapea
@@ -33,6 +34,12 @@ if (!URL || !KEY) {
 }
 
 const admin = createClient(URL, KEY, { auth: { autoRefreshToken: false, persistSession: false } })
+
+// Opcionales: el nivel y el plan del alumno de prueba. Sin ellos, Preparatoria en
+// 6 meses, como siempre.
+const argumento = (nombre) => process.argv.find(a => a.startsWith(`--${nombre}=`))?.split('=')[1]
+const NIVEL_ARG = argumento('nivel')
+const MODALIDAD_ARG = argumento('modalidad')
 
 const EMAIL     = process.env.QA_ALUMNO_EMAIL    ?? 'alumno.prueba@example.com'
 const PASSWORD  = process.env.QA_ALUMNO_PASSWORD ?? 'Test1234!'
@@ -104,8 +111,8 @@ async function main() {
   // La matrícula la asigna el trigger trg_asignar_matricula; no se envía.
   const fila = {
     id: userId,
-    nivel:               soloCursos ? 'diplomado' : 'preparatoria',
-    modalidad:           soloCursos ? null        : '6_meses',
+    nivel:               soloCursos ? 'diplomado' : (NIVEL_ARG ?? 'preparatoria'),
+    modalidad:           soloCursos ? null        : (MODALIDAD_ARG ?? '6_meses'),
     inscripcion_pagada:  false,
     meses_desbloqueados: 0,
     activo:              true,

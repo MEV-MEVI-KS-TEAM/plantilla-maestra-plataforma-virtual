@@ -559,7 +559,8 @@ if (LIC?.activas) {
 
 const nivelesPrograma = CONFIG.niveles.filter(n => n !== 'licenciatura')
 const modalidadesActivas = (CONFIG.modalidades || []).filter(m => m && typeof m === 'object' && m.activa)
-if (!modalidadesActivas.length && CONFIG.modo !== 'solo_cursos')
+// Un combo SOLO Primaria no tiene planes en `CONFIG.modalidades`: tiene los suyos.
+if (!modalidadesActivas.length && CONFIG.modo !== 'solo_cursos' && CONFIG.primaria?.activa !== true)
   abortar('CONFIG.modalidades no tiene ninguna modalidad activa.',
     'Revisa que sea un array de OBJETOS completos ({id,label,meses,mensualidad,materiasPorMes,activa}),\nno un array de cadenas.')
 
@@ -586,6 +587,12 @@ const cert = certificacionEntrega(CONFIG, certificacionDe)
 const VALIDEZ = D.validez !== false && CERTIFICA
 const mens = (nivel, m) => mensualidadDe(nivel, m, CONFIG.precios)
 const PRECIOS = { insc, mens, cert }
+// Primaria: `insc` y `cert` le darían la inscripción general y la certificación de
+// Preparatoria. Su tabla manda (CONFIG ya trae lo publicado, por `mergeSiteConfig`).
+if (CONFIG.primaria?.activa === true) {
+  PRECIOS.insc = (nivel) => (nivel === 'primaria' ? Number(CONFIG.primaria.inscripcion) || 0 : insc(nivel))
+  PRECIOS.cert = (nivel) => (nivel === 'primaria' ? (CERTIFICA ? Number(CONFIG.primaria.certificacion) || 0 : 0) : cert(nivel))
+}
 // Un nivel del programa sin NINGÚN plan mensual no se puede contar: la tabla
 // saldría vacía. (La semanal ya se detiene más abajo si no hay planes semanales.)
 const SIN_PLANES = esSemanal(CONFIG) || !modalidadesActivas.length ? [] : nivelesSinPlanes(CONFIG, nivelesPrograma)
@@ -895,7 +902,10 @@ const datos = {
   funcionalidad: [
     `Registro público de alumnos con matrícula automática (prefijo ${CONFIG.prefijoMatricula}-)`,
     'Desbloqueo progresivo del contenido, mes a mes, a tu ritmo de cobro',
-    'Video, quiz semanal y examen final en cada materia',
+    // Los videos de Primaria se publican después que sus lecciones: no se promete de más.
+    CONFIG.primaria?.activa === true
+      ? 'Lección, quiz semanal y examen final en cada materia, con video de clase donde ya está publicado'
+      : 'Video, quiz semanal y examen final en cada materia',
     VALIDEZ && (FOLIO_VERIFICABLE
       ? 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP'
       : 'Sección de Validez Oficial México + Estados Unidos, con los dos documentos oficiales que recibe el alumno'),

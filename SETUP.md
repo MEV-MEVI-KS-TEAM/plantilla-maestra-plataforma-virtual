@@ -231,6 +231,21 @@ Editar SOLO este archivo: src/lib/config.ts
    > cliente ya instalado pueden existir; no estorban (no se borran por inercia).
 10. Copiar: Project URL, anon key, service_role key
 
+### Solo si el combo vende PRIMARIA
+
+Después de `setup.sql` y de TODA la cadena de migraciones (nunca antes: B1, `20260812`
+y `20260820` recrean los CHECK de nivel con lista cerrada y abortarían con filas `primaria`):
+
+```bash
+cd scripts && psql "$CLIENT_DB_URL" -v ON_ERROR_STOP=1 -f setup-primaria.sql
+```
+
+Siembra 18 materias, 144 semanas, 432 preguntas de quiz, 180 de examen y sus actividades, y
+termina con `post-setup-primaria-check.sql`, que tiene que salir ✅. Sin video no es falla.
+En `src/lib/config.ts`: `primaria.activa: true` y `'primaria'` en `niveles` (o `['primaria']`
+en un combo solo Primaria, con los planes de `modalidades` en `activa: false`). Enciende
+también la fecha de nacimiento y los datos del tutor en el registro de Primaria y Secundaria.
+
 ## Paso 4 — Variables de entorno (5 min)
 Copiar .env.example → .env.local y llenar con datos de Supabase
 
