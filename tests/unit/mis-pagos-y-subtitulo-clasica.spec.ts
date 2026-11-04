@@ -87,7 +87,7 @@ test('5. la clásica usa esa función con sus niveles de tarjeta, su `texto` y s
   const fuente = leer('src/components/landing/LandingClient.tsx')
   if (!ES_PLANTILLA && !fuente.includes('planesSec.map')) test.skip()
   expect(fuente).toContain("const nivelesTarjetas = ['preparatoria', 'secundaria'].filter(n => (CONFIG.niveles as readonly string[]).includes(n))")
-  expect(fuente).toContain('const subtituloProgramas = subtituloProgramasClasica(nivelesTarjetas, p, L.programas_subtitulo, texto, fmt)')
+  expect(fuente).toContain(': subtituloProgramasClasica(nivelesTarjetas, p, L.programas_subtitulo, texto, fmt)')
   expect(fuente).toContain('{subtituloProgramas}')
   // El subtítulo ya no se pinta directo en ningún otro sitio.
   expect(sinComentarios(fuente)).not.toContain('{texto(L.programas_subtitulo)}')

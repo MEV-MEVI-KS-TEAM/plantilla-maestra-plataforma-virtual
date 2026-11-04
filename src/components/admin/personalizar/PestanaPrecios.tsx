@@ -84,6 +84,7 @@ import {
   inscripcionPriEditable,
   planesPriEditables,
 } from '@/lib/precios-primaria'
+import { esSoloPrimaria } from '@/lib/modalidades'
 import { unirConO } from '@/components/landing/animada/textos-licenciatura'
 import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
@@ -252,7 +253,7 @@ export function PestanaPrecios({
   const conPri = ofrecePrimaria()
   const tablaPri = (CONFIG as unknown as { primaria?: unknown }).primaria
   const planesPri = conPri ? planesPriEditables(tablaPri) : []
-  const soloPri = conPri && !(CONFIG.niveles as readonly string[]).some((n) => n === 'secundaria' || n === 'preparatoria')
+  const soloPri = esSoloPrimaria()
 
   function campoPrecio(clave: string, etiqueta?: string) {
     const campo = campoPorClave(clave)

@@ -132,5 +132,5 @@ test('guardián: las dos portadas preguntan escuelaCertifica() antes de anunciar
   const animada = leer('src/components/landing/animada/LandingAnimada.tsx')
   expect(animada).toContain('const certifica = escuelaCertifica()')
   expect(animada).toContain('const certificacion = certifica ? certificacionDe(nivel, precios) : 0')
-  expect(animada).toMatch(/\{certifica && \(\s*<div data-la-reveal className="mt-14/)
+  expect(animada).toMatch(/\{certifica && (\(!conPrimaria \|\| nivelesCertificacion\.length > 0\) && )?\(\s*<div data-la-reveal className="mt-14/)
 })

@@ -8,8 +8,9 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
-import { planesPorNivel, getDuracionOferta, getModalidadesPrimaria, getPlanLabelConDuracion, getTotalPlan,
+import { planesPorNivel, esSoloPrimaria, getDuracionOferta, getModalidadesPrimaria, getPlanLabelConDuracion, getTotalPlan,
   type ModalidadPrograma } from '@/lib/modalidades'
+import { preciosDePrimaria } from '@/lib/precios-primaria'
 import { esSemanal, unidadCuota } from '@/lib/periodicidad'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { esPaletaPersonalizada, resolverLanding } from '@/lib/landing-textos'
@@ -355,7 +356,13 @@ export interface CursoCatalogo {
  * byte.
  */
 export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[]; config: LandingConfig }) {
-  const p = config.precios
+  // Primaria: su tabla, con lo publicado si viaja. Vacía sin el add-on: sin tarjeta.
+  const tablaPri = (config.primaria ?? (CONFIG as unknown as { primaria?: unknown }).primaria) as
+    { activa?: unknown; inscripcion?: unknown; certificacion?: unknown } | undefined
+  // En un combo SOLO Primaria lo «general» de la página ({inscripcion}) es lo de su
+  // tabla: se le cobra eso. Con cualquier otra oferta, lo de siempre.
+  const soloPrimaria = esSoloPrimaria()
+  const p = soloPrimaria ? preciosDePrimaria(config.precios, tablaPri) : config.precios
   // El contacto de la escuela pasa por contacto-ui: número normalizado (con su
   // 52) y `null` si no hay WhatsApp real o no hay correo. Sin eso, cada botón
   // se pintaba con `href=""` (recarga la página) o `mailto:` sin destinatario.
@@ -378,9 +385,6 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // `nivel`, las dos listas son idénticas a `activas` y la página no cambia.
   const planesPrepa = planesPorNivel('preparatoria', mods)
   const planesSec   = planesPorNivel('secundaria', mods)
-  // Primaria: su tabla, con lo publicado si viaja. Vacía sin el add-on: sin tarjeta.
-  const tablaPri = (config.primaria ?? (CONFIG as unknown as { primaria?: unknown }).primaria) as
-    { inscripcion?: unknown; certificacion?: unknown } | undefined
   const planesPri = getModalidadesPrimaria(tablaPri)
   // 🛑 La cuota que se ANUNCIA y su unidad tienen que ser las de la escuela.
   // Sin esto, una escuela de cobro semanal publicaba la mensualidad —o un 0, si
@@ -396,6 +400,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // Nadie debe poder encender desde un panel una validez oficial que la escuela
   // no tiene, ni cambiar el folio que la persona va a teclear en el portal.
   const VALIDEZ = CONFIG.landing.validezOficial
+  // Es de Secundaria y Preparatoria: un combo que solo vende Primaria no la anuncia.
+  const validezActiva = VALIDEZ.activa && !soloPrimaria
   // ¿La escuela certifica? Con `ofreceCertificacion: false` no se anuncia (ver escuelaCertifica).
   const certifica = escuelaCertifica()
   // Con la paleta personalizada el div raíz reparte los tonos a las clases de
@@ -427,7 +433,11 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // cada nivel solo vale si esa general es la que pagan (misma guarda que la
   // animada). Con las claves por nivel vacías sale tal cual, como siempre.
   const nivelesTarjetas = ['preparatoria', 'secundaria'].filter(n => (CONFIG.niveles as readonly string[]).includes(n))
-  const subtituloProgramas = subtituloProgramasClasica(nivelesTarjetas, p, L.programas_subtitulo, texto, fmt)
+  // Con Primaria, su tarjeta lleva su inscripción: la frase común solo vale si es igual.
+  const subtituloProgramas = planesPri.length > 0
+    ? subtituloProgramasClasica(['primaria', ...nivelesTarjetas], p, L.programas_subtitulo, texto, fmt,
+        (n) => (n === 'primaria' ? preciosDePrimaria(p, tablaPri) : p))
+    : subtituloProgramasClasica(nivelesTarjetas, p, L.programas_subtitulo, texto, fmt)
   useScrollReveal()
 
   return (
@@ -602,7 +612,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                 {subtituloProgramas}
               </p>
             </div>
-            <div className={`grid ${planesPri.length > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-8`}>
+            <div className={`grid ${soloPrimaria ? 'max-w-md mx-auto' : planesPri.length > 0 && nivelesTarjetas.length > 1 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-8`}>
               {planesPri.length > 0 && (
               <div data-reveal data-d="1">
                 <Card3D className="rounded-2xl p-8 sm:p-10 h-full flex flex-col"
@@ -614,6 +624,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="space-y-3 flex-1">
                     {[
                       ...planesPri.map(m => ({ label: `Plan ${m.label}`, price: m.mensualidad, unit: '/mes' })),
+                      // Con SU inscripción, no la general (ver landing.mostrarTotalPlan abajo).
+                      ...(CONFIG.landing.mostrarTotalPlan
+                        ? planesPri.map(m => ({ label: `Total ${m.label}`, price: getTotalPlan({ ...m, activa: true }, Number(tablaPri?.inscripcion ?? 0)), unit: '' }))
+                        : []),
                       ...(certifica ? [{ label: 'Certificación', price: Number(tablaPri?.certificacion ?? 0), unit: ' único' }] : []),
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
@@ -785,7 +799,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
             🛑 Solo se pinta si la escuela COMPARTE el convenio de la red
             (`landing.validezOficial.activa`). Apagada, no existe: no se le
             atribuye a nadie una acreditación que no tiene. */}
-        {VALIDEZ.activa && (
+        {validezActiva && (
         <>
         {/* El id NO es decorativo: el mensaje de entrega que genera
             `pnpm entrega` enlaza a `<dominio>/#validez`. Sin ancla, ese enlace

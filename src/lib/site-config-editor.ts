@@ -29,12 +29,12 @@ import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConf
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { esSoloCursos } from '@/lib/modo'
 import { licenciaturaEfectiva } from '@/lib/precios-licenciatura'
-import { primariaEfectiva } from '@/lib/precios-primaria'
+import { inscripcionPrimariaDe, primariaEfectiva, type PrimariaPrecios } from '@/lib/precios-primaria'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura } from '@/lib/licenciatura-utils'
 import { nivelesTexto } from '@/lib/niveles-ui'
 import { landingAnimadaActiva } from '@/lib/landing-estilo'
 import { formatearWhatsApp, whatsappEscuelaDisponible } from '@/lib/contacto-ui'
-import type { ModalidadPrograma } from '@/lib/modalidades'
+import { esSoloPrimaria, type ModalidadPrograma } from '@/lib/modalidades'
 import {
   PALETAS,
   PARES_CONTRASTE,
@@ -344,11 +344,18 @@ export function escribirModalidad(
  * sigue la misma regla que la landing (`inscripcionDe`): la propia si la hay;
  * si no, la general. Con las claves por nivel vacías, las tres valen lo mismo
  * (Fase 2).
+ *
+ * En un combo SOLO Primaria la general que publica la landing es la de su tabla, y
+ * la vista previa tiene que decir lo mismo. Con el add-on apagado no aplica.
  */
 export function inscripcionesDeBorrador(
   base: unknown,
   overrides: SiteConfigOverrides,
 ): { inscripcion: number; inscripcionSecundaria: number; inscripcionPreparatoria: number } {
+  if (esSoloPrimaria()) {
+    const suya = inscripcionPrimariaDe(primariaDeBorrador(overrides) as PrimariaPrecios) ?? 0
+    return { inscripcion: suya, inscripcionSecundaria: suya, inscripcionPreparatoria: suya }
+  }
   const general = valorEfectivo(base, overrides, 'precios.inscripcion')
   const precios = {
     inscripcion: general,
