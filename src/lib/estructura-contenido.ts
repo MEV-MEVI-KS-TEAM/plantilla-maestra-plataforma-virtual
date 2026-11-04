@@ -14,7 +14,7 @@ import { getCarreras } from '@/lib/licenciatura-utils'
 
 /** Los del CHECK de materias_nivel_check. Cambiar aquí sin cambiar el CHECK
  *  produce un 500 opaco de Postgres en vez de un 400 legible. */
-export const NIVELES = ['secundaria', 'preparatoria', 'demo', 'licenciatura'] as const
+export const NIVELES = ['secundaria', 'preparatoria', 'demo', 'licenciatura', 'primaria'] as const
 export type Nivel = (typeof NIVELES)[number]
 
 export const CAMPOS_MATERIA = ['nombre', 'descripcion', 'nivel', 'carrera', 'color', 'icono', 'orden'] as const

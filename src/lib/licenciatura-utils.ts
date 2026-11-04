@@ -7,6 +7,11 @@ import {
   titulacionLicenciaturaDe,
   type LicenciaturaPrecios,
 } from '@/lib/precios-licenciatura'
+import {
+  certificacionPrimariaDe,
+  inscripcionPrimariaDe,
+  type PrimariaPrecios,
+} from '@/lib/precios-primaria'
 
 /**
  * Helpers del add-on de licenciaturas.
@@ -97,6 +102,7 @@ export function getPlanNombre(
   carrera?: string | null,
 ): string {
   if (nivel === 'licenciatura') return getNombreCarrera(carrera)
+  if (nivel === 'primaria')     return 'Primaria'
   if (nivel === 'preparatoria') return 'Preparatoria'
   if (nivel === 'secundaria')   return 'Secundaria'
   if (nivel === 'demo')         return 'Demo'
@@ -250,30 +256,39 @@ export function tablaLicenciaturas(cfg: object): LicenciaturaPrecios {
   return (cfg as { licenciaturas?: LicenciaturaPrecios }).licenciaturas
 }
 
+/** La tabla de Primaria de un config (el FUSIONADO). Con cast: hay clones sin el bloque. */
+export function tablaPrimaria(cfg: object): PrimariaPrecios {
+  return (cfg as { primaria?: PrimariaPrecios }).primaria
+}
+
 /**
- * La inscripción del alumno. Licenciatura: la de su programa. Si el add-on está
- * apagado o el clon la guarda con una forma propia (objeto por moneda o por
- * tarifa), la de antes: `inscripcionDe`. Cualquier otro nivel, `inscripcionDe`
+ * La inscripción del alumno. Licenciatura y Primaria: la de su programa. Si el
+ * add-on está apagado o el clon la guarda con una forma propia (objeto por moneda
+ * o por tarifa), la de antes: `inscripcionDe`. Cualquier otro nivel, `inscripcionDe`
  * sin cambio (diplomado y sin nivel siguen con la general).
  */
 export function inscripcionDelAlumno(
   nivel: string | null | undefined,
   precios: Precios,
   lic: LicenciaturaPrecios,
+  pri?: PrimariaPrecios,
 ): number {
+  if (nivel === 'primaria') return inscripcionPrimariaDe(pri) ?? inscripcionDe(nivel, precios)
   return (nivel === 'licenciatura' ? inscripcionLicenciaturaDe(lic) : null) ?? inscripcionDe(nivel, precios)
 }
 
 /**
  * La certificación del alumno (#162). Secundaria y preparatoria: la canónica.
- * Licenciatura: su titulación. Diplomado y sin nivel: 0, para no anunciarles la
- * certificación de preparatoria.
+ * Licenciatura: su titulación. Primaria: la de su tabla, nunca la de preparatoria.
+ * Diplomado y sin nivel: 0, para no anunciarles la certificación de preparatoria.
  */
 export function certificacionDelAlumno(
   nivel: string | null | undefined,
   precios: Precios,
   lic: LicenciaturaPrecios,
+  pri?: PrimariaPrecios,
 ): number {
   if (nivel === 'licenciatura') return titulacionLicenciaturaDe(lic) ?? 0
+  if (nivel === 'primaria') return certificacionPrimariaDe(pri) ?? 0
   return nivel === 'secundaria' || nivel === 'preparatoria' ? certificacionDe(nivel, precios) : 0
 }

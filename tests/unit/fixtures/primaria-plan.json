@@ -1,0 +1,337 @@
+{
+  "esquema": "primaria-plan/1",
+  "aprobado": "2026-11-04",
+  "base_interna": "Estructura de primaria del INEA (MEV AprendeINEA, Acuerdo 18/08/22). Dato interno: nunca aparece en el contenido del alumno.",
+  "semanas_por_materia": 8,
+  "semana_repaso": 8,
+  "modalidades": {
+    "3_meses_pri": { "meses": 3, "materias_por_mes": 6 },
+    "6_meses_pri": { "meses": 6, "materias_por_mes": 3 },
+    "9_meses_pri": { "meses": 9, "materias_por_mes": 2 }
+  },
+  "orden_apertura": [
+    "PRI01", "PRI06", "PRI12", "PRI02", "PRI07", "PRI17",
+    "PRI03", "PRI08", "PRI13", "PRI04", "PRI09", "PRI14",
+    "PRI05", "PRI10", "PRI15", "PRI11", "PRI16", "PRI18"
+  ],
+  "tablas_apertura": {
+    "3_meses_pri": [
+      ["PRI01", "PRI06", "PRI12", "PRI02", "PRI07", "PRI17"],
+      ["PRI03", "PRI08", "PRI13", "PRI04", "PRI09", "PRI14"],
+      ["PRI05", "PRI10", "PRI15", "PRI11", "PRI16", "PRI18"]
+    ],
+    "6_meses_pri": [
+      ["PRI01", "PRI06", "PRI12"],
+      ["PRI02", "PRI07", "PRI17"],
+      ["PRI03", "PRI08", "PRI13"],
+      ["PRI04", "PRI09", "PRI14"],
+      ["PRI05", "PRI10", "PRI15"],
+      ["PRI11", "PRI16", "PRI18"]
+    ],
+    "9_meses_pri": [
+      ["PRI01", "PRI06"],
+      ["PRI12", "PRI02"],
+      ["PRI07", "PRI17"],
+      ["PRI03", "PRI08"],
+      ["PRI13", "PRI04"],
+      ["PRI09", "PRI14"],
+      ["PRI05", "PRI10"],
+      ["PRI15", "PRI11"],
+      ["PRI16", "PRI18"]
+    ]
+  },
+  "reglas_orden": [
+    "Una materia I nunca abre despues de su II. En 3 meses PRI06 y PRI07 abren juntas, y esta bien.",
+    "PRI08 abre antes que PRI10."
+  ],
+  "materias": [
+    {
+      "codigo": "PRI01",
+      "nombre": "Lectura y comprensión I",
+      "slug": "lectura-y-comprension-1",
+      "campo": "Lengua y Comunicación 1",
+      "temas": [
+        "Para qué leemos: avisos, recados y etiquetas",
+        "Letras, sílabas y palabras: leer con fluidez",
+        "Idea principal y detalles",
+        "Textos informativos: noticias y avisos",
+        "Textos narrativos: inicio, desarrollo y final",
+        "Vocabulario: sinónimos, antónimos y diccionario",
+        "Leer instrucciones y seguir pasos",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI02",
+      "nombre": "Escritura I",
+      "slug": "escritura-1",
+      "campo": "Lengua y Comunicación 1",
+      "temas": [
+        "Mayúsculas, punto y coma",
+        "La oración: sujeto y predicado",
+        "Sustantivos, adjetivos y verbos",
+        "Escribir recados y notas",
+        "Ortografía básica: b/v, c/s/z, h",
+        "Acentuación: agudas, graves y esdrújulas",
+        "Escribir un párrafo con orden",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI03",
+      "nombre": "Lectura y comprensión II",
+      "slug": "lectura-y-comprension-2",
+      "campo": "Lengua y Comunicación 2",
+      "temas": [
+        "Tipos de texto y su propósito",
+        "Hechos y opiniones",
+        "Inferencias: leer entre líneas",
+        "Recibos, facturas y contratos sencillos",
+        "Poemas, refranes y dichos",
+        "Leer tablas, horarios y mapas",
+        "Resumen y esquema",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI04",
+      "nombre": "Escritura II",
+      "slug": "escritura-2",
+      "campo": "Lengua y Comunicación 2",
+      "temas": [
+        "La carta y el correo electrónico",
+        "Llenar formatos y solicitudes",
+        "Conectores y signos de puntuación",
+        "Narrar una experiencia personal",
+        "Redactar un aviso o anuncio",
+        "Revisar y corregir lo que escribimos",
+        "Mensajes digitales con claridad y cortesía",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI05",
+      "nombre": "Comunicación oral y documentos personales",
+      "slug": "comunicacion-oral-y-documentos-personales",
+      "campo": "Lengua y Comunicación 2",
+      "temas": [
+        "Escuchar y hablar con respeto",
+        "Presentarse y dar datos personales",
+        "Exponer una idea ante otros",
+        "Documentos de identidad: acta de nacimiento, CURP, INE",
+        "Trámites comunes y cómo pedir información",
+        "Diálogo y acuerdos ante un desacuerdo",
+        "La entrevista de trabajo",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI06",
+      "nombre": "Números y operaciones I",
+      "slug": "numeros-y-operaciones-1",
+      "campo": "Pensamiento Matemático 1",
+      "temas": [
+        "Leer y escribir números hasta millones",
+        "Valor posicional",
+        "Suma y resta con números grandes",
+        "Problemas de suma y resta de la vida diaria",
+        "Comparar y ordenar números",
+        "Redondeo y estimación",
+        "Números romanos, calendario y hora",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI07",
+      "nombre": "Números y operaciones II",
+      "slug": "numeros-y-operaciones-2",
+      "campo": "Pensamiento Matemático 1",
+      "temas": [
+        "La multiplicación y las tablas",
+        "Multiplicar por varias cifras",
+        "La división: repartir y agrupar",
+        "División con residuo",
+        "Problemas de multiplicación y división",
+        "Múltiplos, divisores, pares e impares",
+        "Orden de las operaciones",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI08",
+      "nombre": "Fracciones y decimales",
+      "slug": "fracciones-y-decimales",
+      "campo": "Pensamiento Matemático 2",
+      "temas": [
+        "Qué es una fracción",
+        "Fracciones equivalentes y comparación",
+        "Suma y resta de fracciones con igual denominador",
+        "Los decimales y el dinero",
+        "Suma y resta de decimales",
+        "Multiplicar y dividir decimales entre 10, 100 y 1000",
+        "Fracciones y decimales en recetas y medidas",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI09",
+      "nombre": "Figuras y medidas",
+      "slug": "figuras-y-medidas",
+      "campo": "Pensamiento Matemático 2",
+      "temas": [
+        "Líneas, ángulos y figuras planas",
+        "Triángulos y cuadriláteros",
+        "Perímetro",
+        "Área de cuadrados, rectángulos y triángulos",
+        "Longitud: metro, centímetro y kilómetro",
+        "Peso y capacidad: kilo, gramo, litro y mililitro",
+        "Cuerpos geométricos y volumen sencillo",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI10",
+      "nombre": "Cuentas útiles: dinero y economía familiar",
+      "slug": "cuentas-utiles-dinero-y-economia-familiar",
+      "campo": "Pensamiento Matemático 2",
+      "temas": [
+        "Billetes, monedas y cambio",
+        "Presupuesto familiar: ingresos y gastos",
+        "Porcentajes básicos: 10 %, 25 % y 50 %",
+        "Descuentos y ofertas",
+        "Ahorro y metas",
+        "Créditos e intereses: lo básico",
+        "Recibos de luz, agua y teléfono",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI11",
+      "nombre": "Información y gráficas",
+      "slug": "informacion-y-graficas",
+      "campo": "Pensamiento Matemático 2",
+      "temas": [
+        "Tablas de conteo",
+        "Gráficas de barras",
+        "Pictogramas y gráficas de línea sencillas",
+        "El promedio",
+        "La moda: el dato más frecuente",
+        "Probabilidad sencilla: seguro, posible, imposible",
+        "Leer gráficas en noticias y recibos",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI12",
+      "nombre": "Salud y cuidado personal",
+      "slug": "salud-y-cuidado-personal",
+      "campo": "Vida y Comunidad 1",
+      "temas": [
+        "El cuerpo humano: aparatos y sistemas",
+        "Alimentación correcta: el Plato del Bien Comer",
+        "Higiene y prevención de enfermedades",
+        "Vacunas y servicios de salud",
+        "Salud emocional y manejo del estrés",
+        "Prevención de adicciones",
+        "Primeros auxilios básicos",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI13",
+      "nombre": "Ciencias naturales y medio ambiente",
+      "slug": "ciencias-naturales-y-medio-ambiente",
+      "campo": "Vida y Comunidad 1",
+      "temas": [
+        "Seres vivos y su clasificación",
+        "Las plantas: partes y funciones",
+        "Animales y cadenas alimenticias",
+        "El agua y su ciclo",
+        "Estados de la materia",
+        "Reducir, reusar y reciclar",
+        "Fenómenos naturales y protección civil",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI14",
+      "nombre": "Historia de México",
+      "slug": "historia-de-mexico",
+      "campo": "Vida y Comunidad 1",
+      "temas": [
+        "Los pueblos originarios",
+        "La Conquista y el Virreinato",
+        "La Independencia",
+        "La Reforma y Benito Juárez",
+        "La Revolución Mexicana",
+        "El México del siglo XX",
+        "Símbolos patrios y fechas cívicas",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI15",
+      "nombre": "Geografía de México y mi comunidad",
+      "slug": "geografia-de-mexico-y-mi-comunidad",
+      "campo": "Vida y Comunidad 1",
+      "temas": [
+        "Mapas y puntos cardinales",
+        "Las 32 entidades federativas",
+        "Relieve, climas y regiones",
+        "Recursos naturales",
+        "Diversidad cultural y lenguas indígenas",
+        "Mi comunidad: servicios y organización",
+        "Población y migración",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI16",
+      "nombre": "Derechos, ciudadanía y convivencia",
+      "slug": "derechos-ciudadania-y-convivencia",
+      "campo": "Vida y Comunidad 1",
+      "temas": [
+        "Los derechos humanos",
+        "La Constitución y los tres poderes",
+        "Municipio, estado y federación",
+        "Derechos de niñas, niños, adolescentes y personas mayores",
+        "Igualdad y no discriminación",
+        "Participación ciudadana y el voto",
+        "Convivencia pacífica y prevención de la violencia",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI17",
+      "nombre": "Tecnología y vida digital",
+      "slug": "tecnologia-y-vida-digital",
+      "campo": "Diversificado",
+      "temas": [
+        "La computadora y el celular: partes y uso",
+        "Internet y buscadores",
+        "Correo electrónico",
+        "Trámites y servicios en línea",
+        "Seguridad digital: contraseñas y fraudes",
+        "Redes sociales con responsabilidad",
+        "Mapas, calendario y documentos",
+        "Repaso"
+      ]
+    },
+    {
+      "codigo": "PRI18",
+      "nombre": "Trabajo y emprendimiento",
+      "slug": "trabajo-y-emprendimiento",
+      "campo": "Diversificado",
+      "temas": [
+        "Mis habilidades y mi plan de vida",
+        "Buscar empleo: currículum y solicitud",
+        "Derechos laborales: contrato, salario y seguridad social",
+        "Trabajo en equipo y comunicación",
+        "Ideas de negocio",
+        "Costos, precio y ganancia",
+        "Vender y atender clientes",
+        "Repaso"
+      ]
+    }
+  ]
+}

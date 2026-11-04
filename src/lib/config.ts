@@ -244,6 +244,8 @@ export const CONFIG = {
   // Se mantiene, y se le agrega `licenciatura`, para que el día que se unifique
   // el catálogo esté completo y nadie tenga que reconstruirlo.
   documentosRequeridos: {
+    // Primaria: las reales están en TIPOS_PRIMARIA (alumno/documentos/page.tsx).
+    primaria:     ['Acta de Nacimiento', 'CURP', 'Identificación Oficial', 'Comprobante de Domicilio'],
     secundaria:   ['Certificado de Primaria', 'CURP', 'Acta de Nacimiento', 'Identificación Oficial', 'Foto de Perfil (fondo blanco)'],
     preparatoria: ['Certificado de Secundaria', 'CURP', 'Acta de Nacimiento', 'Identificación Oficial', 'Foto de Perfil (fondo blanco)'],
     // El aspirante a licenciatura acredita BACHILLERATO, no secundaria. La
@@ -600,6 +602,52 @@ export const CONFIG = {
       { id: '6_meses_lic', label: 'Intensivo 6 meses', sublabel: '6 meses', meses: 6, mensualidad: 2500, activa: true, materiasPorMes: 5.34 },
       { id: '12_meses', label: 'Ejecutivo 12 meses', sublabel: '12 meses', meses: 12, mensualidad: 1450, activa: true, materiasPorMes: 2.67 },
       { id: '18_meses', label: 'Extendido 18 meses', sublabel: '18 meses', meses: 18, mensualidad: 1050, activa: true, materiasPorMes: 1.78 },
+    ] as ReadonlyArray<{
+      id: string
+      label: string
+      /** Etiqueta corta para las tarjetas de precio (ej. '9 meses'). */
+      sublabel: string
+      meses: number
+      mensualidad: number
+      activa: boolean
+      /** Ritmo de desbloqueo: materias nuevas por mes. */
+      materiasPorMes: number
+    }>,
+  },
+
+  // === ADD-ON PRIMARIA ======================================================
+  // Programa de 18 materias para personas de 12 años en adelante.
+  //
+  // ⚠️ DEFAULT `activa: false` A PROPÓSITO, igual que `licenciaturas`: los clientes
+  // que no venden Primaria comparten esta plantilla y con este valor la app es
+  // IDÉNTICA: no aparece en el registro, ni en el panel, ni en la landing.
+  //
+  // Para encenderlo en un cliente: `activa: true`, agregar 'primaria' a `niveles`
+  // y correr `scripts/setup-primaria.sql` DESPUÉS de la cadena de migraciones
+  // (requiere `20261104120000_nivel_primaria.sql`). Con Primaria encendida el
+  // registro y el alta piden fecha de nacimiento a los alumnos de Primaria y
+  // Secundaria, y los datos del tutor a los menores de 18 años.
+  //
+  // ⚠️ `modalidades` es una tabla APARTE de `CONFIG.modalidades`, con ids propios:
+  // '3_meses' y '6_meses' abren 4 y 2 materias por mes en Sec/Prepa, y Primaria
+  // abre 6, 3 y 2. Con los mismos ids su ventana se cerraría en la materia 12 de 18
+  // (la clase del Bug 121). `src/lib/modalidades.ts` resuelve las tablas.
+  //
+  // PRECIOS SUGERIDOS: los de Secundaria en 3 y 6 meses, y 9 meses a $700. Con el
+  // add-on apagado no se ven en ningún lado. Al encenderlo, el admin los ajusta en
+  // «Personalizar mi página» (tarjeta «Primaria») o soporte los cambia aquí.
+  primaria: {
+    activa: false,
+    /** Pago único al inscribirse. */
+    inscripcion: 599,
+    /** Pago único al concluir. */
+    certificacion: 4900,
+    /** Párrafo del aviso de privacidad sobre menores. Vacío = el texto de fábrica (precios-primaria.ts). */
+    avisoMenores: '',
+    modalidades: [
+      { id: '3_meses_pri', label: '3 meses — Express', sublabel: '3 meses', meses: 3, mensualidad: 2000, activa: true, materiasPorMes: 6 },
+      { id: '6_meses_pri', label: '6 meses — Estándar', sublabel: '6 meses', meses: 6, mensualidad: 1000, activa: true, materiasPorMes: 3 },
+      { id: '9_meses_pri', label: '9 meses — Extendido', sublabel: '9 meses', meses: 9, mensualidad: 700, activa: true, materiasPorMes: 2 },
     ] as ReadonlyArray<{
       id: string
       label: string

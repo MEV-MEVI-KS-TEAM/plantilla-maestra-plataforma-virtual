@@ -30,6 +30,7 @@
 import { CONFIG } from '@/lib/config'
 import { PLACEHOLDERS, type ClaveEditable, type Placeholder } from '@/lib/site-config-core'
 import { LIMITES_LIC } from '@/lib/precios-licenciatura'
+import { LIMITES_PRI } from '@/lib/precios-primaria'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,8 @@ export type TipoCampo =
   | 'modalidades'
   /** `licenciaturas.modalidades`: objeto por id de plan de LICENCIATURA, solo `mensualidad`. */
   | 'modalidades-lic'
+  /** `primaria.modalidades`: objeto por id de plan de PRIMARIA, solo `mensualidad`. */
+  | 'modalidades-pri'
 
 export type TipoSubcampo = 'texto' | 'textarea' | 'entero'
 
@@ -489,6 +492,22 @@ export const CAMPOS: ReadonlyArray<Campo> = [
   { clave: 'licenciaturas.modalidades', seccion: 'precios', etiqueta: 'Planes de licenciatura', tipo: 'modalidades-lic',
     min: LIMITES.precioNivelMin, max: LIMITES.precioMax,
     ayuda: 'Por plan: solo la mensualidad. La duración y las materias por mes no se editan.' },
+
+  // ── Primaria: sus precios y el párrafo sobre menores, en su sitio ──
+  // Solo con el add-on encendido (precios-primaria.ts). Las etiquetas NO son
+  // «Inscripción» ni «Mensualidad» a secas: la e2e del editor busca esos rótulos.
+  { clave: 'primaria.inscripcion', seccion: 'precios', etiqueta: 'Inscripción de Primaria', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES_PRI.precioMax,
+    ayuda: 'Pago único al inscribirse. Sin centavos.' },
+  { clave: 'primaria.certificacion', seccion: 'precios', etiqueta: 'Certificación de Primaria', tipo: 'entero',
+    min: LIMITES.precioNivelMin, max: LIMITES_PRI.precioMax,
+    ayuda: 'Pago único al concluir. No entra en el total del plan.' },
+  { clave: 'primaria.modalidades', seccion: 'precios', etiqueta: 'Planes de Primaria', tipo: 'modalidades-pri',
+    min: LIMITES.precioNivelMin, max: LIMITES_PRI.precioMax,
+    ayuda: 'Por plan: solo la mensualidad. La duración y las materias por mes no se editan.' },
+  { clave: 'primaria.avisoMenores', seccion: 'precios', etiqueta: 'Aviso de privacidad: datos de menores', tipo: 'textarea',
+    max: LIMITES_PRI.avisoMenoresMax, opcional: true,
+    ayuda: 'Vacío = el texto de fábrica. Es un texto legal: revísalo con quien lleve lo legal de tu escuela antes de vender.' },
 
   // ── Tipo de cambio (solo se pinta si la escuela NO cobra en pesos) ──
   { clave: 'tipoCambioMXN', seccion: 'precios', etiqueta: 'Tipo de cambio (pesos por dólar)', tipo: 'decimal',

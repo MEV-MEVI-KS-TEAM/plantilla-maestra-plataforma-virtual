@@ -8,6 +8,8 @@ import { getCarreras } from '@/lib/licenciatura-utils'
 import {
   getModalidadesActivas,
   getModalidadesLicenciatura,
+  getModalidadesPrimaria,
+  primariaActiva,
   type ModalidadPrograma,
 } from '@/lib/modalidades'
 
@@ -15,8 +17,9 @@ export const CAMPOS_PERMITIDOS = ['nivel', 'carrera', 'modalidad'] as const
 
 // Los mismos valores del select de alta (admin/alumnos). 'diplomado' NO entra:
 // esa línea no usa plan de programa y su captura no se corrige por aquí.
+// 'primaria' tampoco está en la lista: se suma solo con el add-on encendido.
 export const NIVELES_CORREGIBLES = ['secundaria', 'preparatoria', 'licenciatura'] as const
-export type NivelCorregible = (typeof NIVELES_CORREGIBLES)[number]
+export type NivelCorregible = (typeof NIVELES_CORREGIBLES)[number] | 'primaria'
 
 export interface CorreccionPlan {
   nivel: NivelCorregible
@@ -65,8 +68,11 @@ export function validarCorreccionPlan(
 
   const { nivel, carrera, modalidad } = body as Record<string, unknown>
 
-  if (typeof nivel !== 'string' || !(NIVELES_CORREGIBLES as readonly string[]).includes(nivel)) {
-    return { ok: false, error: `nivel es requerido (${NIVELES_CORREGIBLES.join(', ')})` }
+  const corregibles: readonly string[] = primariaActiva()
+    ? ['primaria', ...NIVELES_CORREGIBLES]
+    : NIVELES_CORREGIBLES
+  if (typeof nivel !== 'string' || !corregibles.includes(nivel)) {
+    return { ok: false, error: `nivel es requerido (${corregibles.join(', ')})` }
   }
   const nivelValido = nivel as NivelCorregible
 
@@ -84,9 +90,12 @@ export function validarCorreccionPlan(
   }
 
   // Mismas funciones que el select de alta: el catálogo de modalidades depende
-  // del nivel elegido.
+  // del nivel elegido. Primaria va por su tabla: con '3_meses' abriría 4 materias
+  // por mes y se cerraría en la 12 de 18.
   const modalidadesValidas = (
-    nivelValido === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(mods)
+    nivelValido === 'licenciatura' ? getModalidadesLicenciatura()
+      : nivelValido === 'primaria' ? getModalidadesPrimaria()
+      : getModalidadesActivas(mods)
   ).map(m => m.id)
   if (typeof modalidad !== 'string' || !modalidadesValidas.includes(modalidad)) {
     return { ok: false, error: `modalidad es requerida (${modalidadesValidas.join(', ')})` }

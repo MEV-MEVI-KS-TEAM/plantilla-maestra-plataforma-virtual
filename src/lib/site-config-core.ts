@@ -31,6 +31,7 @@ import {
 } from '@/lib/contacto-ui'
 import { CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import { licenciaturaEfectiva, type OverrideLicenciaturas } from '@/lib/precios-licenciatura'
+import { primariaEfectiva, type OverridePrimaria } from '@/lib/precios-primaria'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -273,7 +274,13 @@ export const CLAVES_EDITABLES = [
   'licenciaturas.inscripcion',
   'licenciaturas.certificacion',
   'licenciaturas.modalidades',
-] as const satisfies ReadonlyArray<RutasHoja<SiteConfig> | RutaLicenciatura>
+  // Primaria: sus precios y el párrafo del aviso de privacidad sobre menores. Igual
+  // que licenciatura, se aplican con `primariaEfectiva` (precios-primaria.ts).
+  'primaria.inscripcion',
+  'primaria.certificacion',
+  'primaria.modalidades',
+  'primaria.avisoMenores',
+] as const satisfies ReadonlyArray<RutasHoja<SiteConfig> | RutaLicenciatura | RutaPrimaria>
 
 /**
  * Las rutas de precio de licenciatura, fuera de `RutasHoja` A PROPÓSITO: un
@@ -283,6 +290,9 @@ export const CLAVES_EDITABLES = [
  * tratan aparte y no aplican nada sobre una forma propia (fail-closed).
  */
 type RutaLicenciatura = 'licenciaturas.inscripcion' | 'licenciaturas.certificacion' | 'licenciaturas.modalidades'
+
+/** Las rutas de Primaria, fuera de `RutasHoja` por la misma razón: hay clones sin el bloque. */
+type RutaPrimaria = 'primaria.inscripcion' | 'primaria.certificacion' | 'primaria.modalidades' | 'primaria.avisoMenores'
 
 export type ClaveEditable = (typeof CLAVES_EDITABLES)[number]
 
@@ -381,6 +391,8 @@ export interface SiteConfigOverrides {
    * la tabla de LICENCIATURA, no el de Sec/Prepa. Ver precios-licenciatura.ts.
    */
   licenciaturas?: OverrideLicenciaturas
+  /** Precios de Primaria y el párrafo sobre menores. Ver precios-primaria.ts. */
+  primaria?: OverridePrimaria
 }
 
 // ─── Utilidades internas ─────────────────────────────────────────────────────
@@ -946,6 +958,7 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta === 'modalidades') continue // semántica aparte, abajo
     if (ruta.startsWith('licenciaturas.')) continue // su propia regla, abajo
+    if (ruta.startsWith('primaria.')) continue // su propia regla, abajo
     const valor = leerRuta(overrides, ruta)
     if (valor === undefined || valor === null) continue
     const actual = leerRuta(resultado, ruta)
@@ -982,6 +995,11 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
   const lic = destino.licenciaturas
   const efectiva = licenciaturaEfectiva(lic, overrides.licenciaturas)
   if (efectiva !== lic) destino.licenciaturas = efectiva
+
+  // Primaria: la misma idea, y tampoco pasa por `derivarAliasPrecios`.
+  const pri = destino.primaria
+  const priEfectiva = primariaEfectiva(pri, overrides.primaria)
+  if (priEfectiva !== pri) destino.primaria = priEfectiva
 
   return derivarAliasPrecios(resultado, aplicados)
 }
@@ -1081,6 +1099,14 @@ export type LicenciaturaLanding = DeepReadonly<{
   modalidades: unknown
 }>
 
+/** Lo mismo para Primaria, con su bandera `activa`. */
+export type PrimariaLanding = DeepReadonly<{
+  activa: unknown
+  inscripcion: unknown
+  certificacion: unknown
+  modalidades: unknown
+}>
+
 /**
  * Lo que recibe la LANDING pública: el recorte público + `landing`.
  *
@@ -1096,6 +1122,8 @@ export type LicenciaturaLanding = DeepReadonly<{
 export type LandingConfig = PublicSiteConfig & {
   landing: DeepReadonly<SiteConfig['landing']>
   licenciaturas?: LicenciaturaLanding
+  /** Igual que `licenciaturas`: solo viaja si el admin publicó precios de Primaria. */
+  primaria?: PrimariaLanding
 }
 
 /** Precios y planes de un bloque de licenciatura, en la forma que lee la landing. */
@@ -1109,6 +1137,11 @@ function proyeccionLicenciatura(lic: unknown): LicenciaturaLanding | undefined {
   }
 }
 
+function proyeccionPrimaria(pri: unknown): PrimariaLanding | undefined {
+  if (!esObjetoPlano(pri)) return undefined
+  return { activa: pri.activa, inscripcion: pri.inscripcion, certificacion: pri.certificacion, modalidades: pri.modalidades }
+}
+
 /**
  * `toPublicSiteConfig` + `landing` (+ `licenciaturas` si hay precios publicados).
  * Mismas reglas que aquél: no clona, comparte referencias con `cfg` (que es
@@ -1118,7 +1151,15 @@ export function toLandingConfig(cfg: SiteConfig): LandingConfig {
   const efectiva = proyeccionLicenciatura((cfg as unknown as ObjetoPlano).licenciaturas)
   const deFabrica = proyeccionLicenciatura((CONFIG as unknown as ObjetoPlano).licenciaturas)
   const publicada = efectiva !== undefined && JSON.stringify(efectiva) !== JSON.stringify(deFabrica)
-  return { ...toPublicSiteConfig(cfg), landing: cfg.landing, ...(publicada ? { licenciaturas: efectiva } : {}) }
+  const priEfectiva = proyeccionPrimaria((cfg as unknown as ObjetoPlano).primaria)
+  const priFabrica = proyeccionPrimaria((CONFIG as unknown as ObjetoPlano).primaria)
+  const priPublicada = priEfectiva !== undefined && JSON.stringify(priEfectiva) !== JSON.stringify(priFabrica)
+  return {
+    ...toPublicSiteConfig(cfg),
+    landing: cfg.landing,
+    ...(publicada ? { licenciaturas: efectiva } : {}),
+    ...(priPublicada ? { primaria: priEfectiva } : {}),
+  }
 }
 
 // ─── Placeholders de los textos de la landing ────────────────────────────────

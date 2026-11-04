@@ -47,6 +47,13 @@ import {
   planesLicEditables,
   titulacionLicEditable,
 } from '@/lib/precios-licenciatura'
+import {
+  LIMITES_PRI,
+  bloquePriEditable,
+  certificacionPriEditable,
+  inscripcionPriEditable,
+  planesPriEditables,
+} from '@/lib/precios-primaria'
 
 // ─── Tipos públicos ──────────────────────────────────────────────────────────
 
@@ -697,6 +704,9 @@ const esquemaOverrideModalidadLic = z.strictObject({
 /** La tabla de licenciatura de la base, con cast: hay clones sin el bloque. */
 const licDe = (base: SiteConfig): unknown => (base as unknown as { licenciaturas?: unknown }).licenciaturas
 
+/** La tabla de Primaria de la base, con cast: hay clones sin el bloque. */
+const priDe = (base: SiteConfig): unknown => (base as unknown as { primaria?: unknown }).primaria
+
 /** Una entrada del mapa que no cambia nada: `null`, `{}` o `{ mensualidad: null }`. */
 const sinEfecto = (ov: unknown): boolean =>
   ov === null || ov === undefined || (esObjetoPlano(ov) && Object.values(ov).every((x) => x === null || x === undefined))
@@ -719,13 +729,31 @@ function validarModalidadesLic(
   campo: Campo,
   base: SiteConfig,
 ): Limpio<Record<string, { mensualidad: number }>> | Fallo {
-  const raiz = 'licenciaturas.modalidades'
+  return validarMapaDePlanes(valor, campo, 'licenciaturas.modalidades', planesLicEditables(licDe(base)).map((m) => m.id), 'licenciatura')
+}
+
+/** `primaria.modalidades`: la misma regla, con los planes `*_pri`. */
+function validarModalidadesPri(
+  valor: unknown,
+  campo: Campo,
+  base: SiteConfig,
+): Limpio<Record<string, { mensualidad: number }>> | Fallo {
+  return validarMapaDePlanes(valor, campo, 'primaria.modalidades', planesPriEditables(priDe(base)).map((m) => m.id), 'Primaria')
+}
+
+function validarMapaDePlanes(
+  valor: unknown,
+  campo: Campo,
+  raiz: string,
+  editables: readonly string[],
+  programa: string,
+): Limpio<Record<string, { mensualidad: number }>> | Fallo {
   if (!esObjetoPlano(valor)) return fallo(`El campo ${campo.etiqueta} debe ser un objeto por id de plan`, raiz)
   const min = campo.min ?? LIMITES.precioNivelMin
   const max = campo.max ?? LIMITES.precioMax
   // Solo los planes que se pueden publicar: activos, con la forma estándar y
   // sin los `*_dip` de los diplomados montados en el riel.
-  const ids = new Set(planesLicEditables(licDe(base)).map((m) => m.id))
+  const ids = new Set(editables)
   const salida: Record<string, { mensualidad: number }> = {}
 
   for (const id of Object.keys(valor)) {
@@ -735,7 +763,7 @@ function validarModalidadesLic(
     // Quitar un override (o mandar uno vacío) no cambia nada: da igual si el
     // plan existe. Así la respuesta no depende de si la tabla es editable.
     if (sinEfecto(ov)) continue
-    if (!ids.has(id)) return fallo(`Plan de licenciatura desconocido: ${id}`, clave)
+    if (!ids.has(id)) return fallo(`Plan de ${programa} desconocido: ${id}`, clave)
     if (esObjetoPlano(ov)) {
       for (const k of Object.keys(ov)) {
         if (CLAVES_PROHIBIDAS.has(k)) return fallo(`Clave no editable: ${clave}.${k}`, `${clave}.${k}`)
@@ -798,6 +826,15 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
       return fallo(`${campo.etiqueta}: los precios de licenciatura de tu escuela no se editan desde aquí; pídeselo a soporte`, ruta)
     }
   }
+  // Primaria: solo con el add-on encendido; si no, nadie vería lo publicado.
+  if (ruta.startsWith('primaria.')) {
+    const pri = priDe(ctx.base)
+    const editable = ruta === 'primaria.inscripcion' ? inscripcionPriEditable(pri)
+      : ruta === 'primaria.certificacion' ? certificacionPriEditable(pri)
+      : bloquePriEditable(pri)
+    if (!editable && ruta === 'primaria.modalidades' && !mapaConEfecto(valor)) return { ok: true, valor: {} }
+    if (!editable) return fallo(`${campo.etiqueta}: tu escuela no vende Primaria`, ruta)
+  }
   const max = campo.max ?? Number.POSITIVE_INFINITY
 
   switch (campo.tipo) {
@@ -840,6 +877,8 @@ function validarHoja(ruta: ClaveEditable, valor: unknown, ctx: Contexto): Limpio
       return validarModalidades(valor, campo, ctx.base)
     case 'modalidades-lic':
       return validarModalidadesLic(valor, campo, ctx.base)
+    case 'modalidades-pri':
+      return validarModalidadesPri(valor, campo, ctx.base)
   }
 }
 
@@ -1037,6 +1076,8 @@ export function recortarAEditables(cfg: SiteConfig): ConfigEditable {
     // Los precios de licenciatura no viajan todavía al editor: se editan desde
     // su tarjeta (Bloque B, B3), que decide qué piezas manda y con qué forma.
     if (ruta.startsWith('licenciaturas.')) continue
+    // Primaria tampoco: su tarjeta lee la tabla de CONFIG, y el JSON del editor no cambia.
+    if (ruta.startsWith('primaria.')) continue
     const v = leerRuta(cfg, ruta)
     if (v === undefined) continue
     escribirRuta(salida, ruta, Array.isArray(v) ? JSON.parse(JSON.stringify(v)) : v)
@@ -1095,6 +1136,7 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
   for (const ruta of CLAVES_EDITABLES) {
     if (ruta === 'modalidades') continue // objeto por id, no ruta con puntos
     if (ruta.startsWith('licenciaturas.')) continue // su propia forma, abajo
+    if (ruta.startsWith('primaria.')) continue // su propia forma, abajo
     const v = leerRuta(data, ruta)
     if (v === undefined || v === null) continue
     escribirRuta(salida, ruta, Array.isArray(v) ? JSON.parse(JSON.stringify(v)) : v)
@@ -1129,6 +1171,35 @@ export function recortarOverrides(data: unknown, base?: SiteConfig): SiteConfigO
       if (Object.keys(limpias).length > 0) l.modalidades = limpias
     }
     if (Object.keys(l).length > 0) salida.licenciaturas = l
+  }
+
+  // Primaria: la misma regla. Solo lo que el PUT aceptaría.
+  const priData = data.primaria
+  if (esObjetoPlano(priData)) {
+    const priBase = base ? priDe(base) : undefined
+    const p: ObjetoPlano = {}
+    if (enteroEn(priData.inscripcion, LIMITES_PRI.min, LIMITES_PRI.precioMax) && (!base || inscripcionPriEditable(priBase))) {
+      p.inscripcion = priData.inscripcion
+    }
+    if (enteroEn(priData.certificacion, LIMITES_PRI.min, LIMITES_PRI.precioMax) && (!base || certificacionPriEditable(priBase))) {
+      p.certificacion = priData.certificacion
+    }
+    if (typeof priData.avisoMenores === 'string' && priData.avisoMenores.length <= LIMITES_PRI.avisoMenoresMax && (!base || bloquePriEditable(priBase))) {
+      p.avisoMenores = priData.avisoMenores
+    }
+    const idsPri = base ? new Set(planesPriEditables(priBase).map((m) => m.id)) : null
+    const modsPri = priData.modalidades
+    if (esObjetoPlano(modsPri)) {
+      const limpias: ObjetoPlano = {}
+      for (const id of Object.keys(modsPri)) {
+        if (CLAVES_PROHIBIDAS.has(id)) continue
+        if (idsPri && !idsPri.has(id)) continue
+        const ov = modsPri[id]
+        if (esObjetoPlano(ov) && enteroEn(ov.mensualidad, LIMITES_PRI.min, LIMITES_PRI.precioMax)) limpias[id] = { mensualidad: ov.mensualidad }
+      }
+      if (Object.keys(limpias).length > 0) p.modalidades = limpias
+    }
+    if (Object.keys(p).length > 0) salida.primaria = p
   }
 
   const mods = data.modalidades
