@@ -4629,7 +4629,7 @@ El relieve es la forma que tiene el terreno. Tiene partes altas y partes planas.
 
 - **Sierras:** cadenas de montañas con subidas pronunciadas. La Sierra Madre Occidental queda al oeste. La Sierra Madre Oriental queda al este.
 - **Altiplano:** una meseta amplia entre las dos sierras. Una meseta es un terreno alto y plano.
-- **Volcanes:** montañas con un hueco por donde sale fuego. Hay varios en el centro, como el Popocatépetl.
+- **Volcanes:** montañas que pueden arrojar lava, ceniza y gases. Hay varios en el centro, como el Popocatépetl.
 - **Llanuras:** terrenos bajos y planos en las costas.
 - **Península de Yucatán:** tierra rodeada de mar por tres lados, al sureste.
 
@@ -4670,7 +4670,7 @@ Son todo lo que la naturaleza nos da y que usamos para vivir. El agua, el suelo,
 
 **Dos tipos de recursos**
 
-- **Renovables:** vuelven a existir con el tiempo si los cuidamos. El agua y los bosques se renuevan. El Sol y el viento nunca se acaban.
+- **Renovables:** vuelven a existir con el tiempo si los cuidamos. El agua y los bosques se renuevan. El Sol y el viento no se agotan al usarlos.
 - **No renovables:** se acaban y no vuelven pronto. Por ejemplo, el petróleo y los minerales.
 
 **Recursos de México**
@@ -4796,7 +4796,7 @@ La población es el conjunto de personas que viven en un lugar. Puede ser un pue
 
 Las personas no viven repartidas por igual.
 
-- **Zonas urbanas:** ciudades muy pobladas, como la Ciudad de México y el Estado de México.
+- **Zonas urbanas:** ciudades muy pobladas, como la Ciudad de México.
 - **Zonas rurales:** pueblos y rancherías con menos habitantes y más campo. Las rancherías son pueblos muy pequeños.
 
 Muchas personas viven donde hay agua, trabajo y servicios.
@@ -6340,7 +6340,7 @@ INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opc
 INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('016f4fe9-4282-5d3b-9c56-f365988d2ed9', 'afdee67d-63b5-5bb5-97ac-65be2a35c905', '¿Qué es el relieve?', 'Cómo suele ser el tiempo en un lugar', 'La forma que tiene el terreno', 'La cantidad de lluvia de cada año', 'Una zona con rasgos parecidos', 'b', 1, 'El relieve habla de la forma del suelo: partes altas y partes planas. El tiempo de un lugar es el clima.') ON CONFLICT DO NOTHING;
 INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('46a770ed-3dbe-58f6-bfbd-2602e48c3faa', 'afdee67d-63b5-5bb5-97ac-65be2a35c905', 'Luis sube de la costa a la sierra y necesita chamarra. ¿Por qué hace más frío allá?', 'Porque llueve más cada año', 'Porque queda más lejos del mar', 'Porque el lugar está más alto', 'Porque tiene menos árboles', 'c', 2, 'La altura cambia la temperatura. Mientras más sube un lugar sobre el nivel de la costa, más frío suele hacer.') ON CONFLICT DO NOTHING;
 INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('db543313-1385-542f-9ec7-bfa35ba91d90', 'afdee67d-63b5-5bb5-97ac-65be2a35c905', '¿Qué clima tiene gran parte del norte de México?', 'Cálido', 'Seco', 'Frío', 'Templado', 'b', 3, 'En el clima seco llueve muy poco, y así es gran parte del norte. El clima cálido es el de las costas.') ON CONFLICT DO NOTHING;
-INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('cb20c472-f335-5551-9705-893e819ec327', '6f1dd0f9-a091-516b-9a66-985e9bda54c0', '¿Cuál de estos recursos se acaba y no vuelve pronto?', 'El petróleo', 'El Sol', 'El viento', 'Los bosques', 'a', 1, 'El petróleo es un recurso no renovable. El Sol y el viento nunca se acaban, y los bosques vuelven si se cuidan.') ON CONFLICT DO NOTHING;
+INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('cb20c472-f335-5551-9705-893e819ec327', '6f1dd0f9-a091-516b-9a66-985e9bda54c0', '¿Cuál de estos recursos se acaba y no vuelve pronto?', 'El petróleo', 'El Sol', 'El viento', 'Los bosques', 'a', 1, 'El petróleo es un recurso no renovable. El Sol y el viento no se agotan al usarlos, y los bosques vuelven si se cuidan.') ON CONFLICT DO NOTHING;
 INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('a2ac5bd8-74e8-50cd-92dd-d6509edba809', '6f1dd0f9-a091-516b-9a66-985e9bda54c0', '¿En qué estados se saca petróleo sobre todo?', 'Yucatán y Quintana Roo', 'Oaxaca y Chiapas', 'Durango y Chihuahua', 'Tabasco y Campeche', 'd', 2, 'El petróleo se encuentra en el Golfo de México, sobre todo frente a Tabasco y Campeche.') ON CONFLICT DO NOTHING;
 INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('db689ad6-f0ca-571e-95cb-7b4bafd5d217', '6f1dd0f9-a091-516b-9a66-985e9bda54c0', '¿Qué es lo que daña a un recurso natural?', 'Usarlo con mucho cuidado', 'Usarlo sin cuidado', 'Usarlo solo cuando hace falta', 'Usarlo sabiendo cómo cuidarlo', 'b', 3, 'Usar un recurso no es malo. Lo que lo daña es gastarlo sin cuidado, por eso conviene cerrar la llave y separar la basura.') ON CONFLICT DO NOTHING;
 INSERT INTO public.quiz_semana (id, semana_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden, explicacion) VALUES ('c8435f6f-dca4-510e-ab27-9a785cdc6acc', '9880b69a-5275-5338-87f0-1ff95fb18a20', '¿Qué es la cultura?', 'La forma de vivir de un grupo de personas', 'Las fiestas que hay en un pueblo', 'El lugar donde vive una familia', 'El conjunto de lenguas de un país', 'a', 1, 'La cultura incluye comida, música, ropa, fiestas y lengua. Por eso cada grupo de personas tiene la suya.') ON CONFLICT DO NOTHING;
