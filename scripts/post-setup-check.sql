@@ -1279,4 +1279,3 @@ SELECT
     ELSE '✅ OK (anon solo inserta donde una política TO anon lo pide; sin TRUNCATE con sesión; generar_matricula solo el servidor)'
   END AS resultado
 FROM r;
-
