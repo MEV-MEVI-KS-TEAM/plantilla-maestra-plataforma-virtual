@@ -57,7 +57,7 @@ export default function MateriasPage() {
         <div>
           <h2 className="text-xl font-bold" style={{ color: 'var(--color-primario)' }}>Mis Materias</h2>
           <p className="text-sm mt-0.5" style={{ color: '#64748B' }}>
-            {data?.nivel === 'preparatoria' ? 'Preparatoria' : data?.nivel === 'secundaria' ? 'Secundaria' : data?.nivel === 'diplomado' ? 'Curso' : 'Plan de estudios'}
+            {data?.nivel === 'primaria' ? 'Primaria' : data?.nivel === 'preparatoria' ? 'Preparatoria' : data?.nivel === 'secundaria' ? 'Secundaria' : data?.nivel === 'diplomado' ? 'Curso' : 'Plan de estudios'}
             {data?.nivel !== 'diplomado' && (<>
               {' · '}Meses desbloqueados:{' '}
               <span className="font-semibold" style={{ color: 'var(--color-primario)' }}>{data?.meses_desbloqueados ?? 0}</span>

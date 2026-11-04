@@ -2,8 +2,9 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig } from '@/lib/site-config'
-import { getNivelLabel } from '@/lib/modalidades'
-import { licenciaturasActivas } from '@/lib/licenciatura-utils'
+import { getNivelLabel, primariaActiva } from '@/lib/modalidades'
+import { licenciaturasActivas, tablaPrimaria } from '@/lib/licenciatura-utils'
+import { textoAvisoMenores } from '@/lib/precios-primaria'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
 // Los programas que la escuela vende, leídos de CONFIG.niveles (Bug 283, CÚSPIDE #285).
@@ -14,6 +15,7 @@ import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 // antes: «Secundaria o Preparatoria».
 const NIVELES_AVISO =
   getNivelLabel([
+    ...(primariaActiva() ? ['primaria'] : []),
     ...['secundaria', 'preparatoria'].filter(n => (CONFIG.niveles as readonly string[]).includes(n)),
     ...(licenciaturasActivas() ? ['licenciatura'] : []),
   ]) || 'Secundaria o Preparatoria'
@@ -39,6 +41,9 @@ export default async function AvisoPrivacidadPage() {
   // WhatsApp de la escuela por contacto-ui: normalizado, y `null` sin número
   // real. El correo, igual (`null` sin correo).
   const WHATSAPP_URL = urlWhatsAppEscuela(cfg.whatsapp)
+  // Datos de menores: solo se dice en un combo con Primaria, que es quien los pide.
+  const CON_MENORES = primariaActiva()
+  const AVISO_MENORES = CON_MENORES ? textoAvisoMenores(tablaPrimaria(cfg)) : ''
   const MAILTO       = mailtoEscuela(EMAIL)
 
   /**
@@ -122,6 +127,9 @@ export default async function AvisoPrivacidadPage() {
               <li><strong style={{ color: '#fff' }}>Datos de contacto:</strong> correo electrónico, número de teléfono/WhatsApp.</li>
               <li><strong style={{ color: '#fff' }}>Datos académicos:</strong> nivel educativo de interés, modalidad de estudio seleccionada.</li>
               <li><strong style={{ color: '#fff' }}>Documentos de inscripción:</strong> CURP, acta de nacimiento, certificados de estudios previos, identificación oficial, fotografía.</li>
+              {CON_MENORES && (
+                <li><strong style={{ color: '#fff' }}>Datos de edad y del tutor:</strong> fecha de nacimiento del alumno y, si es menor de 18 años, nombre, teléfono y parentesco de su madre, padre o tutor.</li>
+              )}
               <li><strong style={{ color: '#fff' }}>Datos de acceso a plataforma:</strong> dirección de correo electrónico y contraseña cifrada.</li>
               <li><strong style={{ color: '#fff' }}>Datos de navegación:</strong> dirección IP, tipo de dispositivo, browser, páginas visitadas (ver sección Cookies).</li>
             </ul>
@@ -129,6 +137,9 @@ export default async function AvisoPrivacidadPage() {
               No recabamos datos personales sensibles en el sentido del artículo 3 fracción VI de la LFPDPPP
               (origen racial, estado de salud, vida sexual, creencias religiosas o filosóficas, afiliación sindical o política).
             </p>
+            {CON_MENORES && (
+              <p><strong style={{ color: '#fff' }}>Datos de menores de edad:</strong> {AVISO_MENORES}</p>
+            )}
           </Section>
 
           <Section title="3. Finalidades del Tratamiento">

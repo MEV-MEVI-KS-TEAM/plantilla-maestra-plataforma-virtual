@@ -6,7 +6,7 @@ import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
 import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
 import { faltaBitacoraMes, type EventoMes } from '@/lib/meses-programa'
 import { esPersonal, reglaPatchAlumno, rolDeQuienEdita } from '@/lib/alumno-patch'
-import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
+import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas, tablaPrimaria } from '@/lib/licenciatura-utils'
 import { getSiteConfig } from '@/lib/site-config'
 import { CONFIG } from '@/lib/config'
 
@@ -177,7 +177,13 @@ export async function GET(
       duracion_meses:      duracion,
       meses_desbloqueados: a.meses_desbloqueados ?? 0,
       inscripcion_pagada:  a.inscripcion_pagada ?? false,
-      monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg)),
+      monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg), tablaPrimaria(cfg)),
+      // Edad y tutor: null salvo en un combo con Primaria. Admin y secretario los
+      // ven porque el secretario es quien contacta a la familia.
+      fecha_nacimiento:    (a.fecha_nacimiento as string | null) ?? null,
+      tutor_nombre:        (a.tutor_nombre as string | null) ?? null,
+      tutor_telefono:      (a.tutor_telefono as string | null) ?? null,
+      tutor_parentesco:    (a.tutor_parentesco as string | null) ?? null,
       sindicalizado:       Boolean(a.es_sindicalizado ?? a.sindicalizado),
       sindicato:           a.sindicato ?? null,
       // Notas internas: solo visibles para admin (el secretario recibe null)

@@ -7,7 +7,16 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, Phone, User, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { planesPorNivel, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { planesPorNivel, getModalidadesLicenciatura, getModalidadesPrimaria, primariaActiva } from '@/lib/modalidades'
+import {
+  EDAD_MAYORIA,
+  PARENTESCOS_TUTOR,
+  edadEnAnios,
+  fechaValida,
+  hoyEnMexico,
+  pideEdadYTutor,
+  revisarEdadTutor,
+} from '@/lib/registro-reglas'
 import { getCarrerasLicenciatura, getCarrerasDiplomado } from '@/lib/licenciatura-utils'
 import { getOpcionesNivel, nivelDeOpcion, esOpcionDiplomadoLic, esOpcionCurso } from '@/lib/niveles'
 import { esSoloCursos, aterrizajeAlumno } from '@/lib/modo'
@@ -272,6 +281,11 @@ export default function RegisterPage() {
   const [modalidad,       setModalidad]       = useState('')
   const [carrera,         setCarrera]         = useState('')
   const [cursoIngreso,    setCursoIngreso]    = useState('')
+  // Edad y tutor: solo en un combo con Primaria, para Primaria y Secundaria.
+  const [fechaNacimiento, setFechaNacimiento] = useState('')
+  const [tutorNombre,     setTutorNombre]     = useState('')
+  const [tutorTelefono,   setTutorTelefono]   = useState('')
+  const [tutorParentesco, setTutorParentesco] = useState('')
   const [error,           setError]           = useState<string | null>(null)
   const [loading,         setLoading]         = useState(false)
 
@@ -346,9 +360,16 @@ export default function RegisterPage() {
    * propia tabla, y de ella el panel solo publica PRECIOS (aquí no se pintan):
    * la lista de planes sigue siendo la de config.ts.
    */
-  const planesDelNivel = esLicenciatura
+  const planesDelNivel = nivel === 'primaria'
+    ? getModalidadesPrimaria()
+    : esLicenciatura
     ? getModalidadesLicenciatura()
     : planesPorNivel(nivelDeOpcion(nivel), cfg.modalidades)
+
+  // Sin Primaria encendida, `pideEdad` es false y el formulario queda como siempre.
+  const pideEdad = pideEdadYTutor(nivelDeOpcion(nivel), primariaActiva())
+  const fechaLeida = fechaValida(fechaNacimiento)
+  const esMenor = pideEdad && fechaLeida !== null && edadEnAnios(fechaLeida) < EDAD_MAYORIA
 
   /**
    * Cuando el nivel tiene UN solo plan no hay nada que preguntar: se deduce.
@@ -397,6 +418,11 @@ export default function RegisterPage() {
     if (!soloCursos && nivel && !esDiplomado && !modalidad) { setError('Selecciona la modalidad.'); return }
     // Sin carrera el alta se completa pero el alumno entra a un catálogo vacío.
     if (!soloCursos && esLicenciatura && !carrera) { setError('Selecciona tu carrera.'); return }
+    // ANTES de signUp: un 400 después deja una cuenta de Auth sin alumno (#217).
+    const revisionEdad = pideEdad
+      ? revisarEdadTutor({ fecha_nacimiento: fechaNacimiento, tutor_nombre: tutorNombre, tutor_telefono: tutorTelefono, tutor_parentesco: tutorParentesco })
+      : null
+    if (revisionEdad && !revisionEdad.ok) { setError(revisionEdad.error); return }
 
     setLoading(true)
     try {
@@ -461,6 +487,7 @@ export default function RegisterPage() {
           sindicato:        null,
           curso_solicitado: cursoIngreso || null,
           diplomado_id:     esDiplomado ? diplomadoId : null,
+          ...(revisionEdad?.ok ? revisionEdad.datos : {}),
         }),
       })
       const data = await res.json()
@@ -735,6 +762,45 @@ export default function RegisterPage() {
                   </div>
                 )}
               </div>
+
+              {pideEdad && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label text="Fecha de nacimiento del alumno" required />
+                    <input type="date" value={fechaNacimiento} max={hoyEnMexico()}
+                      onChange={e => setFechaNacimiento(e.target.value)}
+                      style={selectStyle} onFocus={onFocus} onBlur={onBlur} />
+                  </div>
+                  {esMenor && (
+                    <>
+                      <div>
+                        <Label text="Nombre de la madre, padre o tutor" required />
+                        <input type="text" value={tutorNombre} maxLength={160} autoComplete="off"
+                          onChange={e => setTutorNombre(e.target.value)}
+                          style={selectStyle} onFocus={onFocus} onBlur={onBlur} />
+                      </div>
+                      <div>
+                        <Label text="Teléfono de la madre, padre o tutor" required />
+                        <input type="tel" inputMode="numeric" value={tutorTelefono} maxLength={15} autoComplete="off"
+                          placeholder="10 dígitos"
+                          onChange={e => setTutorTelefono(e.target.value)}
+                          style={selectStyle} onFocus={onFocus} onBlur={onBlur} />
+                      </div>
+                      <div>
+                        <Label text="Parentesco" required />
+                        <select value={tutorParentesco} onChange={e => setTutorParentesco(e.target.value)}
+                          style={selectStyle} onFocus={onFocus} onBlur={onBlur}>
+                          <option value="">Selecciona…</option>
+                          {PARENTESCOS_TUTOR.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
+                      <p className="text-xs sm:col-span-2" style={{ color: '#64748B' }}>
+                        El alumno es menor de 18 años: su madre, padre o tutor autoriza esta inscripción y el uso de sus datos.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* ─── Curso de ingreso (opcional) ──────────────────────────
                   Producto de pago único, aparte del plan. Se puede llevar solo,

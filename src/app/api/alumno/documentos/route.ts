@@ -39,7 +39,8 @@ export async function GET() {
     // los mismos slots), pero se etiqueta aparte para que la pantalla pida
     // «Certificado de Bachillerato» y no «de Secundaria» — que es el nivel que
     // el aspirante a licenciatura ya acreditó.
-    const plan_nombre = a.nivel === 'secundaria'   ? 'Secundaria'
+    const plan_nombre = a.nivel === 'primaria'     ? 'Primaria'
+                      : a.nivel === 'secundaria'   ? 'Secundaria'
                       : a.nivel === 'diplomado'    ? 'Diplomado'
                       : a.nivel === 'licenciatura' ? 'Licenciatura'
                       : 'Preparatoria'
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
     const tiposValidos = [
       'acta_nacimiento', 'curp', 'certificado_primaria',
       'certificado_secundaria', 'identificacion_oficial', 'foto_perfil_doc',
+      'comprobante_domicilio',
     ]
     if (!tiposValidos.includes(tipo)) {
       return NextResponse.json({ error: 'Tipo de documento inválido' }, { status: 400 })

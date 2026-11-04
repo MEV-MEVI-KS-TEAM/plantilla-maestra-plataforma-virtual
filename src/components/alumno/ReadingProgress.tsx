@@ -28,11 +28,14 @@ interface ReadingProgressProps {
   lang: string
   onCompletada?: () => void
   yaCompletada?: boolean
+  /** Falso en una semana de Primaria sin video: el botón no promete «ver videos». */
+  conVideos?: boolean
 }
 
 export default function ReadingProgress({
   semanaId,
   lang,
+  conVideos = true,
   onCompletada,
   yaCompletada = false,
 }: ReadingProgressProps) {
@@ -248,7 +251,8 @@ export default function ReadingProgress({
               ) : (
                 <span>✓</span>
               )}
-              {lang === 'en' ? 'Mark as read — watch videos' : 'Marcar como leído — ver videos'}
+              {!conVideos ? 'Marcar como leído'
+                : lang === 'en' ? 'Mark as read — watch videos' : 'Marcar como leído — ver videos'}
             </button>
           ) : null}
         </div>

@@ -13,7 +13,7 @@ import { useToast, ToastContainer } from '@/components/ui/toast'
 import { useSiteConfig } from '@/components/site-config-provider'
 // Mismos catálogos que el select de alta: el modal de corrección ofrece
 // exactamente lo que el alta ofrece, ni más ni menos.
-import { getModalidadesActivas, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { getModalidadesActivas, getModalidadesLicenciatura, getModalidadesPrimaria } from '@/lib/modalidades'
 import { getCarreras } from '@/lib/licenciatura-utils'
 import { getOpcionesNivelAdmin } from '@/lib/niveles'
 import { CursosDelAlumno } from '@/components/admin/alumnos/CursosDelAlumno'
@@ -33,6 +33,11 @@ interface AlumnoDetalle {
   // alumno, calculada por el servidor con la config publicada (#164).
   monto_inscripcion: number
   created_at: string
+  // Edad y tutor: null salvo en un combo con Primaria.
+  fecha_nacimiento?: string | null
+  tutor_nombre?: string | null
+  tutor_telefono?: string | null
+  tutor_parentesco?: string | null
   notas_admin: string | null
   // Rol del usuario que consulta (lo calcula el servidor): 'ADMIN' | 'SECRETARIO'
   viewer_rol?: string
@@ -90,7 +95,7 @@ const fmtMoneda = (n: number) =>
 
 type DocTipo =
   | 'acta_nacimiento' | 'curp' | 'certificado_primaria'
-  | 'certificado_secundaria' | 'identificacion_oficial' | 'foto_perfil_doc'
+  | 'certificado_secundaria' | 'identificacion_oficial' | 'foto_perfil_doc' | 'comprobante_domicilio'
 
 type DocEstado = 'pendiente' | 'aprobado' | 'rechazado'
 
@@ -109,6 +114,9 @@ const DOC_TIPOS: DocTipo[] = [
   'certificado_secundaria', 'identificacion_oficial', 'foto_perfil_doc',
 ]
 
+/** Primaria no acredita estudios previos: acta, CURP, identificación y domicilio. */
+const DOC_TIPOS_PRIMARIA: DocTipo[] = ['acta_nacimiento', 'curp', 'identificacion_oficial', 'comprobante_domicilio']
+
 const DOC_LABELS: Record<DocTipo, string> = {
   acta_nacimiento:        'Acta de Nacimiento',
   curp:                   'CURP',
@@ -116,6 +124,7 @@ const DOC_LABELS: Record<DocTipo, string> = {
   certificado_secundaria: 'Certificado de Secundaria',
   identificacion_oficial: 'Identificación Oficial',
   foto_perfil_doc:        'Foto (fondo blanco)',
+  comprobante_domicilio:  'Comprobante de Domicilio',
 }
 
 /**
@@ -867,6 +876,20 @@ export default function AlumnoDetallePage() {
             <p className="mt-0.5" style={{ color: '#475569' }}>Sin teléfono</p>
           )}
         </div>
+        {/* Edad y tutor: solo llegan en un combo con Primaria. */}
+        {(alumno.fecha_nacimiento || alumno.tutor_nombre) && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm pt-3" style={{ borderTop: '1px solid #2A2F3E' }}>
+            {alumno.fecha_nacimiento && (
+              <div><p style={{ color: '#94A3B8' }}>Fecha de nacimiento</p><p className="mt-0.5 font-medium" style={{ color: '#F1F5F9' }}>{alumno.fecha_nacimiento}</p></div>
+            )}
+            {alumno.tutor_nombre && (
+              <div><p style={{ color: '#94A3B8' }}>Madre, padre o tutor</p><p className="mt-0.5 font-medium" style={{ color: '#F1F5F9' }}>{alumno.tutor_nombre}{alumno.tutor_parentesco ? ` (${alumno.tutor_parentesco})` : ''}</p></div>
+            )}
+            {alumno.tutor_telefono && (
+              <div><p style={{ color: '#94A3B8' }}>Teléfono del tutor</p><p className="mt-0.5 font-medium" style={{ color: '#F1F5F9' }}>{alumno.tutor_telefono}</p></div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Progreso de meses */}
@@ -1317,7 +1340,7 @@ export default function AlumnoDetallePage() {
           <h3 className="text-sm font-semibold text-gray-100">Documentos del Alumno</h3>
         </div>
         <div className="divide-y" style={{ borderColor: '#2A2F3E' }}>
-          {DOC_TIPOS.map(tipo => {
+          {(alumno.nivel === 'primaria' ? DOC_TIPOS_PRIMARIA : DOC_TIPOS).map(tipo => {
             const doc = documentos.find(d => d.tipo === tipo)
             const edit = doc ? docEdits[doc.id] : null
             const isSaving = doc ? savingDoc === doc.id : false
@@ -1554,7 +1577,7 @@ export default function AlumnoDetallePage() {
                   style={{ ...INPUT_STYLE, opacity: corregirForm.nivel ? 1 : 0.5 }}
                 >
                   <option value="">{corregirForm.nivel ? 'Selecciona modalidad...' : 'Primero elige nivel'}</option>
-                  {(corregirForm.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
+                  {(corregirForm.nivel === 'primaria' ? getModalidadesPrimaria() : corregirForm.nivel === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(cfg.modalidades)).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>

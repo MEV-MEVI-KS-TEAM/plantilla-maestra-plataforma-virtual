@@ -49,7 +49,8 @@ import {
 
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
-import { planesPorNivel, getDuracionLabel, getPlanLabelPublico, getPlanLabelConDuracion } from '@/lib/modalidades'
+import { planesPorNivel, getDuracionOferta, getModalidadesPrimaria, getPlanLabelPublico, getPlanLabelConDuracion, type ModalidadPrograma } from '@/lib/modalidades'
+import { preciosDePrimaria } from '@/lib/precios-primaria'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { resolverLanding } from '@/lib/landing-textos'
 // Del módulo puro, no de catalogo.ts: este componente es 'use client' y
@@ -116,7 +117,8 @@ const COLUMNAS_PROCESO: Record<number, string> = {
  * no en los textos editables. Un nivel que no esté en el mapa simplemente no
  * pinta la línea.
  */
-const PARA_QUIEN: Partial<Record<(typeof NIVELES)[number], string>> = {
+const PARA_QUIEN: Partial<Record<(typeof NIVELES)[number] | 'primaria', string>> = {
+  primaria: 'Para personas de 12 años en adelante que quieren estudiar su primaria.',
   secundaria: 'Para quien ya concluyó la primaria.',
   preparatoria: 'Para quien ya concluyó la secundaria.',
 }
@@ -196,7 +198,15 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
   const subtitulo = subtituloMarca(config.nombre, config.nombreCompleto)
   const niveles = NIVELES.filter(n => (CONFIG.niveles as readonly string[]).includes(n))
-  const planesDe = (nivel: string) => planesPorNivel(nivel, config.modalidades)
+  // Primaria: su tabla y sus cifras. Vacía sin el add-on, y entonces ni `nivelesTarjeta`
+  // ni `conPrimaria` cambian nada de lo que sigue.
+  const tablaPri = (config.primaria ?? (CONFIG as unknown as { primaria?: unknown }).primaria) as
+    { activa?: unknown; inscripcion?: unknown; certificacion?: unknown } | undefined
+  const planesPri = getModalidadesPrimaria(tablaPri) as unknown as readonly ModalidadPrograma[]
+  const conPrimaria = planesPri.length > 0
+  const nivelesTarjeta: readonly ((typeof NIVELES)[number] | 'primaria')[] = conPrimaria ? ['primaria', ...niveles] : niveles
+  const preciosDe = (nivel: string) => (nivel === 'primaria' ? preciosDePrimaria(precios, tablaPri) : precios)
+  const planesDe = (nivel: string) => (nivel === 'primaria' ? planesPri : planesPorNivel(nivel, config.modalidades))
   const nivelReferencia = niveles.includes('preparatoria') ? 'preparatoria' : (niveles[0] ?? 'preparatoria')
   const planes = planesDe(nivelReferencia)
   const nombrePlan = (m: (typeof planes)[number]) => getPlanLabelPublico(m, config.modalidades)
@@ -226,7 +236,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     planes.every(m => mensualidadDe(n, m, precios) === mensualidadDe(nivelReferencia, m, precios)))
 
   const vars = {
-    duracion: getDuracionLabel(config.modalidades),
+    duracion: getDuracionOferta(config.modalidades),
     nombre: config.nombre,
     nombreCompleto: config.nombreCompleto,
     whatsapp: config.whatsappDisplay || config.whatsapp,
@@ -267,8 +277,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const ritmosLic = hayLicenciaturas ? `${unirConO(planesLic.map(p => String(p.meses)))} meses` : ''
   /** «Secundaria y Preparatoria» · «Secundaria, Preparatoria y Licenciaturas». */
   const programasTexto = hayLicenciaturas
-    ? `${niveles.map(etiquetaNivel).join(', ')} y ${carrerasLic.length > 1 ? 'Licenciaturas' : 'Licenciatura'}`
-    : nivelesTexto(niveles)
+    ? `${nivelesTarjeta.map(etiquetaNivel).join(', ')} y ${carrerasLic.length > 1 ? 'Licenciaturas' : 'Licenciatura'}`
+    : nivelesTexto(nivelesTarjeta)
   // Textos de la sección: los automáticos de siempre, con lo que la escuela
   // haya escrito en "Textos de mi página" encima, campo por campo
   // (TICKET-2026-09-22-08). Las cifras del panel del costo no se editan.
@@ -697,11 +707,12 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
         <section id="niveles" {...marco('niveles')}>
           <div className={CONTENEDOR}>
             <Encabezado t={tNiveles} kicker={hayLicenciaturas ? 'Programas' : 'Niveles'} titulo={programasTexto}
-              bajada={hayLicenciaturas
+              bajada={hayLicenciaturas || conPrimaria
                 ? 'Estudia en línea, a tu propio ritmo, con el mismo acompañamiento en todos los programas.'
                 : 'Estudia en línea, a tu propio ritmo, con el mismo acompañamiento en los dos niveles.'} />
-            <div className={`grid gap-6 mt-12 ${hayLicenciaturas ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
-              {niveles.map((nivel, i) => {
+            <div className={`grid gap-6 mt-12 ${hayLicenciaturas || conPrimaria ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
+              {nivelesTarjeta.map((nivel, i) => {
+                const precios = preciosDe(nivel)
                 const planesNivel = planesDe(nivel)
                 // Sin certificación, no se anuncia certificación (#165): en 0 la línea no se pinta.
                 const certificacion = certifica ? certificacionDe(nivel, precios) : 0
@@ -848,7 +859,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 : `Inscripción ${ins.comun ? `de ${ins.textoComun}` : ins.textoPorNivel}. Cambia en cuánto tiempo concluyes y cuánto pagas al mes.`} />
 
             <div className="mt-12 space-y-14">
-              {niveles.map((nivel, iNivel) => {
+              {nivelesTarjeta.map((nivel, iNivel) => {
+                const precios = preciosDe(nivel)
                 const planesNivel = planesDe(nivel)
                 const totales = planesNivel.map(m => totalPlanDe(nivel, m, precios))
                 const etiquetasNivel = etiquetasPlan(planesNivel.map(m => ({

@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
-import { planesPorNivel, getDuracionLabel, getPlanLabelConDuracion, getTotalPlan,
+import { planesPorNivel, getDuracionOferta, getModalidadesPrimaria, getPlanLabelConDuracion, getTotalPlan,
   type ModalidadPrograma } from '@/lib/modalidades'
 import { esSemanal, unidadCuota } from '@/lib/periodicidad'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
@@ -378,6 +378,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // `nivel`, las dos listas son idénticas a `activas` y la página no cambia.
   const planesPrepa = planesPorNivel('preparatoria', mods)
   const planesSec   = planesPorNivel('secundaria', mods)
+  // Primaria: su tabla, con lo publicado si viaja. Vacía sin el add-on: sin tarjeta.
+  const tablaPri = (config.primaria ?? (CONFIG as unknown as { primaria?: unknown }).primaria) as
+    { inscripcion?: unknown; certificacion?: unknown } | undefined
+  const planesPri = getModalidadesPrimaria(tablaPri)
   // 🛑 La cuota que se ANUNCIA y su unidad tienen que ser las de la escuela.
   // Sin esto, una escuela de cobro semanal publicaba la mensualidad —o un 0, si
   // no la declara— con la etiqueta "/mes": el visitante calcula el costo del
@@ -403,7 +407,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // traen: el editor los ofrece en cualquier campo. Un texto sin llaves sale
   // intacto.
   const vars = {
-    duracion: getDuracionLabel(mods),
+    duracion: getDuracionOferta(mods),
     nombre: config.nombre,
     nombreCompleto: config.nombreCompleto,
     // Como se lee («33 1234 5678»), igual que la animada: no los dígitos crudos.
@@ -598,7 +602,37 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                 {subtituloProgramas}
               </p>
             </div>
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className={`grid ${planesPri.length > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-8`}>
+              {planesPri.length > 0 && (
+              <div data-reveal data-d="1">
+                <Card3D className="rounded-2xl p-8 sm:p-10 h-full flex flex-col"
+                  style={{ background: C.white, boxShadow: `0 24px 60px ${C.navy}12`, border: `1px solid ${conAlpha(C.royal, 0.12)}` }}>
+                  <div className="mb-5">
+                    <h3 className={`text-2xl font-bold ${playfair.className}`} style={{ color: C.navy }}>Primaria</h3>
+                  </div>
+                  <p className="text-xs font-semibold mb-6" style={{ color: C.royalTexto }}>Inscripción: {fmt(Number(tablaPri?.inscripcion ?? 0))}</p>
+                  <div className="space-y-3 flex-1">
+                    {[
+                      ...planesPri.map(m => ({ label: `Plan ${m.label}`, price: m.mensualidad, unit: '/mes' })),
+                      ...(certifica ? [{ label: 'Certificación', price: Number(tablaPri?.certificacion ?? 0), unit: ' único' }] : []),
+                    ].map(row => (
+                      <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
+                        style={{ background: `${C.royal}08`, border: `1px solid ${C.royal}14` }}>
+                        <span className="text-sm" style={{ color: C.navySuave }}>{row.label}</span>
+                        <span className={`text-base font-bold ${playfair.className}`} style={{ color: C.royalTexto }}>
+                          {fmt(row.price)}<span className="text-xs font-normal opacity-60">{row.unit}</span>
+                          <Equivalencia monto={row.price} style={{ color: C.navySuave }} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link href="/register" className="mt-8 block w-full text-center py-3.5 rounded-xl font-bold text-white transition-all"
+                    style={{ background: C.navy, boxShadow: `0 8px 24px ${C.navy}30` }}>
+                    {texto(L.programas_cta)}
+                  </Link>
+                </Card3D>
+              </div>
+              )}
               {(CONFIG.niveles as readonly string[]).includes('preparatoria') && (
               <div data-reveal data-d="1">
                 <Card3D className="rounded-2xl p-8 sm:p-10 h-full flex flex-col"

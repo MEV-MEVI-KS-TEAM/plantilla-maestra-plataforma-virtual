@@ -22,7 +22,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteConfig } from '@/lib/site-config'
 import { esSemanal } from '@/lib/periodicidad'
 import { modalidadPorNivel, getTotalPlan } from '@/lib/modalidades'
-import { certificacionDelAlumno, inscripcionDelAlumno, tablaLicenciaturas } from '@/lib/licenciatura-utils'
+import { certificacionDelAlumno, inscripcionDelAlumno, tablaLicenciaturas, tablaPrimaria } from '@/lib/licenciatura-utils'
 import { costoProgramaAlumno } from '@/lib/costo-programa'
 
 export const dynamic = 'force-dynamic'
@@ -101,7 +101,8 @@ export async function GET() {
     // La inscripción del PROGRAMA del alumno, de la config PUBLICADA: la propia
     // de su nivel o la general en Sec/Prepa, la de su tabla en licenciatura
     // (#164). «Mis pagos» la pinta (alumno/pagos/page.tsx, F2-6b).
-    const inscripcion = inscripcionDelAlumno(nivel, precios, lic)
+    const pri = tablaPrimaria(cfg)
+    const inscripcion = inscripcionDelAlumno(nivel, precios, lic, pri)
 
     return NextResponse.json({
       // `null` cuando el alumno no lleva calendario semanal (sin nivel, o
@@ -119,7 +120,7 @@ export async function GET() {
       inscripcion,
       total_plan:    plan ? getTotalPlan(plan, inscripcion) : 0,
       // La canónica de precios-nivel.ts (#162), y la titulación en licenciatura.
-      certificacion: certificacionDelAlumno(nivel, precios, lic),
+      certificacion: certificacionDelAlumno(nivel, precios, lic, pri),
       // #202 (D13): lo que cuesta su programa de licenciatura (null en los demás
       // niveles). La pantalla lo pinta donde el alumno no tiene calendario.
       programa:      costoProgramaAlumno({ nivel, modalidad: alumno?.modalidad, carrera: alumno?.carrera }, cfg),

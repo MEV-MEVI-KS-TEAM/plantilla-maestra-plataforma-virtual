@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
+import { primariaActiva } from '@/lib/modalidades'
 import { getSiteConfig } from '@/lib/site-config'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
@@ -115,6 +116,13 @@ export default async function TerminosCondicionesPage() {
           </Section>
 
           <Section title="2. Descripción del Servicio">
+            {primariaActiva() && (
+              <p>
+                {RAZON_SOCIAL} también ofrece un programa de <strong style={{ color: '#fff' }}>estudio en línea</strong> de
+                nivel <strong style={{ color: '#fff' }}>Primaria</strong>. La certificación de ese nivel, cuando aplique, la gestiona
+                directamente {RAZON_SOCIAL}. Si el alumno es menor de 18 años, su madre, padre o tutor acepta estos términos en su nombre.
+              </p>
+            )}
             {CERTIFICA ? (
               <>
                 <p>

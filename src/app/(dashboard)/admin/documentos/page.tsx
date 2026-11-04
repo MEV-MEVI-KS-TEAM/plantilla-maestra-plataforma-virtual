@@ -11,6 +11,7 @@ type DocTipo =
   | 'certificado_secundaria'
   | 'identificacion_oficial'
   | 'foto_perfil_doc'
+  | 'comprobante_domicilio'
 
 const DOC_LABELS: Record<string, string> = {
   acta_nacimiento: 'Acta de Nacimiento',
@@ -19,6 +20,7 @@ const DOC_LABELS: Record<string, string> = {
   certificado_secundaria: 'Certificado de Secundaria',
   identificacion_oficial: 'Identificación Oficial',
   foto_perfil_doc: 'Foto (fondo blanco)',
+  comprobante_domicilio: 'Comprobante de Domicilio',
 }
 
 /**

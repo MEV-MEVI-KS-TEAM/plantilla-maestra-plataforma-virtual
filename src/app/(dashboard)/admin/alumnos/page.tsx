@@ -4,7 +4,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, Search, Plus, X, Loader2, Eye, MessageSquare, CheckCheck, Clock, AlertCircle } from 'lucide-react'
 import { useToast, ToastContainer } from '@/components/ui/toast'
-import { planesPorNivel, getModalidadesLicenciatura } from '@/lib/modalidades'
+import { planesPorNivel, getModalidadesLicenciatura, getModalidadesPrimaria, primariaActiva } from '@/lib/modalidades'
+import {
+  EDAD_MAYORIA,
+  PARENTESCOS_TUTOR,
+  edadEnAnios,
+  fechaValida,
+  hoyEnMexico,
+  pideEdadYTutor,
+  revisarEdadTutor,
+} from '@/lib/registro-reglas'
 import { useSiteConfig } from '@/components/site-config-provider'
 // El nombre del programa lo arma la API (plan_nombre); aquí solo hacen falta
 // el catálogo de carreras y el switch del add-on.
@@ -129,7 +138,16 @@ export default function AlumnosPage() {
     modalidad: '',
     carrera: '',
     cursos_ids: [] as string[],
+    // Edad y tutor: solo en un combo con Primaria, para Primaria y Secundaria.
+    fecha_nacimiento: '',
+    tutor_nombre: '',
+    tutor_telefono: '',
+    tutor_parentesco: '',
   })
+
+  const pideEdad = pideEdadYTutor(form.nivel, primariaActiva())
+  const fechaLeida = fechaValida(form.fecha_nacimiento)
+  const esMenor = pideEdad && fechaLeida !== null && edadEnAnios(fechaLeida) < EDAD_MAYORIA
 
   // Un alumno de curso no tiene plan escolar: ni modalidad ni carrera.
   const soloCurso = esOpcionCurso(form.nivel)
@@ -179,12 +197,18 @@ export default function AlumnosPage() {
       setFormError('Selecciona al menos un curso o diplomado.')
       return
     }
+    const revisionEdad = pideEdad ? revisarEdadTutor(form) : null
+    if (revisionEdad && !revisionEdad.ok) { setFormError(revisionEdad.error); return }
     setSubmitting(true)
     try {
+      // Las claves de edad y tutor solo viajan si aplican: sin Primaria el cuerpo es el de siempre.
+      const cuerpo: Record<string, unknown> = { ...form, telefono: form.telefono || null }
+      for (const clave of ['fecha_nacimiento', 'tutor_nombre', 'tutor_telefono', 'tutor_parentesco']) delete cuerpo[clave]
+      if (revisionEdad?.ok) Object.assign(cuerpo, revisionEdad.datos)
       const res = await fetch('/api/admin/alumnos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, telefono: form.telefono || null }),
+        body: JSON.stringify(cuerpo),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -194,7 +218,7 @@ export default function AlumnosPage() {
       const nombre = form.nombre_completo
       const matricula = data.matricula ?? ''
       setModalOpen(false)
-      setForm({ nombre_completo: '', email: '', password: '', telefono: '', nivel: '', modalidad: '', carrera: '', cursos_ids: [] })
+      setForm({ nombre_completo: '', email: '', password: '', telefono: '', nivel: '', modalidad: '', carrera: '', cursos_ids: [], fecha_nacimiento: '', tutor_nombre: '', tutor_telefono: '', tutor_parentesco: '' })
       await cargarAlumnos()
       // El alta inscribe con la regla de «Asignar» (curso_inscribir): se dice qué
       // abrió cada curso y, si alguno falló, por qué (antes solo quedaba un
@@ -986,11 +1010,45 @@ export default function AlumnosPage() {
                 >
                   <option value="">{form.nivel ? 'Selecciona modalidad...' : 'Primero elige nivel'}</option>
                   {/* D9: los planes de ESE nivel (lo mismo que el registro y que valida el servidor). */}
-                  {(form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(form.nivel, cfg.modalidades)).map(m => (
+                  {(form.nivel === 'primaria' ? getModalidadesPrimaria() : form.nivel === 'licenciatura' ? getModalidadesLicenciatura() : planesPorNivel(form.nivel, cfg.modalidades)).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
               </div>
+              )}
+
+              {pideEdad && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Fecha de nacimiento</label>
+                  <input type="date" required value={form.fecha_nacimiento} max={hoyEnMexico()}
+                    onChange={e => setForm(prev => ({ ...prev, fecha_nacimiento: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={INPUT_STYLE} />
+                </div>
+              )}
+              {esMenor && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Nombre de la madre, padre o tutor</label>
+                    <input type="text" required maxLength={160} value={form.tutor_nombre}
+                      onChange={e => setForm(prev => ({ ...prev, tutor_nombre: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={INPUT_STYLE} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Teléfono del tutor</label>
+                    <input type="tel" required maxLength={15} placeholder="10 dígitos" value={form.tutor_telefono}
+                      onChange={e => setForm(prev => ({ ...prev, tutor_telefono: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={INPUT_STYLE} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium" style={{ color: '#94A3B8' }}>Parentesco</label>
+                    <select required value={form.tutor_parentesco}
+                      onChange={e => setForm(prev => ({ ...prev, tutor_parentesco: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={INPUT_STYLE}>
+                      <option value="">Selecciona...</option>
+                      {PARENTESCOS_TUTOR.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </>
               )}
 
               {formError && (

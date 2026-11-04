@@ -128,7 +128,9 @@ export async function GET() {
     })
 
     // Agrupar por nivel para el acordeón del frontend (reemplaza agrupación por mes)
-    const NIVELES = ['demo', 'preparatoria', 'secundaria']
+    // 'primaria' al FINAL: `numero` sale de esta posición, y sin materias de Primaria
+    // el grupo ni se crea, así que Sec/Prepa conservan el suyo.
+    const NIVELES = ['demo', 'preparatoria', 'secundaria', 'primaria']
     const meses = NIVELES
       .map((nivel, i) => {
         const materiasNivel = materiasConStats.filter(m => m.nivel === nivel)

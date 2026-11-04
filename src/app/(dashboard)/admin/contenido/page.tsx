@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, Award, ChevronDown, ChevronRight, Loader2, Eye, Plus, X, AlertCircle } from 'lucide-react'
 import { NIVELES } from '@/lib/estructura-contenido'
 import { getCarreras } from '@/lib/licenciatura-utils'
+import { primariaActiva } from '@/lib/modalidades'
 
 interface MateriaItem {
   id: string
@@ -41,8 +42,12 @@ const INPUT: React.CSSProperties = {
 
 const ETIQUETA_NIVEL: Record<string, string> = {
   secundaria: 'Secundaria', preparatoria: 'Preparatoria',
-  demo: 'Demo', licenciatura: 'Licenciatura',
+  demo: 'Demo', licenciatura: 'Licenciatura', primaria: 'Primaria',
 }
+
+// 'primaria' solo se ofrece con el add-on encendido: en los demás combos el
+// selector queda igual que siempre.
+const NIVELES_DEL_SELECTOR = NIVELES.filter(n => n !== 'primaria' || primariaActiva())
 
 export default function ContenidoPage() {
   const router = useRouter()
@@ -170,7 +175,7 @@ export default function ContenidoPage() {
                 {/* Sin carreras en el CONFIG, licenciatura no se puede elegir: el
                     servidor rechazaría el alta por falta de carrera y el admin
                     no sabría por qué. */}
-                {NIVELES.map(n => (
+                {NIVELES_DEL_SELECTOR.map(n => (
                   <option
                     key={n}
                     value={n}
@@ -278,6 +283,7 @@ export default function ContenidoPage() {
                         {mes.id === 'cursos-ingreso' ? '🎯'
                           : mes.id.startsWith('carrera-') ? '🎓'
                           : mes.titulo === 'Demo' ? '🎓'
+                          : mes.titulo === 'Primaria' ? '✏️'
                           : mes.titulo === 'Preparatoria' ? '📚' : '🏫'}
                       </span>
                       <div>

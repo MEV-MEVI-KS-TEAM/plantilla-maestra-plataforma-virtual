@@ -58,6 +58,7 @@ import {
   hayCambioDeTipoCambio,
   hayCambiosDeLicenciatura,
   hayCambiosDePreciosOPlanes,
+  hayCambiosDePrimaria,
   hayCambiosDeSecPrepa,
   inscripcionesDeBorrador,
   mismoContenido,
@@ -112,6 +113,7 @@ function pestanaDeClave(clave: string): IdPestana {
   if (clave.startsWith('landing.')) return 'textos'
   // `licenciaturas.modalidades.<id>` la compone el validador (Bloque B).
   if (clave.startsWith('precios.') || clave.startsWith('modalidades') || clave.startsWith('licenciaturas.')) return 'precios'
+  if (clave.startsWith('primaria.')) return 'precios'
   return 'identidad'
 }
 
@@ -589,7 +591,7 @@ export default function PersonalizarPage() {
           licenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides)
             ? estadoSeccionLicenciatura(overrides)
             : undefined,
-          soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides),
+          soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides) && !hayCambiosDePrimaria(overridesBase, overrides),
         })}
         etiquetaConfirmar="Publicar cambios"
         ocupado={publicando}

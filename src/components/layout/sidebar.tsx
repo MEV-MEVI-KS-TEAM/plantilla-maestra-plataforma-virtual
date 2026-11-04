@@ -217,7 +217,8 @@ export function Sidebar({ role, userName, avatarUrl, nivel, isOpen, onClose }: S
   // alumno de un instituto de diplomados veía «Alumno» a secas. Es estrictamente
   // aditivo: antes de B7 ningún camino podía crear un alumno con ese nivel, así
   // que no cambia lo que ve nadie en un cliente tradicional de hoy.
-  const nivelLabel = nivel === 'preparatoria' ? 'Preparatoria'
+  const nivelLabel = nivel === 'primaria' ? 'Primaria'
+    : nivel === 'preparatoria' ? 'Preparatoria'
     : nivel === 'secundaria'  ? 'Secundaria'
     // D3 (#218): el mismo nombre que la ficha, el perfil y el panel.
     : nivel === 'diplomado'   ? etiquetaNivel('diplomado')
