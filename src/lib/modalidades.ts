@@ -180,6 +180,15 @@ export function primariaActiva(): boolean {
 }
 
 /**
+ * ¿Vende Primaria y ni Secundaria ni Preparatoria? Es el combo en el que no hay nada
+ * de lo que la plantilla dice sobre certificados oficiales de esos dos niveles. Con
+ * el add-on apagado siempre es falso, aunque `niveles` venga vacío (solo cursos).
+ */
+export function esSoloPrimaria(niveles: readonly string[] = CONFIG.niveles as readonly string[]): boolean {
+  return primariaActiva() && !niveles.some(n => n === 'secundaria' || n === 'preparatoria')
+}
+
+/**
  * Modalidades de Primaria activas, para los selectores. `pri`: la tabla EFECTIVA
  * (`cfg.primaria`, con los precios publicados) para quien pinta una mensualidad.
  * Sin ella, la de CONFIG, igual que `getModalidadesLicenciatura`.

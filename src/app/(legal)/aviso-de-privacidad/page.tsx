@@ -2,7 +2,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
 import { getSiteConfig } from '@/lib/site-config'
-import { getNivelLabel, primariaActiva } from '@/lib/modalidades'
+import { esSoloPrimaria, getNivelLabel, primariaActiva } from '@/lib/modalidades'
+import { nivelesTexto } from '@/lib/niveles-ui'
 import { licenciaturasActivas, tablaPrimaria } from '@/lib/licenciatura-utils'
 import { textoAvisoMenores } from '@/lib/precios-primaria'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
@@ -58,8 +59,13 @@ export default async function AvisoPrivacidadPage() {
    *
    * Con la bandera en `true` —el default— el texto visible es el de siempre,
    * palabra por palabra.
+   *
+   * PRIMARIA: un combo que solo vende Primaria no transfiere nada a la autoridad y
+   * no la nombra; con otros niveles, lo que la nombra se acota a ellos.
    */
-  const CERTIFICA = CONFIG.ofreceCertificacion
+  const SOLO_PRIMARIA = esSoloPrimaria()
+  const CERTIFICA = CONFIG.ofreceCertificacion && !SOLO_PRIMARIA
+  const NIVELES_ACOTADOS = nivelesTexto((CONFIG.niveles as readonly string[]).filter(n => n === 'secundaria' || n === 'preparatoria'))
 
   /**
    * 🛑 EL CORREO, GATEADO POR EL DATO (Bug P-8c). Un aviso de privacidad tiene
@@ -126,7 +132,13 @@ export default async function AvisoPrivacidadPage() {
               <li><strong style={{ color: '#fff' }}>Datos de identificación:</strong> nombre(s), apellido paterno, apellido materno.</li>
               <li><strong style={{ color: '#fff' }}>Datos de contacto:</strong> correo electrónico, número de teléfono/WhatsApp.</li>
               <li><strong style={{ color: '#fff' }}>Datos académicos:</strong> nivel educativo de interés, modalidad de estudio seleccionada.</li>
+              {SOLO_PRIMARIA ? (
+                <li><strong style={{ color: '#fff' }}>Documentos de inscripción:</strong> CURP, acta de nacimiento, identificación oficial, comprobante de domicilio.</li>
+              ) : CON_MENORES ? (
+                <li><strong style={{ color: '#fff' }}>Documentos de inscripción:</strong> CURP, acta de nacimiento e identificación oficial; comprobante de domicilio en Primaria; certificados de estudios previos y fotografía en {NIVELES_ACOTADOS}.</li>
+              ) : (
               <li><strong style={{ color: '#fff' }}>Documentos de inscripción:</strong> CURP, acta de nacimiento, certificados de estudios previos, identificación oficial, fotografía.</li>
+              )}
               {CON_MENORES && (
                 <li><strong style={{ color: '#fff' }}>Datos de edad y del tutor:</strong> fecha de nacimiento del alumno y, si es menor de 18 años, nombre, teléfono y parentesco de su madre, padre o tutor.</li>
               )}
@@ -148,11 +160,19 @@ export default async function AvisoPrivacidadPage() {
               <li>Crear y administrar tu cuenta de alumno en la plataforma.</li>
               <li>Gestionar tu inscripción al programa de {NIVELES_AVISO}.</li>
               {CERTIFICA ? (
+                CON_MENORES ? (
+                  <>
+                    <li>Verificar y validar documentos académicos requeridos por las autoridades educativas, en {NIVELES_ACOTADOS}.</li>
+                    <li>Brindar acompañamiento durante el proceso de acreditación ante la SEP, en {NIVELES_ACOTADOS}.</li>
+                    <li>Emitir constancias de avance académico y, en {NIVELES_ACOTADOS}, gestionar el certificado oficial.</li>
+                  </>
+                ) : (
                 <>
                   <li>Verificar y validar documentos académicos requeridos por las autoridades educativas.</li>
                   <li>Brindar acompañamiento durante el proceso de acreditación ante la SEP.</li>
                   <li>Emitir constancias de avance académico y gestionar el certificado oficial.</li>
                 </>
+                )
               ) : (
                 <>
                   <li>Verificar que la documentación académica que subes esté completa y sea legible.</li>
@@ -187,7 +207,15 @@ export default async function AvisoPrivacidadPage() {
               <li><strong style={{ color: '#fff' }}>Supabase Inc.</strong> — infraestructura de base de datos y autenticación (servidores en EE.UU.). Cumple con el marco SCCs / adecuación GDPR.</li>
               <li><strong style={{ color: '#fff' }}>Vercel Inc.</strong> — plataforma de hospedaje y distribución del sitio web.</li>
               {CERTIFICA && (
+                CON_MENORES ? (
+                  <li><strong style={{ color: '#fff' }}>Autoridades educativas (SEP / instituciones convenio)</strong> — exclusivamente los datos de alumnos de {NIVELES_ACOTADOS} necesarios para el trámite de certificación oficial.</li>
+                ) : (
                 <li><strong style={{ color: '#fff' }}>Autoridades educativas (SEP / instituciones convenio)</strong> — exclusivamente los datos necesarios para el trámite de certificación oficial.</li>
+                )
+              )}
+              {/* Sin nombrar a ninguna autoridad: quien certifica Primaria tiene que declarar a quién le pasa los datos. */}
+              {CON_MENORES && CONFIG.ofreceCertificacion && (
+                <li><strong style={{ color: '#fff' }}>Instituciones con las que se gestione la certificación{SOLO_PRIMARIA ? '' : ' de Primaria'}</strong> — solo si el alumno la solicita, y exclusivamente los datos necesarios para ese trámite.</li>
               )}
               <li><strong style={{ color: '#fff' }}>Proveedores de pago</strong> — datos de transacción para procesar pagos de inscripción y mensualidades.</li>
             </ul>
@@ -196,7 +224,14 @@ export default async function AvisoPrivacidadPage() {
               al artículo 37 de la LFPDPPP, por ser necesarias para la relación jurídica o estar
               previstas en otras leyes.
             </p>
-            {!CERTIFICA && (
+            {!CONFIG.ofreceCertificacion && CON_MENORES && (
+              <p>
+                <strong style={{ color: '#fff' }}>No transferimos tus datos a autoridades educativas.</strong>{' '}
+                {RAZON_SOCIAL} no realiza trámites de acreditación ni de certificación ante ninguna autoridad
+                educativa, de modo que tu documentación académica no sale de la plataforma con ese fin.
+              </p>
+            )}
+            {!CERTIFICA && !CON_MENORES && (
               <p>
                 <strong style={{ color: '#fff' }}>No transferimos tus datos a autoridades educativas.</strong>{' '}
                 {RAZON_SOCIAL} no realiza trámites de acreditación ni de certificación ante la Secretaría

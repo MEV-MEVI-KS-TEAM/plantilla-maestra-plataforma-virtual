@@ -80,6 +80,7 @@ export const LIMITES_PRI = {
  */
 export const AVISO_MENORES_FABRICA =
   'Si el alumno es menor de 18 años, tratamos sus datos personales con el consentimiento de su madre, padre o tutor. ' +
+  'Quien inscribe a un menor declara ser su madre, padre o tutor, o contar con la autorización de esa persona. ' +
   'Durante la inscripción pedimos el nombre, el teléfono y el parentesco de esa persona, y la fecha de nacimiento del alumno. ' +
   'Usamos estos datos solo para la inscripción, la comunicación con la familia y el seguimiento académico. ' +
   'La madre, el padre o el tutor puede ejercer los derechos de acceso, rectificación, cancelación y oposición en nombre del menor.'

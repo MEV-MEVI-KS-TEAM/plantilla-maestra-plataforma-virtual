@@ -32,6 +32,7 @@ import {
 import { CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import { licenciaturaEfectiva, type OverrideLicenciaturas } from '@/lib/precios-licenciatura'
 import { primariaEfectiva, type OverridePrimaria } from '@/lib/precios-primaria'
+import { aplicarLandingSoloPrimaria } from '@/lib/landing-solo-primaria'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -948,7 +949,7 @@ export function normalizarContactoWhatsApp(cfg: SiteConfig): SiteConfig {
 export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteConfig {
   const resultado = clonar(base) as SiteConfig
   if (!esObjetoPlano(overrides)) {
-    return normalizarContactoWhatsApp(resolverLogos(resultado, { logo: false, logoOscuro: false }))
+    return aplicarLandingSoloPrimaria(normalizarContactoWhatsApp(resolverLogos(resultado, { logo: false, logoOscuro: false })))
   }
 
   const aplicados: PreciosAplicados = {}
@@ -1001,7 +1002,7 @@ export function mergeSiteConfig(base: BaseSiteConfig, overrides: unknown): SiteC
   const priEfectiva = primariaEfectiva(pri, overrides.primaria)
   if (priEfectiva !== pri) destino.primaria = priEfectiva
 
-  return derivarAliasPrecios(resultado, aplicados)
+  return aplicarLandingSoloPrimaria(derivarAliasPrecios(resultado, aplicados))
 }
 
 // ─── Subconjunto público (lo que viaja al navegador) ────────────────────────
