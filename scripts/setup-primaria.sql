@@ -24,15 +24,18 @@
 
 \set ON_ERROR_STOP on
 
--- Sin la migración, el primer INSERT fallaría con un 23514 poco claro: se dice aquí.
+-- La guarda de orden. Mirar si el CHECK admite 'primaria' no sirve: `schema.sql` ya lo
+-- admite, y B1, 20260812 y 20260820 (que corren después) lo recrearían con lista
+-- cerrada y abortarían al ver estas filas. La marca solo la deja la última migración.
 DO $$
+DECLARE
+  v_marca text;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-     WHERE conrelid = 'public.materias'::regclass AND contype = 'c'
-       AND strpos(pg_get_constraintdef(oid), '''primaria''') > 0
-  ) THEN
-    RAISE EXCEPTION 'materias.nivel no admite primaria: corre primero supabase/migrations/20261104120000_nivel_primaria.sql';
+  SELECT obj_description(oid, 'pg_constraint') INTO v_marca
+    FROM pg_constraint
+   WHERE conrelid = 'public.materias'::regclass AND conname = 'materias_nivel_check';
+  IF v_marca IS DISTINCT FROM 'nivel_primaria:20261104120000' THEN
+    RAISE EXCEPTION 'Falta terminar la cadena de migraciones: no encuentro la marca de supabase/migrations/20261104120000_nivel_primaria.sql. Corre setup.sql y TODA la cadena de SETUP.md, y luego este archivo. No se sembró nada.';
   END IF;
 END $$;
 

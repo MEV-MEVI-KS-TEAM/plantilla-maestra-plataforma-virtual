@@ -189,6 +189,9 @@ Editar SOLO este archivo: src/lib/config.ts
    | 25 | `20261008120000_r2_escritura_solo_servidor.sql` | **R2** (soporte IVS, 8-oct-2026) — lo que da avance, logros, calificación o acceso solo lo escribe el servidor: sin INSERT/UPDATE/DELETE/TRUNCATE con sesión (de tabla ni de columna) en `progreso_semanas`, `logros_alumno`, `racha_actividad`, `calificaciones`, `intentos_evaluacion`, `quiz_respuestas`, `alumnos`, `documentos_alumno` y `constancias`, ni en el contenido; techo `RESTRICTIVE` «propio o admin» en su lectura; `notas_alumno` sin DELETE; `usuarios` con el UPDATE solo de perfil (Bug 52, que hasta hoy solo traían los instaladores); índices únicos `quiz_respuestas (alumno_id, quiz_id)` e `intentos_evaluacion (alumno_id, evaluacion_id, numero_intento)` (sin ellos, 4 POST simultáneos al quiz daban la clave); `generar_matricula()` solo el servidor; `anon` sin escritura en `public` (salvo el latido, Bug 46). **Aplica a TODA base.** ⚠️ **Desplegar ANTES la app de la R2** (progreso, tiempo y logros con el service role): con la app anterior, «Marcar semana» y el tiempo de estudio dan 500. Si aborta por respuestas o intentos repetidos, su encabezado dice cómo verlos: no borra nada. Córrela **al final** (CHECK 32, 33 y 34) |
 
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
+   >
+   > **¿La base ya tiene Primaria sembrada?** La fila 7 (B1) recrea un CHECK de nivel con
+   > lista cerrada: ve «Solo si el combo vende PRIMARIA», más abajo, antes de correrla.
 
    Para un cliente **Solo-Cursos** (solo diplomados), ver
    **`INSTRUCCIONES-SOLO-CURSOS.md`**: la configuración del modo, el catálogo
@@ -233,8 +236,10 @@ Editar SOLO este archivo: src/lib/config.ts
 
 ### Solo si el combo vende PRIMARIA
 
-Después de `setup.sql` y de TODA la cadena de migraciones (nunca antes: B1, `20260812`
-y `20260820` recrean los CHECK de nivel con lista cerrada y abortarían con filas `primaria`):
+Después de `setup.sql` y de TODA la cadena de migraciones, la última es
+`20261104120000_nivel_primaria.sql` (nunca antes: B1, `20260812` y `20260820` recrean los
+CHECK de nivel con lista cerrada y abortarían con filas `primaria`). Si la cadena no ha
+terminado, `setup-primaria.sql` aborta con un mensaje claro y no siembra nada:
 
 ```bash
 cd scripts && psql "$CLIENT_DB_URL" -v ON_ERROR_STOP=1 -f setup-primaria.sql
@@ -245,6 +250,32 @@ termina con `post-setup-primaria-check.sql`, que tiene que salir ✅. Sin video 
 En `src/lib/config.ts`: `primaria.activa: true` y `'primaria'` en `niveles` (o `['primaria']`
 en un combo solo Primaria, con los planes de `modalidades` en `activa: false`). Enciende
 también la fecha de nacimiento y los datos del tutor en el registro de Primaria y Secundaria.
+
+> **`20261104120000` es para combos nuevos.** Recrea `alumnos.duracion_meses`: si un clon tiene
+> un índice, una vista o una política sobre esa columna, aborta con la lista y no toca nada.
+>
+> **Cobro semanal:** Primaria no tiene calendario de cuotas semanales. `CONFIG.periodicidad:
+> 'semanal'` con Primaria no es un combo válido: mev-tools aborta su instalación.
+>
+> **Base con Primaria ya sembrada: no vuelvas a correr B1, `20260812` ni `20260820` tal cual.**
+> Es el caso de agregar Cursos después (7bis, fila 7). Las tres recrean los CHECK de nivel con
+> lista cerrada, y no se editan porque ya están aplicadas en la flota. Lo que pasa:
+>
+> | Migración | CHECK que recrea | Con filas de Primaria | Sin filas de Primaria |
+> |---|---|---|---|
+> | B1 (`20260730120000`) | `alumnos_nivel_check` | **aborta** con 23514 si hay alumnos; no deja nada a medias | le quita `primaria` en silencio |
+> | `20260812120000` | `materias_nivel_check`, `alumnos_nivel_check`, `alumnos_modalidad_check` y `duracion_meses` | **aborta** con 23514 (siempre, por las 18 materias) | le quita `primaria` y los planes `_pri` en silencio |
+> | `20260820120000` | `alumnos_nivel_check` | **aborta** con 23514 si hay alumnos | le quita `primaria` en silencio |
+>
+> Qué hacer:
+>
+> 1. **Lo mejor:** instala Cursos antes de sembrar Primaria. Nada de lo de abajo hace falta.
+> 2. **Si aborta:** corre una copia TEMPORAL de ese archivo, sin el bloque que recrea el CHECK de
+>    nivel (en B1, el `DO $nivel$`; en `20260812`, sus `DROP`/`ADD` de nivel y de modalidad). El
+>    original no se toca. `20260820` no trae nada más: no hace falta correrla.
+> 3. **En todos los casos, al terminar:** vuelve a correr `20261104120000_nivel_primaria.sql`
+>    (es idempotente) y `scripts/post-setup-primaria-check.sql`, que tiene que salir ✅. Su
+>    primer renglón detecta el CHECK que perdió `primaria`.
 
 ## Paso 4 — Variables de entorno (5 min)
 Copiar .env.example → .env.local y llenar con datos de Supabase

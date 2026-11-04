@@ -37,6 +37,18 @@
 -- propios regresaría. Sin `ELSE 6` aborta: es una forma que este archivo no conoce.
 -- La columna es derivada y ninguna función SQL la lee.
 --
+-- ES PARA COMBOS NUEVOS. Recrear la columna la deja al final de la tabla y se
+-- llevaría lo que dependa de ella: un clon con un índice, una vista o una política
+-- sobre `duracion_meses` aborta aquí con la lista, sin tocar nada. Quien la corra en
+-- un combo ya en producción primero recrea eso por su cuenta y decide; la plantilla
+-- no trae ningún objeto así.
+--
+-- LA MARCA. `schema.sql` ya admite 'primaria' en los CHECK, así que mirar el CHECK no
+-- dice si la cadena corrió. Al final se deja un COMMENT en `materias_nivel_check` que
+-- solo pone este archivo, y scripts/setup-primaria.sql lo exige antes de sembrar. Si
+-- B1, 20260812 o 20260820 se vuelven a correr, el CHECK se recrea y la marca se va:
+-- es justo cuando hay que volver a correr este archivo (ver SETUP.md).
+--
 -- Idempotente (la segunda corrida recrea los mismos CHECK y no toca la columna) y
 -- atómica. Conexión: directa o pooler en MODO SESIÓN, puerto 5432 (Bug 228).
 -- ============================================================================
@@ -63,6 +75,7 @@ DECLARE
   v_n       integer;
   v_expr    text;
   v_forma   text;
+  v_deps    text;
 BEGIN
   FOR r IN
     SELECT * FROM (VALUES
@@ -141,10 +154,25 @@ BEGIN
     END IF;
     v_expr := replace(v_expr, 'ELSE 6',
       'WHEN ''3_meses_pri''::text THEN 3 WHEN ''6_meses_pri''::text THEN 6 WHEN ''9_meses_pri''::text THEN 9 ELSE 6');
+    -- Lo que cuelgue de la columna (índice, vista, política, restricción): se dice en
+    -- vez de perderlo. Su propia expresión generada no cuenta.
+    SELECT string_agg(pg_describe_object(d.classid, d.objid, d.objsubid), '; ') INTO v_deps
+      FROM pg_depend d
+      JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+     WHERE d.refclassid = 'pg_class'::regclass
+       AND d.refobjid = 'public.alumnos'::regclass
+       AND a.attname = 'duracion_meses'
+       AND d.classid <> 'pg_attrdef'::regclass;
+    IF v_deps IS NOT NULL THEN
+      RAISE EXCEPTION 'alumnos.duracion_meses tiene objetos que dependen de ella y se perderían al recrearla: %. Esta migración es para combos nuevos; revisa esos objetos antes de correrla.', v_deps;
+    END IF;
     ALTER TABLE public.alumnos DROP COLUMN duracion_meses;
     EXECUTE format('ALTER TABLE public.alumnos ADD COLUMN duracion_meses integer GENERATED ALWAYS AS (%s) STORED', v_expr);
   END IF;
 END $$;
+
+-- La marca que exige scripts/setup-primaria.sql. No tiene espejo en los schema.sql.
+COMMENT ON CONSTRAINT materias_nivel_check ON public.materias IS 'nivel_primaria:20261104120000';
 
 NOTIFY pgrst, 'reload schema';
 

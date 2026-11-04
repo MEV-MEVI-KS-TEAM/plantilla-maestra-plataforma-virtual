@@ -12,6 +12,17 @@
 \echo '  POST-SETUP CHECK — Primaria'
 \echo '════════════════════════════════════════════════════════'
 
+-- ─── P0: Los CHECK ───────────────────────────────────────
+-- Volver a correr B1 o 20260820 sin alumnos de Primaria no aborta: le quita el valor
+-- al CHECK de alumnos en silencio, y el siguiente registro daría 23514.
+SELECT 'CHECK de nivel y modalidad admiten Primaria (deben ser 3)' AS check_name, COUNT(*)::text AS valor,
+       CASE WHEN COUNT(*) = 3 THEN '✅ OK' ELSE '❌ FAIL → correr supabase/migrations/20261104120000_nivel_primaria.sql' END AS resultado
+  FROM pg_constraint
+ WHERE (conrelid, conname, strpos(pg_get_constraintdef(oid), CASE conname WHEN 'alumnos_modalidad_check' THEN '''3_meses_pri''' ELSE '''primaria''' END) > 0)
+       IN (('public.alumnos'::regclass, 'alumnos_nivel_check', true),
+           ('public.materias'::regclass, 'materias_nivel_check', true),
+           ('public.alumnos'::regclass, 'alumnos_modalidad_check', true));
+
 -- ─── P1: Materias ──────────────────────────────────────────
 SELECT 'Materias de Primaria (debe ser 18)' AS check_name, COUNT(*)::text AS valor,
        CASE WHEN COUNT(*) = 18 THEN '✅ OK' ELSE '❌ FAIL → correr seed-primaria.sql' END AS resultado
