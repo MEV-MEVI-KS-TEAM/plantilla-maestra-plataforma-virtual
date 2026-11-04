@@ -42,7 +42,11 @@ function ofertaTexto(): string {
   return `${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}`
 }
 
-const BENEFITS = [
+// Con Primaria el portal no menciona autoridades educativas: la plataforma no
+// sugiere afiliación ni validez oficial de ese programa.
+const BENEFITS = primariaActiva()
+  ? ['Estudia desde casa, a tu ritmo', 'Lecciones, quizzes y actividades en cada materia', 'Acompañamiento durante tus estudios', ofertaTexto()]
+  : [
   'Acompañamiento para tu certificado SEP',
   'Estudia desde casa, a tu ritmo',
   'Centro de Apoyo para la Acreditación de Conocimientos',
@@ -769,7 +773,7 @@ export default function RegisterPage() {
                     <Label text="Fecha de nacimiento del alumno" required />
                     <input type="date" value={fechaNacimiento} max={hoyEnMexico()}
                       onChange={e => setFechaNacimiento(e.target.value)}
-                      style={selectStyle} onFocus={onFocus} onBlur={onBlur} />
+                      style={inputNoIcon} onFocus={onFocus} onBlur={onBlur} />
                   </div>
                   {esMenor && (
                     <>
@@ -777,14 +781,14 @@ export default function RegisterPage() {
                         <Label text="Nombre de la madre, padre o tutor" required />
                         <input type="text" value={tutorNombre} maxLength={160} autoComplete="off"
                           onChange={e => setTutorNombre(e.target.value)}
-                          style={selectStyle} onFocus={onFocus} onBlur={onBlur} />
+                          style={inputNoIcon} onFocus={onFocus} onBlur={onBlur} />
                       </div>
                       <div>
                         <Label text="Teléfono de la madre, padre o tutor" required />
                         <input type="tel" inputMode="numeric" value={tutorTelefono} maxLength={15} autoComplete="off"
                           placeholder="10 dígitos"
                           onChange={e => setTutorTelefono(e.target.value)}
-                          style={selectStyle} onFocus={onFocus} onBlur={onBlur} />
+                          style={inputNoIcon} onFocus={onFocus} onBlur={onBlur} />
                       </div>
                       <div>
                         <Label text="Parentesco" required />

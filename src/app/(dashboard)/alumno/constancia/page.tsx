@@ -390,8 +390,18 @@ export default function ConstanciaPage() {
           <div style={{ padding: '0 48px 24px', textAlign: 'center' }}>
             <p style={{ fontSize: 10, color: '#64748b', fontStyle: 'italic', lineHeight: 1.7 }}>
               Este documento es de carácter informativo y refleja el avance académico del alumno dentro de la plataforma.{' '}
+              {/* Primaria: la plataforma no menciona autoridades educativas ni sugiere validez oficial. */}
+              {datos.nivel === 'primaria' ? (
+                <>
+                  <strong style={{ fontWeight: 700 }}>No constituye certificación oficial ni es válido para trámites.</strong>{' '}
+                  Consulta con tu escuela el proceso de certificación.
+                </>
+              ) : (
+                <>
               <strong style={{ fontWeight: 700 }}>No constituye certificación oficial ni es válido para trámites ante la SEP u otras instituciones.</strong>{' '}
               Para obtener el certificado oficial con validez SEP, debe completar el proceso de certificación correspondiente.
+                </>
+              )}
             </p>
           </div>
 
