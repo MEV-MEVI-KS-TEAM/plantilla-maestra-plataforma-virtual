@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     // Sin Primaria encendida no se lee ni se escribe nada de esto.
     let edadTutor: EdadTutorLimpio | null = null
     if (pideEdadYTutor(nivel, primariaActiva())) {
-      const revision = revisarEdadTutor(body as DatosEdadTutor)
+      const revision = revisarEdadTutor(body as DatosEdadTutor, nivel)
       if (!revision.ok) return Response.json({ error: revision.error }, { status: 400 })
       edadTutor = revision.datos
     }

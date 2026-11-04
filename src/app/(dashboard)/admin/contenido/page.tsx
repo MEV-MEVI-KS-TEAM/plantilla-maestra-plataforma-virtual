@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BookOpen, Award, ChevronDown, ChevronRight, Loader2, Eye, Plus, X, AlertCircle } from 'lucide-react'
-import { NIVELES } from '@/lib/estructura-contenido'
+import { nivelesValidos } from '@/lib/estructura-contenido'
 import { getCarreras } from '@/lib/licenciatura-utils'
-import { primariaActiva } from '@/lib/modalidades'
 
 interface MateriaItem {
   id: string
@@ -47,7 +46,7 @@ const ETIQUETA_NIVEL: Record<string, string> = {
 
 // 'primaria' solo se ofrece con el add-on encendido: en los demás combos el
 // selector queda igual que siempre.
-const NIVELES_DEL_SELECTOR = NIVELES.filter(n => n !== 'primaria' || primariaActiva())
+const NIVELES_DEL_SELECTOR = nivelesValidos()
 
 export default function ContenidoPage() {
   const router = useRouter()

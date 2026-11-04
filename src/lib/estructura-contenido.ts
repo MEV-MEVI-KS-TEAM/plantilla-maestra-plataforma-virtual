@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getCarreras } from '@/lib/licenciatura-utils'
+import { primariaActiva } from '@/lib/modalidades'
 
 // ── Validación ───────────────────────────────────────────────────────────────
 
@@ -16,6 +17,15 @@ import { getCarreras } from '@/lib/licenciatura-utils'
  *  produce un 500 opaco de Postgres en vez de un 400 legible. */
 export const NIVELES = ['secundaria', 'preparatoria', 'demo', 'licenciatura', 'primaria'] as const
 export type Nivel = (typeof NIVELES)[number]
+
+/**
+ * Los niveles que ESTA escuela puede cargar. `NIVELES` refleja el CHECK, que admite
+ * 'primaria' en toda base con la migración; pero con el add-on apagado una materia
+ * de Primaria no se puede crear: el mismo 400 y el mismo texto de un combo sin ella.
+ */
+export function nivelesValidos(): readonly Nivel[] {
+  return NIVELES.filter(n => n !== 'primaria' || primariaActiva())
+}
 
 export const CAMPOS_MATERIA = ['nombre', 'descripcion', 'nivel', 'carrera', 'color', 'icono', 'orden'] as const
 export const CAMPOS_MES     = ['numero_mes', 'titulo', 'descripcion'] as const
@@ -97,8 +107,9 @@ export function validarMateria(body: unknown, opciones: { crear: boolean }): Res
 
   if (claves.includes('nivel')) {
     const v = b.nivel
-    if (typeof v !== 'string' || !(NIVELES as readonly string[]).includes(v)) {
-      return { ok: false, error: `nivel debe ser uno de: ${NIVELES.join(', ')}` }
+    const validos: readonly string[] = nivelesValidos()
+    if (typeof v !== 'string' || !validos.includes(v)) {
+      return { ok: false, error: `nivel debe ser uno de: ${validos.join(', ')}` }
     }
     datos.nivel = v as Nivel
   } else if (opciones.crear) {

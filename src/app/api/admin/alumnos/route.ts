@@ -491,7 +491,7 @@ export async function POST(request: NextRequest) {
     // Solo en un combo con Primaria, para Primaria y Secundaria.
     let edadTutor: EdadTutorLimpio | null = null
     if (!nivelForzado && pideEdadYTutor(nivelElegido, primariaActiva())) {
-      const revision = revisarEdadTutor(body as DatosEdadTutor)
+      const revision = revisarEdadTutor(body as DatosEdadTutor, nivelElegido)
       if (!revision.ok) return NextResponse.json({ error: revision.error }, { status: 400 })
       edadTutor = revision.datos
     }

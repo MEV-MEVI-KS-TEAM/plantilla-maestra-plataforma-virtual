@@ -267,12 +267,12 @@ test('12. solo se pide en combos con Primaria, a alumnos de Primaria y Secundari
 })
 
 test('13. un menor necesita los tres datos del tutor, y se guardan limpios', () => {
-  const ok = revisarEdadTutor(MENOR, HOY)
+  const ok = revisarEdadTutor(MENOR, 'secundaria', HOY)
   expect(ok).toEqual({
     ok: true,
     datos: { fecha_nacimiento: '2012-03-10', tutor_nombre: 'Rosa López', tutor_telefono: '3312345678', tutor_parentesco: 'Madre' },
   })
-  const falta = (cambio: object) => revisarEdadTutor({ ...MENOR, ...cambio }, HOY)
+  const falta = (cambio: object) => revisarEdadTutor({ ...MENOR, ...cambio }, 'secundaria', HOY)
   expect(falta({ fecha_nacimiento: '' })).toEqual({ ok: false, error: M.sinFecha })
   expect(falta({ fecha_nacimiento: '2026-02-30' })).toEqual({ ok: false, error: M.sinFecha })
   expect(falta({ fecha_nacimiento: '2030-01-01' })).toEqual({ ok: false, error: M.fechaFutura })
@@ -282,7 +282,7 @@ test('13. un menor necesita los tres datos del tutor, y se guardan limpios', () 
 })
 
 test('14. un mayor de edad no guarda datos de tutor aunque lleguen', () => {
-  expect(revisarEdadTutor({ ...MENOR, fecha_nacimiento: '2008-11-04' }, HOY)).toEqual({
+  expect(revisarEdadTutor({ ...MENOR, fecha_nacimiento: '2008-11-04' }, 'secundaria', HOY)).toEqual({
     ok: true,
     datos: { fecha_nacimiento: '2008-11-04', tutor_nombre: null, tutor_telefono: null, tutor_parentesco: null },
   })

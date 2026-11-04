@@ -135,6 +135,8 @@ export const NIVELES_CON_EDAD: readonly string[] = ['primaria', 'secundaria']
 
 export const EDAD_MAYORIA = 18
 export const EDAD_MINIMA_REGISTRO = 5
+/** El plan de Primaria dice «12 años en adelante». Secundaria sigue con la general. */
+export const EDAD_MINIMA_PRIMARIA = 12
 
 /** Los parentescos que ofrece el formulario. */
 export const PARENTESCOS_TUTOR = ['Madre', 'Padre', 'Tutor o tutora legal', 'Abuela o abuelo', 'Otro familiar'] as const
@@ -182,6 +184,7 @@ export const VACIO_EDAD_TUTOR: EdadTutorLimpio = {
 
 export const MENSAJES_EDAD_TUTOR = {
   sinFecha:      'Escribe la fecha de nacimiento del alumno.',
+  menorDeDoce:   'El programa de Primaria es para personas de 12 años en adelante. Si tienes dudas, comunícate con la escuela.',
   fechaFutura:   'Revisa la fecha de nacimiento: no puede ser una fecha futura ni de hace muy poco.',
   sinTutorNombre: 'El alumno es menor de 18 años: escribe el nombre de su madre, padre o tutor.',
   sinTutorTelefono: 'El alumno es menor de 18 años: escribe un teléfono de 10 dígitos de su madre, padre o tutor.',
@@ -212,12 +215,14 @@ export function pideEdadYTutor(nivel: unknown, primariaEncendida: boolean): bool
  */
 export function revisarEdadTutor(
   datos: DatosEdadTutor,
+  nivel: unknown,
   hoy: string = hoyEnMexico(),
 ): { ok: true; datos: EdadTutorLimpio } | { ok: false; error: string } {
   const fecha = fechaValida(datos.fecha_nacimiento)
   if (!fecha) return { ok: false, error: MENSAJES_EDAD_TUTOR.sinFecha }
   const edad = edadEnAnios(fecha, hoy)
   if (edad < EDAD_MINIMA_REGISTRO || edad > 120) return { ok: false, error: MENSAJES_EDAD_TUTOR.fechaFutura }
+  if (nivel === 'primaria' && edad < EDAD_MINIMA_PRIMARIA) return { ok: false, error: MENSAJES_EDAD_TUTOR.menorDeDoce }
   if (edad >= EDAD_MAYORIA) return { ok: true, datos: { ...VACIO_EDAD_TUTOR, fecha_nacimiento: fecha } }
   const tutor_nombre = texto(datos.tutor_nombre, 160)
   const tutor_telefono = texto(datos.tutor_telefono, 20).replace(/\D/g, '')

@@ -10,10 +10,11 @@
  *   - Agrega regionCode=MX para resultados en español
  *
  * Uso:
- *   node scripts/update-videos.mjs                    # todas
+ *   node scripts/update-videos.mjs                    # todas MENOS Primaria
  *   node scripts/update-videos.mjs --nivel demo       # solo demo (8)
  *   node scripts/update-videos.mjs --nivel preparatoria
  *   node scripts/update-videos.mjs --nivel secundaria
+ *   node scripts/update-videos.mjs --nivel primaria   # Primaria, solo si se pide
  *
  * Skip automático: semanas que ya tienen video_url con watch?v= se omiten
  * para no gastar cuota de YouTube en videos que ya están bien. Las semanas con
@@ -123,7 +124,9 @@ async function hasMultiVideoColumns() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   // 1. Obtener materias (filtradas por nivel si se indicó)
-  const nivelFilter = nivelArg ? `&nivel=eq.${nivelArg}` : ''
+  // Sin --nivel, Primaria queda fuera: sus videos son decisión aparte. El `or` conserva
+  // las filas con nivel NULL, que un `neq` a secas dejaría fuera.
+  const nivelFilter = nivelArg ? `&nivel=eq.${nivelArg}` : '&or=(nivel.is.null,nivel.neq.primaria)'
   const materias = await supa(`materias?select=id,nombre,nivel&activa=eq.true${nivelFilter}&order=nivel,nombre`)
 
   if (!Array.isArray(materias) || materias.length === 0) {

@@ -424,7 +424,7 @@ export default function RegisterPage() {
     if (!soloCursos && esLicenciatura && !carrera) { setError('Selecciona tu carrera.'); return }
     // ANTES de signUp: un 400 después deja una cuenta de Auth sin alumno (#217).
     const revisionEdad = pideEdad
-      ? revisarEdadTutor({ fecha_nacimiento: fechaNacimiento, tutor_nombre: tutorNombre, tutor_telefono: tutorTelefono, tutor_parentesco: tutorParentesco })
+      ? revisarEdadTutor({ fecha_nacimiento: fechaNacimiento, tutor_nombre: tutorNombre, tutor_telefono: tutorTelefono, tutor_parentesco: tutorParentesco }, nivelDeOpcion(nivel))
       : null
     if (revisionEdad && !revisionEdad.ok) { setError(revisionEdad.error); return }
 

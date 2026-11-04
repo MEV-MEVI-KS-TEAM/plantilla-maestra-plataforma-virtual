@@ -197,7 +197,7 @@ export default function AlumnosPage() {
       setFormError('Selecciona al menos un curso o diplomado.')
       return
     }
-    const revisionEdad = pideEdad ? revisarEdadTutor(form) : null
+    const revisionEdad = pideEdad ? revisarEdadTutor(form, form.nivel) : null
     if (revisionEdad && !revisionEdad.ok) { setFormError(revisionEdad.error); return }
     setSubmitting(true)
     try {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mapDocumentoAlumnoRow } from '@/lib/admin/documentos-admin'
+import { primariaActiva } from '@/lib/modalidades'
 
 export async function GET() {
   try {
@@ -70,7 +71,8 @@ export async function POST(req: NextRequest) {
     const tiposValidos = [
       'acta_nacimiento', 'curp', 'certificado_primaria',
       'certificado_secundaria', 'identificacion_oficial', 'foto_perfil_doc',
-      'comprobante_domicilio',
+      // Solo lo pide Primaria: sin el add-on, el mismo 400 de siempre.
+      ...(primariaActiva() ? ['comprobante_domicilio'] : []),
     ]
     if (!tiposValidos.includes(tipo)) {
       return NextResponse.json({ error: 'Tipo de documento inválido' }, { status: 400 })
