@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { primariaActiva } from '@/lib/modalidades'
 
 gsap.registerPlugin(useGSAP)
 
@@ -24,12 +23,12 @@ const MSGS_EN = [
 ]
 
 /**
- * Los mensajes al completar una semana. Con Primaria en la escuela, ninguno habla de
- * certificado: la materia demo la ve también ese alumno y aquí no se sabe su nivel.
+ * Los mensajes al completar una semana. A un alumno de Primaria ninguno le habla de
+ * certificado; a los demás, los de siempre, venda o no Primaria su escuela.
  */
-export function mensajesDeAvance(lang: string, conPrimaria: boolean): readonly string[] {
+export function mensajesDeAvance(lang: string, esPrimaria: boolean): readonly string[] {
   const msgs = lang === 'en' ? MSGS_EN : MSGS_ES
-  return conPrimaria ? msgs.filter(m => !/certific/i.test(m)) : msgs
+  return esPrimaria ? msgs.filter(m => !/certific/i.test(m)) : msgs
 }
 
 interface ReadingProgressProps {
@@ -40,12 +39,15 @@ interface ReadingProgressProps {
   yaCompletada?: boolean
   /** Falso en una semana de Primaria sin video: el botón no promete «ver videos». */
   conVideos?: boolean
+  /** Verdadero en una materia de Primaria: sus mensajes no hablan de certificado. */
+  esPrimaria?: boolean
 }
 
 export default function ReadingProgress({
   semanaId,
   lang,
   conVideos = true,
+  esPrimaria = false,
   onCompletada,
   yaCompletada = false,
 }: ReadingProgressProps) {
@@ -142,7 +144,7 @@ export default function ReadingProgress({
       setMinLectura(mins)
 
       // Mensaje motivacional aleatorio
-      const msgs = mensajesDeAvance(lang, primariaActiva())
+      const msgs = mensajesDeAvance(lang, esPrimaria)
       setMensaje(msgs[Math.floor(Math.random() * msgs.length)])
 
       // Animación del botón

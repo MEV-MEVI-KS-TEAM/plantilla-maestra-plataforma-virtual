@@ -450,6 +450,7 @@ export default function MateriaPage() {
                         lang="es"
                         yaCompletada={semanasCompletadas.has(semana.id)}
                         conVideos={materia.nivel !== 'primaria' || (semana.videos ?? []).some(v => esVideoReproducible(v.url))}
+                        esPrimaria={materia.nivel === 'primaria'}
                         onCompletada={() => {
                           const nuevas = new Set([...semanasCompletadas, semana.id])
                           setSemanasCompletadas(nuevas)
