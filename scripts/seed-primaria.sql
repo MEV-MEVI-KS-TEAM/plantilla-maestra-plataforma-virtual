@@ -1556,6 +1556,7 @@ Rosa tiene 12 sillas. Quiere hacer filas iguales, sin que sobre ninguna. Puede h
 **Múltiplos**
 
 Un múltiplo es lo que sale al multiplicar un número por 1, 2, 3 y así. Los múltiplos de 3 son los que salen al contar de 3 en 3: 3, 6, 9, 12, 15, 18.
+
 **Divisores**
 
 Un divisor es un número que divide a otro sin dejar residuo. Si una división es exacta, el divisor y el cociente son divisores del número. Por eso 1, 2, 3, 4, 6 y 12 son divisores de 12.
@@ -5413,9 +5414,10 @@ Luis cumplió 18 años y quiere votar.
 INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('598148e3-c04f-58b2-9cef-52ae0cc83581', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 7, 'Convivencia pacífica y prevención de la violencia', 'Aprende a resolver conflictos sin violencia, a reconocer sus tipos y a pedir ayuda cuando la necesites.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás resolver un conflicto sin violencia y saber dónde pedir ayuda.
 
 Rosa y su vecino discuten por un lugar para estacionarse. Las voces suben. Los dos están molestos.
+
 **Conflicto y violencia**
 
-Un conflicto es un desacuerdo entre personas. Es normal y se puede resolver hablando. La violencia es distinta. Es un daño que alguien causa a otra persona. Puede ser física, emocional, económica (te quitan o controlan tu dinero) o digital (amenazas o burlas por celular o redes). Ninguna es aceptable.
+Un conflicto es un desacuerdo entre personas. Es normal y se puede resolver hablando. La violencia es distinta. Es un daño que alguien causa a otra persona. Puede ser física, emocional, sexual, económica (te quitan o controlan tu dinero) o digital (amenazas o burlas por celular o redes). Ninguna es aceptable.
 
 **Cómo prevenir la violencia**
 
@@ -5438,6 +5440,7 @@ Rosa y su vecino quieren resolver el conflicto del lugar.
 No es tu culpa. Nadie merece que lo traten así. Puedes pedir ayuda:
 
 - Si estás en peligro ahora, llama al 911.
+- Si eres menor de edad, cuéntale a un adulto de confianza.
 - Acude a tu centro de salud.
 - Si necesitas hablar con alguien, llama a la Línea de la Vida: 800 911 2000. Es gratuita y atiende las 24 horas, todos los días.
 
@@ -5568,6 +5571,7 @@ Luis consigue un trabajo en una bodega. Le dicen: «Empiezas mañana, ya luego v
 **¿Qué es un contrato?**
 
 Un contrato de trabajo es un acuerdo entre quien trabaja y quien contrata. Debe ser por escrito. Pide siempre una copia y guárdala.
+
 **¿Qué es el salario?**
 
 El salario es el pago por tu trabajo. Tienes derecho a que te paguen lo acordado y a tiempo. Debe estar claro cuánto te pagan y cada cuándo. En México existe un salario mínimo, que cambia con el tiempo. Pide el dato de hoy: pregunta en la oficina del trabajo o en la página del gobierno.
@@ -5840,7 +5844,7 @@ INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, o
 INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('eeb5e9e0-f3f4-50bc-80b1-524da56a168f', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', '¿Qué haces con la carne para cuidar tus alimentos?', 'Cocinarla bien', 'Dejarla fuera todo el día', 'Guardarla sin tapar', 'Comerla apenas cocida', 'a', 4) ON CONFLICT DO NOTHING;
 INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('035b4d15-27ee-5302-aaef-23274611500f', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', '¿Qué hace el centro de salud cuando tu caso necesita más atención?', 'Te pide volver el mes siguiente', 'Te manda a un hospital', 'Te da otra cartilla de vacunas', 'Te pide esperar a que se te pase', 'b', 5) ON CONFLICT DO NOTHING;
 INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('4a10fe9f-c3a3-5581-8a36-0aca064926b4', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', 'Tristeza, enojo y miedo. ¿Qué tipo de emociones son?', 'Emociones que solo sienten los adultos', 'Emociones que hay que esconder', 'Emociones que desaparecen si no piensas en ellas', 'Emociones normales', 'd', 6) ON CONFLICT DO NOTHING;
-INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('46c6a66d-78f9-5da5-9677-9a239f3f9816', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', 'Si la angustia dura mucho, ¿a qué número puedes llamar gratis y a cualquier hora?', '800 911 2000', '800 119 2000', '800 911 0000', '800 900 2000', 'a', 7) ON CONFLICT DO NOTHING;
+INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('46c6a66d-78f9-5da5-9677-9a239f3f9816', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', 'Si la angustia dura mucho, ¿a dónde puedes llamar gratis y a cualquier hora?', 'A la Línea de la Vida: 800 911 2000', 'A la escuela más cercana', 'A la oficina del trabajo', 'A una tienda de tu colonia', 'a', 7) ON CONFLICT DO NOTHING;
 INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('738f6aef-6458-5ee8-8526-b7a282e77cac', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', 'Si te ofrecen alcohol y no quieres tomar, ¿cómo conviene responder?', 'Con un reclamo por la invitación', 'Con un «Quizás después»', 'Con un «No, gracias» dicho con calma', 'Con una explicación muy larga', 'c', 8) ON CONFLICT DO NOTHING;
 INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('957e2adc-bc81-501b-8f5f-9b3151c0b54c', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', '¿Qué haces para detener el sangrado de una herida?', 'Echarle un remedio casero encima', 'Dejar la herida al aire libre', 'Presionar con una tela limpia', 'Quitar la tela apenas se empape', 'c', 9) ON CONFLICT DO NOTHING;
 INSERT INTO public.preguntas (id, evaluacion_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, orden) VALUES ('f0ec4149-4ffd-5192-aaae-16dc80dfccdb', '0e74ee69-1e2c-5022-ba2a-adbf0255d7e1', '¿Qué son los primeros auxilios?', 'Medicinas que sirven para cualquier accidente', 'Un tratamiento que sustituye al médico', 'Acciones que se hacen después de la consulta', 'Acciones básicas mientras llega ayuda médica', 'd', 10) ON CONFLICT DO NOTHING;
