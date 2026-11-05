@@ -397,7 +397,9 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     ...(hayCatalogo ? [{ href: '#diplomados', etiqueta: 'Cursos' }] : []),
     { href: '#planes', etiqueta: 'Planes' },
     ...(hayLicenciaturas ? [{ href: '#licenciaturas', etiqueta: 'Licenciaturas' }] : []),
-    ...(validezActiva ? [{ href: '#validez', etiqueta: validezDeLaOferta(CONFIG, 'Validez oficial') }] : []),
+    // En el menú, sin «oficial»: con «Validez oficial en Sec y Prepa» la barra no alcanza
+    // a 1280-1366 px y trunca el nombre de la escuela. La franja y la sección la dicen completa.
+    ...(validezActiva ? [{ href: '#validez', etiqueta: validezDeLaOferta(CONFIG, 'Validez oficial').replace('oficial en ', '') }] : []),
     ...(presentes.faq ? [{ href: '#preguntas', etiqueta: 'Preguntas' }] : []),
     { href: '#contacto', etiqueta: 'Contacto' },
   ]
@@ -469,10 +471,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             </span>
           </Link>
 
-          <nav aria-label="Secciones" className="hidden xl:flex items-center gap-1">
+          <nav aria-label="Secciones" className="hidden xl:flex items-center 2xl:gap-1">
             {enlacesMenu.map(e => (
               <a key={e.href} href={e.href} aria-current={activa === e.href.slice(1) ? 'true' : undefined}
-                className="la-nav-link px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
+                className="la-nav-link px-2 2xl:px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
                 style={{ color: tHeader.texto, ...variable('--la-subrayado', tHeader.decorativo), ...variable('--la-hover-texto', tHeader.acentoTexto) }}>
                 {e.etiqueta}
               </a>
@@ -732,7 +734,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 : hayLicenciaturas || conPrimaria
                 ? 'Estudia en línea, a tu propio ritmo, con el mismo acompañamiento en todos los programas.'
                 : 'Estudia en línea, a tu propio ritmo, con el mismo acompañamiento en los dos niveles.'} />
-            <div className={`grid gap-6 mt-12 ${soloPrimaria && !hayLicenciaturas ? 'max-w-xl mx-auto' : hayLicenciaturas || conPrimaria ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
+            <div className={`grid gap-6 mt-12 ${soloPrimaria && !hayLicenciaturas ? 'max-w-xl mx-auto' : nivelesTarjeta.length + (hayLicenciaturas ? 1 : 0) === 4 ? 'md:grid-cols-2' : hayLicenciaturas || conPrimaria ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
               {nivelesTarjeta.map((nivel, i) => {
                 const precios = preciosDe(nivel)
                 const planesNivel = planesDe(nivel)
