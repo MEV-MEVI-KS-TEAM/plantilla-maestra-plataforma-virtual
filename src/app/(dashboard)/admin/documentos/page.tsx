@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { FileText, Search, CheckCircle, XCircle, Clock, Loader2, ExternalLink } from 'lucide-react'
+import { documentosSoloPrimaria } from '@/lib/modalidades'
 
 type DocEstado = 'pendiente' | 'aprobado' | 'rechazado'
 type DocTipo =
@@ -20,7 +21,8 @@ const DOC_LABELS: Record<string, string> = {
   certificado_secundaria: 'Certificado de Secundaria',
   identificacion_oficial: 'Identificación Oficial',
   foto_perfil_doc: 'Foto (fondo blanco)',
-  comprobante_domicilio: 'Comprobante de Domicilio',
+  // Solo con el add-on: sin Primaria, el filtro «Tipos» es el de siempre.
+  ...documentosSoloPrimaria(),
 }
 
 /**

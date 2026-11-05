@@ -322,12 +322,13 @@ test('17. Primaria pide acta, CURP, identificación y domicilio; nunca un certif
   const ruta = leer('src/app/api/alumno/documentos/route.ts')
   expect(ruta).toContain("a.nivel === 'primaria'     ? 'Primaria'")
   expect(ruta).toContain("'comprobante_domicilio'")
-  // Los cinco lugares donde vive un tipo de documento.
+  // Los lugares donde vive un tipo de documento. El filtro del panel lo recibe de
+  // `documentosSoloPrimaria()`: sin el add-on no lo ve ni viaja en su chunk (V12).
   for (const f of [
     'src/app/(dashboard)/alumno/documentos/page.tsx',
     'src/app/api/alumno/documentos/route.ts',
     'src/app/(dashboard)/admin/alumnos/[id]/page.tsx',
-    'src/app/(dashboard)/admin/documentos/page.tsx',
+    'src/lib/modalidades.ts',
     'src/lib/config.ts',
   ]) {
     expect(/comprobante_domicilio|Comprobante de Domicilio/.test(leer(f)), f).toBe(true)
@@ -337,6 +338,8 @@ test('17. Primaria pide acta, CURP, identificación y domicilio; nunca un certif
   // La lista de siempre no gana un documento nuevo.
   const siempre = /const DOC_TIPOS: DocTipo\[\] = \[([\s\S]*?)\]/.exec(ficha)?.[1] ?? ''
   expect(siempre).not.toContain('comprobante_domicilio')
+  // La etiqueta no se escribe en la página del panel: es lo que la mete en el chunk.
+  expect(leer('src/app/(dashboard)/admin/documentos/page.tsx')).not.toContain('Comprobante de Domicilio')
 })
 
 // ─── Precios ─────────────────────────────────────────────────────────────────

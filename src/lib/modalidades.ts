@@ -180,6 +180,18 @@ export function primariaActiva(): boolean {
 }
 
 /**
+ * Los documentos que solo pide Primaria, para las listas del panel. Vive aquí y no en
+ * la página: con el add-on apagado la lista va vacía y el texto no viaja en el chunk.
+ */
+const DOCUMENTOS_SOLO_PRIMARIA: Readonly<Record<string, string>> = {
+  comprobante_domicilio: 'Comprobante de Domicilio',
+}
+
+export function documentosSoloPrimaria(): Readonly<Record<string, string>> {
+  return primariaActiva() ? DOCUMENTOS_SOLO_PRIMARIA : {}
+}
+
+/**
  * ¿Vende Primaria y ni Secundaria ni Preparatoria? Es el combo en el que no hay nada
  * de lo que la plantilla dice sobre certificados oficiales de esos dos niveles. Con
  * el add-on apagado siempre es falso, aunque `niveles` venga vacío (solo cursos).
