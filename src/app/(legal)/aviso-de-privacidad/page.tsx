@@ -5,7 +5,7 @@ import { getSiteConfig } from '@/lib/site-config'
 import { esSoloPrimaria, getNivelLabel, primariaActiva } from '@/lib/modalidades'
 import { nivelesTexto } from '@/lib/niveles-ui'
 import { licenciaturasActivas, tablaPrimaria } from '@/lib/licenciatura-utils'
-import { textoAvisoMenores } from '@/lib/precios-primaria'
+import { certificacionPrimariaDe, textoAvisoMenores } from '@/lib/precios-primaria'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
 // Los programas que la escuela vende, leídos de CONFIG.niveles (Bug 283, CÚSPIDE #285).
@@ -213,10 +213,6 @@ export default async function AvisoPrivacidadPage() {
                 <li><strong style={{ color: '#fff' }}>Autoridades educativas (SEP / instituciones convenio)</strong> — exclusivamente los datos necesarios para el trámite de certificación oficial.</li>
                 )
               )}
-              {/* Sin nombrar a ninguna autoridad: quien certifica Primaria tiene que declarar a quién le pasa los datos. */}
-              {CON_MENORES && CONFIG.ofreceCertificacion && (
-                <li><strong style={{ color: '#fff' }}>Instituciones con las que se gestione la certificación{SOLO_PRIMARIA ? '' : ' de Primaria'}</strong> — solo si el alumno la solicita, y exclusivamente los datos necesarios para ese trámite.</li>
-              )}
               <li><strong style={{ color: '#fff' }}>Proveedores de pago</strong> — datos de transacción para procesar pagos de inscripción y mensualidades.</li>
             </ul>
             <p>
@@ -224,6 +220,17 @@ export default async function AvisoPrivacidadPage() {
               al artículo 37 de la LFPDPPP, por ser necesarias para la relación jurídica o estar
               previstas en otras leyes.
             </p>
+            {/* ⚖️ VALIDACIÓN LEGAL PENDIENTE (ESTADO-PRIMARIA.md). Va aparte de la lista: esta sí
+                pide consentimiento, así que no cabe bajo el párrafo del artículo 37. Sin nombrar a
+                ninguna autoridad, y solo si la certificación de Primaria tiene cifra. */}
+            {CON_MENORES && CONFIG.ofreceCertificacion && (certificacionPrimariaDe(tablaPrimaria(cfg)) ?? 0) > 0 && (
+              <p>
+                <strong style={{ color: '#fff' }}>Certificación{SOLO_PRIMARIA ? '' : ' de Primaria'}.</strong>{' '}
+                Solo si el alumno o, si es menor de edad, su madre, padre o tutor la solicita y da su
+                consentimiento, compartiremos con la institución con la que se gestione exclusivamente
+                los datos necesarios para ese trámite.
+              </p>
+            )}
             {!CONFIG.ofreceCertificacion && CON_MENORES && (
               <p>
                 <strong style={{ color: '#fff' }}>No transferimos tus datos a autoridades educativas.</strong>{' '}
