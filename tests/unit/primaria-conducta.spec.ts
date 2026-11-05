@@ -37,9 +37,8 @@ const correrArnes = (archivo: string, ...args: string[]) => JSON.parse(execFileS
 ))
 
 type Fila = Record<string, unknown> | null
-type CasoRuta = { status: number; cuerpo: Record<string, unknown> | null; rpc: string[]; escrituras: { op: string; valores: Record<string, unknown> }[]; alumno: Fila; nuevo: Fila }
+type CasoRuta = { status: number; cuerpo: Record<string, unknown> | null; rpc: string[]; escrituras: { op: string; valores: Record<string, unknown> }[]; alumno: Fila; nuevo: Fila; log: string }
 type Rutas = Record<string, CasoRuta> & {
-  registroCheckFalla: CasoRuta & { log: string }
   ficha: Record<'apagado' | 'apagadoConDatos' | 'encendido', { status: number; claves: string[]; tutor?: string; duracion?: number }>
   documentosPrimaria: string
   documentosSecundaria: string
