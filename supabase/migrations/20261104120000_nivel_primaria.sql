@@ -9,9 +9,10 @@
 --   3. agrega las columnas nulas de edad y tutor: `fecha_nacimiento`,
 --      `tutor_nombre`, `tutor_telefono` y `tutor_parentesco`.
 --
--- ADITIVO. No toca filas ni columnas existentes. En un combo sin Primaria los
--- CHECK solo admiten un valor más que nadie usa, las columnas nuevas quedan en
--- NULL y `duracion_meses` da lo mismo para todo id que ya existía. El contenido de
+-- ADITIVO, CON UNA EXCEPCIÓN. No toca filas. La única columna existente que toca es
+-- `alumnos.duracion_meses`, que se DROPEA y se recrea (ver abajo). En un combo sin
+-- Primaria los CHECK solo admiten un valor más que nadie usa, las columnas nuevas quedan
+-- en NULL y `duracion_meses` da lo mismo para todo id que ya existía. El contenido de
 -- Primaria NO se siembra aquí: va en scripts/setup-primaria.sql, que corre después
 -- de esta migración y solo en los combos que venden Primaria.
 --
@@ -51,9 +52,15 @@
 --
 -- Idempotente (la segunda corrida recrea los mismos CHECK y no toca la columna) y
 -- atómica. Conexión: directa o pooler en MODO SESIÓN, puerto 5432 (Bug 228).
+--
+-- LOCK_TIMEOUT. Toma `alumnos` al primer ALTER y después puede esperar `materias`: con el
+-- candado puesto, toda la plataforma esperaría con ella. A los 10 s sin un candado aborta
+-- completa; se reintenta tal cual.
 -- ============================================================================
 
 BEGIN;
+
+SET LOCAL lock_timeout = '10s';
 
 ALTER TABLE public.alumnos ADD COLUMN IF NOT EXISTS fecha_nacimiento date;
 ALTER TABLE public.alumnos ADD COLUMN IF NOT EXISTS tutor_nombre text;
