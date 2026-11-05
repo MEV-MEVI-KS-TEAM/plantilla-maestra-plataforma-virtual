@@ -188,6 +188,8 @@ Editar SOLO este archivo: src/lib/config.ts
    | 24 | `20260930120000_fix255_ventana_por_posicion.sql` | **#255** — la ventana de cursos cuenta la **posición** del módulo (cuántos `orden` distintos hay por debajo del suyo), no el `orden` crudo: un curso sembrado en base 1 (bancos anteriores al 25-sep-2026) o con huecos ya no abre un módulo menos por mes ni esconde el último; el examen final se abre solo con el curso completo a la vista y el reporte cuenta lo que el alumno ve. En un curso sano (0..N-1) no cambia nada y nadie ve menos (compuerta: si alguien viera menos, aborta sin cambiar nada). Requiere C3b. Va después de la 23 (no toca sus privilegios). Re-correr B2, B6 o C3b ya no la revierte (CHECK 31) |
    | 25 | `20261008120000_r2_escritura_solo_servidor.sql` | **R2** (soporte IVS, 8-oct-2026) — lo que da avance, logros, calificación o acceso solo lo escribe el servidor: sin INSERT/UPDATE/DELETE/TRUNCATE con sesión (de tabla ni de columna) en `progreso_semanas`, `logros_alumno`, `racha_actividad`, `calificaciones`, `intentos_evaluacion`, `quiz_respuestas`, `alumnos`, `documentos_alumno` y `constancias`, ni en el contenido; techo `RESTRICTIVE` «propio o admin» en su lectura; `notas_alumno` sin DELETE; `usuarios` con el UPDATE solo de perfil (Bug 52, que hasta hoy solo traían los instaladores); índices únicos `quiz_respuestas (alumno_id, quiz_id)` e `intentos_evaluacion (alumno_id, evaluacion_id, numero_intento)` (sin ellos, 4 POST simultáneos al quiz daban la clave); `generar_matricula()` solo el servidor; `anon` sin escritura en `public` (salvo el latido, Bug 46). **Aplica a TODA base.** ⚠️ **Desplegar ANTES la app de la R2** (progreso, tiempo y logros con el service role): con la app anterior, «Marcar semana» y el tiempo de estudio dan 500. Si aborta por respuestas o intentos repetidos, su encabezado dice cómo verlos: no borra nada. Córrela **al final** (CHECK 32, 33 y 34) |
 
+   | 26 | `20261104120000_nivel_primaria.sql` | **Primaria** — **corre en TODO combo, venda o no Primaria.** Amplía los CHECK de nivel y modalidad, recrea `alumnos.duracion_meses` con los planes `*_pri` y agrega 4 columnas NULL (edad y tutor). No toca filas ni privilegios. Sin Primaria nadie usa nada de esto. Va **al final, después de la R2**. Si otra sesión tiene tomada la tabla, aborta a los 10 s (`lock_timeout`): se reintenta tal cual. El contenido va aparte: «Solo si el combo vende PRIMARIA», más abajo |
+
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
    >
    > **¿La base ya tiene Primaria sembrada?** La fila 7 (B1) recrea un CHECK de nivel con
@@ -236,10 +238,12 @@ Editar SOLO este archivo: src/lib/config.ts
 
 ### Solo si el combo vende PRIMARIA
 
-Después de `setup.sql` y de TODA la cadena de migraciones, la última es
-`20261104120000_nivel_primaria.sql` (nunca antes: B1, `20260812` y `20260820` recrean los
-CHECK de nivel con lista cerrada y abortarían con filas `primaria`). Si la cadena no ha
-terminado, `setup-primaria.sql` aborta con un mensaje claro y no siembra nada:
+La migración `20261104120000_nivel_primaria.sql` no es de esta sección: corre en todo combo
+(fila 26 de la tabla de 7bis). Lo único que depende de vender Primaria es sembrar su contenido,
+después de `setup.sql` y de TODA la cadena, cuya última migración es esa (nunca antes: B1,
+`20260812` y `20260820` recrean los CHECK de nivel con lista cerrada y abortarían con filas
+`primaria`). Si la cadena no ha terminado, `setup-primaria.sql` aborta con un mensaje claro y no
+siembra nada:
 
 ```bash
 cd scripts && psql "$CLIENT_DB_URL" -v ON_ERROR_STOP=1 -f setup-primaria.sql
