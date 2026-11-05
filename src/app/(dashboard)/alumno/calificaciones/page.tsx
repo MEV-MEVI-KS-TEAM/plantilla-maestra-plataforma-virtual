@@ -26,6 +26,8 @@ interface Resumen {
   materias_no_acreditadas: number
   materias_pendientes: number
   materias_bloqueadas?: number
+  /** Solo en un alumno de Primaria. */
+  nivel?: string
 }
 
 const CARD = { background: '#181C26', border: '1px solid #2A2F3E' }
@@ -126,6 +128,7 @@ export default function CalificacionesPage() {
       <FadeIn delay={0}>
         <div>
           <h2 className="text-xl font-bold text-gray-900">Mis Calificaciones</h2>
+          {resumen?.nivel === 'primaria' && <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--color-primario)' }}>Primaria</p>}
           <p className="text-sm mt-0.5" style={{ color: '#94A3B8' }}>Estado de acreditación por materia</p>
         </div>
       </FadeIn>

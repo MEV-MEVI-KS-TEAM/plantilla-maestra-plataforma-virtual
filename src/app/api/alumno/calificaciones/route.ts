@@ -81,7 +81,8 @@ export async function GET() {
         mes_numero:     f.mes_numero,
         estado:         f.estado,
       })),
-      resumen: resumirBoletin(filas),
+      // Solo Primaria lo necesita, para su encabezado: los demás, la respuesta de siempre.
+      resumen: { ...resumirBoletin(filas), ...(alumno.nivel === 'primaria' ? { nivel: 'primaria' } : {}) },
     })
   } catch (err) {
     console.error('[api/alumno/calificaciones] error:', err)
