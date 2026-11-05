@@ -27,6 +27,31 @@ export async function revisarEdadTutorDelAlumno(
   return revision.ok ? revision : { ok: false, status: 400, error: revision.error }
 }
 
+/** Lo que «Corregir plan» cambia en la fila. */
+export type PlanAlumno = { nivel: string | null; modalidad: string | null; carrera: string | null }
+
+export const mismoPlan = (a: PlanAlumno, b: PlanAlumno): boolean =>
+  a.nivel === b.nivel && a.modalidad === b.modalidad && a.carrera === b.carrera
+
+/** El plan de la fila tal como está. Con error, no se sabe: quien llama no debe suponer nada. */
+export async function leerPlanAlumno(
+  admin: SupabaseClient,
+  alumnoId: string,
+): Promise<{ ok: true; plan: PlanAlumno } | { ok: false; error: string }> {
+  const { data, error } = await admin
+    .from('alumnos')
+    .select('nivel, modalidad, carrera')
+    .eq('id', alumnoId)
+    .maybeSingle()
+  if (error || !data) {
+    const mensaje = error?.message ?? 'Alumno no encontrado'
+    console.error('[admin/edad-tutor] lectura del plan:', mensaje)
+    return { ok: false, error: mensaje }
+  }
+  const f = data as Partial<PlanAlumno>
+  return { ok: true, plan: { nivel: f.nivel ?? null, modalidad: f.modalidad ?? null, carrera: f.carrera ?? null } }
+}
+
 /** Las cuatro columnas tal como están, para poder volver a ellas. */
 export async function leerEdadTutor(
   admin: SupabaseClient,
