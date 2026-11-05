@@ -72,6 +72,8 @@ export default function ConstanciaPage() {
   }, [])
 
   const folio = datos?.folio ?? '—'
+  // Primaria: sin CCT ni «Acreditación»; el documento no sugiere validez oficial.
+  const esPrimaria = datos?.nivel === 'primaria'
 
   const fecha = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -160,7 +162,9 @@ export default function ConstanciaPage() {
                   backgroundClip: 'text', lineHeight: 1.2,
                 }}>{cfg.nombreCompleto}</span>
                 <span style={{ fontSize: 9, letterSpacing: '0.2em', color: '#64748b', fontWeight: 500, textTransform: 'uppercase', marginTop: 4 }}>
-                  {cfg.cct?.trim()
+                  {esPrimaria
+                    ? <>Constancia de avance</>
+                    : cfg.cct?.trim()
                     ? <>Centro de Apoyo para la Acreditación de Conocimientos &nbsp;·&nbsp; CCT: {cfg.cct.trim()}</>
                     : <>Centro de Apoyo para la Acreditación de Conocimientos</>}
                 </span>
@@ -210,7 +214,7 @@ export default function ConstanciaPage() {
                   display: 'inline-block', width: 4, height: 28, flexShrink: 0,
                   background: `linear-gradient(180deg, ${C.primario}, ${C.secundario})`, borderRadius: 2,
                 }} />
-                Constancia de Estudios
+                {esPrimaria ? 'Constancia de avance' : 'Constancia de Estudios'}
               </div>
 
               {/* Foto del alumno */}
@@ -240,7 +244,7 @@ export default function ConstanciaPage() {
 
             {/* Párrafo 1 */}
             <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.9, marginBottom: 6 }}>
-              Se certifica que el alumno{' '}
+              {esPrimaria ? 'Se hace constar que el alumno' : 'Se certifica que el alumno'}{' '}
               <strong style={{ color: '#0f172a', fontWeight: 600 }}>{[datos.nombre, datos.apellidos].filter(Boolean).join(' ') || datos.nombre_completo}</strong>,{' '}
               con matrícula{' '}
               <strong style={{ color: '#0f172a', fontWeight: 600 }}>{datos.matricula}</strong>,{' '}
@@ -267,7 +271,7 @@ export default function ConstanciaPage() {
             }}>
               {[
                 { label: 'Institución', value: cfg.nombreCompleto },
-                ...(cfg.cct?.trim()
+                ...(cfg.cct?.trim() && !esPrimaria
                   ? [{ label: 'CCT' as const, value: cfg.cct.trim() }]
                   : []),
                 { label: 'Tipo de documento', value: 'Constancia de progreso académico (uso informativo)' },
