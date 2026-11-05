@@ -397,7 +397,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     ...(hayCatalogo ? [{ href: '#diplomados', etiqueta: 'Cursos' }] : []),
     { href: '#planes', etiqueta: 'Planes' },
     ...(hayLicenciaturas ? [{ href: '#licenciaturas', etiqueta: 'Licenciaturas' }] : []),
-    ...(validezActiva ? [{ href: '#validez', etiqueta: 'Validez oficial' }] : []),
+    ...(validezActiva ? [{ href: '#validez', etiqueta: validezDeLaOferta(CONFIG, 'Validez oficial') }] : []),
     ...(presentes.faq ? [{ href: '#preguntas', etiqueta: 'Preguntas' }] : []),
     { href: '#contacto', etiqueta: 'Contacto' },
   ]
@@ -408,7 +408,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // blanca, íconos en el realce del bloque y divisores en su borde.
   const indicadores: Array<{ Icono: LucideIcon; dato: string }> = [
     { Icono: Laptop, dato: '100% en línea' },
-    ...(validezActiva ? [{ Icono: ShieldCheck, dato: conPrimaria ? `Validez oficial en ${nivelesTexto(niveles)}` : 'Validez oficial' }] : []),
+    ...(validezActiva ? [{ Icono: ShieldCheck, dato: validezDeLaOferta(CONFIG, 'Validez oficial') }] : []),
     // ⚠️ Con licenciaturas, «en ambos planes» dejaría de ser verdad para TODOS
     // los planes de la página (los de licenciatura no suman lo mismo): se dice
     // de qué programas es.
@@ -986,7 +986,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 <p className="mt-4 flex items-start gap-2 text-sm" style={{ color: tPlanes.textoSuave }}>
                   <AlertCircle size={16} aria-hidden className="mt-0.5 flex-shrink-0" style={{ color: tPlanes.titulo }} />
                   La certificación no está incluida en el total del plan.
-                  {nivelesCertificacion.includes('primaria') && ` ${NOTA_TARJETA_PRIMARIA}`}
+                  {/* La caja lista varios niveles: sin alcance, sería falso para Sec y Prepa. */}
+                  {nivelesCertificacion.includes('primaria') && (nivelesCertificacion.length > 1
+                    ? ` En Primaria: ${NOTA_TARJETA_PRIMARIA.charAt(0).toLowerCase()}${NOTA_TARJETA_PRIMARIA.slice(1)}`
+                    : ` ${NOTA_TARJETA_PRIMARIA}`)}
                 </p>
               </div>
             )}

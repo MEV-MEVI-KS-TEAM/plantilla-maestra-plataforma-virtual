@@ -108,7 +108,7 @@ export function textosMixtoPrimaria(nivelesConTramite: readonly string[]): Reado
     'Sin ir a la escuela. Sin perder tu trabajo.\nCon apoyo en tu certificado SEP.':
       `Sin ir a la escuela. Sin perder tu trabajo.\nCon apoyo en tu certificado SEP en ${N}.`,
     'Acompañamiento Certificado': 'Acompañamiento en cada materia',
-    'Centro de Apoyo para la Acreditación de Conocimientos': `Centro de Apoyo para la Acreditación de Conocimientos en ${N}`,
+    'Centro de Apoyo para la Acreditación de Conocimientos': `Centro de Apoyo para la Acreditación en ${N}`,
     // Dolor
     'Necesitas el certificado, pero no puedes darte el lujo de dejar de ingresar.':
       'Quieres terminar tus estudios, pero no puedes darte el lujo de dejar de ingresar.',
@@ -119,8 +119,8 @@ export function textosMixtoPrimaria(nivelesConTramite: readonly string[]): Reado
     // Antes y después
     'Sin acceso a tu certificado para avanzar profesionalmente.': 'Sin terminar tus estudios para avanzar profesionalmente.',
     'Oportunidades de trabajo que se te escapan sin el papel.': 'Oportunidades que se te escapan por no haber terminado tus estudios.',
-    'Te apoyamos en la gestión de tu certificado oficial SEP.': `Te apoyamos en la gestión de tu certificado oficial SEP en ${N}.`,
-    'Abre puertas: trabajo, universidad, trámites oficiales.': `En ${N}, abre puertas: trabajo, universidad, trámites oficiales.`,
+    'Te apoyamos en la gestión de tu certificado oficial SEP.': `Te apoyamos con tu certificado oficial SEP en ${N}.`,
+    'Abre puertas: trabajo, universidad, trámites oficiales.': `En ${N}: trabajo, universidad, trámites oficiales.`,
     // Cómo funciona
     'Crea tu cuenta y elige tu nivel: Secundaria o Preparatoria.': `Crea tu cuenta y elige tu nivel: ${lista}.`,
     'Certificación oficial SEP': `Certificación oficial SEP en ${N}`,
@@ -153,14 +153,16 @@ const reemplazar = (v: unknown, mapa: Readonly<Record<string, string>>): unknown
 }
 
 /**
- * La sección de validez oficial, si la escuela la enciende. La portada la lee de CONFIG
- * (no se edita desde el panel), así que no pasa por el merge: se llama desde ahí.
- * Sin combo mixto devuelve el mismo objeto.
+ * La sección de validez oficial, si la escuela la enciende, y la etiqueta con la que el
+ * menú y la franja la nombran. La portada la lee de CONFIG (no se edita desde el panel),
+ * así que no pasa por el merge: se llama desde ahí. Sin combo mixto devuelve lo mismo.
  */
 export function validezDeLaOferta<T>(cfg: { readonly niveles?: unknown; readonly primaria?: unknown }, validez: T): T {
-  if (!ofertaMixtaPrimaria(cfg) || !esPlano(validez)) return validez
-  const N = nombreNiveles(conTramite(cfg.niveles))
+  if (!ofertaMixtaPrimaria(cfg)) return validez
+  const niveles = conTramite(cfg.niveles)
+  const N = nombreNiveles(niveles)
   return reemplazar(validez, {
+    'Validez oficial': `Validez oficial en ${niveles.length > 1 ? 'Sec y Prepa' : N}`,
     'Tu certificado vale en México y USA': `Tu certificado de ${N} vale en México y USA`,
     'Al terminar recibes DOS documentos oficiales': `Al terminar ${N.replace(' y ', ' o ')} recibes DOS documentos oficiales`,
   }) as T
