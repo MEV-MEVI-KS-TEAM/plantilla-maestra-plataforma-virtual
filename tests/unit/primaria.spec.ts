@@ -100,13 +100,18 @@ test('1. la plantilla nace con Primaria apagada y sin nada de ella en la oferta'
   expect(CONFIG.niveles).toEqual(['secundaria', 'preparatoria', 'licenciatura'])
 })
 
-test('2. apagada, los helpers responden lo de siempre aunque llegue un id _pri', () => {
+test('2. apagada, la oferta es la de siempre, y un id _pri conserva su ritmo', () => {
   // El respaldo de un id desconocido sigue siendo el primer plan del programa.
-  expect(getMesesByModalidad('3_meses_pri')).toBe(CONFIG.modalidades[0].meses)
-  expect(getMateriasPorMesByModalidad('3_meses_pri')).toBe(CONFIG.modalidades[0].materiasPorMes)
+  expect(getMesesByModalidad('otro_plan')).toBe(CONFIG.modalidades[0].meses)
+  expect(getMateriasPorMesByModalidad('otro_plan')).toBe(CONFIG.modalidades[0].materiasPorMes)
   expect(getDefaultModalidadId()).toBe(CONFIG.modalidades[0].id)
-  expect(getLabelByModalidad('3_meses_pri')).toBe('3_meses_pri')
+  expect(getLabelByModalidad('otro_plan')).toBe('otro_plan')
   expect(getDuracionOferta()).toBe('3 o 6 meses')
+  // Un id `_pri` solo existe si la base tuvo Primaria: quien lo trae ya estaba inscrito, y
+  // apagar el add-on le quita la oferta, no el ritmo (primaria-conducta.spec.ts, R8).
+  expect(getMesesByModalidad('9_meses_pri')).toBe(9)
+  expect(getMateriasPorMesByModalidad('3_meses_pri')).toBe(6)
+  expect(getLabelByModalidad('3_meses_pri')).toBe('3 meses — Express')
   // Sec/Prepa no se mueven.
   expect(getMateriasPorMesByModalidad('3_meses')).toBe(4)
   expect(getMateriasPorMesByModalidad('6_meses')).toBe(2)
@@ -235,11 +240,12 @@ test('9. cada modalidad abre, mes a mes, exactamente la tabla del plan', () => {
   })
 })
 
-test('10. sin registrar la tabla, un plan _pri se quedaría en 12 de 18 (la clase del Bug 121)', () => {
-  // El caso que justifica los ids propios: con el ritmo de Sec/Prepa no termina.
+test('10. apagar el add-on no deja a nadie en 12 de 18 (la clase del Bug 121)', () => {
+  // Con el ritmo de Sec/Prepa se cerraría en la materia 12; con el suyo, las abre todas.
   const materias = materiasDelPlan()
+  expect(primariaActiva()).toBe(false)
   const disp = calcularDisponibilidad({ nivel: 'primaria', modalidad: '3_meses_pri', duracion_meses: 3, meses_desbloqueados: 3 }, materias, new Set())
-  expect([...disp.values()].filter(Boolean)).toHaveLength(12)
+  expect([...disp.values()].filter(Boolean)).toHaveLength(18)
 })
 
 // ─── Menores ─────────────────────────────────────────────────────────────────

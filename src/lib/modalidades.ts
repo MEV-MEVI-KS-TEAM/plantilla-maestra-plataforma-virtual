@@ -174,6 +174,16 @@ function modalidadesPri(
   return pri.modalidades ?? []
 }
 
+/**
+ * La tabla de Primaria para la LÓGICA ACADÉMICA: sin mirar el add-on ni `activa`. Apagar
+ * un plan o el add-on quita la oferta, no el ritmo de quien ya está inscrito (la regla
+ * de alcance de la cabecera). Sus ids (`*_pri`) solo existen en una base con Primaria:
+ * en un combo sin Primaria ningún alumno los trae y esto nunca da nada.
+ */
+function modalidadesPriAcademicas(): readonly ModalidadBase[] {
+  return (CONFIG as { primaria?: TablaPri }).primaria?.modalidades ?? []
+}
+
 /** ¿Esta escuela vende Primaria? */
 export function primariaActiva(): boolean {
   return (CONFIG as { primaria?: TablaPri }).primaria?.activa === true
@@ -245,7 +255,8 @@ export function getMateriasPorMesLicenciatura(id: string | null | undefined): nu
  * final en el de Primaria. Este es el único punto que conoce las tres tablas.
  *
  * Primaria va AL FINAL a propósito: sus ids (`*_pri`) no colisionan con nada, así
- * que lo que Sec/Prepa y licenciatura ya resolvían sigue dando lo mismo.
+ * que lo que Sec/Prepa y licenciatura ya resolvían sigue dando lo mismo. Y sin filtrar
+ * `activa`: esto resuelve el ritmo de un alumno, no lo que se vende.
  */
 function buscarModalidad(
   id: string | null | undefined,
@@ -255,7 +266,7 @@ function buscarModalidad(
   const base = mods.find(m => m.id === id && m.activa)
   if (base) return base
   return modalidadesLic().find(m => m.id === id && m.activa !== false)
-    ?? modalidadesPri().find(m => m.id === id && m.activa !== false)
+    ?? modalidadesPriAcademicas().find(m => m.id === id)
 }
 
 /**
@@ -517,7 +528,7 @@ export function getLabelByModalidad(
 ): string {
   if (!id) return ''
   const found = mods.find(m => m.id === id)
-  return found?.label ?? modalidadesPri().find(m => m.id === id)?.label ?? id
+  return found?.label ?? modalidadesPriAcademicas().find(m => m.id === id)?.label ?? id
 }
 
 /**
