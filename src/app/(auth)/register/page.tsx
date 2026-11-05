@@ -256,8 +256,8 @@ function LeftPanel() {
 
       <div className="relative z-10">
         <div style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12, padding: '12px 16px' }}>
-          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>CENTRO DE APOYO</p>
-          <p className="text-sm font-bold" style={{ color: '#fff' }}>Acreditación de Conocimientos</p>
+          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>{primariaActiva() ? 'ESTUDIA EN LÍNEA' : 'CENTRO DE APOYO'}</p>
+          <p className="text-sm font-bold" style={{ color: '#fff' }}>{primariaActiva() ? 'A tu ritmo, desde casa' : 'Acreditación de Conocimientos'}</p>
         </div>
       </div>
     </div>
