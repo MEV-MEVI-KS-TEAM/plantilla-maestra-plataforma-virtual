@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdmin } from '@/lib/supabase/verify-admin'
 import { cargarAlumnoObjetivo, respuestaObjetivo } from '@/lib/admin-alumno'
-import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
+import { getMesesByModalidad, getDefaultModalidadId, primariaActiva } from '@/lib/modalidades'
+import { CAMPOS_EDAD_TUTOR } from '@/lib/registro-reglas'
 import { faltaBitacoraMes, type EventoMes } from '@/lib/meses-programa'
 import { esPersonal, reglaPatchAlumno, rolDeQuienEdita } from '@/lib/alumno-patch'
 import { getPlanNombre, inscripcionDelAlumno, tablaLicenciaturas, tablaPrimaria } from '@/lib/licenciatura-utils'
@@ -178,12 +179,17 @@ export async function GET(
       meses_desbloqueados: a.meses_desbloqueados ?? 0,
       inscripcion_pagada:  a.inscripcion_pagada ?? false,
       monto_inscripcion:   inscripcionDelAlumno(a.nivel as string | null, cfg.precios, tablaLicenciaturas(cfg), tablaPrimaria(cfg)),
-      // Edad y tutor: null salvo en un combo con Primaria. Admin y secretario los
-      // ven porque el secretario es quien contacta a la familia.
-      fecha_nacimiento:    (a.fecha_nacimiento as string | null) ?? null,
-      tutor_nombre:        (a.tutor_nombre as string | null) ?? null,
-      tutor_telefono:      (a.tutor_telefono as string | null) ?? null,
-      tutor_parentesco:    (a.tutor_parentesco as string | null) ?? null,
+      // Edad y tutor: solo con el add-on, o si la fila ya los trae (se apagó con alumnos
+      // dentro). Sin Primaria la respuesta no gana claves. Admin y secretario los ven
+      // porque el secretario es quien contacta a la familia.
+      ...(primariaActiva() || CAMPOS_EDAD_TUTOR.some(campo => a[campo] != null)
+        ? {
+            fecha_nacimiento: (a.fecha_nacimiento as string | null) ?? null,
+            tutor_nombre:     (a.tutor_nombre as string | null) ?? null,
+            tutor_telefono:   (a.tutor_telefono as string | null) ?? null,
+            tutor_parentesco: (a.tutor_parentesco as string | null) ?? null,
+          }
+        : {}),
       sindicalizado:       Boolean(a.es_sindicalizado ?? a.sindicalizado),
       sindicato:           a.sindicato ?? null,
       // Notas internas: solo visibles para admin (el secretario recibe null)
