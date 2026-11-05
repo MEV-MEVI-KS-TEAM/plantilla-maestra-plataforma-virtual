@@ -249,9 +249,11 @@ siembra nada:
 cd scripts && psql "$CLIENT_DB_URL" -v ON_ERROR_STOP=1 -f setup-primaria.sql
 ```
 
-Siembra 18 materias, 144 semanas, 432 preguntas de quiz, 180 de examen y sus actividades, quita
-«la misma validez oficial» de la materia demo, y termina con `post-setup-primaria-check.sql`, que
-tiene que salir ✅. Sin video no es falla.
+Siembra 18 materias, 144 semanas, 432 preguntas de quiz, 180 de examen y sus actividades, y
+termina con `post-setup-primaria-check.sql`, que tiene que salir ✅. Sin video no es falla.
+La materia demo (Tutoría de Ingreso) no se toca: un alumno de Primaria no la ve, ni sin pagar ni
+por URL (ve sus meses con candado y el aviso de pago), y en un combo mixto Sec y Prepa siguen
+viendo su Tutoría.
 En `src/lib/config.ts`: `primaria.activa: true` y `'primaria'` en `niveles` (o `['primaria']`
 en un combo solo Primaria, con los planes de `modalidades` en `activa: false`). Enciende
 también la fecha de nacimiento y los datos del tutor en el registro de Primaria y Secundaria.

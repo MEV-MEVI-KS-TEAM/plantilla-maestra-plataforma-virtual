@@ -78,8 +78,9 @@ export async function GET() {
       return NextResponse.json({ demo: true, materia_demo_id: DEMO_MATERIA_ID })
     }
 
-    // Sin pago y sin meses → modo demo
-    if (!inscripcionPagada && mesesDesbloqueados === 0) {
+    // Sin pago y sin meses → modo demo. Primaria no tiene demo (ver `materiaVedada`):
+    // sigue de largo y el tablero pinta sus meses con candado y el aviso de pago normal.
+    if (!inscripcionPagada && mesesDesbloqueados === 0 && nivelAlumno !== 'primaria') {
       return NextResponse.json({ demo: true, materia_demo_id: DEMO_MATERIA_ID })
     }
 

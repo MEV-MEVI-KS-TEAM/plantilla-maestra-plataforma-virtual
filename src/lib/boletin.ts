@@ -1,5 +1,6 @@
 import {
   calcularDisponibilidad,
+  materiaVedada,
   ordenarCanonico,
   toMateriaVentana,
   type AlumnoAcceso,
@@ -171,6 +172,9 @@ export function armarBoletin(
   const califPorMateria = new Map<string, CalificacionConMateria>()
 
   for (const c of calificaciones) {
+    // Quien pasó a Primaria con «Corregir plan» pudo traer la demo calificada (su
+    // candado no la cuenta): esa materia ya no es suya, tampoco en el historial.
+    if (c.materia && materiaVedada(alumno, c.materia)) continue
     // UNIQUE (alumno_id, materia_id): una fila por materia.
     califPorMateria.set(c.materia_id, c)
     // Historial: una materia calificada que ya no está en el catálogo activo

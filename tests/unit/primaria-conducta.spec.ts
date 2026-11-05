@@ -366,36 +366,117 @@ test('D3. el seed abre las materias en el orden del plan: `orden` 25 a 42, una p
   expect(porOrden.map(f => f.nombre)).toEqual(PLAN.orden_apertura.map(c => nombrePorCodigo.get(c)))
 })
 
-test('D4. setup-primaria: siembra antes de las actividades, y la demo y la auditoría al final', () => {
+test('D4. setup-primaria: siembra antes de las actividades, la auditoría al final, y no toca la materia demo', () => {
   const pri = leer('scripts/setup-primaria.sql')
   const pos = (s: string) => { const k = pri.indexOf(s); expect(k, s).toBeGreaterThan(-1); return k }
   expect(pos('IS DISTINCT FROM')).toBeLessThan(pos('\\i seed-primaria.sql'))
   expect(pos('\\i seed-primaria.sql')).toBeLessThan(pos('\\i seed-actividades-primaria.sql'))
-  expect(pos('\\i seed-actividades-primaria.sql')).toBeLessThan(pos('UPDATE public.semanas s'))
-  expect(pos('UPDATE public.semanas s')).toBeLessThan(pos('\\i post-setup-primaria-check.sql'))
+  expect(pos('\\i seed-actividades-primaria.sql')).toBeLessThan(pos('\\i post-setup-primaria-check.sql'))
+  // En un combo mixto, Sec y Prepa siguen viendo su Tutoría tal cual.
+  expect(pri.replace(/^--.*$/gm, '')).not.toMatch(/\bUPDATE\b/i)
+  expect(leer('scripts/post-setup-primaria-check.sql')).not.toContain("m.nivel = 'demo'")
 })
 
-test('D5. el UPDATE de la materia demo quita la validez oficial de los dos textos que se pueden instalar', () => {
-  const pri = leer('scripts/setup-primaria.sql')
-  const m = /regexp_replace\(\s*s\.contenido,\s*'([^']+)',\s*'([^']+)',\s*'g'\)/.exec(pri)
-  expect(m).not.toBeNull()
-  const aplicar = (t: string) => t.replace(new RegExp(m![1], 'g'), m![2].replace(/\\1/g, '$1'))
-  const instalados = [
-    leer('scripts/seed-demo-materia.sql').split('\n').filter(l => l.includes('misma validez oficial')),
-    leer('scripts/seed-contenido-semanas.sql').split('\n').filter(l => l.includes('misma validez oficial') && l.includes("titulo = 'Bienvenida al bachillerato virtual")),
-  ]
-  for (const lineas of instalados) {
-    expect(lineas.length).toBeGreaterThan(0)
-    for (const linea of lineas) {
-      expect(linea).toContain('validez oficial')
-      expect(aplicar(linea)).not.toContain('validez oficial')
-      expect(aplicar(linea)).toContain('sin ir a la escuela')
+// ─── La materia demo ─────────────────────────────────────────────────────────
+
+type Via = { status: number; error: string | null }
+type VistaDemo = Record<string, Via> & {
+  catalogo: string[]; lista: string[]; disponibles: string[]; boletin: string[]; constancia: string[]
+  meses: { demo: boolean; materia_demo_id?: string | null; total?: number; abiertos?: number; nombres?: string[] }
+  tablero: string; misMaterias: string
+}
+/** Todas las vías por las que un alumno llegaría a la materia demo o a una tutoría ajena. */
+const VIAS = ['materiaDemo', 'materiaTutoriaPrepa', 'glosarioDemo', 'quizVer', 'quizEnviar', 'examenVer', 'examenEnviar', 'marcarSemana', 'tiempoSemana', 'material']
+const TUTORIA = /Tutor[ií]a|TUT101|modo demo|Explorar demo|bachillerato/i
+
+test.describe('la materia demo: Primaria no la ve; Sec y Prepa, igual que hoy', () => {
+  test.describe.configure({ mode: 'serial', timeout: 180_000 })
+  test.skip(!nodeSirve, 'el arnés necesita Node 23.6 o mayor')
+  let d: Record<'mixto' | 'apagado', Record<string, VistaDemo>>
+  test.beforeAll(() => { d = correrArnes('primaria-demo.mjs') })
+
+  test('T1. Primaria no entra por ninguna vía: 403, con el mismo mensaje que una materia ajena', () => {
+    for (const combo of ['mixto', 'apagado'] as const) {
+      for (const alumno of ['primariaSinPagar', 'primariaPagada', 'primariaConDemo']) {
+        const v = d[combo][alumno]
+        for (const via of VIAS) expect(v[via].status, `${combo} ${alumno} ${via}`).toBe(403)
+        expect(v.materiaAjena.status).toBe(403)
+        expect(v.materiaDemo.error, `${combo} ${alumno}`).toBe(v.materiaAjena.error)
+        expect(v.materiaDemo.error).toBe('Esta materia no corresponde a tu nivel')
+      }
     }
-  }
-  // Solo la materia demo: la Tutoría de Preparatoria es de ese nivel.
-  expect(pri).toContain("m.nivel = 'demo'")
-  // Y la auditoría lo detecta si alguien vuelve a correr los seeds.
-  expect(leer('scripts/post-setup-primaria-check.sql')).toContain("m.nivel = 'demo' AND s.contenido ~* '(validez oficial")
+  })
+
+  test('T2. Primaria no la lista: ni catálogo, ni Mis Materias, ni tablero, ni boletín, ni constancia', () => {
+    for (const combo of ['mixto', 'apagado'] as const) {
+      for (const alumno of ['primariaSinPagar', 'primariaPagada', 'primariaConDemo']) {
+        const v = d[combo][alumno]
+        expect(v.catalogo, `${combo} ${alumno}`).toHaveLength(18)
+        expect(v.lista, `${combo} ${alumno}`).toHaveLength(18)
+        for (const lista of [v.catalogo, v.lista, v.disponibles, v.boletin, v.constancia, v.meses.nombres ?? []]) {
+          expect(lista.join(' '), `${combo} ${alumno}`).not.toMatch(/Tutor/)
+        }
+        expect(v.meses.demo, `${combo} ${alumno}`).toBe(false)
+        expect(sinEtiquetas(v.tablero), `${combo} ${alumno}`).not.toMatch(TUTORIA)
+        expect(sinEtiquetas(v.misMaterias), `${combo} ${alumno}`).not.toMatch(TUTORIA)
+      }
+    }
+  })
+
+  test('T3. Primaria sin pagar: el aviso de pago normal y sus meses con candado, sin vacíos', () => {
+    for (const combo of ['mixto', 'apagado'] as const) {
+      const v = d[combo].primariaSinPagar
+      const tablero = sinEtiquetas(v.tablero)
+      expect(tablero).toContain('Inscripción pendiente de pago')
+      expect(tablero).toContain('Meses del programa')
+      expect(tablero).toContain('6 materias')
+      expect(v.meses).toMatchObject({ demo: false, total: 3, abiertos: 0 })
+      expect(v.meses.nombres).toHaveLength(18)
+      expect(v.disponibles).toEqual([])
+      // Mis Materias enseña las 18, ninguna abierta.
+      const mias = sinEtiquetas(v.misMaterias)
+      expect(mias).toContain('Lectura y comprensión I')
+      expect(mias).toContain('Primaria 18')
+    }
+  })
+
+  test('T4. Primaria que ya pagó: su primera materia abierta, sin aviso de pago', () => {
+    const v = d.mixto.primariaPagada
+    expect(sinEtiquetas(v.tablero)).not.toContain('Inscripción pendiente de pago')
+    expect(sinEtiquetas(v.tablero)).toContain('Continuar estudiando')
+    expect(v.disponibles).toHaveLength(6)
+    expect(v.meses).toMatchObject({ demo: false, total: 3, abiertos: 1 })
+  })
+
+  test('T5. Sec y Prepa en un combo mixto la ven y entran, igual que con el add-on apagado', () => {
+    for (const alumno of ['secundariaSinPagar', 'secundariaPagada', 'preparatoriaSinPagar']) {
+      expect(d.mixto[alumno], alumno).toEqual(d.apagado[alumno])
+      const v = d.mixto[alumno]
+      for (const via of VIAS) expect(v[via].status, `${alumno} ${via}`).not.toBe(403)
+      expect(v.materiaDemo.status).toBe(200)
+      expect(v.quizVer.status).toBe(200)
+      expect(v.examenVer.status).toBe(200)
+      expect(v.material.status).toBe(302)
+      expect(v.catalogo).toContain('Tutoría de Ingreso I')
+    }
+  })
+
+  test('T6. Sec y Prepa sin pagar siguen en modo demo, con su banner y su enlace', () => {
+    for (const combo of ['mixto', 'apagado'] as const) {
+      for (const alumno of ['secundariaSinPagar', 'preparatoriaSinPagar']) {
+        const v = d[combo][alumno]
+        expect(v.meses).toEqual({ demo: true, materia_demo_id: 'f0551b82-1c3e-4286-bfb4-878842bc6eff' })
+        expect(v.lista).toContain('Tutoría de Ingreso I')
+        const tablero = sinEtiquetas(v.tablero)
+        expect(tablero).toContain('Estás en modo demo')
+        expect(tablero).toContain('Explorar demo')
+        expect(tablero).not.toContain('Inscripción pendiente de pago')
+      }
+    }
+    // Pagado, la demo deja de listarse pero sigue abierta: lo de siempre.
+    expect(d.apagado.secundariaPagada.lista).not.toContain('Tutoría de Ingreso I')
+    expect(d.apagado.secundariaPagada.materiaDemo.status).toBe(200)
+  })
 })
 
 // ─── Combo mixto: la regla del mapa ──────────────────────────────────────────

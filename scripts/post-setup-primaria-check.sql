@@ -124,14 +124,6 @@ SELECT 'Materias de Secundaria y Preparatoria (debe ser 24)' AS check_name, COUN
        CASE WHEN COUNT(*) = 24 THEN '✅ OK' ELSE '❌ FAIL' END AS resultado
   FROM public.materias WHERE nivel IN ('secundaria', 'preparatoria');
 
--- ─── P11b: La materia demo no promete validez oficial ──────
-SELECT 'Semanas de la materia demo que prometen validez oficial (debe ser 0)' AS check_name, COUNT(*)::text AS valor,
-       CASE WHEN COUNT(*) = 0 THEN '✅ OK' ELSE '❌ FAIL → correr scripts/setup-primaria.sql' END AS resultado
-  FROM public.semanas s
-  JOIN public.meses_contenido mc ON mc.id = s.mes_id
-  JOIN public.materias m ON m.id = mc.materia_id
- WHERE m.nivel = 'demo' AND s.contenido ~* '(validez oficial|\mSEP\M|\mINEA\M|certificado oficial)';
-
 -- ─── P12: Videos (informativo) ─────────────────────────────
 SELECT 'Semanas de Primaria con video (informativo)' AS check_name, COUNT(*)::text AS valor,
        CASE WHEN COUNT(*) = 144 THEN '✅ completos' ELSE 'ℹ️  sin video se ve la lección; se publican después' END AS resultado

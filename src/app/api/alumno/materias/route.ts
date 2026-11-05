@@ -65,7 +65,10 @@ export async function GET() {
     // aparece luego ni en su boletín ni en su constancia, porque esos dos ya no
     // la cuentan. Alinear el listado con ellos cierra las dos quejas de golpe
     // (TICKET-2026-09-08-57).
-    const incluirDemo = !alumno.inscripcion_pagada
+    //
+    // Primaria no la ve nunca: habla de bachillerato de principio a fin (ver
+    // `materiaVedada`). Sin pagar ve sus materias con candado.
+    const incluirDemo = !alumno.inscripcion_pagada && nivel !== 'primaria'
     materiasQuery = nivel
       ? (incluirDemo
           ? materiasQuery.or(`nivel.eq.${nivel},nivel.eq.demo`)

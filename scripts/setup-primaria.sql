@@ -15,8 +15,10 @@
 --                                    180 preguntas y su glosario.
 --   2. seed-actividades-primaria.sql UPDATE de semanas.actividades/_pdf_url y
 --                                    materias.cuaderno_pdf_url.
---   3. La materia demo: quita «la misma validez oficial» de la Tutoría de Ingreso.
---   4. post-setup-primaria-check.sql Conteos: todo tiene que salir ✅.
+--   3. post-setup-primaria-check.sql Conteos: todo tiene que salir ✅.
+--
+-- La materia demo no se toca aquí: un alumno de Primaria no la ve (`materiaVedada`, en
+-- src/lib/acceso-materias.ts) y en un combo mixto Sec y Prepa siguen viendo su Tutoría.
 --
 -- Los dos seeds son COPIA EXACTA de banco-materias-sec-prepa (seed-primaria-data-only.sql
 -- y actividades/seed-actividades-primaria.sql): NO editar aquí, se regeneran allá.
@@ -40,30 +42,11 @@ BEGIN
   END IF;
 END $$;
 
-\echo '=== PRIMARIA 1/4: seed-primaria.sql ==='
+\echo '=== PRIMARIA 1/3: seed-primaria.sql ==='
 \i seed-primaria.sql
 
-\echo '=== PRIMARIA 2/4: seed-actividades-primaria.sql ==='
+\echo '=== PRIMARIA 2/3: seed-actividades-primaria.sql ==='
 \i seed-actividades-primaria.sql
 
--- La materia demo la alcanza todo alumno, también en modo demo (acceso-materias.ts,
--- `nivel.eq.demo`, y /api/alumno/meses), y su semana 1 promete «la misma validez
--- oficial». Va aquí y no en seed-contenido-semanas.sql: un combo sin Primaria no corre
--- este archivo. El texto instalado sale de ese seed; seed-demo-materia.sql trae otra
--- variante, por si se reaplica. Solo toca la materia demo: la Tutoría de Preparatoria
--- no la ve Primaria. Idempotente: la segunda corrida ya no encuentra la frase.
-\echo '=== PRIMARIA 3/4: materia demo sin validez oficial ==='
-UPDATE public.semanas s
-   SET contenido = regexp_replace(
-         s.contenido,
-         '(E|e)s (la misma preparatoria|el mismo programa que en el sistema presencial), con la misma validez oficial, pero (en formato )?100% en línea',
-         '\1s estudiar sin ir a la escuela, en formato 100% en línea',
-         'g')
-  FROM public.meses_contenido mc
-  JOIN public.materias m ON m.id = mc.materia_id
- WHERE s.mes_id = mc.id
-   AND m.nivel = 'demo'
-   AND s.contenido LIKE '%validez oficial%';
-
-\echo '=== PRIMARIA 4/4: post-setup-primaria-check.sql ==='
+\echo '=== PRIMARIA 3/3: post-setup-primaria-check.sql ==='
 \i post-setup-primaria-check.sql
