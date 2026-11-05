@@ -207,7 +207,8 @@ export async function POST(request: Request) {
       if (alumnoError.code === '23505') {
         return Response.json({ ok: true, nota: 'alumno ya existía' })
       }
-      console.error('[register-complete] alumnos insert error:', alumnoError)
+      // `details` de un 23514 trae la fila: con fecha y tutor no va a los logs.
+      console.error('[register-complete] alumnos insert error:', edadTutor ? { code: alumnoError.code, message: alumnoError.message } : alumnoError)
       return Response.json({ error: alumnoError.message }, { status: 500 })
     }
 
