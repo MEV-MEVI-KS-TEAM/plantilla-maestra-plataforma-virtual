@@ -159,9 +159,11 @@ test('S4. Solo-Primaria: lo que el cliente editó se respeta, en config.ts y en 
   expect(mergeSiteConfig(SOLO(), { landing: { hero_titulo: 'Tu Secundaria o Preparatoria' } }).landing.hero_titulo).toBe('Tu Primaria')
 })
 
-test('S5. con Secundaria o Preparatoria, o sin el add-on, los textos no se tocan', () => {
-  expect(mergeSiteConfig(MIXTO(), {}).landing).toEqual(JSON.parse(JSON.stringify(CONFIG.landing)))
-  expect(mergeSiteConfig(base({ niveles: ['primaria', 'secundaria'], primaria: PRI_ON }), {}).landing.hero_titulo).toBe('Tu Secundaria o Preparatoria')
+test('S5. con Secundaria o Preparatoria no se neutralizan; sin el add-on, los textos no se tocan', () => {
+  // Mixto: siguen nombrando el certificado, pero dicen de qué niveles (primaria-conducta.spec.ts).
+  expect(mergeSiteConfig(MIXTO(), {}).landing.hero_titulo).toBe('Tu Primaria, Secundaria o Preparatoria')
+  expect(mergeSiteConfig(MIXTO(), {}).landing.hero_subtitulo).toContain('certificado SEP en Secundaria y Preparatoria')
+  expect(mergeSiteConfig(base({ niveles: ['primaria', 'secundaria'], primaria: PRI_ON }), {}).landing.hero_titulo).toBe('Tu Primaria o Secundaria')
   // Add-on apagado aunque `niveles` no traiga Sec ni Prepa (solo cursos): igual que main.
   const apagada = base({ niveles: [] })
   expect(mergeSiteConfig(apagada, {})).toEqual(apagada)

@@ -575,16 +575,22 @@ export function getDuracionLabel(
 }
 
 /**
- * La duración que anuncian las portadas ({duracion}). En un combo SOLO Primaria no
- * hay planes del programa: la frase sale de los suyos. Con cualquier otra oferta,
- * `getDuracionLabel` de siempre.
+ * La duración que anuncian las portadas ({duracion}). Sin Primaria, `getDuracionLabel`
+ * de siempre. Con ella, la frase junta sus planes con los del programa, sin repetir
+ * duraciones: «3, 6 o 9 meses».
  */
 export function getDuracionOferta(
   mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
 ): string {
-  if (mods.some(m => m.activa)) return getDuracionLabel(mods)
   const pri = getModalidadesPrimaria().map(m => ({ ...m, activa: true }))
-  return getDuracionLabel(pri)
+  if (pri.length === 0) return getDuracionLabel(mods)
+  const vistos = new Set<number>()
+  const unidos = [...mods.filter(m => m.activa), ...pri].filter(m => {
+    if (vistos.has(m.meses)) return false
+    vistos.add(m.meses)
+    return true
+  })
+  return getDuracionLabel(unidos)
 }
 
 /**

@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { LogIn, Instagram, Facebook } from 'lucide-react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import { CONFIG } from '@/lib/config'
+import { validezDeLaOferta } from '@/lib/landing-solo-primaria'
 import { planesPorNivel, esSoloPrimaria, getDuracionOferta, getModalidadesPrimaria, getPlanLabelConDuracion, getTotalPlan,
   type ModalidadPrograma } from '@/lib/modalidades'
 import { preciosDePrimaria } from '@/lib/precios-primaria'
@@ -399,7 +400,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
   // La acreditación NO es branding: sale de `CONFIG`, no de la config editable.
   // Nadie debe poder encender desde un panel una validez oficial que la escuela
   // no tiene, ni cambiar el folio que la persona va a teclear en el portal.
-  const VALIDEZ = CONFIG.landing.validezOficial
+  // En un combo mixto dice a qué niveles aplica; sin Primaria, el mismo objeto.
+  const VALIDEZ = validezDeLaOferta(CONFIG, CONFIG.landing.validezOficial)
   // Es de Secundaria y Preparatoria: un combo que solo vende Primaria no la anuncia.
   const validezActiva = VALIDEZ.activa && !soloPrimaria
   // ¿La escuela certifica? Con `ofreceCertificacion: false` no se anuncia (ver escuelaCertifica).
@@ -640,6 +642,7 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                       </div>
                     ))}
                   </div>
+                  <p className="mt-4 text-xs" style={{ color: C.navySuave }}>Entrega constancia de avance; no incluye certificado oficial.</p>
                   <Link href="/register" className="mt-8 block w-full text-center py-3.5 rounded-xl font-bold text-white transition-all"
                     style={{ background: C.navy, boxShadow: `0 8px 24px ${C.navy}30` }}>
                     {texto(L.programas_cta)}
