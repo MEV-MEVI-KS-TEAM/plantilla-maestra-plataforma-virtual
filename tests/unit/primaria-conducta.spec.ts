@@ -9,6 +9,7 @@ import { mergeSiteConfig, type BaseSiteConfig } from '@/lib/site-config-core'
 import { CAMPOS } from '@/lib/site-config-campos'
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { getDuracionOferta } from '@/lib/modalidades'
+import { armarBoletin } from '@/lib/boletin'
 import { soloPrimariaEntrega } from '../../scripts/entrega/planes.mjs'
 
 /**
@@ -459,6 +460,57 @@ test('D4. setup-primaria: siembra antes de las actividades, la auditoría al fin
   expect(leer('scripts/post-setup-primaria-check.sql')).not.toContain("m.nivel = 'demo'")
 })
 
+test('D8. el mes del boletín en cada plan es la tabla de primaria/plan.json', () => {
+  const tablas = (PLAN as unknown as { tablas_apertura: Record<string, string[][]> }).tablas_apertura
+  const catalogo = PLAN.orden_apertura.map((codigo, i) => ({
+    id: codigo, nombre: codigo, nivel: 'primaria', orden: 25 + i, numero_mes: Math.ceil((i + 1) / 2),
+  }))
+  for (const [id, plan] of Object.entries(PLAN.modalidades)) {
+    const esperado = new Map(tablas[id].flatMap((fila, i) => fila.map(codigo => [codigo, i + 1] as const)))
+    const alumno = { nivel: 'primaria', modalidad: id, duracion_meses: plan.meses, meses_desbloqueados: 1 }
+    // Una acreditada del último lugar, con su mes de referencia: también sale con el del plan.
+    const ultima = catalogo[17]
+    const califs = [{ materia_id: ultima.id, acreditado: true, materia: { ...ultima } }]
+    const filas = armarBoletin(alumno, catalogo, califs, new Set([ultima.id]), true)
+    expect(filas, id).toHaveLength(18)
+    for (const f of filas) expect(f.mes_numero, `${id} ${f.materia.id} ${f.estado}`).toBe(esperado.get(f.materia.id))
+    expect(new Set(filas.map(f => f.mes_numero)).size, id).toBe(plan.meses)
+    expect(new Set(filas.map(f => f.estado)), id).toEqual(new Set(['Acreditada', 'Pendiente', 'Bloqueada']))
+  }
+})
+
+test('D9. Sec y Prepa conservan su `numero_mes`, aunque en un plan corto no sea el suyo', () => {
+  const catalogo = [1, 2, 3, 4, 5, 6].map(n => ({ id: `P${n}`, nombre: `P${n}`, nivel: 'preparatoria', orden: n, numero_mes: n }))
+  const filas = armarBoletin({ nivel: 'preparatoria', modalidad: '3_meses', duracion_meses: 3, meses_desbloqueados: 1 }, catalogo, [], new Set(), true)
+  expect(filas.map(f => f.mes_numero)).toEqual([1, 2, 3, 4, 5, 6])
+  // Y un alumno de otro nivel con una materia de Primaria en su historial, igual.
+  const pri = { id: 'X', nombre: 'X', nivel: 'primaria', orden: 25, numero_mes: 7 }
+  const sec = armarBoletin({ nivel: 'secundaria', modalidad: '3_meses', duracion_meses: 3, meses_desbloqueados: 1 }, [], [{ materia_id: 'X', acreditado: true, materia: pri }], new Set(['X']))
+  expect(sec.map(f => f.mes_numero)).toEqual([7])
+})
+
+test('D10. re-correr setup.sql no pisa lecciones de Primaria: cada título que coincide está acotado', () => {
+  const contenido = leer('scripts/seed-contenido-semanas.sql')
+  const primaria = leer('scripts/seed-primaria.sql')
+  const titulos = new Set([...primaria.matchAll(/VALUES \('[0-9a-f-]{36}', '[0-9a-f-]{36}', \d+, '((?:[^']|'')*)'/g)].map(m => m[1]))
+  const materias = new Set([...primaria.matchAll(/INSERT INTO public\.materias \([^)]*\) VALUES \('[0-9a-f-]{36}', '((?:[^']|'')*)'/g)].map(m => m[1]))
+  expect(titulos.size).toBeGreaterThan(100)
+  expect(materias.size).toBe(18)
+  const sentencias = [...contenido.matchAll(/WHERE titulo = '((?:[^']|'')*)'([^;]*);/g)]
+  expect(sentencias.length).toBeGreaterThan(100)
+  const coinciden = sentencias.filter(s => titulos.has(s[1]))
+  expect(new Set(coinciden.map(s => s[1]))).toEqual(new Set(['Los derechos humanos', 'Repaso general y preparación para examen final']))
+  for (const s of coinciden) {
+    const deUnaMateria = /WHERE m\.nombre = '((?:[^']|'')*)'/.exec(s[2])?.[1]
+    if (deUnaMateria !== undefined) {
+      // Acotada a una materia de otro nivel: no llega a Primaria.
+      expect(materias.has(deUnaMateria), `${s[1]} · ${deUnaMateria}`).toBe(false)
+    } else {
+      expect(s[2].replace(/\s+/g, ' '), s[1]).toContain("AND mes_id NOT IN (SELECT mc.id FROM meses_contenido mc JOIN materias m ON m.id = mc.materia_id WHERE m.nivel = 'primaria')")
+    }
+  }
+})
+
 test('D6. la migración lleva lock_timeout antes de tomar la primera tabla', () => {
   const sql = leer('supabase/migrations/20261104120000_nivel_primaria.sql').replace(/--.*$/gm, '')
   const candado = sql.indexOf("SET LOCAL lock_timeout = '10s';")
@@ -480,6 +532,8 @@ type VistaDemo = Record<string, Via> & {
   catalogo: string[]; lista: string[]; disponibles: string[]; boletin: string[]; constancia: string[]
   meses: { demo: boolean; materia_demo_id?: string | null; total?: number; abiertos?: number; nombres?: string[] }
   tablero: string; misMaterias: string; mensajesDeLaMateria: string[] | null
+  boletinMeses: [string, number, string][]; constanciaFilas: [string, number, string][]
+  calificaciones: string; constanciaPagina: string
 }
 /** Todas las vías por las que un alumno llegaría a la materia demo o a una tutoría ajena. */
 const VIAS = ['materiaDemo', 'materiaTutoriaPrepa', 'glosarioDemo', 'quizVer', 'quizEnviar', 'examenVer', 'examenEnviar', 'marcarSemana', 'tiempoSemana', 'material']
@@ -566,6 +620,52 @@ test.describe('la materia demo: Primaria no la ve; Sec y Prepa, igual que hoy', 
         expect(d[combo][alumno].mensajesDeLaMateria, `${combo} ${alumno}`).toContain('Un paso más cerca de tu certificado.')
       }
     }
+  })
+
+  test('T7. boletín y constancia dicen el mes del plan del alumno, no el de referencia', () => {
+    const nombre = (i: number) => (i === 0 ? 'Lectura y comprensión I' : `Primaria ${i + 1}`)
+    for (const [alumno, porMes] of [['primariaPagada', 6], ['primaria6Meses', 3], ['primaria9Meses', 2]] as const) {
+      const v = d.mixto[alumno]
+      expect(v.boletinMeses, alumno).toHaveLength(18)
+      expect(v.boletinMeses.map(f => [f[0], f[1]]), alumno).toEqual(Array.from({ length: 18 }, (_, i) => [nombre(i), Math.ceil((i + 1) / porMes)]))
+    }
+    // Acreditada, pendiente y bloqueada: las tres con el mismo cálculo.
+    const seis = d.mixto.primaria6Meses
+    expect(seis.boletinMeses[0]).toEqual(['Lectura y comprensión I', 1, 'Acreditada'])
+    expect(seis.boletinMeses[7]).toEqual(['Primaria 8', 3, 'Acreditada'])
+    expect(seis.boletinMeses[1]).toEqual(['Primaria 2', 1, 'Pendiente'])
+    expect(seis.boletinMeses[17]).toEqual(['Primaria 18', 6, 'Bloqueada'])
+    // La constancia, en la columna y en el código.
+    expect(seis.constanciaFilas).toEqual([
+      ['Lectura y comprensión I', 1, 'PRIM-M1-01'],
+      ['Primaria 2', 1, 'PRIM-M1-02'],
+      ['Primaria 3', 1, 'PRIM-M1-03'],
+      ['Primaria 8', 3, 'PRIM-M3-01'],
+    ])
+    // El add-on apagado no le mueve el mes a quien ya está inscrito.
+    expect(d.apagado.primaria6Meses.boletinMeses).toEqual(seis.boletinMeses)
+    // Sec y Prepa conservan su `numero_mes`: en el arnés, todas en el 1.
+    for (const alumno of ['secundariaPagada', 'preparatoriaPagada']) {
+      for (const fila of d.mixto[alumno].boletinMeses) expect(fila[1], `${alumno} ${fila[0]}`).toBe(1)
+    }
+  })
+
+  test('T8. el boletín y la constancia dicen «Primaria» en el encabezado, solo a su alumno', () => {
+    /** Lo que va entre el título y la bajada del boletín. */
+    const encabezado = (h: string) => {
+      const t = sinEtiquetas(h)
+      const i = t.indexOf('Mis Calificaciones') + 'Mis Calificaciones'.length
+      return t.slice(i, t.indexOf('Estado de acreditación por materia')).trim()
+    }
+    for (const combo of ['mixto', 'apagado'] as const) {
+      expect(encabezado(d[combo].primaria6Meses.calificaciones), combo).toBe('Primaria')
+      expect(sinEtiquetas(d[combo].primaria6Meses.constanciaPagina), combo).toMatch(/\bPrimaria\b/)
+      for (const alumno of ['secundariaPagada', 'preparatoriaPagada']) {
+        expect(encabezado(d[combo][alumno].calificaciones), `${combo} ${alumno}`).toBe('')
+        expect(sinEtiquetas(d[combo][alumno].constanciaPagina), `${combo} ${alumno}`).not.toMatch(/\bPrimaria\b/)
+      }
+    }
+    expect(sinEtiquetas(d.mixto.secundariaPagada.constanciaPagina)).toContain('Secundaria')
   })
 
   test('T6. Sec y Prepa sin pagar siguen en modo demo, con su banner y su enlace', () => {

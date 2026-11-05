@@ -44,6 +44,8 @@ globalThis.__espiarAvance = false
 const avance = await imp('src/components/alumno/ReadingProgress.tsx')
 const tablero = await imp('src/app/(dashboard)/alumno/page.tsx')
 const misMaterias = await imp('src/app/(dashboard)/alumno/materias/page.tsx')
+const paginaCalificaciones = await imp('src/app/(dashboard)/alumno/calificaciones/page.tsx')
+const paginaConstancia = await imp('src/app/(dashboard)/alumno/constancia/page.tsx')
 const acceso = await imp('src/lib/acceso-materias.ts')
 
 const DEMO = 'f0551b82-1c3e-4286-bfb4-878842bc6eff'
@@ -51,6 +53,7 @@ const TUT_PREPA = '22222222-0000-4000-8000-000000000002'
 const PREPA = '33333333-0000-4000-8000-000000000003'
 const SEC = '44444444-0000-4000-8000-000000000004'
 const PRI = '55555555-0000-4000-8000-000000000005'
+const PRI_8 = '56000006-0000-4000-8000-000000000000'
 const ID = {
   primaria: 'aaaaaaaa-0000-4000-8000-00000000000a',
   secundaria: 'bbbbbbbb-0000-4000-8000-00000000000b',
@@ -152,6 +155,10 @@ async function vias(alumno) {
     marcarSemana: resumen(await llamar(() => rutas.semana.POST(req('/api/alumno/progreso/semana', { semana_id: SEM_DEMO }, 'POST')))),
     tiempoSemana: resumen(await llamar(() => rutas.tiempo.POST(req('/api/alumno/progreso/tiempo', { semana_id: SEM_DEMO, minutos: 1 }, 'POST')))),
     material: resumen(await llamar(() => rutas.material.GET(req(`/api/material/${MAT_DEMO}`), { params: { id: MAT_DEMO } }))),
+    boletinMeses: (calif.cuerpo?.materias ?? []).map((m) => [m.nombre_materia, m.mes_numero, m.estado]),
+    constanciaFilas: (constancia.cuerpo?.materias_cursadas ?? []).map((m) => [m.nombre_materia, m.mes_numero, m.codigo]),
+    respuestaCalificaciones: calif.cuerpo,
+    respuestaConstancia: constancia.cuerpo,
     boletin: (calif.cuerpo?.materias ?? []).map((m) => m.nombre_materia ?? m.nombre).filter((n) => /Tutor/i.test(n ?? '')),
     constancia: (constancia.cuerpo?.materias_cursadas ?? []).map((m) => m.nombre_materia).filter((n) => /Tutor/i.test(n ?? '')),
     respuestaLista: lista.cuerpo,
@@ -181,6 +188,10 @@ function pantallas(alumno, v) {
   }
   return {
     mensajesDeLaMateria,
+    // [materias, resumen, loading, error]: lo que respondió la ruta real.
+    calificaciones: pintar(paginaCalificaciones.default, [v.respuestaCalificaciones?.materias ?? [], v.respuestaCalificaciones?.resumen ?? null, false, null]),
+    // [datos, loading, error]. El folio es único en cada emisión: fuera, para poder comparar.
+    constanciaPagina: pintar(paginaConstancia.default, [{ ...v.respuestaConstancia, folio: 'F-ARNES' }, false, null]),
     // [toasts, perfil, meses, demo, acreditadas, acreditadasIds, logros, ahora, racha, loading, primera, cursos]
     tablero: pintar(tablero.default, [[], perfil, esDemo ? [] : v.respuestaMeses, esDemo, 0, new Set(), [], null, 0, false, null, null]),
     // [data, loading, error]
@@ -199,6 +210,13 @@ const ALUMNOS = {
   // Pasó de Secundaria a Primaria con «Corregir plan» y traía la demo acreditada.
   primariaConDemo: { id: ID.primaria, nivel: 'primaria', modalidad: '3_meses_pri', meses_desbloqueados: 1, inscripcion_pagada: true,
     calificaciones: [{ alumno_id: ID.primaria, materia_id: DEMO, acreditado: true, calificacion_final: 90, materias: { id: DEMO, nombre: 'Tutoría de Ingreso I', nivel: 'demo', orden: 0, carrera: null, meses_contenido: [{ numero_mes: 1 }] } }] },
+  primaria6Meses: { id: ID.primaria, nivel: 'primaria', modalidad: '6_meses_pri', duracion_meses: 6, meses_desbloqueados: 1, inscripcion_pagada: true,
+    // Acreditadas con el `numero_mes` de referencia, que no es el de su plan.
+    calificaciones: [
+      { alumno_id: ID.primaria, materia_id: PRI, acreditado: true, calificacion_final: 90, materias: { id: PRI, nombre: 'Lectura y comprensión I', nivel: 'primaria', orden: 25, carrera: null, meses_contenido: [{ numero_mes: 5 }] } },
+      { alumno_id: ID.primaria, materia_id: PRI_8, acreditado: true, calificacion_final: 90, materias: { id: PRI_8, nombre: 'Primaria 8', nivel: 'primaria', orden: 32, carrera: null, meses_contenido: [{ numero_mes: 9 }] } },
+    ] },
+  primaria9Meses: { id: ID.primaria, nivel: 'primaria', modalidad: '9_meses_pri', duracion_meses: 9, meses_desbloqueados: 1, inscripcion_pagada: true },
   secundariaSinPagar: { id: ID.secundaria, nivel: 'secundaria', modalidad: '3_meses', meses_desbloqueados: 0, inscripcion_pagada: false },
   secundariaPagada: { id: ID.secundaria, nivel: 'secundaria', modalidad: '3_meses', meses_desbloqueados: 1, inscripcion_pagada: true },
   preparatoriaSinPagar: { id: ID.preparatoria, nivel: 'preparatoria', modalidad: '3_meses', meses_desbloqueados: 0, inscripcion_pagada: false },
@@ -218,6 +236,8 @@ for (const [combo, fijar] of Object.entries(COMBOS)) {
     delete v.respuestaLista
     delete v.respuestaMeses
     delete v.respuestaPropia
+    delete v.respuestaCalificaciones
+    delete v.respuestaConstancia
     salida[combo][nombre] = { ...v, ...p }
   }
 }
