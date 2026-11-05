@@ -191,7 +191,8 @@ export function primariaActiva(): boolean {
 
 /**
  * Los documentos que solo pide Primaria, para las listas del panel. Vive aquí y no en
- * la página: con el add-on apagado la lista va vacía y el texto no viaja en el chunk.
+ * la página: con el add-on apagado la lista va vacía y no se pinta. El texto no va en el
+ * chunk de la página, pero sí en el compartido de este módulo.
  */
 const DOCUMENTOS_SOLO_PRIMARIA: Readonly<Record<string, string>> = {
   comprobante_domicilio: 'Comprobante de Domicilio',
