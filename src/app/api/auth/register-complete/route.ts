@@ -11,7 +11,16 @@ import { getCarreras } from '@/lib/licenciatura-utils'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
-import { modalidadDeRegistro, exigeCursoEnRegistro, errorDePlanDeRegistro } from '@/lib/registro-reglas'
+import {
+  modalidadDeRegistro,
+  exigeCursoEnRegistro,
+  errorDePlanDeRegistro,
+  pideEdadYTutor,
+  revisarEdadTutor,
+  type DatosEdadTutor,
+  type EdadTutorLimpio,
+} from '@/lib/registro-reglas'
+import { primariaActiva } from '@/lib/modalidades'
 import { catalogoDeRegistro } from '@/lib/niveles'
 import { MENSAJE_PERSONAL_NO_SE_REGISTRA, esRolAlumno } from '@/lib/admin-alumno'
 
@@ -94,6 +103,16 @@ export async function POST(request: Request) {
       return Response.json({ error: errorPlan }, { status: 400 })
     }
 
+    // Edad y tutor: solo en un combo con Primaria, para Primaria y Secundaria. El
+    // formulario ya lo revisó antes de signUp; se repite porque se puede saltar.
+    // Sin Primaria encendida no se lee ni se escribe nada de esto.
+    let edadTutor: EdadTutorLimpio | null = null
+    if (pideEdadYTutor(nivel, primariaActiva())) {
+      const revision = revisarEdadTutor(body as DatosEdadTutor, nivel)
+      if (!revision.ok) return Response.json({ error: revision.error }, { status: 400 })
+      edadTutor = revision.datos
+    }
+
     // Solo si el nivel 'diplomado' lo eligió el alumno («Curso o diplomado»). En
     // solo_cursos lo pone el servidor a todos y el formulario no tiene selector:
     // exigirlo ahí dejaba a la escuela sin registro público (#213).
@@ -166,7 +185,7 @@ export async function POST(request: Request) {
 
     const alumnoPayload = {
       id:                  user.id,
-      nivel,               // 'secundaria' | 'preparatoria' | 'licenciatura' | 'diplomado' | null
+      nivel,               // 'primaria' | 'secundaria' | 'preparatoria' | 'licenciatura' | 'diplomado' | null
       modalidad,           // ModalidadId | null
       carrera,             // slug de carrera | null (solo licenciatura)
       es_sindicalizado,
@@ -176,6 +195,7 @@ export async function POST(request: Request) {
       meses_desbloqueados: 0,
       activo:              true,
       fecha_inscripcion:   new Date().toISOString(),
+      ...(edadTutor ?? {}),
     }
 
     const { error: alumnoError } = await admin
@@ -187,7 +207,8 @@ export async function POST(request: Request) {
       if (alumnoError.code === '23505') {
         return Response.json({ ok: true, nota: 'alumno ya existía' })
       }
-      console.error('[register-complete] alumnos insert error:', alumnoError)
+      // `details` de un 23514 trae la fila: con fecha y tutor no va a los logs.
+      console.error('[register-complete] alumnos insert error:', edadTutor ? { code: alumnoError.code, message: alumnoError.message } : alumnoError)
       return Response.json({ error: alumnoError.message }, { status: 500 })
     }
 

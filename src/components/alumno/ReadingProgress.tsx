@@ -22,17 +22,32 @@ const MSGS_EN = [
   'Week mastered!',
 ]
 
+/**
+ * Los mensajes al completar una semana. A un alumno de Primaria ninguno le habla de
+ * certificado; a los demás, los de siempre, venda o no Primaria su escuela.
+ */
+export function mensajesDeAvance(lang: string, esPrimaria: boolean): readonly string[] {
+  const msgs = lang === 'en' ? MSGS_EN : MSGS_ES
+  return esPrimaria ? msgs.filter(m => !/certific/i.test(m)) : msgs
+}
+
 interface ReadingProgressProps {
   semanaId: string
   alumnoId: string
   lang: string
   onCompletada?: () => void
   yaCompletada?: boolean
+  /** Falso en una semana de Primaria sin video: el botón no promete «ver videos». */
+  conVideos?: boolean
+  /** Verdadero en una materia de Primaria: sus mensajes no hablan de certificado. */
+  esPrimaria?: boolean
 }
 
 export default function ReadingProgress({
   semanaId,
   lang,
+  conVideos = true,
+  esPrimaria = false,
   onCompletada,
   yaCompletada = false,
 }: ReadingProgressProps) {
@@ -129,7 +144,7 @@ export default function ReadingProgress({
       setMinLectura(mins)
 
       // Mensaje motivacional aleatorio
-      const msgs = lang === 'en' ? MSGS_EN : MSGS_ES
+      const msgs = mensajesDeAvance(lang, esPrimaria)
       setMensaje(msgs[Math.floor(Math.random() * msgs.length)])
 
       // Animación del botón
@@ -248,7 +263,8 @@ export default function ReadingProgress({
               ) : (
                 <span>✓</span>
               )}
-              {lang === 'en' ? 'Mark as read — watch videos' : 'Marcar como leído — ver videos'}
+              {!conVideos ? 'Marcar como leído'
+                : lang === 'en' ? 'Mark as read — watch videos' : 'Marcar como leído — ver videos'}
             </button>
           ) : null}
         </div>

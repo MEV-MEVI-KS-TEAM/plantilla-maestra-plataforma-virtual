@@ -35,9 +35,14 @@
  * `licenciaturas.*`, así que sus ids en la página nunca chocan con los de
  * `modalidades.<id>` (hay clones con '6_meses' en las dos tablas). Las
  * etiquetas de los campos de Sec/Prepa NO cambian: la e2e las busca ancladas.
+ *
+ * PRIMARIA. Solo con el add-on encendido (`ofrecePrimaria`). Su tarjeta sigue la
+ * misma regla que «Licenciaturas»: inscripción, certificación y la mensualidad de
+ * cada plan, cada una OPCIONAL, más el párrafo del aviso de privacidad sobre
+ * menores. Con Primaria apagada no se dibuja nada nuevo.
  */
 import Link from 'next/link'
-import { ArrowLeftRight, BadgeDollarSign, ExternalLink, GraduationCap, Landmark, Layers } from 'lucide-react'
+import { ArrowLeftRight, BadgeDollarSign, BookOpen, ExternalLink, GraduationCap, Landmark, Layers } from 'lucide-react'
 import { CONFIG } from '@/lib/config'
 import { esSoloCursos } from '@/lib/modo'
 import { esSemanal } from '@/lib/periodicidad'
@@ -72,6 +77,14 @@ import {
   planesLicEditables,
   titulacionLicEditable,
 } from '@/lib/precios-licenciatura'
+import {
+  AVISO_MENORES_FABRICA,
+  LIMITES_PRI,
+  certificacionPriEditable,
+  inscripcionPriEditable,
+  planesPriEditables,
+} from '@/lib/precios-primaria'
+import { esSoloPrimaria } from '@/lib/modalidades'
 import { unirConO } from '@/components/landing/animada/textos-licenciatura'
 import { CLAVE_INSCRIPCION_POR_NIVEL, CLAVE_MENSUALIDAD_POR_NIVEL, type NivelConPrecio } from '@/lib/precios-nivel'
 import {
@@ -79,12 +92,16 @@ import {
   escribirModalidad,
   estadoSeccionLicenciatura,
   ofreceLicenciaturas,
+  ofrecePrimaria,
   precioLicenciaturaEfectivo,
+  precioPrimariaEfectivo,
   rutaLicenciatura,
+  rutaPrimaria,
   textoVacioErrorLicenciatura,
   textoVacioLicenciatura,
   tituloSecPrepa,
   type CampoLicenciatura,
+  type CampoPrimaria,
   escribirRuta,
   estaSobrescrito,
   formatoDinero,
@@ -100,7 +117,7 @@ import {
   textoVacioNivel,
   valorEfectivo,
 } from '@/lib/site-config-editor'
-import { CampoDecimal, CampoEntero, CampoPrecioNivel } from './CampoTexto'
+import { CampoDecimal, CampoEntero, CampoPrecioNivel, CampoTexto } from './CampoTexto'
 import {
   Ayuda,
   BOTON_SECUNDARIO,
@@ -231,6 +248,12 @@ export function PestanaPrecios({
     : AYUDA_INSCRIPCION_TAMBIEN_LIC
   /** «12 o 18 meses», «6, 12 o 18 meses»: por su duración, nunca por periodos. */
   const ritmosLic = `${unirConO([...new Set(planesLic.map((p) => p.meses))].sort((a, b) => a - b).map(String))} meses`
+  // Primaria: solo con el add-on encendido. En un combo SOLO Primaria no hay nada
+  // de Secundaria ni Preparatoria que editar: sus tarjetas no se dibujan.
+  const conPri = ofrecePrimaria()
+  const tablaPri = (CONFIG as unknown as { primaria?: unknown }).primaria
+  const planesPri = conPri ? planesPriEditables(tablaPri) : []
+  const soloPri = esSoloPrimaria()
 
   function campoPrecio(clave: string, etiqueta?: string) {
     const campo = campoPorClave(clave)
@@ -330,6 +353,35 @@ export function PestanaPrecios({
     )
   }
 
+  /** Un precio de Primaria: vacío = la cifra de config.ts. Gemelo de `campoLic`. */
+  function campoPri(campo: CampoPrimaria, etiqueta: string, ayuda?: string) {
+    const ruta = rutaPrimaria(campo)
+    const catalogo = campoPorClave(campo.tipo === 'mensualidad' ? 'primaria.modalidades' : campo.clave)
+    const siVacio = precioPrimariaEfectivo(overrides, campo, { vacio: true })
+    const cobra = precioPrimariaEfectivo(overrides, campo)
+    return (
+      <CampoPrecioNivel
+        key={campo.clave}
+        clave={campo.clave}
+        etiqueta={etiqueta}
+        ayuda={ayuda ?? catalogo?.ayuda}
+        valor={valorEfectivo({}, overrides, ruta)}
+        vacio={textoVacioNivel(siVacio, MONEDA, 'fabrica')}
+        vacioError={textoVacioError(siVacio, MONEDA, 'fabrica')}
+        min={catalogo?.min ?? LIMITES.precioMin}
+        max={catalogo?.max ?? LIMITES.precioMax}
+        sufijo={<EnPesos valor={cobra} moneda={MONEDA} />}
+        deshabilitado={!puedeEditar}
+        sobrescrito={precioNivelSobrescrito(overrides, ruta)}
+        resaltado={claveConError === campo.clave}
+        onChange={(n) => actualizar((prev) => escribirRuta(prev, ruta, n))}
+        onVaciar={() => actualizar((prev) => quitarRuta(prev, ruta))}
+        onReponer={(crudo) => actualizar((prev) => escribirRuta(prev, ruta, crudo))}
+        onRestaurar={() => actualizar((prev) => quitarRuta(prev, ruta))}
+      />
+    )
+  }
+
   function campoTipoCambio() {
     const clave = 'tipoCambioMXN'
     const campo = campoPorClave(clave)
@@ -364,7 +416,7 @@ export function PestanaPrecios({
 
   return (
     <div className="space-y-5">
-      <Tarjeta
+      {!soloPri && <Tarjeta
         titulo={tituloSecPrepa('Inscripción', conLic)}
         icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}
         descripcion={ayudaInscripcion}
@@ -376,9 +428,9 @@ export function PestanaPrecios({
             {NIVELES_CON_PRECIO.map((n) => campoNivel(`precios.${CLAVE_INSCRIPCION_POR_NIVEL[n]}`, n))}
           </div>
         )}
-      </Tarjeta>
+      </Tarjeta>}
 
-      <Tarjeta
+      {!soloPri && <Tarjeta
         titulo={tituloSecPrepa('Planes', conLic)}
         icono={<Layers {...ICONO} aria-hidden="true" />}
         descripcion="La duración y las materias por mes no se editan: definen el programa."
@@ -502,7 +554,7 @@ export function PestanaPrecios({
             es cierto después de "Regenerar" en Cobranza, que rehace las
             semanas pendientes y vencidas con la cuota vigente. */}
         {semanal && <Ayuda>{AYUDA_CUOTA_SEMANAL}</Ayuda>}
-      </Tarjeta>
+      </Tarjeta>}
 
       {/* 🛑 GATEADA POR `ofreceCertificacion` (Bug P-8). Una escuela que no
           certifica no debe ver en su panel una tarjeta que le pide ponerle
@@ -519,7 +571,7 @@ export function PestanaPrecios({
 
           Con la bandera en `true`, que es el default, la pestaña se ve
           exactamente igual que antes de este cambio. */}
-      {CONFIG.ofreceCertificacion && (
+      {CONFIG.ofreceCertificacion && !soloPri && (
         <Tarjeta titulo={tituloSecPrepa('Certificación', conLic)} icono={<BadgeDollarSign {...ICONO} aria-hidden="true" />}>
           {campoPrecio('precios.certificacionSecundaria')}
           {campoPrecio('precios.certificacionPreparatoria')}
@@ -569,6 +621,55 @@ export function PestanaPrecios({
               )}
             </>
           )}
+        </Tarjeta>
+      )}
+
+      {conPri && (
+        <Tarjeta
+          titulo="Primaria"
+          icono={<BookOpen {...ICONO} aria-hidden="true" />}
+          descripcion="Planes de 3, 6 y 9 meses. La duración y las materias por mes no se editan: definen el programa."
+        >
+          {inscripcionPriEditable(tablaPri) &&
+            campoPri({ clave: 'primaria.inscripcion', tipo: 'inscripcion' }, 'Inscripción de Primaria')}
+          {CONFIG.ofreceCertificacion && certificacionPriEditable(tablaPri) &&
+            campoPri({ clave: 'primaria.certificacion', tipo: 'certificacion' }, 'Certificación de Primaria')}
+          <div className="space-y-3">
+            <Subtitulo>Mensualidad por plan</Subtitulo>
+            {planesPri.map((p) => (
+              <div key={p.id} className="rounded-xl p-4 space-y-3" style={FIELD_BG}>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: TXT }}>{String(p.label ?? p.id)}</p>
+                  <p className="text-xs mt-0.5" style={{ color: TXT_TENUE }}>
+                    {p.meses} meses
+                    {typeof p.materiasPorMes === 'number' && ` · ${p.materiasPorMes} materias por mes`}
+                  </p>
+                </div>
+                {campoPri(
+                  { clave: `primaria.modalidades.${p.id}`, tipo: 'mensualidad', planId: p.id },
+                  `Mensualidad · ${String(p.label ?? p.id)}`,
+                  'Vacío = vuelve al precio que trae la configuración de tu escuela para este plan.',
+                )}
+              </div>
+            ))}
+          </div>
+          <CampoTexto
+            clave="primaria.avisoMenores"
+            etiqueta={campoPorClave('primaria.avisoMenores')?.etiqueta ?? 'Aviso de privacidad: datos de menores'}
+            ayuda={campoPorClave('primaria.avisoMenores')?.ayuda}
+            valor={String(valorEfectivo({}, overrides, 'primaria.avisoMenores') ?? '')}
+            placeholder={AVISO_MENORES_FABRICA}
+            max={LIMITES_PRI.avisoMenoresMax}
+            multilinea
+            filas={6}
+            deshabilitado={!puedeEditar}
+            sobrescrito={estaSobrescrito(overrides, 'primaria.avisoMenores')}
+            resaltado={claveConError === 'primaria.avisoMenores'}
+            onChange={(v) => actualizar((prev) => v === ''
+              ? quitarRuta(prev, 'primaria.avisoMenores')
+              : escribirRuta(prev, 'primaria.avisoMenores', v))}
+            onRestaurar={() => actualizar((prev) => quitarRuta(prev, 'primaria.avisoMenores'))}
+          />
         </Tarjeta>
       )}
 

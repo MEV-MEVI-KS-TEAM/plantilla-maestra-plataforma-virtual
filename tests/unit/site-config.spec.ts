@@ -415,7 +415,7 @@ test('toda ruta editable que sea arreglo en CONFIG tiene normalizador (fail-clos
   const cfg = esperado() as unknown as Record<string, unknown>
   const rutasArreglo = CLAVES_EDITABLES.filter((ruta) => {
     // Semántica especial: en la BD son objetos por id, no arreglos.
-    if (ruta === 'modalidades' || ruta === 'licenciaturas.modalidades') return false
+    if (ruta === 'modalidades' || ruta === 'licenciaturas.modalidades' || ruta === 'primaria.modalidades') return false
     let actual: unknown = cfg
     for (const seg of ruta.split('.')) actual = (actual as Record<string, unknown>)[seg]
     return Array.isArray(actual)

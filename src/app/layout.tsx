@@ -8,6 +8,8 @@ import { landingAnimadaActiva } from "@/lib/landing-estilo";
 import { Providers } from "@/components/providers";
 import { SiteConfigProvider } from "@/components/site-config-provider";
 import { getSiteConfig, toPublicSiteConfig } from "@/lib/site-config";
+import { CONFIG } from "@/lib/config";
+import { getNivelLabel, primariaActiva } from "@/lib/modalidades";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -40,7 +42,9 @@ const manrope = Manrope({
   display: "swap",
 });
 
-const description = "Estudia Secundaria o Preparatoria desde casa. Acompañamiento en la gestión de tu certificación con validez oficial. 100% en línea, a tu ritmo, sin examen final."
+const description = primariaActiva()
+  ? `Estudia ${getNivelLabel((CONFIG.niveles as readonly string[]).filter(n => n !== 'licenciatura'))} desde casa. 100% en línea y a tu ritmo.`
+  : "Estudia Secundaria o Preparatoria desde casa. Acompañamiento en la gestión de tu certificación con validez oficial. 100% en línea, a tu ritmo, sin examen final."
 
 // "Personalizar mi página" (F1): themeColor, título y paleta salen de
 // getSiteConfig() — config.ts + overrides de site_config —, por eso viewport y

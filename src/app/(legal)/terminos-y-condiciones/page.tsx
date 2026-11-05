@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CONFIG } from '@/lib/config'
+import { esSoloPrimaria, primariaActiva } from '@/lib/modalidades'
+import { nivelesTexto } from '@/lib/niveles-ui'
 import { getSiteConfig } from '@/lib/site-config'
 import { mailtoEscuela, urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
@@ -50,8 +52,15 @@ export default async function TerminosCondicionesPage() {
    * La numeración de las secciones NO cambia entre las dos ramas: la sección 3
    * sigue siendo la 3, con otro título y otro cuerpo. Un contrato con las
    * secciones 2, 4, 5 se lee como un documento al que le falta una página.
+   *
+   * PRIMARIA: un alumno de Primaria no debe leer de certificados de la autoridad.
+   * Un combo que solo vende Primaria usa la rama sin garantía; con otros niveles, lo
+   * que nombra a la autoridad se acota a ellos. Apagado, todo queda como siempre.
    */
-  const CERTIFICA = CONFIG.ofreceCertificacion
+  const SOLO_PRIMARIA = esSoloPrimaria()
+  const CON_PRIMARIA = primariaActiva()
+  const CERTIFICA = CONFIG.ofreceCertificacion && !SOLO_PRIMARIA
+  const NIVELES_ACOTADOS = nivelesTexto((CONFIG.niveles as readonly string[]).filter(n => n === 'secundaria' || n === 'preparatoria'))
 
   /**
    * 🛑 EL CORREO, GATEADO POR EL DATO (Bug P-8c). Aquí se pintaba siempre
@@ -115,6 +124,14 @@ export default async function TerminosCondicionesPage() {
           </Section>
 
           <Section title="2. Descripción del Servicio">
+            {CON_PRIMARIA && !SOLO_PRIMARIA && (
+              <p>
+                {RAZON_SOCIAL} también ofrece un programa de <strong style={{ color: '#fff' }}>estudio en línea</strong> de
+                nivel <strong style={{ color: '#fff' }}>Primaria</strong>.{' '}
+                {CERTIFICA && <>Lo que este documento dice sobre certificados oficiales y acreditación aplica solo a {NIVELES_ACOTADOS}; en Primaria, la certificación, cuando la escuela la ofrezca, se rige por lo que {RAZON_SOCIAL} informe al inscribirse.{' '}</>}
+                Si el alumno es menor de 18 años, su madre, padre o tutor acepta estos términos en su nombre.
+              </p>
+            )}
             {CERTIFICA ? (
               <>
                 <p>
@@ -126,19 +143,37 @@ export default async function TerminosCondicionesPage() {
                 <ul>
                   <li>Acceso a la plataforma de aprendizaje en línea.</li>
                   <li>Acompañamiento académico y seguimiento personalizado.</li>
-                  <li>Gestión y trámite del proceso de acreditación ante la SEP.</li>
-                  <li>Emisión de constancias de avance y certificado oficial al término del programa.</li>
+                  {CON_PRIMARIA ? (
+                    <>
+                      <li>Gestión y trámite del proceso de acreditación ante la SEP, en {NIVELES_ACOTADOS}.</li>
+                      <li>Emisión de constancias de avance y, en {NIVELES_ACOTADOS}, certificado oficial al término del programa.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Gestión y trámite del proceso de acreditación ante la SEP.</li>
+                      <li>Emisión de constancias de avance y certificado oficial al término del programa.</li>
+                    </>
+                  )}
                   <li>Soporte técnico y atención al alumno.</li>
                 </ul>
               </>
             ) : (
               <>
+                {SOLO_PRIMARIA ? (
+                  <p>
+                    {RAZON_SOCIAL} ofrece un programa de <strong style={{ color: '#fff' }}>estudio en línea</strong> de
+                    nivel <strong style={{ color: '#fff' }}>Primaria</strong>, con material organizado por meses y
+                    acompañamiento académico. Si el alumno es menor de 18 años, su madre, padre o tutor acepta estos
+                    términos en su nombre. Nuestros servicios incluyen:
+                  </p>
+                ) : (
                 <p>
                   {RAZON_SOCIAL} ofrece programas de <strong style={{ color: '#fff' }}>estudio en línea</strong> de
                   nivel <strong style={{ color: '#fff' }}>Secundaria</strong> y{' '}
                   <strong style={{ color: '#fff' }}>Preparatoria</strong>, con material organizado por meses y
                   acompañamiento académico. Nuestros servicios incluyen:
                 </p>
+                )}
                 <ul>
                   <li>Acceso a la plataforma de aprendizaje en línea durante la vigencia del plan contratado.</li>
                   <li>Material de estudio, evaluaciones y seguimiento de tu avance.</li>
@@ -146,6 +181,24 @@ export default async function TerminosCondicionesPage() {
                   <li>Emisión de constancias de avance dentro de la plataforma.</li>
                   <li>Soporte técnico.</li>
                 </ul>
+                {SOLO_PRIMARIA && CONFIG.ofreceCertificacion ? (
+                  <p>
+                    <strong style={{ color: '#fff' }}>Alcance del servicio.</strong> {RAZON_SOCIAL} presta un
+                    servicio educativo y de acompañamiento. Las constancias que emite la plataforma acreditan el{' '}
+                    <strong style={{ color: '#fff' }}>avance del alumno dentro del programa</strong> y no sustituyen a
+                    ningún documento oficial. La certificación, cuando la escuela la ofrezca, se rige por lo que{' '}
+                    {RAZON_SOCIAL} informe al inscribirse.
+                  </p>
+                ) : CON_PRIMARIA ? (
+                  <p>
+                    <strong style={{ color: '#fff' }}>Alcance del servicio.</strong> {RAZON_SOCIAL} presta un
+                    servicio educativo y de acompañamiento. No emite certificados con validez oficial, no realiza
+                    trámites de acreditación ante ninguna autoridad educativa, y no ofrece equivalencias,
+                    revalidaciones ni apostillas. Las constancias que emite la plataforma acreditan el{' '}
+                    <strong style={{ color: '#fff' }}>avance del alumno dentro del programa</strong> y no sustituyen a
+                    ningún documento oficial.
+                  </p>
+                ) : (
                 <p>
                   <strong style={{ color: '#fff' }}>Alcance del servicio.</strong> {RAZON_SOCIAL} presta un
                   servicio educativo y de acompañamiento. No emite certificados con validez oficial, no realiza
@@ -154,6 +207,7 @@ export default async function TerminosCondicionesPage() {
                   que emite la plataforma acreditan el <strong style={{ color: '#fff' }}>avance del alumno
                   dentro del programa</strong> y no sustituyen a ningún documento oficial.
                 </p>
+                )}
               </>
             )}
           </Section>
@@ -161,6 +215,7 @@ export default async function TerminosCondicionesPage() {
           <Section title={CERTIFICA ? '3. Garantía de Certificación' : '3. Compromiso Académico'}>
             {CERTIFICA ? (
               <>
+                {CON_PRIMARIA && <p>Esta sección aplica solo a los programas de {NIVELES_ACOTADOS}.</p>}
                 <p>
                   {RAZON_SOCIAL} ofrece una <strong style={{ color: '#fff' }}>garantía de certificación</strong>:
                   si el alumno cumple con todos los requisitos del programa, se compromete a gestionar la obtención
@@ -298,10 +353,17 @@ export default async function TerminosCondicionesPage() {
             <ul>
               <li>Interrupciones del servicio por mantenimiento, fuerza mayor o fallas de terceros.</li>
               {CERTIFICA ? (
+                CON_PRIMARIA ? (
+                  <li>
+                    Demoras en la emisión del certificado oficial de {NIVELES_ACOTADOS} causadas por los plazos de la SEP
+                    o instituciones de convenio.
+                  </li>
+                ) : (
                 <li>
                   Demoras en la emisión del certificado oficial causadas por los plazos de la SEP
                   o instituciones de convenio.
                 </li>
+                )
               ) : (
                 <li>
                   Decisiones de terceros —instituciones, empleadores o autoridades— sobre el valor que

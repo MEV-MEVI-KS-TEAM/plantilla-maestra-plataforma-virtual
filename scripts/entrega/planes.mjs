@@ -32,6 +32,12 @@ const enLista = (xs) => xs.length > 1
 
 /** Los planes activos que vende un nivel. La misma regla que `planesPorNivel()`. */
 export function planesDeNivel(config, nivel) {
+  // Primaria tiene tabla propia: un plan sin `nivel` es de Sec/Prepa y no le aplica.
+  if (nivel === 'primaria') {
+    return config?.primaria?.activa === true
+      ? (config.primaria.modalidades || []).filter(m => m && typeof m === 'object' && m.activa !== false)
+      : []
+  }
   return (config?.modalidades || [])
     .filter(m => m && typeof m === 'object' && m.activa)
     .filter(m => !m.nivel || m.nivel === nivel)
@@ -175,6 +181,14 @@ export function lineasPreciosWhatsApp(planes, niveles) {
  * la clave y para ella la respuesta es «sí», como antes de que existiera.
  */
 export const ofreceCertificacion = (config) => config?.ofreceCertificacion !== false
+
+/**
+ * ¿Vende Primaria y ni Secundaria ni Preparatoria? Esa portada no tiene la sección de
+ * validez oficial: el PDF y el WhatsApp no la anuncian ni enlazan un `#validez` que no
+ * existe. Con el add-on apagado siempre es falso, aunque `niveles` venga vacío.
+ */
+export const soloPrimariaEntrega = (config) => config?.primaria?.activa === true
+  && !(config?.niveles ?? []).some((n) => n === 'secundaria' || n === 'preparatoria')
 
 /**
  * El resolver de certificación que usa la entrega: el de la plataforma

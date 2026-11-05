@@ -3,11 +3,18 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyStaff } from '@/lib/supabase/verify-admin'
 import { CONFIG } from '@/lib/config'
-import { getMesesByModalidad, getDefaultModalidadId } from '@/lib/modalidades'
+import { getMesesByModalidad, getDefaultModalidadId, primariaActiva } from '@/lib/modalidades'
 import { nivelForzadoDeRegistro } from '@/lib/modo'
 import { getCarreras, getPlanNombre } from '@/lib/licenciatura-utils'
 import { catalogoDeRegistro, nivelesPermitidos } from '@/lib/niveles'
-import { MENSAJES_PLAN_ADMIN, motivoPlanInvalido } from '@/lib/registro-reglas'
+import {
+  MENSAJES_PLAN_ADMIN,
+  motivoPlanInvalido,
+  pideEdadYTutor,
+  revisarEdadTutor,
+  type DatosEdadTutor,
+  type EdadTutorLimpio,
+} from '@/lib/registro-reglas'
 import { sincronizarPrefijoMatricula } from '@/lib/matricula'
 import { generarCalendarioSemanal } from '@/lib/plan-semanal'
 import { getOfertaIngreso } from '@/lib/cursos/oferta'
@@ -480,6 +487,15 @@ export async function POST(request: NextRequest) {
       if (motivo) return NextResponse.json({ error: MENSAJES_PLAN_ADMIN[motivo] }, { status: 400 })
     }
 
+    // Edad y tutor: la misma regla del registro, ANTES de crear la cuenta de Auth.
+    // Solo en un combo con Primaria, para Primaria y Secundaria.
+    let edadTutor: EdadTutorLimpio | null = null
+    if (!nivelForzado && pideEdadYTutor(nivelElegido, primariaActiva())) {
+      const revision = revisarEdadTutor(body as DatosEdadTutor, nivelElegido)
+      if (!revision.ok) return NextResponse.json({ error: revision.error }, { status: 400 })
+      edadTutor = revision.datos
+    }
+
     // Crear usuario en Supabase Auth: exactamente correo, contraseña y
     // confirmación, sin metadata (lib/alta-alumno).
     const { data: authData, error: authError } = await admin.auth.admin.createUser(opcionesAuthAlta(email, password))
@@ -530,7 +546,7 @@ export async function POST(request: NextRequest) {
       .from('alumnos')
       .insert({
         id:                  newUserId,
-        nivel:               nivelForzado ?? (nivel as 'secundaria' | 'preparatoria' | 'licenciatura' | 'diplomado'),
+        nivel:               nivelForzado ?? (nivel as 'primaria' | 'secundaria' | 'preparatoria' | 'licenciatura' | 'diplomado'),
         // ⚠️ Sin la guarda por 'diplomado', un alumno de curso se llevaba
         // `getDefaultModalidadId()` y su ficha anunciaba «0 de 3 meses» de un
         // programa que no cursa: `duracion_meses` es GENERATED a partir de la
@@ -541,6 +557,7 @@ export async function POST(request: NextRequest) {
                                : (modalidadLimpia ?? getDefaultModalidadId()),
         carrera:             carreraNormalizada || null,
         meses_desbloqueados: 0,
+        ...(edadTutor ?? {}),
       })
       .select()
       .single()

@@ -145,7 +145,7 @@ test('10. la landing animada usa el helper en la tarjeta, la FAQ y la bajada', (
   // La conducta la miden 6-9; esto solo ata el componente al helper (Playwright
   // no puede renderizar el componente en una prueba unitaria).
   const fuente = leer('src/components/landing/animada/LandingAnimada.tsx')
-  expect(fuente).toContain('const ins = inscripcionEnLanding(niveles, precios)')
+  expect(fuente).toContain('const ins = inscripcionEnLanding(nivelesTarjeta, precios, undefined, preciosDe)')
   expect(fuente).toContain('+ inscripción {ins.textoDe(nivel)}')
   expect(fuente).toContain('bajada={mismoTotalPorNivel && ins.subtituloVale(L.programas_subtitulo)')
   expect(fuente).toContain("(ins.comun ? '' : `La inscripción es ${ins.textoPorNivel}. `)")

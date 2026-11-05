@@ -40,7 +40,8 @@ export async function GET() {
       .eq('usuario_id', user.id)
       .single()
 
-    console.log('[perfil] schema antiguo — error:', error?.message ?? null, '| data:', JSON.stringify(data))
+    // Solo si hubo fila: `data` es alumnos.* y trae fecha de nacimiento y datos del tutor.
+    console.log('[perfil] schema antiguo — error:', error?.message ?? null, '| con fila:', Boolean(data))
 
     if (!error && data) {
       const a = data as unknown as {

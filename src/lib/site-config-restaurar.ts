@@ -146,6 +146,10 @@ export const CLAVES_NEGOCIO = [
   'licenciaturas.inscripcion',
   'licenciaturas.certificacion',
   'licenciaturas.modalidades',
+  'primaria.inscripcion',
+  'primaria.certificacion',
+  'primaria.modalidades',
+  'primaria.avisoMenores', // texto legal de ESA escuela
 ] as const satisfies ReadonlyArray<ClaveEditable>
 
 /** Las claves que guardan la URL de un logo del bucket `branding`. */
@@ -249,7 +253,7 @@ const TEXTO_WHATSAPP = 'whatsappDisplay'
 const CLAVES_WHATSAPP_FUSIONADAS: ReadonlySet<string> = new Set([...NUMERO_WHATSAPP, TEXTO_WHATSAPP])
 
 /** Planes: objetos indexados por id; se fusionan plan por plan y campo por campo. */
-const CLAVES_POR_PLAN: ReadonlySet<string> = new Set(['modalidades', 'licenciaturas.modalidades'])
+const CLAVES_POR_PLAN: ReadonlySet<string> = new Set(['modalidades', 'licenciaturas.modalidades', 'primaria.modalidades'])
 
 const SEGMENTOS_PROHIBIDOS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype'])
 

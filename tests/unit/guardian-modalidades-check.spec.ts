@@ -36,7 +36,9 @@ function idsDeLaMigracion(): string[] {
 test('1. el instalador y la migración admiten los mismos ids, y los dos incluyen 6_meses_lic', () => {
   const instalador = idsDelInstalador()
   const migracion = idsDeLaMigracion()
-  expect([...instalador].sort()).toEqual([...migracion].sort())
+  // Los `*_pri` son de 20261104120000_nivel_primaria.sql, que no edita esta migración.
+  expect(instalador.filter((id) => !id.endsWith('_pri')).sort()).toEqual([...migracion].sort())
+  expect(instalador.filter((id) => id.endsWith('_pri')).sort()).toEqual(['3_meses_pri', '6_meses_pri', '9_meses_pri'])
   expect(instalador).toContain('6_meses_lic')
   // Los 7 de la migración de licenciaturas (20260812) siguen ahí.
   for (const id of ['3_meses', '6_meses', '9_meses', '12_meses', '18_meses', '24_meses', '36_meses']) {

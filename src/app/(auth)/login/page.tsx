@@ -7,12 +7,21 @@ import { useRouter } from 'next/navigation'
 import { Mail, Lock, Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ROLE_REDIRECTS } from '@/lib/constants'
+import { CONFIG } from '@/lib/config'
+import { getNivelLabel, primariaActiva } from '@/lib/modalidades'
 // Logo, nombre y WhatsApp son editables desde el panel (F1): se leen del
 // provider, no de CONFIG, para que el cambio del admin llegue sin redeploy.
 import { useSiteConfig } from '@/components/site-config-provider'
 import { urlWhatsAppEscuela } from '@/lib/contacto-ui'
 
-const BENEFITS = [
+const BENEFITS = primariaActiva()
+  ? [
+      'Estudia desde casa, a tu ritmo',
+      'Lecciones, quizzes y actividades en cada materia',
+      'Acompañamiento durante tus estudios',
+      getNivelLabel((CONFIG.niveles as readonly string[]).filter(n => n !== 'licenciatura')),
+    ]
+  : [
   'Acompañamiento para tu certificado SEP',
   'Estudia desde casa, a tu ritmo',
   'Centro de Apoyo para la Acreditación de Conocimientos',
@@ -96,7 +105,9 @@ function LeftPanel() {
           <span style={{ color: 'var(--color-acento-sobre-oscuro)' }}>a tu ritmo</span>
         </h2>
         <p className="text-base mb-8" style={{ color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
-          Estudia desde la comodidad de tu hogar y obtén acompañamiento en tu certificación.
+          {primariaActiva()
+            ? 'Estudia desde la comodidad de tu hogar, con acompañamiento en cada materia.'
+            : 'Estudia desde la comodidad de tu hogar y obtén acompañamiento en tu certificación.'}
         </p>
 
         <div className="flex flex-col gap-3">
@@ -118,10 +129,10 @@ function LeftPanel() {
           padding: '12px 16px',
         }}>
           <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.88)', marginBottom: 2 }}>
-            CENTRO DE APOYO
+            {primariaActiva() ? 'ESTUDIA EN LÍNEA' : 'CENTRO DE APOYO'}
           </p>
           <p className="text-sm font-bold" style={{ color: '#fff' }}>
-            Acreditación de Conocimientos
+            {primariaActiva() ? 'A tu ritmo, desde casa' : 'Acreditación de Conocimientos'}
           </p>
         </div>
       </div>

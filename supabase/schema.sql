@@ -70,14 +70,17 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
   -- 'diplomado' habilita la línea Solo-Cursos (B1). Agregar un valor a este
   -- CHECK es estrictamente permisivo: ningún dato existente deja de ser válido.
   -- Debe coincidir con supabase/migrations/20260730120000_b1_fundacion_solo_cursos.sql
-  nivel                TEXT        CHECK (nivel IN ('secundaria', 'preparatoria', 'licenciatura', 'diplomado')),
-  -- Bloque E3: el CHECK tal como lo deja 20260925120000_licenciatura_plan_6_meses.sql
-  -- (los planes de licenciatura de 20260812120000 más '6_meses_lic', Bug 121), en
-  -- el orden en que esa migración lo escribe. Antes solo admitía 3 y 6 meses: una
-  -- base instalada con este archivo no podía dar de alta a un alumno de licenciatura.
+  -- 'primaria' (20261104120000), en el orden en que esa migración lo escribe.
+  nivel                TEXT        CHECK (nivel IN ('diplomado', 'licenciatura', 'preparatoria', 'primaria', 'secundaria')),
+  -- Bloque E3: el CHECK tal como lo deja 20261104120000_nivel_primaria.sql (los
+  -- planes de licenciatura de 20260812120000, '6_meses_lic' por el Bug 121 y los
+  -- '*_pri' de Primaria), en el orden en que esa migración lo escribe. Antes solo
+  -- admitía 3 y 6 meses: una base instalada con este archivo no podía dar de alta
+  -- a un alumno de licenciatura.
   modalidad            TEXT        CONSTRAINT alumnos_modalidad_check CHECK (modalidad IS NULL OR modalidad IN (
                                      '12_meses', '18_meses', '24_meses', '36_meses',
-                                     '3_meses', '6_meses', '6_meses_lic', '9_meses')),
+                                     '3_meses', '3_meses_pri', '6_meses', '6_meses_lic', '6_meses_pri',
+                                     '9_meses', '9_meses_pri')),
   -- Slug de la carrera (CONFIG.licenciaturas.carreras[].slug). Solo licenciatura;
   -- NULL en el resto. Espejo de 20260812120000_licenciaturas.sql (Bloque E3).
   carrera              TEXT,
@@ -97,9 +100,18 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
                             WHEN '18_meses'    THEN 18
                             WHEN '24_meses'    THEN 24
                             WHEN '36_meses'    THEN 36
+                            WHEN '3_meses_pri' THEN 3
+                            WHEN '6_meses_pri' THEN 6
+                            WHEN '9_meses_pri' THEN 9
                             ELSE 6
                           END
                         ) STORED,
+  -- Edad y tutor (20261104120000): solo se piden en combos con Primaria, a
+  -- alumnos de Primaria y Secundaria. NULL en el resto.
+  fecha_nacimiento     DATE,
+  tutor_nombre         TEXT,
+  tutor_telefono       TEXT,
+  tutor_parentesco     TEXT,
   fecha_inscripcion    TIMESTAMPTZ,
   fecha_inicio         TIMESTAMPTZ,
   activo               BOOLEAN     NOT NULL DEFAULT true,
@@ -124,7 +136,7 @@ CREATE TABLE IF NOT EXISTS public.materias (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre      TEXT        NOT NULL,
   descripcion TEXT,
-  nivel       TEXT        CHECK (nivel IN ('secundaria', 'preparatoria', 'demo', 'licenciatura')),
+  nivel       TEXT        CHECK (nivel IN ('demo', 'licenciatura', 'preparatoria', 'primaria', 'secundaria')),
   orden       INTEGER,
   icono       TEXT,
   color       TEXT,

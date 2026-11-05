@@ -128,6 +128,133 @@ export function motivoPlanInvalido(
   return null
 }
 
+// ─── Edad y tutor (combos con Primaria) ──────────────────────────────────────
+
+/** Los niveles a los que se les pide fecha de nacimiento, con Primaria encendida. */
+export const NIVELES_CON_EDAD: readonly string[] = ['primaria', 'secundaria']
+
+export const EDAD_MAYORIA = 18
+export const EDAD_MINIMA_REGISTRO = 5
+/** El plan de Primaria dice «12 años en adelante». Secundaria sigue con la general. */
+export const EDAD_MINIMA_PRIMARIA = 12
+
+/** Las cuatro columnas de `alumnos` que guardan la edad y el tutor. */
+export const CAMPOS_EDAD_TUTOR = ['fecha_nacimiento', 'tutor_nombre', 'tutor_telefono', 'tutor_parentesco'] as const
+
+/** Los parentescos que ofrece el formulario. */
+export const PARENTESCOS_TUTOR = ['Madre', 'Padre', 'Tutor o tutora legal', 'Abuela o abuelo', 'Otro familiar'] as const
+
+/** Hoy en México, `YYYY-MM-DD`: el cumpleaños no depende de la zona horaria del servidor. */
+export function hoyEnMexico(ahora: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(ahora)
+}
+
+/** `YYYY-MM-DD` válido, o null: rechaza «2026-02-30» y cualquier otra forma. */
+export function fechaValida(v: unknown): string | null {
+  if (typeof v !== 'string') return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim())
+  if (!m) return null
+  const [anio, mes, dia] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const d = new Date(Date.UTC(anio, mes - 1, dia))
+  return d.getUTCFullYear() === anio && d.getUTCMonth() === mes - 1 && d.getUTCDate() === dia ? m[0] : null
+}
+
+/** Años cumplidos a una fecha. Solo compara texto: no hay zona horaria que lo mueva. */
+export function edadEnAnios(fechaNacimiento: string, hoy: string = hoyEnMexico()): number {
+  const anios = Number(hoy.slice(0, 4)) - Number(fechaNacimiento.slice(0, 4))
+  return hoy.slice(5) < fechaNacimiento.slice(5) ? anios - 1 : anios
+}
+
+/** Lo que llega del formulario. Todo opcional: la regla decide qué falta. */
+export interface DatosEdadTutor {
+  fecha_nacimiento?: unknown
+  tutor_nombre?: unknown
+  tutor_telefono?: unknown
+  tutor_parentesco?: unknown
+}
+
+/** Lo que se guarda en `alumnos`. */
+export interface EdadTutorLimpio {
+  fecha_nacimiento: string | null
+  tutor_nombre: string | null
+  tutor_telefono: string | null
+  tutor_parentesco: string | null
+}
+
+export const VACIO_EDAD_TUTOR: EdadTutorLimpio = {
+  fecha_nacimiento: null, tutor_nombre: null, tutor_telefono: null, tutor_parentesco: null,
+}
+
+export const MENSAJES_EDAD_TUTOR = {
+  sinFecha:      'Escribe la fecha de nacimiento del alumno.',
+  menorDeDoce:   'El programa de Primaria es para personas de 12 años en adelante. Si tienes dudas, comunícate con la escuela.',
+  fechaFutura:   'Revisa la fecha de nacimiento: no puede ser una fecha futura ni de hace muy poco.',
+  sinTutorNombre: 'El alumno es menor de 18 años: escribe el nombre de su madre, padre o tutor.',
+  sinTutorTelefono: 'El alumno es menor de 18 años: escribe un teléfono de 10 dígitos de su madre, padre o tutor.',
+  sinParentesco: 'El alumno es menor de 18 años: elige el parentesco de su madre, padre o tutor.',
+  noAplica:      'La fecha de nacimiento y los datos del tutor solo aplican a alumnos de Primaria y Secundaria.',
+} as const
+
+const texto = (v: unknown, max: number): string =>
+  typeof v === 'string' ? v.trim().slice(0, max) : ''
+
+/**
+ * ¿A este alumno se le piden edad y tutor? Solo en un combo con Primaria y solo
+ * para Primaria y Secundaria, que comparten el formulario. Sin Primaria, la
+ * inscripción queda exactamente como siempre.
+ */
+export function pideEdadYTutor(nivel: unknown, primariaEncendida: boolean): boolean {
+  return primariaEncendida && typeof nivel === 'string' && NIVELES_CON_EDAD.includes(nivel)
+}
+
+/**
+ * Valida edad y tutor. Devuelve el mensaje de error o los datos limpios.
+ *
+ * ⚠️ Se llama ANTES de `signUp` en el formulario y de `createUser` en el alta: un
+ * 400 después deja una cuenta de Auth sin alumno (registro-reglas, #217). El
+ * servidor la repite porque el formulario se puede saltar.
+ *
+ * Un mayor de edad no guarda datos de tutor aunque el formulario los mande: no
+ * hay consentimiento que acreditar y serían datos de un tercero de más.
+ */
+export function revisarEdadTutor(
+  datos: DatosEdadTutor,
+  nivel: unknown,
+  hoy: string = hoyEnMexico(),
+): { ok: true; datos: EdadTutorLimpio } | { ok: false; error: string } {
+  const fecha = fechaValida(datos.fecha_nacimiento)
+  if (!fecha) return { ok: false, error: MENSAJES_EDAD_TUTOR.sinFecha }
+  const edad = edadEnAnios(fecha, hoy)
+  if (edad < EDAD_MINIMA_REGISTRO || edad > 120) return { ok: false, error: MENSAJES_EDAD_TUTOR.fechaFutura }
+  if (nivel === 'primaria' && edad < EDAD_MINIMA_PRIMARIA) return { ok: false, error: MENSAJES_EDAD_TUTOR.menorDeDoce }
+  if (edad >= EDAD_MAYORIA) return { ok: true, datos: { ...VACIO_EDAD_TUTOR, fecha_nacimiento: fecha } }
+  const tutor_nombre = texto(datos.tutor_nombre, 160)
+  const tutor_telefono = texto(datos.tutor_telefono, 20).replace(/\D/g, '')
+  const tutor_parentesco = texto(datos.tutor_parentesco, 40)
+  if (tutor_nombre.length < 3) return { ok: false, error: MENSAJES_EDAD_TUTOR.sinTutorNombre }
+  if (tutor_telefono.length !== 10) return { ok: false, error: MENSAJES_EDAD_TUTOR.sinTutorTelefono }
+  if (!(PARENTESCOS_TUTOR as readonly string[]).includes(tutor_parentesco)) {
+    return { ok: false, error: MENSAJES_EDAD_TUTOR.sinParentesco }
+  }
+  return { ok: true, datos: { fecha_nacimiento: fecha, tutor_nombre, tutor_telefono, tutor_parentesco } }
+}
+
+/**
+ * Una corrección desde la ficha: lo guardado con lo que llega encima, y la regla del
+ * registro sobre el resultado. Así corregir solo el teléfono no pierde lo demás, y
+ * quitar el nombre del tutor de un menor se rechaza igual que en el alta.
+ */
+export function revisarEdicionEdadTutor(
+  cuerpo: DatosEdadTutor,
+  fila: DatosEdadTutor & { nivel?: unknown },
+  hoy: string = hoyEnMexico(),
+): { ok: true; datos: EdadTutorLimpio } | { ok: false; error: string } {
+  if (!pideEdadYTutor(fila.nivel, true)) return { ok: false, error: MENSAJES_EDAD_TUTOR.noAplica }
+  const combinado: DatosEdadTutor = { ...fila }
+  for (const campo of CAMPOS_EDAD_TUTOR) if (campo in cuerpo) combinado[campo] = cuerpo[campo]
+  return revisarEdadTutor(combinado, fila.nivel, hoy)
+}
+
 /** Mensajes del alta del admin (D9): a él sí se le puede pedir que corrija el formulario. */
 export const MENSAJES_PLAN_ADMIN: Record<MotivoPlan, string> = {
   nivel:        'Ese nivel no está disponible en esta escuela.',

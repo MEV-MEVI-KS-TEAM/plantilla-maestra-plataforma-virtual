@@ -160,6 +160,66 @@ export function getModalidadesLicenciatura(lic?: unknown): readonly ModalidadBas
   return modalidadesLic(lic === undefined ? undefined : (lic as TablaLic)).filter(m => m.activa !== false)
 }
 
+type TablaPri = { activa?: boolean; modalidades?: readonly ModalidadBase[] } | undefined
+
+/**
+ * La tabla de planes de Primaria (`3_meses_pri`, `6_meses_pri`, `9_meses_pri`).
+ * Vacía con el add-on apagado: en un combo sin Primaria ninguna función de este
+ * módulo se entera de que existe. Con cast porque hay clones sin el bloque.
+ */
+function modalidadesPri(
+  pri: TablaPri = (CONFIG as { primaria?: TablaPri }).primaria,
+): readonly ModalidadBase[] {
+  if (pri?.activa !== true) return []
+  return pri.modalidades ?? []
+}
+
+/**
+ * La tabla de Primaria para la LÓGICA ACADÉMICA: sin mirar el add-on ni `activa`. Apagar
+ * un plan o el add-on quita la oferta, no el ritmo de quien ya está inscrito (la regla
+ * de alcance de la cabecera). Sus ids (`*_pri`) solo existen en una base con Primaria:
+ * en un combo sin Primaria ningún alumno los trae y esto nunca da nada.
+ */
+function modalidadesPriAcademicas(): readonly ModalidadBase[] {
+  return (CONFIG as { primaria?: TablaPri }).primaria?.modalidades ?? []
+}
+
+/** ¿Esta escuela vende Primaria? */
+export function primariaActiva(): boolean {
+  return (CONFIG as { primaria?: TablaPri }).primaria?.activa === true
+}
+
+/**
+ * Los documentos que solo pide Primaria, para las listas del panel. Vive aquí y no en
+ * la página: con el add-on apagado la lista va vacía y no se pinta. El texto no va en el
+ * chunk de la página, pero sí en el compartido de este módulo.
+ */
+const DOCUMENTOS_SOLO_PRIMARIA: Readonly<Record<string, string>> = {
+  comprobante_domicilio: 'Comprobante de Domicilio',
+}
+
+export function documentosSoloPrimaria(): Readonly<Record<string, string>> {
+  return primariaActiva() ? DOCUMENTOS_SOLO_PRIMARIA : {}
+}
+
+/**
+ * ¿Vende Primaria y ni Secundaria ni Preparatoria? Es el combo en el que no hay nada
+ * de lo que la plantilla dice sobre certificados oficiales de esos dos niveles. Con
+ * el add-on apagado siempre es falso, aunque `niveles` venga vacío (solo cursos).
+ */
+export function esSoloPrimaria(niveles: readonly string[] = CONFIG.niveles as readonly string[]): boolean {
+  return primariaActiva() && !niveles.some(n => n === 'secundaria' || n === 'preparatoria')
+}
+
+/**
+ * Modalidades de Primaria activas, para los selectores. `pri`: la tabla EFECTIVA
+ * (`cfg.primaria`, con los precios publicados) para quien pinta una mensualidad.
+ * Sin ella, la de CONFIG, igual que `getModalidadesLicenciatura`.
+ */
+export function getModalidadesPrimaria(pri?: unknown): readonly ModalidadBase[] {
+  return modalidadesPri(pri === undefined ? undefined : (pri as TablaPri)).filter(m => m.activa !== false)
+}
+
 /**
  * CONVENCIÓN (Bloque B, B5): un plan de licenciatura cuya duración YA existe en
  * Sec/Prepa lleva el sufijo `_lic` ('6_meses_lic'), y la base lo admite con su
@@ -192,8 +252,12 @@ export function getMateriasPorMesLicenciatura(id: string | null | undefined): nu
 }
 
 /**
- * Busca una modalidad en el plan del programa y, si no está, en el de
- * licenciatura. Este es el único punto que conoce las dos tablas.
+ * Busca una modalidad en el plan del programa, luego en el de licenciatura y al
+ * final en el de Primaria. Este es el único punto que conoce las tres tablas.
+ *
+ * Primaria va AL FINAL a propósito: sus ids (`*_pri`) no colisionan con nada, así
+ * que lo que Sec/Prepa y licenciatura ya resolvían sigue dando lo mismo. Y sin filtrar
+ * `activa`: esto resuelve el ritmo de un alumno, no lo que se vende.
  */
 function buscarModalidad(
   id: string | null | undefined,
@@ -203,6 +267,16 @@ function buscarModalidad(
   const base = mods.find(m => m.id === id && m.activa)
   if (base) return base
   return modalidadesLic().find(m => m.id === id && m.activa !== false)
+    ?? modalidadesPriAcademicas().find(m => m.id === id)
+}
+
+/**
+ * El primer plan vendible cuando el id no se encuentra: el del programa y, en un
+ * combo SOLO Primaria (sin planes activos en `CONFIG.modalidades`), el de Primaria.
+ * Con el add-on apagado `modalidadesPri()` está vacía: el respaldo es el de siempre.
+ */
+function primerPlanActivo(mods: readonly ModalidadPrograma[]): ModalidadBase | undefined {
+  return mods.find(m => m.activa) ?? modalidadesPri().find(m => m.activa !== false)
 }
 
 /**
@@ -237,8 +311,7 @@ export function getMesesByModalidad(
   const found = buscarModalidad(id, mods)
   if (found) return found.meses
 
-  const firstActive = mods.find(m => m.activa)
-  return firstActive?.meses ?? 3
+  return primerPlanActivo(mods)?.meses ?? 3
 }
 
 /**
@@ -298,6 +371,9 @@ export function planesPorNivel(
 ): readonly ModalidadPrograma[] {
   const activas = getModalidadesActivas(mods)
   if (!nivel) return activas
+  // Primaria tiene tabla propia (`getModalidadesPrimaria`): un plan sin `nivel` es
+  // de Sec/Prepa y no le aplica. Le daría 4 materias por mes (clase del Bug 121).
+  if (nivel === 'primaria') return activas.filter(m => m.nivel === nivel)
   return activas.filter(m => !m.nivel || m.nivel === nivel)
 }
 
@@ -310,8 +386,8 @@ export function planesPorNivel(
  * o `getModalidadesLicenciatura()` (licenciatura); el panel solo publica precio y
  * `activa`, nunca ids ni `nivel`. Ver `errorDePlanDeRegistro()` en registro-reglas.ts.
  *
- * Licenciatura: los de su tabla, y solo con el add-on activo. 'diplomado' o
- * cualquier otro nivel: ninguno (un curso no tiene modalidad).
+ * Licenciatura y Primaria: los de su tabla, y solo con el add-on activo. 'diplomado'
+ * o cualquier otro nivel: ninguno (un curso no tiene modalidad).
  */
 export function planesDeclaradosPorNivel(
   nivel: string | null | undefined,
@@ -320,6 +396,7 @@ export function planesDeclaradosPorNivel(
   const ids = (lista: readonly { id?: unknown }[]) =>
     lista.map(m => m?.id).filter((id): id is string => typeof id === 'string' && id !== '')
   if (nivel === 'licenciatura') return ids(modalidadesLic())
+  if (nivel === 'primaria') return ids(modalidadesPri())
   if (nivel === 'secundaria' || nivel === 'preparatoria') {
     // Un config.ts legado con modalidades en texto no declara planes con id.
     return ids(mods.filter(m => m && typeof m === 'object' && (!m.nivel || m.nivel === nivel)))
@@ -328,7 +405,7 @@ export function planesDeclaradosPorNivel(
 }
 
 /** Niveles que no cobran con la tabla de modalidades del programa (Sec/Prepa). */
-const NIVELES_CON_TABLA_PROPIA: ReadonlySet<string> = new Set(['licenciatura', 'diplomado'])
+const NIVELES_CON_TABLA_PROPIA: ReadonlySet<string> = new Set(['licenciatura', 'diplomado', 'primaria'])
 
 /**
  * El plan de un nivel cuando solo hay UNO, para deducirlo sin preguntar.
@@ -424,8 +501,8 @@ export function isModalidadActiva(
 /**
  * La DURACIÓN de una modalidad, para el panel: «12 meses», «6 meses» (#200).
  *
- * Se deriva del id (`N_meses`, con `_lic` opcional), la misma regla que la
- * columna generada `alumnos.duracion_meses` (migración 20260812) para todos los
+ * Se deriva del id (`N_meses`, con `_lic` o `_pri` opcional), la misma regla que
+ * la columna generada `alumnos.duracion_meses` (migración 20260812) para todos los
  * ids que admite el CHECK. No se busca en las tablas: filtran por `activa`, y un
  * alumno en un plan que la escuela ya apagó saldría con el id crudo. Solo si el
  * id no tiene esa forma (clones con ids propios) se respalda con los `meses` de
@@ -435,7 +512,7 @@ export function isModalidadActiva(
 export function etiquetaDuracionModalidad(id: string | null | undefined): string {
   if (!id) return ''
   const meses = (n: number) => `${n} ${n === 1 ? 'mes' : 'meses'}`
-  const m = /^(\d+)_meses(?:_lic)?$/.exec(id)
+  const m = /^(\d+)_meses(?:_lic|_pri)?$/.exec(id)
   if (m) return meses(Number(m[1]))
   const plan = [...CONFIG.modalidades, ...modalidadesLic()].find(x => x.id === id)
   if (plan && typeof plan.meses === 'number' && plan.meses > 0) return meses(plan.meses)
@@ -452,7 +529,7 @@ export function getLabelByModalidad(
 ): string {
   if (!id) return ''
   const found = mods.find(m => m.id === id)
-  return found?.label ?? id
+  return found?.label ?? modalidadesPriAcademicas().find(m => m.id === id)?.label ?? id
 }
 
 /**
@@ -470,8 +547,7 @@ export function getMateriasPorMesByModalidad(
   const found = buscarModalidad(id, mods)
   if (found) return found.materiasPorMes
 
-  const firstActive = mods.find(m => m.activa)
-  return firstActive?.materiasPorMes ?? 2
+  return primerPlanActivo(mods)?.materiasPorMes ?? 2
 }
 
 /**
@@ -483,8 +559,7 @@ export function getMateriasPorMesByModalidad(
 export function getDefaultModalidadId(
   mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
 ): string {
-  const firstActive = mods.find(m => m.activa)
-  return firstActive?.id ?? '6_meses'
+  return primerPlanActivo(mods)?.id ?? '6_meses'
 }
 
 /**
@@ -509,6 +584,25 @@ export function getDuracionLabel(
 
   const ultimo = numeros.pop()
   return `${numeros.join(', ')} o ${ultimo} meses`
+}
+
+/**
+ * La duración que anuncian las portadas ({duracion}). Sin Primaria, `getDuracionLabel`
+ * de siempre. Con ella, la frase junta sus planes con los del programa, sin repetir
+ * duraciones: «3, 6 o 9 meses».
+ */
+export function getDuracionOferta(
+  mods: readonly ModalidadPrograma[] = CONFIG.modalidades,
+): string {
+  const pri = getModalidadesPrimaria().map(m => ({ ...m, activa: true }))
+  if (pri.length === 0) return getDuracionLabel(mods)
+  const vistos = new Set<number>()
+  const unidos = [...mods.filter(m => m.activa), ...pri].filter(m => {
+    if (vistos.has(m.meses)) return false
+    vistos.add(m.meses)
+    return true
+  })
+  return getDuracionLabel(unidos)
 }
 
 /**

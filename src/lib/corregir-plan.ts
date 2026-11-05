@@ -8,21 +8,33 @@ import { getCarreras } from '@/lib/licenciatura-utils'
 import {
   getModalidadesActivas,
   getModalidadesLicenciatura,
+  getModalidadesPrimaria,
+  primariaActiva,
   type ModalidadPrograma,
 } from '@/lib/modalidades'
+import {
+  CAMPOS_EDAD_TUTOR,
+  pideEdadYTutor,
+  revisarEdadTutor,
+  type DatosEdadTutor,
+  type EdadTutorLimpio,
+} from '@/lib/registro-reglas'
 
 export const CAMPOS_PERMITIDOS = ['nivel', 'carrera', 'modalidad'] as const
 
 // Los mismos valores del select de alta (admin/alumnos). 'diplomado' NO entra:
 // esa línea no usa plan de programa y su captura no se corrige por aquí.
+// 'primaria' tampoco está en la lista: se suma solo con el add-on encendido.
 export const NIVELES_CORREGIBLES = ['secundaria', 'preparatoria', 'licenciatura'] as const
-export type NivelCorregible = (typeof NIVELES_CORREGIBLES)[number]
+export type NivelCorregible = (typeof NIVELES_CORREGIBLES)[number] | 'primaria'
 
 export interface CorreccionPlan {
   nivel: NivelCorregible
   /** Slug de carrera. Solo licenciatura; null en el resto. */
   carrera: string | null
   modalidad: string
+  /** Solo en un combo con Primaria, si el nivel nuevo es Primaria o Secundaria. */
+  edadTutor?: EdadTutorLimpio
 }
 
 export type ResultadoValidacion =
@@ -56,17 +68,22 @@ export function validarCorreccionPlan(
     return { ok: false, error: 'El cuerpo de la petición debe ser un objeto con nivel, carrera y modalidad.' }
   }
 
-  const extras = Object.keys(body).filter(
-    k => !(CAMPOS_PERMITIDOS as readonly string[]).includes(k),
-  )
+  // Edad y tutor: solo existen con el add-on. Apagado, son claves desconocidas.
+  const permitidos: readonly string[] = primariaActiva()
+    ? [...CAMPOS_PERMITIDOS, ...CAMPOS_EDAD_TUTOR]
+    : CAMPOS_PERMITIDOS
+  const extras = Object.keys(body).filter(k => !permitidos.includes(k))
   if (extras.length > 0) {
     return { ok: false, error: `Campo no permitido: ${extras.join(', ')}. Solo se aceptan nivel, carrera y modalidad.` }
   }
 
   const { nivel, carrera, modalidad } = body as Record<string, unknown>
 
-  if (typeof nivel !== 'string' || !(NIVELES_CORREGIBLES as readonly string[]).includes(nivel)) {
-    return { ok: false, error: `nivel es requerido (${NIVELES_CORREGIBLES.join(', ')})` }
+  const corregibles: readonly string[] = primariaActiva()
+    ? ['primaria', ...NIVELES_CORREGIBLES]
+    : NIVELES_CORREGIBLES
+  if (typeof nivel !== 'string' || !corregibles.includes(nivel)) {
+    return { ok: false, error: `nivel es requerido (${corregibles.join(', ')})` }
   }
   const nivelValido = nivel as NivelCorregible
 
@@ -84,12 +101,23 @@ export function validarCorreccionPlan(
   }
 
   // Mismas funciones que el select de alta: el catálogo de modalidades depende
-  // del nivel elegido.
+  // del nivel elegido. Primaria va por su tabla: con '3_meses' abriría 4 materias
+  // por mes y se cerraría en la 12 de 18.
   const modalidadesValidas = (
-    nivelValido === 'licenciatura' ? getModalidadesLicenciatura() : getModalidadesActivas(mods)
+    nivelValido === 'licenciatura' ? getModalidadesLicenciatura()
+      : nivelValido === 'primaria' ? getModalidadesPrimaria()
+      : getModalidadesActivas(mods)
   ).map(m => m.id)
   if (typeof modalidad !== 'string' || !modalidadesValidas.includes(modalidad)) {
     return { ok: false, error: `modalidad es requerida (${modalidadesValidas.join(', ')})` }
+  }
+
+  // Pasar a Primaria, o a Secundaria con el add-on, pide lo mismo que el registro:
+  // si no, un menor queda inscrito sin tutor y el aviso de privacidad no se cumple.
+  if (pideEdadYTutor(nivelValido, primariaActiva())) {
+    const revision = revisarEdadTutor(body as DatosEdadTutor, nivelValido)
+    if (!revision.ok) return { ok: false, error: revision.error }
+    return { ok: true, plan: { nivel: nivelValido, carrera: carreraNormalizada, modalidad, edadTutor: revision.datos } }
   }
 
   return { ok: true, plan: { nivel: nivelValido, carrera: carreraNormalizada, modalidad } }

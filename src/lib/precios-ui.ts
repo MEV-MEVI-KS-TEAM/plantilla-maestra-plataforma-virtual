@@ -42,7 +42,7 @@ import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
 import { etiquetaNivel, listaConY, nivelesTexto } from '@/lib/niveles-ui'
 import {
-  inscripcionDe, inscripcionGeneral, inscripcionesIguales, mensualidadDe as mensualidadDeNivel,
+  inscripcionDe, inscripcionGeneral, mensualidadDe as mensualidadDeNivel,
   type PlanMinimo, type Precios,
 } from './precios-nivel'
 
@@ -124,19 +124,25 @@ export {
  * La usan las DOS landings. `formatear` escribe un monto > 0 con el formato
  * de cada una (la clásica lleva el código de moneda fuera de MXN); un 0 es
  * siempre «sin costo», nunca «$0».
+ *
+ * `preciosDe`: los precios de CADA nivel, para el que no cobra con los generales.
+ * Primaria tiene su tabla: sin esto, su tarjeta anunciaría la inscripción general
+ * y sumaría el total con la suya. Sin el parámetro, todos usan `precios`.
  */
 export function inscripcionEnLanding(
   niveles: readonly string[],
   precios: Precios,
   formatear: (monto: number) => string = (monto) => textoInscripcion(monto, { minusculas: true }),
+  preciosDe: (nivel: string) => Precios = () => precios,
 ) {
+  const inscripcion = (nivel: string) => inscripcionDe(nivel, preciosDe(nivel))
   const textoDe = (nivel: string) => {
-    const monto = inscripcionDe(nivel, precios)
+    const monto = inscripcion(nivel)
     return inscripcionRequierePago(monto) ? formatear(monto) : textoInscripcion(monto, { minusculas: true })
   }
-  const comun = inscripcionesIguales(niveles, precios)
+  const comun = new Set(niveles.map(inscripcion)).size <= 1
   const nivelComun = niveles[0] ?? 'preparatoria'
-  const montoComun = inscripcionDe(nivelComun, precios)
+  const montoComun = inscripcion(nivelComun)
   // Sin niveles (solo licenciatura o solo cursos) ninguna tarjeta afirma otra
   // cifra: el subtítulo se queda como está.
   const unicaEsGeneral = niveles.length === 0 || (comun && montoComun === inscripcionGeneral(precios))
@@ -155,7 +161,7 @@ export function inscripcionEnLanding(
      * para que el 0 no salga como «de sin costo». Solo se usa si NO es común.
      */
     textoPorNivel: listaConY(niveles.map((n) =>
-      `${inscripcionDe(n, precios) > 0 ? 'de ' : ''}${textoDe(n)} en ${etiquetaNivel(n)}`)),
+      `${inscripcion(n) > 0 ? 'de ' : ''}${textoDe(n)} en ${etiquetaNivel(n)}`)),
     /**
      * ¿Se puede pintar este subtítulo? Uno que interpola `{inscripcion}` (el de
      * fábrica lo hace) solo si esa general es la que de verdad pagan todos. Uno
@@ -181,8 +187,9 @@ export function subtituloProgramasClasica(
   subtitulo: string | undefined,
   texto: (s?: string) => string,
   formatear: (monto: number) => string,
+  preciosDe?: (nivel: string) => Precios,
 ): string {
-  const ins = inscripcionEnLanding(niveles, precios, formatear)
+  const ins = inscripcionEnLanding(niveles, precios, formatear, preciosDe)
   if (ins.subtituloVale(subtitulo)) return texto(subtitulo)
   return `Inscripción ${ins.comun ? `de ${ins.textoComun}` : ins.textoPorNivel} · Elige tu nivel y plan`
 }

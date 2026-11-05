@@ -29,11 +29,12 @@ import { mergeSiteConfig, type OverrideModalidad, type SiteConfig, type SiteConf
 import { validarOverrides } from '@/lib/site-config-validacion'
 import { esSoloCursos } from '@/lib/modo'
 import { licenciaturaEfectiva } from '@/lib/precios-licenciatura'
+import { inscripcionPrimariaDe, primariaEfectiva, type PrimariaPrecios } from '@/lib/precios-primaria'
 import { getCarrerasLicenciatura, getDesglosesLicenciatura } from '@/lib/licenciatura-utils'
 import { nivelesTexto } from '@/lib/niveles-ui'
 import { landingAnimadaActiva } from '@/lib/landing-estilo'
 import { formatearWhatsApp, whatsappEscuelaDisponible } from '@/lib/contacto-ui'
-import type { ModalidadPrograma } from '@/lib/modalidades'
+import { esSoloPrimaria, type ModalidadPrograma } from '@/lib/modalidades'
 import {
   PALETAS,
   PARES_CONTRASTE,
@@ -343,11 +344,18 @@ export function escribirModalidad(
  * sigue la misma regla que la landing (`inscripcionDe`): la propia si la hay;
  * si no, la general. Con las claves por nivel vacías, las tres valen lo mismo
  * (Fase 2).
+ *
+ * En un combo SOLO Primaria la general que publica la landing es la de su tabla, y
+ * la vista previa tiene que decir lo mismo. Con el add-on apagado no aplica.
  */
 export function inscripcionesDeBorrador(
   base: unknown,
   overrides: SiteConfigOverrides,
 ): { inscripcion: number; inscripcionSecundaria: number; inscripcionPreparatoria: number } {
+  if (esSoloPrimaria()) {
+    const suya = inscripcionPrimariaDe(primariaDeBorrador(overrides) as PrimariaPrecios) ?? 0
+    return { inscripcion: suya, inscripcionSecundaria: suya, inscripcionPreparatoria: suya }
+  }
   const general = valorEfectivo(base, overrides, 'precios.inscripcion')
   const precios = {
     inscripcion: general,
@@ -648,7 +656,7 @@ export function hayCambiosDePrecio(
  * en pesos y no hable de precios que nadie tocó.
  */
 export function hayCambiosDePreciosOPlanes(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
-  return hayCambiosDeSecPrepa(antes, despues) || hayCambiosDeLicenciatura(antes, despues)
+  return hayCambiosDeSecPrepa(antes, despues) || hayCambiosDeLicenciatura(antes, despues) || hayCambiosDePrimaria(antes, despues)
 }
 
 /** ¿Cambió un precio o un plan de Secundaria y Preparatoria (`precios` o `modalidades`)? */
@@ -663,6 +671,19 @@ export function hayCambiosDeSecPrepa(antes: SiteConfigOverrides, despues: SiteCo
  */
 export function hayCambiosDeLicenciatura(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
   return !mismoContenido(antes.licenciaturas, despues.licenciaturas)
+}
+
+/**
+ * ¿Cambió un PRECIO de Primaria? El párrafo del aviso de privacidad no cuenta: no
+ * es un precio y el modal no debe hablar de pagos por él.
+ */
+export function hayCambiosDePrimaria(antes: SiteConfigOverrides, despues: SiteConfigOverrides): boolean {
+  const precios = (o: SiteConfigOverrides) => {
+    const copia = { ...(o.primaria ?? {}) }
+    delete copia.avisoMenores
+    return copia
+  }
+  return !mismoContenido(precios(antes), precios(despues))
 }
 
 // ─── Licenciatura (Bloque B, B3) ─────────────────────────────────────────────
@@ -716,7 +737,8 @@ export function estadoSeccionLicenciatura(overrides: SiteConfigOverrides): Estad
  * un solo nivel.
  */
 export function tituloSecPrepa(base: string, conLic: boolean, niveles: readonly string[] = CONFIG.niveles): string {
-  if (!conLic) return base
+  // Con Primaria también hay que decir de quién es cada tarjeta.
+  if (!conLic && !ofrecePrimaria()) return base
   // Siempre en este orden, aunque `niveles` venga al revés.
   const propios = ['secundaria', 'preparatoria'].filter((n) => niveles.includes(n))
   return `${base} · ${nivelesTexto(propios.length > 0 ? propios : ['secundaria', 'preparatoria'])}`
@@ -780,6 +802,48 @@ export function textoVacioLicenciatura(monto: number, tipo: CampoLicenciatura['t
 export function textoVacioErrorLicenciatura(monto: number, tipo: CampoLicenciatura['tipo'], moneda: Moneda = CONFIG.moneda): string {
   if (monto <= 0 && tipo === 'mensualidad') return 'el plan sin precio (tu página no lo muestra)'
   return textoVacioError(monto, moneda, 'fabrica')
+}
+
+// ─── Primaria ────────────────────────────────────────────────────────────────
+
+/** La tabla de Primaria de config.ts, con cast: hay clones sin el bloque. */
+const tablaPrimariaDeFabrica = (): unknown => (CONFIG as unknown as { primaria?: unknown }).primaria
+
+/** ¿La escuela vende Primaria? La bandera manda, igual que en el registro (niveles.ts). */
+export function ofrecePrimaria(pri: unknown = tablaPrimariaDeFabrica()): boolean {
+  return (pri as { activa?: unknown } | null | undefined)?.activa === true && !esSoloCursos()
+}
+
+/** La tabla de Primaria del BORRADOR, con la MISMA regla del merge. */
+export function primariaDeBorrador(overrides: SiteConfigOverrides, sin?: string): unknown {
+  const ov = prepararParaPublicar(sin ? quitarRuta(overrides, sin) : overrides)
+  return primariaEfectiva(tablaPrimariaDeFabrica(), ov.primaria)
+}
+
+/** Un campo de la tarjeta «Primaria». */
+export type CampoPrimaria =
+  | { clave: 'primaria.inscripcion'; tipo: 'inscripcion' }
+  | { clave: 'primaria.certificacion'; tipo: 'certificacion' }
+  /** `clave` = `primaria.modalidades.<id>`; se escribe en `.mensualidad`. */
+  | { clave: string; tipo: 'mensualidad'; planId: string }
+
+export function rutaPrimaria(campo: CampoPrimaria): string {
+  return campo.tipo === 'mensualidad' ? `${campo.clave}.mensualidad` : campo.clave
+}
+
+/** Lo que cobraría ese precio con el borrador; con `vacio`, la cifra de config.ts. */
+export function precioPrimariaEfectivo(
+  overrides: SiteConfigOverrides,
+  campo: CampoPrimaria,
+  { vacio = false }: { vacio?: boolean } = {},
+): number {
+  const pri = primariaDeBorrador(overrides, vacio ? rutaPrimaria(campo) : undefined) as
+    { inscripcion?: unknown; certificacion?: unknown; modalidades?: unknown } | null | undefined
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+  if (campo.tipo === 'inscripcion') return num(pri?.inscripcion)
+  if (campo.tipo === 'certificacion') return num(pri?.certificacion)
+  const planes = Array.isArray(pri?.modalidades) ? (pri.modalidades as Array<{ id?: unknown; mensualidad?: unknown }>) : []
+  return num(planes.find((m) => m?.id === campo.planId)?.mensualidad)
 }
 
 // ─── Precios por nivel (Fase 2, F2-9) ────────────────────────────────────────

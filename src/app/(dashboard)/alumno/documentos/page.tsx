@@ -11,6 +11,7 @@ type DocTipo =
   | 'certificado_secundaria'
   | 'identificacion_oficial'
   | 'foto_perfil_doc'
+  | 'comprobante_domicilio'
 
 type DocEstado = 'pendiente' | 'aprobado' | 'rechazado'
 
@@ -41,6 +42,17 @@ const TIPOS_SECUNDARIA: DocTipo[] = [
 ]
 
 /**
+ * Primaria: quien la cursa no acredita estudios previos. Sin esta lista caía en
+ * TIPOS_PREPA y la app le pedía un Certificado de Secundaria.
+ */
+const TIPOS_PRIMARIA: DocTipo[] = [
+  'acta_nacimiento',
+  'curp',
+  'identificacion_oficial',
+  'comprobante_domicilio',
+]
+
+/**
  * B7 — Documentos de un alumno de diplomado.
  *
  * Solo lo transversal. NO se le pide certificado de secundaria ni de primaria:
@@ -61,6 +73,7 @@ const TIPO_LABEL: Record<DocTipo, string> = {
   certificado_secundaria: 'Certificado de Secundaria',
   identificacion_oficial: 'Identificación Oficial',
   foto_perfil_doc:        'Foto de Perfil',
+  comprobante_domicilio:  'Comprobante de Domicilio',
 }
 
 function DocIcon({ tipo }: { tipo: DocTipo }) {
@@ -80,6 +93,11 @@ function DocIcon({ tipo }: { tipo: DocTipo }) {
   if (tipo === 'certificado_primaria' || tipo === 'certificado_secundaria') return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+    </svg>
+  )
+  if (tipo === 'comprobante_domicilio') return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>
     </svg>
   )
   if (tipo === 'identificacion_oficial') return (
@@ -168,6 +186,7 @@ export default function DocumentosPage() {
   const esLicenciatura = plan.includes('icenciatura')
   const tiposActivos = plan.includes('ecundaria') ? TIPOS_SECUNDARIA
                      : plan.includes('iplomado')  ? TIPOS_DIPLOMADO
+                     : plan.includes('rimaria')   ? TIPOS_PRIMARIA
                      : TIPOS_PREPA
   // Licenciatura usa los mismos slots que prepa, pero el documento previo que
   // debe acreditar es el bachillerato, no la secundaria. Solo cambia la etiqueta.

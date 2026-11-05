@@ -331,7 +331,7 @@ test('4e. un error de licenciatura lleva a la pestaña Precios y el modal sabe d
   const pagina = sinComentarios(leer('src/app/(dashboard)/admin/configuracion/page.tsx'))
   expect(pagina).toContain("clave.startsWith('licenciaturas.')) return 'precios'")
   expect(pagina).toContain('? estadoSeccionLicenciatura(overrides)')
-  expect(pagina).toContain('soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides),')
+  expect(pagina).toContain('soloLicenciaturas: hayCambiosDeLicenciatura(overridesBase, overrides) && !hayCambiosDeSecPrepa(overridesBase, overrides) && !hayCambiosDePrimaria(overridesBase, overrides),')
   // Los placeholders de «Textos de mi página» siguen el borrador de precios.
   const textos = sinComentarios(leer('src/components/admin/personalizar/TextosLicenciaturas.tsx'))
   expect(textos).toContain('getDesglosesLicenciatura(licenciaturaDeBorrador(overrides)')

@@ -34,6 +34,7 @@ import {
  * verificar antes de desplegar.
  */
 function prefijoCodigo(nivel: string | null, carrera: string | null): string {
+  if (nivel === 'primaria')     return 'PRIM'
   if (nivel === 'preparatoria') return 'PREP'
   if (nivel === 'secundaria')   return 'SECU'
   if (nivel === 'demo')         return 'TUT'

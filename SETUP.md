@@ -187,8 +187,12 @@ Editar SOLO este archivo: src/lib/config.ts
    | 23 | `20260928170000_d22d_claves_solo_servidor.sql` | **D22d** — la respuesta correcta del examen mensual, del quiz semanal y del examen final de curso solo la lee el servidor: por `/rest/v1` ninguna sesión lee `respuesta_correcta` ni `explicacion` (privilegios por **lista blanca** de columnas), y el alumno y el secretario no ven filas de esos bancos (techo `RESTRICTIVE` solo-admin; la RLS se enciende donde estaba apagada); el ✓/✗ guardado de cada envío del examen de curso (`curso_examen_resultados.respuestas`) tampoco sale con sesión; `intentos_evaluacion` y `quiz_respuestas` solo los escribe el servidor, y cada quien lee solo los suyos (RLS encendida y techo «propio o admin»: con las respuestas ajenas marcadas correctas se sacaba la clave del quiz). Incluye lo de #186 (Bug 221): quien ya lo corrió, la corre encima. **Aplica a TODA base.** ⚠️ **Desplegar la app de D22d ANTES**: con el código anterior, el quiz y el examen mensual se quedan sin preguntas y no guardan, sin avisar. Córrela **al final**: una copia vieja del paso 6 o de un schema reabre los privilegios (CHECK 28, 29 y 30) |
    | 24 | `20260930120000_fix255_ventana_por_posicion.sql` | **#255** — la ventana de cursos cuenta la **posición** del módulo (cuántos `orden` distintos hay por debajo del suyo), no el `orden` crudo: un curso sembrado en base 1 (bancos anteriores al 25-sep-2026) o con huecos ya no abre un módulo menos por mes ni esconde el último; el examen final se abre solo con el curso completo a la vista y el reporte cuenta lo que el alumno ve. En un curso sano (0..N-1) no cambia nada y nadie ve menos (compuerta: si alguien viera menos, aborta sin cambiar nada). Requiere C3b. Va después de la 23 (no toca sus privilegios). Re-correr B2, B6 o C3b ya no la revierte (CHECK 31) |
    | 25 | `20261008120000_r2_escritura_solo_servidor.sql` | **R2** (soporte IVS, 8-oct-2026) — lo que da avance, logros, calificación o acceso solo lo escribe el servidor: sin INSERT/UPDATE/DELETE/TRUNCATE con sesión (de tabla ni de columna) en `progreso_semanas`, `logros_alumno`, `racha_actividad`, `calificaciones`, `intentos_evaluacion`, `quiz_respuestas`, `alumnos`, `documentos_alumno` y `constancias`, ni en el contenido; techo `RESTRICTIVE` «propio o admin» en su lectura; `notas_alumno` sin DELETE; `usuarios` con el UPDATE solo de perfil (Bug 52, que hasta hoy solo traían los instaladores); índices únicos `quiz_respuestas (alumno_id, quiz_id)` e `intentos_evaluacion (alumno_id, evaluacion_id, numero_intento)` (sin ellos, 4 POST simultáneos al quiz daban la clave); `generar_matricula()` solo el servidor; `anon` sin escritura en `public` (salvo el latido, Bug 46). **Aplica a TODA base.** ⚠️ **Desplegar ANTES la app de la R2** (progreso, tiempo y logros con el service role): con la app anterior, «Marcar semana» y el tiempo de estudio dan 500. Si aborta por respuestas o intentos repetidos, su encabezado dice cómo verlos: no borra nada. Córrela **al final** (CHECK 32, 33 y 34) |
+   | 26 | `20261104120000_nivel_primaria.sql` | **Primaria** — **corre en TODO combo, venda o no Primaria.** Amplía los CHECK de nivel y modalidad, recrea `alumnos.duracion_meses` con los planes `*_pri` y agrega 4 columnas NULL (edad y tutor). No toca filas ni privilegios. Sin Primaria nadie usa nada de esto. Va **al final, después de la R2**. Si otra sesión tiene tomada la tabla, aborta a los 10 s (`lock_timeout`): se reintenta tal cual. El contenido va aparte: «Solo si el combo vende PRIMARIA», más abajo |
 
    > No hay migración de B5 ni de B7/T1–T3: son cambios de código, no de esquema.
+   >
+   > **¿La base ya tiene Primaria sembrada?** La fila 7 (B1) recrea un CHECK de nivel con
+   > lista cerrada: ve «Solo si el combo vende PRIMARIA», más abajo, antes de correrla.
 
    Para un cliente **Solo-Cursos** (solo diplomados), ver
    **`INSTRUCCIONES-SOLO-CURSOS.md`**: la configuración del modo, el catálogo
@@ -230,6 +234,54 @@ Editar SOLO este archivo: src/lib/config.ts
    > `avatares` y `constancias` ya no se crean: ningún código los usa. En un
    > cliente ya instalado pueden existir; no estorban (no se borran por inercia).
 10. Copiar: Project URL, anon key, service_role key
+
+### Solo si el combo vende PRIMARIA
+
+La migración `20261104120000_nivel_primaria.sql` no es de esta sección: corre en todo combo
+(fila 26 de la tabla de 7bis). Lo único que depende de vender Primaria es sembrar su contenido,
+después de `setup.sql` y de TODA la cadena, cuya última migración es esa (nunca antes: B1,
+`20260812` y `20260820` recrean los CHECK de nivel con lista cerrada y abortarían con filas
+`primaria`). Si la cadena no ha terminado, `setup-primaria.sql` aborta con un mensaje claro y no
+siembra nada:
+
+```bash
+cd scripts && psql "$CLIENT_DB_URL" -v ON_ERROR_STOP=1 -f setup-primaria.sql
+```
+
+Siembra 18 materias, 144 semanas, 432 preguntas de quiz, 180 de examen y sus actividades, y
+termina con `post-setup-primaria-check.sql`, que tiene que salir ✅. Sin video no es falla.
+La materia demo (Tutoría de Ingreso) no se toca: un alumno de Primaria no la ve, ni sin pagar ni
+por URL (ve sus meses con candado y el aviso de pago), y en un combo mixto Sec y Prepa siguen
+viendo su Tutoría.
+En `src/lib/config.ts`: `primaria.activa: true` y `'primaria'` en `niveles` (o `['primaria']`
+en un combo solo Primaria, con los planes de `modalidades` en `activa: false`). Enciende
+también la fecha de nacimiento y los datos del tutor en el registro de Primaria y Secundaria.
+
+> **`20261104120000` es para combos nuevos.** Recrea `alumnos.duracion_meses`: si un clon tiene
+> un índice, una vista o una política sobre esa columna, aborta con la lista y no toca nada.
+>
+> **Cobro semanal:** Primaria no tiene calendario de cuotas semanales. `CONFIG.periodicidad:
+> 'semanal'` con Primaria no es un combo válido: mev-tools aborta su instalación.
+>
+> **Base con Primaria ya sembrada: no vuelvas a correr B1, `20260812` ni `20260820` tal cual.**
+> Es el caso de agregar Cursos después (7bis, fila 7). Las tres recrean los CHECK de nivel con
+> lista cerrada, y no se editan porque ya están aplicadas en la flota. Lo que pasa:
+>
+> | Migración | CHECK que recrea | Con filas de Primaria | Sin filas de Primaria |
+> |---|---|---|---|
+> | B1 (`20260730120000`) | `alumnos_nivel_check` | **aborta** con 23514 si hay alumnos; no deja nada a medias | le quita `primaria` en silencio |
+> | `20260812120000` | `materias_nivel_check`, `alumnos_nivel_check`, `alumnos_modalidad_check` y `duracion_meses` | **aborta** con 23514 (siempre, por las 18 materias) | le quita `primaria` y los planes `_pri` en silencio |
+> | `20260820120000` | `alumnos_nivel_check` | **aborta** con 23514 si hay alumnos | le quita `primaria` en silencio |
+>
+> Qué hacer:
+>
+> 1. **Lo mejor:** instala Cursos antes de sembrar Primaria. Nada de lo de abajo hace falta.
+> 2. **Si aborta:** corre una copia TEMPORAL de ese archivo, sin el bloque que recrea el CHECK de
+>    nivel (en B1, el `DO $nivel$`; en `20260812`, sus `DROP`/`ADD` de nivel y de modalidad). El
+>    original no se toca. `20260820` no trae nada más: no hace falta correrla.
+> 3. **En todos los casos, al terminar:** vuelve a correr `20261104120000_nivel_primaria.sql`
+>    (es idempotente) y `scripts/post-setup-primaria-check.sql`, que tiene que salir ✅. Su
+>    primer renglón detecta el CHECK que perdió `primaria`.
 
 ## Paso 4 — Variables de entorno (5 min)
 Copiar .env.example → .env.local y llenar con datos de Supabase

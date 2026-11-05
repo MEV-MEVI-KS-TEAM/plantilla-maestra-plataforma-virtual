@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getSiteConfig } from '@/lib/site-config'
-import { getMesesByModalidad } from '@/lib/modalidades'
+import { getMesesByModalidad, primariaActiva } from '@/lib/modalidades'
 import { esSoloCursos } from '@/lib/modo'
 import { licenciaturasActivas } from '@/lib/licenciatura-utils'
 import { etiquetaNivel } from '@/lib/niveles-ui'
@@ -53,7 +53,7 @@ function NivelBadge({ nivel }: { nivel?: string | null }) {
   // camino podía crear ese nivel, así que ningún alumno existente cambia.
   // Los cuatro niveles con el nombre de la escuela (etiquetaNivel), el mismo que
   // la lista y la ficha (#218). Cualquier otro valor sigue como «Sin nivel».
-  const label = ['secundaria', 'preparatoria', 'licenciatura', 'diplomado'].includes(nivel ?? '')
+  const label = nivel === 'primaria' || ['secundaria', 'preparatoria', 'licenciatura', 'diplomado'].includes(nivel ?? '')
     ? etiquetaNivel(nivel)
     : 'Sin nivel'
   return (
@@ -103,6 +103,15 @@ export default async function AdminDashboardPage() {
       .select('*', { count: 'exact', head: true })
       .eq('nivel', 'licenciatura')
     totalLicenciatura = lic ?? 0
+  }
+
+  let totalPrimaria: number | null = null
+  if (primariaActiva()) {
+    const { count: pri } = await supabase
+      .from('alumnos')
+      .select('*', { count: 'exact', head: true })
+      .eq('nivel', 'primaria')
+    totalPrimaria = pri ?? 0
   }
 
   // B7 — cifras del vertical de diplomados, solo en solo_cursos. Se consultan
@@ -196,6 +205,9 @@ export default async function AdminDashboardPage() {
             Preparatoria escondería la cifra detrás de otras dos. */}
         {!soloCursos && totalLicenciatura !== null && (
           <StatCard emoji="⚖️" label="Licenciatura" value={totalLicenciatura} color="var(--color-acento)" />
+        )}
+        {!soloCursos && totalPrimaria !== null && (
+          <StatCard emoji="✏️" label="Primaria" value={totalPrimaria} color="var(--color-acento)" />
         )}
         <StatCard emoji="📅" label="Registros este mes"  value={esteMes ?? 0}      color="#22C55E" />
         <StatCard emoji="📄" label="Docs. pendientes"    value={docsPendientes ?? 0} color="#F59E0B" />

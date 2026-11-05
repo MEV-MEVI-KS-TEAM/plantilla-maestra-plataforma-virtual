@@ -115,6 +115,22 @@ export function esTutorial(mat: Pick<MateriaVentana, 'nivel' | 'nombre'>): boole
 }
 
 /**
+ * ¿Esta materia está vedada para este alumno, aunque sea tutorial o la tenga acreditada?
+ *
+ * Un alumno de Primaria solo ve materias de Primaria. La materia demo y las tutorías de
+ * los otros niveles hablan de bachillerato en todo el texto y el video («misma validez
+ * oficial», «completar el bachillerato»), y `esTutorial` las abre para cualquiera antes
+ * de mirar el nivel. Con esto se rechazan como una materia ajena. Con cualquier otro
+ * nivel siempre es falso: Sec y Prepa siguen viendo su Tutoría, con o sin el add-on.
+ */
+export function materiaVedada(
+  alumno: { nivel?: string | null },
+  materia: { nivel?: string | null },
+): boolean {
+  return alumno.nivel === 'primaria' && materia.nivel !== 'primaria'
+}
+
+/**
  * Orden canónico de la ventana: `orden` (NULL al final), desempatando por el
  * primer mes de contenido y luego por nombre para que el índice sea estable.
  */
@@ -237,6 +253,8 @@ export function tieneAccesoMateria(
   materiasCatalogo: MateriaVentana[],
   acreditadas: Set<string>
 ): ResultadoAcceso {
+  if (materiaVedada(alumno, materia)) return { acceso: false, motivo: 'nivel_distinto' }
+
   if (acreditadas.has(materia.id)) return { acceso: true, motivo: 'acreditada' }
 
   if (esTutorial(materia)) return { acceso: true, motivo: 'tutorial' }
@@ -340,6 +358,7 @@ export async function cargarAlumnoAcceso(
  * hueco vivo: POST directo a evaluaciones no desbloqueadas).
  *
  * Reglas, en orden:
+ *   0. materia vedada (Primaria y la demo o una tutoría de otro nivel) → sin acceso.
  *   1. materia acreditada → acceso (canon: re-consulta y constancia intactas).
  *   2. materia tutorial/demo → acceso.
  *   3. evaluación sin materia → acceso solo con al menos un mes desbloqueado.
@@ -364,6 +383,7 @@ export async function tieneAccesoEvaluacion(
   const materia = matData as { id: string; nombre: string; nivel: string | null } | null
   // Evaluación con materia_id colgando de una materia inexistente → fail-closed.
   if (!materia) return false
+  if (materiaVedada(alumno, materia)) return false
 
   const { materias: catalogo, acreditadas } = await cargarContextoAcceso(db, alumno.id, alumno)
 
@@ -439,7 +459,7 @@ export async function tieneAccesoSemana(
  * El catálogo es EL MISMO universo que lista /api/alumno/materias (nivel del
  * alumno + demo, y en licenciatura además la carrera —nunca la modalidad—); si
  * divergiera, el índice de la ventana se correría y lista y gate dejarían de
- * coincidir.
+ * coincidir. Primaria no lleva la demo (ver `materiaVedada`).
  *
  * Funciona igual con el cliente de sesión (RLS: materias/meses_contenido son
  * lectura-autenticados y calificaciones filtra a las propias) o con el admin.
@@ -454,9 +474,11 @@ export async function cargarContextoAcceso(
     .select('id, nombre, nivel, orden, meses_contenido(numero_mes, activa)')
     .eq('activa', true)
 
-  materiasQuery = alumno.nivel
-    ? materiasQuery.or(`nivel.eq.${alumno.nivel},nivel.eq.demo`)
-    : materiasQuery.eq('nivel', 'demo')
+  materiasQuery = alumno.nivel === 'primaria'
+    ? materiasQuery.eq('nivel', 'primaria')
+    : alumno.nivel
+      ? materiasQuery.or(`nivel.eq.${alumno.nivel},nivel.eq.demo`)
+      : materiasQuery.eq('nivel', 'demo')
 
   // Scope SOLO por carrera, NUNCA por modalidad. El catálogo de licenciatura se
   // siembra una sola vez etiquetado con la modalidad de REFERENCIA (la más

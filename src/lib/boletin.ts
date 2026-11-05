@@ -1,5 +1,8 @@
 import {
   calcularDisponibilidad,
+  materiasPorMesDePlan,
+  materiaVedada,
+  ORDEN_SIN_DEFINIR,
   ordenarCanonico,
   toMateriaVentana,
   type AlumnoAcceso,
@@ -143,6 +146,32 @@ export function normalizarCalificaciones(rows: unknown): CalificacionConMateria[
 }
 
 /**
+ * El mes de una materia de Primaria según el plan de ESTE alumno.
+ *
+ * `numero_mes` de Primaria es la referencia de 9 meses: un alumno de 6 vería «Mes 1 a 9».
+ * Su mes real es el de la ventana (`calcularDisponibilidad`): posición por `orden` entre
+ * las de Primaria, dividida entre las materias que abre cada mes. Una materia archivada
+ * con calificación ya no está en el catálogo: toma el lugar que le da su `orden`.
+ *
+ * Para cualquier otro alumno o nivel devuelve null, y sigue la lógica de siempre.
+ */
+function mesEnPlanDePrimaria(
+  alumno: AlumnoAcceso,
+  catalogo: MateriaVentana[],
+): (materia: MateriaVentana) => number | null {
+  if (alumno.nivel !== 'primaria') return () => null
+  const lista = ordenarCanonico(catalogo.filter(m => m.nivel === 'primaria'))
+  const porMes = materiasPorMesDePlan(alumno, lista.length)
+  return (materia) => {
+    if (materia.nivel !== 'primaria') return null
+    const i = lista.findIndex(m => m.id === materia.id)
+    const orden = materia.orden ?? ORDEN_SIN_DEFINIR
+    const posicion = i >= 0 ? i + 1 : lista.filter(m => (m.orden ?? ORDEN_SIN_DEFINIR) < orden).length + 1
+    return Math.ceil(posicion / porMes)
+  }
+}
+
+/**
  * Arma el boletín. Puro: sin IO, para poder fijarlo en tests/unit.
  *
  * @param alumno         el mismo objeto que consumen los gates (cargarAlumnoAcceso)
@@ -166,11 +195,15 @@ export function armarBoletin(
   incluirBloqueadas = false
 ): FilaBoletin[] {
   const disponibilidad = calcularDisponibilidad(alumno, catalogo, acreditadas)
+  const mesPrimaria = mesEnPlanDePrimaria(alumno, catalogo)
 
   const universo = new Map<string, MateriaBoletin>(catalogo.map(m => [m.id, m]))
   const califPorMateria = new Map<string, CalificacionConMateria>()
 
   for (const c of calificaciones) {
+    // Quien pasó a Primaria con «Corregir plan» pudo traer la demo calificada (su
+    // candado no la cuenta): esa materia ya no es suya, tampoco en el historial.
+    if (c.materia && materiaVedada(alumno, c.materia)) continue
     // UNIQUE (alumno_id, materia_id): una fila por materia.
     califPorMateria.set(c.materia_id, c)
     // Historial: una materia calificada que ya no está en el catálogo activo
@@ -192,7 +225,7 @@ export function armarBoletin(
       const ficha = calif.materia
       return [{
         materia:    { ...materia, carrera: ficha?.carrera ?? materia.carrera ?? null },
-        mes_numero: ficha?.numero_mes ?? materia.numero_mes ?? 0,
+        mes_numero: mesPrimaria(materia) ?? ficha?.numero_mes ?? materia.numero_mes ?? 0,
         estado:     calif.acreditado ? 'Acreditada' : 'No acreditada',
       }]
     }
@@ -205,10 +238,10 @@ export function armarBoletin(
       // La constancia la omite (default). La pantalla de calificaciones la pide
       // como 'Bloqueada' para que no DESAPAREZCA al bajar meses_desbloqueados.
       return incluirBloqueadas
-        ? [{ materia, mes_numero: materia.numero_mes ?? 0, estado: 'Bloqueada' }]
+        ? [{ materia, mes_numero: mesPrimaria(materia) ?? materia.numero_mes ?? 0, estado: 'Bloqueada' }]
         : []
     }
-    return [{ materia, mes_numero: materia.numero_mes ?? 0, estado: 'Pendiente' }]
+    return [{ materia, mes_numero: mesPrimaria(materia) ?? materia.numero_mes ?? 0, estado: 'Pendiente' }]
   })
 }
 

@@ -49,7 +49,9 @@ import {
 
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
-import { planesPorNivel, getDuracionLabel, getPlanLabelPublico, getPlanLabelConDuracion } from '@/lib/modalidades'
+import { validezDeLaOferta } from '@/lib/landing-solo-primaria'
+import { planesPorNivel, esSoloPrimaria, getDuracionOferta, getModalidadesPrimaria, getPlanLabelPublico, getPlanLabelConDuracion, type ModalidadPrograma } from '@/lib/modalidades'
+import { preciosDePrimaria } from '@/lib/precios-primaria'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
 import { resolverLanding } from '@/lib/landing-textos'
 // Del módulo puro, no de catalogo.ts: este componente es 'use client' y
@@ -116,7 +118,11 @@ const COLUMNAS_PROCESO: Record<number, string> = {
  * no en los textos editables. Un nivel que no esté en el mapa simplemente no
  * pinta la línea.
  */
-const PARA_QUIEN: Partial<Record<(typeof NIVELES)[number], string>> = {
+/** Junto a la cifra de Primaria: que nadie la lea como un certificado oficial. */
+const NOTA_TARJETA_PRIMARIA = 'Entrega constancia de avance; no incluye certificado oficial.'
+
+const PARA_QUIEN: Partial<Record<(typeof NIVELES)[number] | 'primaria', string>> = {
+  primaria: 'Para personas de 12 años en adelante que quieren estudiar su primaria.',
   secundaria: 'Para quien ya concluyó la primaria.',
   preparatoria: 'Para quien ya concluyó la secundaria.',
 }
@@ -181,23 +187,37 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const desplazado = useDesplazado(8)
 
   const L = resolverLanding(config.landing)
-  const precios = config.precios as unknown as Record<string, unknown>
+  // Primaria: su tabla y sus cifras. Vacía sin el add-on, y entonces ni `nivelesTarjeta`
+  // ni `conPrimaria` cambian nada de lo que sigue.
+  const tablaPri = (config.primaria ?? (CONFIG as unknown as { primaria?: unknown }).primaria) as
+    { activa?: unknown; inscripcion?: unknown; certificacion?: unknown } | undefined
+  const soloPrimaria = esSoloPrimaria()
+  const preciosGenerales = config.precios as unknown as Record<string, unknown>
+  // En un combo SOLO Primaria lo «general» de la página ({inscripcion}, la bajada) es
+  // lo de su tabla: se le cobra eso. Con cualquier otra oferta, lo de siempre.
+  const precios = soloPrimaria ? preciosDePrimaria(preciosGenerales, tablaPri) : preciosGenerales
   const paleta = paletaDesde(config.colores)
 
   // Validez oficial: no es branding, es una acreditación. Sale de CONFIG y no se
   // edita desde el panel. El folio es la acreditación COMPARTIDA de la red
   // (00 §11) y va a máximo contraste.
-  const VALIDEZ = CONFIG.landing.validezOficial
+  // En un combo mixto dice a qué niveles aplica; sin Primaria, el mismo objeto.
+  const VALIDEZ = validezDeLaOferta(CONFIG, CONFIG.landing.validezOficial)
   // ¿La escuela certifica? Con `ofreceCertificacion: false` no se anuncia (ver escuelaCertifica).
   const certifica = escuelaCertifica()
-  const validezActiva = Boolean(VALIDEZ.activa)
+  // Es de Secundaria y Preparatoria: un combo que solo vende Primaria no la anuncia.
+  const validezActiva = Boolean(VALIDEZ.activa) && !soloPrimaria
   const folio = String(VALIDEZ.folio ?? '')
   const hayCatalogo = Boolean(CONFIG.landing.mostrarCatalogoCursos) && catalogo.length > 0
 
   const subtitulo = subtituloMarca(config.nombre, config.nombreCompleto)
   const niveles = NIVELES.filter(n => (CONFIG.niveles as readonly string[]).includes(n))
-  const planesDe = (nivel: string) => planesPorNivel(nivel, config.modalidades)
-  const nivelReferencia = niveles.includes('preparatoria') ? 'preparatoria' : (niveles[0] ?? 'preparatoria')
+  const planesPri = getModalidadesPrimaria(tablaPri) as unknown as readonly ModalidadPrograma[]
+  const conPrimaria = planesPri.length > 0
+  const nivelesTarjeta: readonly ((typeof NIVELES)[number] | 'primaria')[] = conPrimaria ? ['primaria', ...niveles] : niveles
+  const preciosDe = (nivel: string) => (nivel === 'primaria' ? preciosDePrimaria(precios, tablaPri) : precios)
+  const planesDe = (nivel: string) => (nivel === 'primaria' ? planesPri : planesPorNivel(nivel, config.modalidades))
+  const nivelReferencia = niveles.includes('preparatoria') ? 'preparatoria' : (niveles[0] ?? nivelesTarjeta[0] ?? 'preparatoria')
   const planes = planesDe(nivelReferencia)
   const nombrePlan = (m: (typeof planes)[number]) => getPlanLabelPublico(m, config.modalidades)
 
@@ -205,28 +225,32 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // Inscripción POR NIVEL (Fase 2). Con las claves por nivel vacías todos los
   // niveles pagan la general, `ins.comun` es verdad y cada frase sale
   // exactamente como antes (ver `inscripcionEnLanding`).
-  const ins = inscripcionEnLanding(niveles, precios)
+  // Cada tarjeta con sus precios: Primaria anuncia la inscripción de su tabla.
+  const ins = inscripcionEnLanding(nivelesTarjeta, precios, undefined, preciosDe)
   const minimaDe = (nivel: string) => {
-    const montos = planesDe(nivel).map(m => mensualidadDe(nivel, m, precios)).filter(n => n > 0)
+    const montos = planesDe(nivel).map(m => mensualidadDe(nivel, m, preciosDe(nivel))).filter(n => n > 0)
     return montos.length > 0 ? Math.min(...montos) : 0
   }
 
   // ⭐ EL ARGUMENTO DE ESTA ESCUELA, calculado y no escrito: en cada nivel los dos
   // planes suman lo mismo. Si el admin cambia una mensualidad desde su panel, la
   // frase se apaga sola en vez de quedarse mintiendo.
-  const totalesPorNivel = niveles.map(n => planesDe(n).map(m => totalPlanDe(n, m, precios)))
+  const totalesPorNivel = nivelesTarjeta.map(n => planesDe(n).map(m => totalPlanDe(n, m, preciosDe(n))))
   const mismoTotalPorNivel = totalesPorNivel.length > 0 && totalesPorNivel.every(totalesIguales)
 
   // ⚠️ HAY ESCUELAS CON PRECIO DISTINTO POR NIVEL: cuando los planes no
   // coinciden entre niveles, los planes se pintan POR NIVEL y cada
   // cifra sale de `mensualidadDe(nivel, …)`: leer `modalidad.mensualidad` a secas
   // le muestra a secundaria la tarifa de preparatoria (SÉNDERI #194).
+  // La certificación de cada nivel. Con Primaria, solo la que tiene cifra: un nivel sin
+  // ella no se anuncia en $0, y sin ninguna no se pinta el recuadro.
+  const nivelesCertificacion = conPrimaria ? nivelesTarjeta.filter(n => certificacionDe(n, preciosDe(n)) > 0) : niveles
   const planesIguales = niveles.every(n =>
     planesDe(n).length === planes.length &&
     planes.every(m => mensualidadDe(n, m, precios) === mensualidadDe(nivelReferencia, m, precios)))
 
   const vars = {
-    duracion: getDuracionLabel(config.modalidades),
+    duracion: getDuracionOferta(config.modalidades),
     nombre: config.nombre,
     nombreCompleto: config.nombreCompleto,
     whatsapp: config.whatsappDisplay || config.whatsapp,
@@ -242,7 +266,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   //    ALUMNO y sigue activo en el panel.
   const urlWhatsApp = urlWhatsAppEscuela(
     config.whatsapp,
-    `Hola, quiero información sobre ${listaConY(niveles.map(etiquetaNivelConArticulo))} en línea de ${config.nombre}.`,
+    `Hola, quiero información sobre ${listaConY(nivelesTarjeta.map(etiquetaNivelConArticulo))} en línea de ${config.nombre}.`,
   )
   const telefonoVisible = config.whatsappDisplay || config.whatsapp
   const correo = config.contactoEmail || config.email
@@ -267,8 +291,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   const ritmosLic = hayLicenciaturas ? `${unirConO(planesLic.map(p => String(p.meses)))} meses` : ''
   /** «Secundaria y Preparatoria» · «Secundaria, Preparatoria y Licenciaturas». */
   const programasTexto = hayLicenciaturas
-    ? `${niveles.map(etiquetaNivel).join(', ')} y ${carrerasLic.length > 1 ? 'Licenciaturas' : 'Licenciatura'}`
-    : nivelesTexto(niveles)
+    ? `${nivelesTarjeta.map(etiquetaNivel).join(', ')} y ${carrerasLic.length > 1 ? 'Licenciaturas' : 'Licenciatura'}`
+    : nivelesTexto(nivelesTarjeta)
   // Textos de la sección: los automáticos de siempre, con lo que la escuela
   // haya escrito en "Textos de mi página" encima, campo por campo
   // (TICKET-2026-09-22-08). Las cifras del panel del costo no se editan.
@@ -292,7 +316,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   if (planes.length >= 2) {
     const materias = planes.map(m => m.meses * m.materiasPorMes)
     const mismasMaterias = materias.every(x => x === materias[0])
-    const detalle = planes
+    // Combo mixto: estos ritmos son los de Sec/Prepa, y Primaria dice los suyos abajo.
+    const detalle = (conPrimaria && niveles.length > 0 ? `en ${nivelesTexto(niveles)}, ` : '') + planes
       .map(m => `el plan de ${nombrePlan(m)} dura ${m.meses} meses con ${m.materiasPorMes} materias al mes`)
       .join(' y ')
     // Una frase por nivel cuando las mensualidades difieren (ver `fraseMensualidades`).
@@ -306,12 +331,15 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     ].filter(Boolean)
     faqPlanes.push({
       q: `¿Qué diferencia hay entre ${listaConY(planes.map(m => `el plan de ${nombrePlan(m)}`))}?`,
-      a: `${comunes.length ? `Los dos incluyen ${listaConY(comunes)}. ` : ''}` +
+      a: `${comunes.length ? `${conPrimaria && planes.length > 2 ? 'Todos' : 'Los dos'} incluyen ${listaConY(comunes)}. ` : ''}` +
         `${detalle.charAt(0).toUpperCase()}${detalle.slice(1)}. ${mensualidades} ` +
+        (conPrimaria && niveles.length > 0
+          ? `En Primaria, ${listaConY(planesPri.map(m => `el plan de ${m.meses} meses lleva ${m.materiasPorMes} materias al mes`))}. `
+          : '') +
         (ins.comun ? '' : `La inscripción es ${ins.textoPorNivel}. `) +
         (mismoTotalPorNivel
-          ? `Al final pagas lo mismo con cualquiera de los dos (${niveles.map(n =>
-            `${dinero(totalPlanDe(n, planesDe(n)[0], precios))} en ${etiquetaNivel(n)}`).join(' y ')}): eliges ritmo, no precio.`
+          ? `Al final pagas lo mismo con cualquiera de ${conPrimaria ? 'ellos' : 'los dos'} (${nivelesTarjeta.map(n =>
+            `${dinero(totalPlanDe(n, planesDe(n)[0], preciosDe(n)))} en ${etiquetaNivel(n)}`).join(' y ')}): eliges ritmo, no precio.`
           : 'Tú eliges si prefieres pagar menos al mes o concluir en menos tiempo.'),
     })
   }
@@ -369,22 +397,23 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     ...(hayCatalogo ? [{ href: '#diplomados', etiqueta: 'Cursos' }] : []),
     { href: '#planes', etiqueta: 'Planes' },
     ...(hayLicenciaturas ? [{ href: '#licenciaturas', etiqueta: 'Licenciaturas' }] : []),
-    ...(validezActiva ? [{ href: '#validez', etiqueta: 'Validez oficial' }] : []),
+    ...(validezActiva ? [{ href: '#validez', etiqueta: validezDeLaOferta(CONFIG, 'Validez oficial') }] : []),
     ...(presentes.faq ? [{ href: '#preguntas', etiqueta: 'Preguntas' }] : []),
     { href: '#contacto', etiqueta: 'Contacto' },
   ]
+  if (soloPrimaria) enlacesMenu[0].etiqueta = 'Programa'
   const activa = useSeccionActiva(enlacesMenu.map(e => e.href.slice(1)))
 
   // La franja oscura. 🛑 Ni colores de marca ni el gris del papel: letra
   // blanca, íconos en el realce del bloque y divisores en su borde.
   const indicadores: Array<{ Icono: LucideIcon; dato: string }> = [
     { Icono: Laptop, dato: '100% en línea' },
-    ...(validezActiva ? [{ Icono: ShieldCheck, dato: 'Validez oficial' }] : []),
+    ...(validezActiva ? [{ Icono: ShieldCheck, dato: validezDeLaOferta(CONFIG, 'Validez oficial') }] : []),
     // ⚠️ Con licenciaturas, «en ambos planes» dejaría de ser verdad para TODOS
     // los planes de la página (los de licenciatura no suman lo mismo): se dice
     // de qué programas es.
     ...(mismoTotalPorNivel
-      ? [{ Icono: BadgeCheck, dato: hayLicenciaturas ? `Mismo precio total en ${nivelesTexto(niveles)}` : 'Mismo precio total en ambos planes' }]
+      ? [{ Icono: BadgeCheck, dato: hayLicenciaturas ? `Mismo precio total en ${nivelesTexto(nivelesTarjeta)}` : conPrimaria ? 'Mismo precio total en todos los planes' : 'Mismo precio total en ambos planes' }]
       : []),
     { Icono: GraduationCap, dato: programasTexto },
   ]
@@ -392,7 +421,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
   // Tarjetas de la escena del hero: lo que vende, con precios y duraciones
   // CALCULADOS. 🛑 Ninguna ofrece servicios que el combo no incluye.
   const tarjetasHero: Array<{ Icono: LucideIcon; titulo: string; detalle: string }> = [
-    ...niveles.map(n => ({
+    ...nivelesTarjeta.map(n => ({
       Icono: BookOpen,
       titulo: etiquetaNivel(n),
       detalle: [duracionesTexto(planesDe(n).map(m => m.meses)), minimaDe(n) > 0 && `desde ${dinero(minimaDe(n))}/mes`]
@@ -400,9 +429,10 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
     })),
     // Con licenciaturas la tercera tarjeta es el nivel superior (tres golpes,
     // como HTI #205); sin ellas, «100% en línea».
-    hayLicenciaturas
-      ? { Icono: GraduationCap, titulo: etiquetaLic, detalle: `${carrerasLic.length === 2 ? 'Dos carreras' : `${carrerasLic.length} carreras`} · ${ritmosLic}` }
-      : { Icono: Laptop, titulo: '100% en línea', detalle: 'A tu ritmo, las 24 horas' },
+    ...(hayLicenciaturas
+      ? [{ Icono: GraduationCap, titulo: etiquetaLic, detalle: `${carrerasLic.length === 2 ? 'Dos carreras' : `${carrerasLic.length} carreras`} · ${ritmosLic}` }]
+      // Con Primaria, Secundaria y Preparatoria ya son los tres golpes.
+      : nivelesTarjeta.length >= 3 ? [] : [{ Icono: Laptop, titulo: '100% en línea', detalle: 'A tu ritmo, las 24 horas' }]),
   ]
 
   // Un curso sin precio NO se anuncia «Sin costo»: la tabla guarda 0 cuando
@@ -696,12 +726,15 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
             por nivel. */}
         <section id="niveles" {...marco('niveles')}>
           <div className={CONTENEDOR}>
-            <Encabezado t={tNiveles} kicker={hayLicenciaturas ? 'Programas' : 'Niveles'} titulo={programasTexto}
-              bajada={hayLicenciaturas
+            <Encabezado t={tNiveles} kicker={hayLicenciaturas ? 'Programas' : soloPrimaria ? 'Programa' : 'Niveles'} titulo={programasTexto}
+              bajada={soloPrimaria && !hayLicenciaturas
+                ? 'Estudia en línea, a tu propio ritmo, con acompañamiento en todas tus materias.'
+                : hayLicenciaturas || conPrimaria
                 ? 'Estudia en línea, a tu propio ritmo, con el mismo acompañamiento en todos los programas.'
                 : 'Estudia en línea, a tu propio ritmo, con el mismo acompañamiento en los dos niveles.'} />
-            <div className={`grid gap-6 mt-12 ${hayLicenciaturas ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
-              {niveles.map((nivel, i) => {
+            <div className={`grid gap-6 mt-12 ${soloPrimaria && !hayLicenciaturas ? 'max-w-xl mx-auto' : hayLicenciaturas || conPrimaria ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
+              {nivelesTarjeta.map((nivel, i) => {
+                const precios = preciosDe(nivel)
                 const planesNivel = planesDe(nivel)
                 // Sin certificación, no se anuncia certificación (#165): en 0 la línea no se pinta.
                 const certificacion = certifica ? certificacionDe(nivel, precios) : 0
@@ -742,6 +775,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                             Certificación: <strong className="text-lg" style={{ color: tNiveles.titulo }}>{dinero(certificacion)}</strong>
                           </p>
                         )}
+                        {nivel === 'primaria' && <p style={{ color: tNiveles.textoSuave }}>{NOTA_TARJETA_PRIMARIA}</p>}
                       </div>
                       {/* Enlace en el color de marca: la tarjeta va sobre superficie, donde
                           un acento vivo suele quedarse corto. */}
@@ -848,7 +882,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                 : `Inscripción ${ins.comun ? `de ${ins.textoComun}` : ins.textoPorNivel}. Cambia en cuánto tiempo concluyes y cuánto pagas al mes.`} />
 
             <div className="mt-12 space-y-14">
-              {niveles.map((nivel, iNivel) => {
+              {nivelesTarjeta.map((nivel, iNivel) => {
+                const precios = preciosDe(nivel)
                 const planesNivel = planesDe(nivel)
                 const totales = planesNivel.map(m => totalPlanDe(nivel, m, precios))
                 const etiquetasNivel = etiquetasPlan(planesNivel.map(m => ({
@@ -866,7 +901,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                         </p>
                       )}
                     </div>
-                    <div className="grid md:grid-cols-2 gap-6 mt-5">
+                    <div className={`grid md:grid-cols-2 ${nivel === 'primaria' ? 'lg:grid-cols-3 ' : ''}gap-6 mt-5`}>
                       {planesNivel.map((plan, i) => {
                         const mensualidad = mensualidadDe(nivel, plan, precios)
                         const total = totalPlanDe(nivel, plan, precios)
@@ -934,23 +969,27 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
 
             {/* La certificación va aparte: se paga al concluir y NO forma parte
                 del total del plan. Una escuela que no certifica no la anuncia. */}
-            {certifica && (
+            {certifica && (!conPrimaria || nivelesCertificacion.length > 0) && (
               <div data-la-reveal className="mt-14 max-w-4xl mx-auto rounded-2xl p-6 sm:p-8"
                 style={{ ...retraso(3, 110), background: tPlanes.superficie, border: `1px solid ${tPlanes.borde}` }}>
                 <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: tPlanes.titulo }}>
                   Certificación · pago único al concluir
                 </p>
                 <dl className="mt-4 grid sm:grid-cols-2 gap-3">
-                  {niveles.map(n => (
+                  {nivelesCertificacion.map(n => (
                     <div key={n} className="flex items-baseline justify-between gap-4 rounded-xl px-4 py-3" style={{ background: tPlanes.fondo }}>
                       <dt style={{ color: tPlanes.texto }}>{etiquetaNivel(n)}</dt>
-                      <dd className="text-lg font-bold" style={{ color: tPlanes.titulo }}>{dinero(certificacionDe(n, precios))}</dd>
+                      <dd className="text-lg font-bold" style={{ color: tPlanes.titulo }}>{dinero(certificacionDe(n, preciosDe(n)))}</dd>
                     </div>
                   ))}
                 </dl>
                 <p className="mt-4 flex items-start gap-2 text-sm" style={{ color: tPlanes.textoSuave }}>
                   <AlertCircle size={16} aria-hidden className="mt-0.5 flex-shrink-0" style={{ color: tPlanes.titulo }} />
                   La certificación no está incluida en el total del plan.
+                  {/* La caja lista varios niveles: sin alcance, sería falso para Sec y Prepa. */}
+                  {nivelesCertificacion.includes('primaria') && (nivelesCertificacion.length > 1
+                    ? ` En Primaria: ${NOTA_TARJETA_PRIMARIA.charAt(0).toLowerCase()}${NOTA_TARJETA_PRIMARIA.slice(1)}`
+                    : ` ${NOTA_TARJETA_PRIMARIA}`)}
                 </p>
               </div>
             )}

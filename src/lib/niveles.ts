@@ -1,5 +1,5 @@
 import { CONFIG } from '@/lib/config'
-import { planesDeclaradosPorNivel } from '@/lib/modalidades'
+import { planesDeclaradosPorNivel, primariaActiva } from '@/lib/modalidades'
 import type { CatalogoRegistro } from '@/lib/registro-reglas'
 import {
   getCarreras,
@@ -77,6 +77,8 @@ export function esOpcionCurso(value: string | null | undefined): boolean {
 }
 
 const OPCIONES_BASE: readonly OpcionNivel[] = [
+  // Solo con el add-on encendido: ver `getOpcionesNivel`.
+  { value: 'primaria',      label: 'Primaria',      nivel: 'primaria',      campos: ['modalidad'] },
   { value: 'secundaria',    label: 'Secundaria',    nivel: 'secundaria',    campos: ['modalidad'] },
   { value: 'preparatoria',  label: 'Preparatoria',  nivel: 'preparatoria',  campos: ['modalidad'] },
   { value: 'licenciatura',  label: 'Licenciatura',  nivel: 'licenciatura',  campos: ['modalidad', 'carrera'] },
@@ -100,6 +102,11 @@ export function getOpcionesNivel(hayCursosPublicados = false): OpcionNivel[] {
   const out: OpcionNivel[] = []
 
   for (const base of OPCIONES_BASE) {
+    if (base.value === 'primaria') {
+      // La bandera manda: `CONFIG.niveles` solo decide cómo se nombra la oferta.
+      if (primariaActiva()) out.push({ ...base })
+      continue
+    }
     if (base.value === 'secundaria' || base.value === 'preparatoria') {
       if (niveles.includes(base.value)) out.push({ ...base })
       continue

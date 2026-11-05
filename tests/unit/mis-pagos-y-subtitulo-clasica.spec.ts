@@ -33,7 +33,7 @@ test('1. «Mis pagos» pinta la inscripción que devuelve la API, con el formato
   // fija de dónde sale `precios`: si volviera a ser el config de fábrica, «Mis
   // pagos» regresaría al defecto que F2-6b cierra (K5 del diseño).
   const ruta = sinComentarios(leer('src/app/api/alumno/pagos/route.ts'))
-  expect(ruta).toContain('const inscripcion = inscripcionDelAlumno(nivel, precios, lic)')
+  expect(ruta).toContain('const inscripcion = inscripcionDelAlumno(nivel, precios, lic, pri)')
   expect(ruta).toMatch(/const cfg = await getSiteConfig\(\)/)
   expect(ruta).toContain('const precios = cfg.precios as unknown as Record<string, unknown>')
   expect(ruta.match(/\bprecios\s*=/g)).toHaveLength(1)
@@ -87,7 +87,7 @@ test('5. la clásica usa esa función con sus niveles de tarjeta, su `texto` y s
   const fuente = leer('src/components/landing/LandingClient.tsx')
   if (!ES_PLANTILLA && !fuente.includes('planesSec.map')) test.skip()
   expect(fuente).toContain("const nivelesTarjetas = ['preparatoria', 'secundaria'].filter(n => (CONFIG.niveles as readonly string[]).includes(n))")
-  expect(fuente).toContain('const subtituloProgramas = subtituloProgramasClasica(nivelesTarjetas, p, L.programas_subtitulo, texto, fmt)')
+  expect(fuente).toContain(': subtituloProgramasClasica(nivelesTarjetas, p, L.programas_subtitulo, texto, fmt)')
   expect(fuente).toContain('{subtituloProgramas}')
   // El subtítulo ya no se pinta directo en ningún otro sitio.
   expect(sinComentarios(fuente)).not.toContain('{texto(L.programas_subtitulo)}')
