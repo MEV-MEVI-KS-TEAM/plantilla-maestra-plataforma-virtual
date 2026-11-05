@@ -183,6 +183,14 @@ export function lineasPreciosWhatsApp(planes, niveles) {
 export const ofreceCertificacion = (config) => config?.ofreceCertificacion !== false
 
 /**
+ * ¿Vende Primaria y ni Secundaria ni Preparatoria? Esa portada no tiene la sección de
+ * validez oficial: el PDF y el WhatsApp no la anuncian ni enlazan un `#validez` que no
+ * existe. Con el add-on apagado siempre es falso, aunque `niveles` venga vacío.
+ */
+export const soloPrimariaEntrega = (config) => config?.primaria?.activa === true
+  && !(config?.niveles ?? []).some((n) => n === 'secundaria' || n === 'preparatoria')
+
+/**
  * El resolver de certificación que usa la entrega: el de la plataforma
  * (`certificacionDe`, que llega por parámetro para no importar `src/`), o 0 en
  * una escuela que NO certifica.

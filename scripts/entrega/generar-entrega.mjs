@@ -34,7 +34,7 @@ import {
   esSemanal, planesSemanales, tablaPrecios, colsModalidades, filasModalidades,
   frasesSemanales, lineasPreciosWhatsApp, ofertaInformativa,
   problemaDePrecios, nivelesSinPlanes, tablaPreciosMensual, filasModalidadesMensual, frasesMensuales,
-  lineasPreciosMensualWhatsApp, ofreceCertificacion, certificacionEntrega,
+  lineasPreciosMensualWhatsApp, ofreceCertificacion, soloPrimariaEntrega, certificacionEntrega,
 } from './planes.mjs'
 import { cuentasDeEntrega, secretosEn, nombresDeCuentas } from './cuentas.mjs'
 import { leerEnvLocal as leerEnvLocalDe, urlSupabaseDesdeEnv as urlSupabaseDe } from './env-local.mjs'
@@ -583,8 +583,9 @@ const CERTIFICA = ofreceCertificacion(CONFIG)
 const cert = certificacionEntrega(CONFIG, certificacionDe)
 // La sección de validez habla del CERTIFICADO («un certificado, dos países»,
 // folio SIGED de la SEP): en una escuela que no certifica no va, diga lo que
-// diga entrega.local.json. En las demás, igual que siempre (`!== false`).
-const VALIDEZ = D.validez !== false && CERTIFICA
+// diga entrega.local.json. En las demás, igual que siempre (`!== false`). Un combo
+// solo Primaria tampoco: su portada no tiene esa sección ni el ancla `#validez`.
+const VALIDEZ = D.validez !== false && CERTIFICA && !soloPrimariaEntrega(CONFIG)
 const mens = (nivel, m) => mensualidadDe(nivel, m, CONFIG.precios)
 const PRECIOS = { insc, mens, cert }
 // Primaria: `insc` y `cert` le darían la inscripción general y la certificación de
