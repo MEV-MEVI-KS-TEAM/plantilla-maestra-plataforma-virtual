@@ -4,8 +4,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CONFIG } from '@/lib/config'
 import { EDAD_MINIMA_PRIMARIA, hoyEnMexico, revisarEdadTutor } from '@/lib/registro-reglas'
-import { aplicarLandingMixtoPrimaria, ofertaMixtaPrimaria, textosMixtoPrimaria, validezDeLaOferta } from '@/lib/landing-solo-primaria'
+import { TEXTOS_SOLO_PRIMARIA, aplicarLandingMixtoPrimaria, ofertaMixtaPrimaria, textosMixtoPrimaria, validezDeLaOferta } from '@/lib/landing-solo-primaria'
 import { mergeSiteConfig, type BaseSiteConfig } from '@/lib/site-config-core'
+import { CAMPOS } from '@/lib/site-config-campos'
+import { validarOverrides } from '@/lib/site-config-validacion'
 import { getDuracionOferta } from '@/lib/modalidades'
 import { soloPrimariaEntrega } from '../../scripts/entrega/planes.mjs'
 
@@ -82,8 +84,53 @@ test.describe('rutas reales: lo que queda escrito', () => {
     }
     expect(r.corregirCandado.status).toBe(409)
     expect(r.corregirTutorFalla.status).toBe(500)
-    expect(r.corregirTutorFalla.rpc).toEqual([])
+    expect(r.corregirTutorFalla.rpc).not.toContain('corregir_plan_estudio')
     expect(r.corregirTutorFalla.alumno).toMatchObject({ nivel: 'secundaria', modalidad: '3_meses', ...VACIO })
+  })
+
+  test('R4b. con un candado puesto no se escribe nada: un menor no pierde a su tutor aunque la vuelta falle', () => {
+    for (const caso of [r.corregirCandadoPrevio, r.corregirCandadoPrevioError]) {
+      expect(caso.escrituras).toEqual([])
+      expect(caso.rpc).not.toContain('corregir_plan_estudio')
+      expect(caso.alumno).toMatchObject({ nivel: 'secundaria', modalidad: '3_meses', tutor_nombre: 'Previo' })
+    }
+    expect(r.corregirCandadoPrevio.status).toBe(409)
+    expect(r.corregirCandadoPrevio.cuerpo).toMatchObject({ candado: 'pagos' })
+    expect(r.corregirCandadoPrevio.alumno).toMatchObject({ fecha_nacimiento: '2012-03-10' })
+    expect(r.corregirCandadoPrevioError.status).toBe(500)
+  })
+
+  test('R4c. la RPC confirma y se pierde la respuesta: no se restaura y responde éxito', () => {
+    for (const caso of [r.corregirPerdidaError, r.corregirPerdidaVacia, r.corregirPerdidaExcepcion]) {
+      expect(caso.status).toBe(200)
+      expect(caso.cuerpo).toMatchObject({ ok: true })
+      expect(caso.alumno).toMatchObject({ nivel: 'primaria', modalidad: '3_meses_pri', ...TUTOR_LIMPIO })
+    }
+  })
+
+  test('R4d. sin poder releer la fila no se restaura: se registra y responde error', () => {
+    const c = r.corregirSinRelectura
+    expect(c.status).toBe(500)
+    expect(c.alumno).toMatchObject({ nivel: 'primaria', modalidad: '3_meses_pri', ...TUTOR_LIMPIO })
+    expect(c.log).toContain('no se pudo releer')
+    expect(c.escrituras).toHaveLength(1)
+  })
+
+  test('R4e. sin respuesta y con el plan igual, el tutor vuelve; con otro plan, no se toca y se avisa', () => {
+    expect(r.corregirPerdidaSinCambio.status).toBe(500)
+    expect(r.corregirPerdidaSinCambio.alumno).toMatchObject({ nivel: 'secundaria', modalidad: '3_meses', ...PREVIO })
+    expect(r.corregirOtroPlan.status).toBe(409)
+    expect(r.corregirOtroPlan.alumno).toMatchObject({ nivel: 'primaria', modalidad: '6_meses_pri', ...TUTOR_LIMPIO })
+    expect(r.corregirOtroPlan.escrituras).toHaveLength(1)
+  })
+
+  test('R4f. un CHECK que rechaza la corrección no manda fecha ni tutor a los logs', () => {
+    expect(r.corregirCheck.status).toBe(500)
+    expect(r.corregirCheck.log).toContain('23514')
+    expect(r.corregirCheck.log).not.toContain('Rosa')
+    expect(r.corregirCheck.log).not.toContain('3312345678')
+    // Sin el add-on, el registro de siempre.
+    expect(r.corregirApagadoCheck.log).toContain('Failing row')
   })
 
   test('R5. sin el add-on no se lee ni se escribe nada de edad o tutor', () => {
@@ -164,8 +211,10 @@ test.describe('páginas reales: lo que se ve', () => {
   test.describe.configure({ mode: 'serial', timeout: 240_000 })
   test.skip(!nodeSirve, 'el arnés necesita Node 23.6 o mayor')
   const combos: Record<string, Portal> = {}
+  const conValidez: Record<string, Portal> = {}
   test.beforeAll(() => {
     for (const c of ['apagado', 'mixto', 'mixto-sec', 'solo', 'sin-cifras']) combos[c] = correrArnes('primaria-portal.mjs', c)
+    for (const c of ['mixto', 'mixto-sec']) conValidez[c] = correrArnes('primaria-portal.mjs', c, 'con-validez')
   })
 
   test('V1. todas las páginas se pintan sin errores', () => {
@@ -180,7 +229,6 @@ test.describe('páginas reales: lo que se ve', () => {
     }
     expect(p.adminDocumentos).not.toContain('Comprobante de Domicilio')
     expect(p.adminDocumentos).toContain('Certificado de Primaria')
-    expect(p.mensajesAvance).toContain('Un paso más cerca de tu certificado.')
     for (const original of ['Acompañamiento para tu certificado SEP', 'Centro de Apoyo para la Acreditación de Conocimientos', 'CENTRO DE APOYO', 'Acreditación de Conocimientos']) {
       expect(p.login, original).toContain(original)
       expect(p.registro, original).toContain(original)
@@ -249,21 +297,62 @@ test.describe('páginas reales: lo que se ve', () => {
     expect(animada).not.toContain('Certificación:')
   })
 
-  test('V8. portadas mixtas: lo que nombra a la SEP dice a qué niveles aplica', () => {
+  test('V8. portadas mixtas, con y sin la validez encendida: lo que nombra a la SEP dice a qué niveles aplica', () => {
     const FRASE = /[^.?!¿]*(?:\bSEP\b|validez|certificado oficial)[^.?!]*[.?!]?/gi
-    for (const [c, nombres] of [['mixto', /Secundaria y Preparatoria|Secundaria o Preparatoria/], ['mixto-sec', /Secundaria/]] as const) {
-      for (const portada of [combos[c].animada, combos[c].clasica]) {
-        const frases = sinEtiquetas(portada).match(FRASE) ?? []
-        expect(frases.length, c).toBeGreaterThan(0)
-        for (const frase of frases) {
-          if (frase.includes('no incluye certificado oficial')) continue
-          // La FAQ y el paso del proceso la nombran seguida: «…corresponde a la SEP» es la misma respuesta.
-          if (/mientras la validez oficial corresponde a la SEP/.test(frase)) continue
-          expect(frase, c).toMatch(nombres)
+    /**
+     * Fuera: la tarjeta de Primaria, que ya es suya, y la sección de validez, cuyo título dice
+     * de qué niveles es (en la clásica, el folio va en una segunda banda justo después).
+     */
+    const sinPropias = (h: string) => h
+      .replace(/<article(?:(?!<\/article>)[\s\S])*?>Primaria<\/h3>[\s\S]*?<\/article>/, '')
+      .replace(/>Primaria<\/h3>[\s\S]*?<\/h3>/, '')
+      .replace(/<section id="validez"[\s\S]*?<\/section>(?:\s*<section(?:(?!<\/section>)[\s\S])*?Folio de ejemplo[\s\S]*?<\/section>)?/, '')
+    for (const [c, nombres] of [['mixto', /Secundaria y Preparatoria|Secundaria o Preparatoria|Sec y Prepa/], ['mixto-sec', /Secundaria/]] as const) {
+      for (const p of [combos[c], conValidez[c]]) {
+        for (const portada of [p.animada, p.clasica]) {
+          const frases = sinEtiquetas(sinPropias(portada)).match(FRASE) ?? []
+          expect(frases.length, c).toBeGreaterThan(0)
+          for (const frase of frases) {
+            if (frase.includes('no incluye certificado oficial')) {
+              expect(frase, c).toContain('Primaria')
+              continue
+            }
+            // La FAQ y el paso del proceso la nombran seguida: «…corresponde a la SEP» es la misma respuesta.
+            if (/mientras la validez oficial corresponde a la SEP/.test(frase)) continue
+            expect(frase, c).toMatch(nombres)
+          }
         }
       }
     }
     expect(sinEtiquetas(combos['mixto-sec'].clasica)).not.toContain('Con certificado oficial en Secundaria y Preparatoria')
+    // Y el título de la sección sí lo dice, en las dos portadas.
+    for (const portada of [conValidez.mixto.animada, conValidez.mixto.clasica]) {
+      expect(sinEtiquetas(portada)).toContain('Tu certificado de Secundaria y Preparatoria vale en México y USA')
+    }
+  })
+
+  test('V8b. el menú y la franja acotan la sección de validez en un combo mixto', () => {
+    const menu = (h: string) => [...h.matchAll(/href="#validez"[^>]*>([^<]*)</g)].map(m => m[1])
+    expect(menu(conValidez.mixto.animada).length).toBeGreaterThan(0)
+    for (const etiqueta of menu(conValidez.mixto.animada)) expect(etiqueta).toBe('Validez oficial en Sec y Prepa')
+    for (const etiqueta of menu(conValidez['mixto-sec'].animada)) expect(etiqueta).toBe('Validez oficial en Secundaria')
+    // La franja: ninguna «Validez oficial» suelta.
+    expect(sinEtiquetas(conValidez.mixto.animada).match(/Validez oficial(?! en Sec y Prepa| de Secundaria y Preparatoria)/g) ?? []).toEqual([])
+    // Sin la sección, ni el menú la anuncia.
+    expect(menu(combos.mixto.animada)).toEqual([])
+  })
+
+  test('V8c. la caja de certificación con varios niveles dice que la nota es de Primaria', () => {
+    const caja = (h: string) => {
+      const i = h.indexOf('Certificación · pago único al concluir')
+      expect(i).toBeGreaterThan(-1)
+      return sinEtiquetas(h.slice(i, h.indexOf('</p>', h.indexOf('no está incluida en el total del plan', i))))
+    }
+    expect(caja(combos.mixto.animada)).toContain('En Primaria: entrega constancia de avance; no incluye certificado oficial.')
+    expect(caja(combos['mixto-sec'].animada)).toContain('En Primaria: entrega constancia de avance; no incluye certificado oficial.')
+    // Sola en la caja no hace falta aclarar.
+    expect(caja(combos.solo.animada)).toContain(NOTA)
+    expect(caja(combos.solo.animada)).not.toContain('En Primaria:')
   })
 
   test('V9. portadas mixtas: la duración, los documentos y los ritmos incluyen a Primaria', () => {
@@ -320,12 +409,6 @@ test.describe('páginas reales: lo que se ve', () => {
     expect(combos.mixto.aviso).not.toContain('Instituciones con las que se gestione')
   })
 
-  test('V14. con Primaria en la escuela, el mensaje al terminar una semana no promete certificado', () => {
-    for (const c of ['mixto', 'solo']) {
-      expect(combos[c].mensajesAvance.length, c).toBeGreaterThan(0)
-      expect(combos[c].mensajesAvance.join(' '), c).not.toMatch(/certific/i)
-    }
-  })
 })
 
 // ─── Sin arnés ───────────────────────────────────────────────────────────────
@@ -377,13 +460,27 @@ test('D4. setup-primaria: siembra antes de las actividades, la auditoría al fin
   expect(leer('scripts/post-setup-primaria-check.sql')).not.toContain("m.nivel = 'demo'")
 })
 
+test('D6. la migración lleva lock_timeout antes de tomar la primera tabla', () => {
+  const sql = leer('supabase/migrations/20261104120000_nivel_primaria.sql').replace(/--.*$/gm, '')
+  const candado = sql.indexOf("SET LOCAL lock_timeout = '10s';")
+  expect(candado).toBeGreaterThan(sql.indexOf('BEGIN;'))
+  expect(candado).toBeLessThan(sql.indexOf('ALTER TABLE'))
+})
+
+test('D7. la fila 26 de SETUP sigue dentro de la tabla de migraciones', () => {
+  const lineas = leer('SETUP.md').split('\n')
+  const i = lineas.findIndex(l => l.startsWith('   | 26 | `20261104120000_nivel_primaria.sql`'))
+  expect(i).toBeGreaterThan(0)
+  expect(lineas[i - 1]).toMatch(/^ {3}\| 25 \| /)
+})
+
 // ─── La materia demo ─────────────────────────────────────────────────────────
 
 type Via = { status: number; error: string | null }
 type VistaDemo = Record<string, Via> & {
   catalogo: string[]; lista: string[]; disponibles: string[]; boletin: string[]; constancia: string[]
   meses: { demo: boolean; materia_demo_id?: string | null; total?: number; abiertos?: number; nombres?: string[] }
-  tablero: string; misMaterias: string
+  tablero: string; misMaterias: string; mensajesDeLaMateria: string[] | null
 }
 /** Todas las vías por las que un alumno llegaría a la materia demo o a una tutoría ajena. */
 const VIAS = ['materiaDemo', 'materiaTutoriaPrepa', 'glosarioDemo', 'quizVer', 'quizEnviar', 'examenVer', 'examenEnviar', 'marcarSemana', 'tiempoSemana', 'material']
@@ -461,6 +558,17 @@ test.describe('la materia demo: Primaria no la ve; Sec y Prepa, igual que hoy', 
     }
   })
 
+  test('T5b. el mensaje al terminar una semana depende del nivel del alumno, no del combo', () => {
+    for (const combo of ['mixto', 'apagado'] as const) {
+      const pri = d[combo].primariaPagada.mensajesDeLaMateria
+      expect(pri?.length, combo).toBeGreaterThan(0)
+      expect((pri ?? []).join(' '), combo).not.toMatch(/certific/i)
+      for (const alumno of ['secundariaPagada', 'preparatoriaPagada']) {
+        expect(d[combo][alumno].mensajesDeLaMateria, `${combo} ${alumno}`).toContain('Un paso más cerca de tu certificado.')
+      }
+    }
+  })
+
   test('T6. Sec y Prepa sin pagar siguen en modo demo, con su banner y su enlace', () => {
     for (const combo of ['mixto', 'apagado'] as const) {
       for (const alumno of ['secundariaSinPagar', 'preparatoriaSinPagar']) {
@@ -511,6 +619,34 @@ test('X3. apagado: el mismo objeto, sin escribir nada, aunque `niveles` venga va
   expect(getDuracionOferta()).toBe('3 o 6 meses')
   // Solo Primaria no es mixto: tiene su propia regla.
   expect(ofertaMixtaPrimaria({ niveles: ['primaria'], primaria: PRI_ON })).toBe(false)
+})
+
+test('X5. todo lo que las portadas ponen de fábrica cabe en el editor: guardar otra fila no da 400', () => {
+  const EDITABLES = CAMPOS.map(c => c.clave).filter(c => c.startsWith('landing.')).map(c => c.slice('landing.'.length))
+  const COMBOS: { niveles: string[]; mapa?: Readonly<Record<string, string>> }[] = [
+    { niveles: ['primaria', 'secundaria', 'preparatoria'], mapa: textosMixtoPrimaria(['secundaria', 'preparatoria']) },
+    { niveles: ['primaria', 'secundaria'], mapa: textosMixtoPrimaria(['secundaria']) },
+    { niveles: ['primaria', 'preparatoria'], mapa: textosMixtoPrimaria(['preparatoria']) },
+    { niveles: ['primaria'], mapa: TEXTOS_SOLO_PRIMARIA },
+  ]
+  for (const { niveles, mapa } of COMBOS) {
+    const base = mergeSiteConfig(clon({ niveles, primaria: PRI_ON }), {})
+    const landing = base.landing as unknown as Record<string, unknown>
+    // Cada texto del mapa está en lo que se va a validar: no se escapa ninguno.
+    const todo = JSON.stringify(landing) + JSON.stringify(base.tagline)
+    for (const texto of Object.values(mapa ?? {})) expect(todo.includes(JSON.stringify(texto).slice(1, -1)), texto).toBe(true)
+    for (const campo of EDITABLES) {
+      const valor = landing[campo]
+      if (valor === undefined || valor === '') continue
+      const r = validarOverrides({ landing: { [campo]: valor } }, base)
+      expect(r.ok, `${niveles.join('+')} ${campo}: ${JSON.stringify(r)}`).toBe(true)
+    }
+    expect(validarOverrides({ tagline: base.tagline }, base).ok, niveles.join('+')).toBe(true)
+    // El caso real: edita otra fila de «Con» y guarda la lista entera.
+    const con = [...(landing.transformacion_con as string[])]
+    con[1] = 'Otro texto del cliente.'
+    expect(validarOverrides({ landing: { transformacion_con: con } }, base).ok, niveles.join('+')).toBe(true)
+  }
 })
 
 test('X4. la validez de una portada mixta dice de qué niveles es', () => {

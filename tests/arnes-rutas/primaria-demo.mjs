@@ -38,6 +38,10 @@ const rutas = {
 }
 const { renderToStaticMarkup } = await imp('node_modules/react-dom/server.node.js').catch(() => imp('node_modules/react-dom/server.js'))
 const { createElement } = await import('react')
+globalThis.__espiarAvance = true
+const paginaMateria = await imp('src/app/(dashboard)/alumno/materia/[id]/page.tsx')
+globalThis.__espiarAvance = false
+const avance = await imp('src/components/alumno/ReadingProgress.tsx')
 const tablero = await imp('src/app/(dashboard)/alumno/page.tsx')
 const misMaterias = await imp('src/app/(dashboard)/alumno/materias/page.tsx')
 const acceso = await imp('src/lib/acceso-materias.ts')
@@ -139,6 +143,7 @@ async function vias(alumno) {
     materiaDemo: resumen(await abrir(DEMO)),
     materiaTutoriaPrepa: resumen(await abrir(TUT_PREPA)),
     materiaAjena: resumen(await abrir(alumno.nivel === 'preparatoria' ? SEC : PREPA)),
+    respuestaPropia: (await abrir(alumno.nivel === 'primaria' ? PRI : alumno.nivel === 'secundaria' ? SEC : PREPA)).cuerpo,
     glosarioDemo: resumen(await llamar(() => rutas.glosario.GET(req(`/api/alumno/glosario/${DEMO}`), { params: { materiaId: DEMO } }))),
     quizVer: resumen(await llamar(() => rutas.quiz.GET(req(`/api/alumno/quiz/${SEM_DEMO}`), { params: { semanaId: SEM_DEMO } }))),
     quizEnviar: resumen(await llamar(() => rutas.quiz.POST(req(`/api/alumno/quiz/${SEM_DEMO}`, { respuestas: {} }, 'POST'), { params: { semanaId: SEM_DEMO } }))),
@@ -164,7 +169,18 @@ function pantallas(alumno, v) {
     globalThis.__estados = [...estados]
     try { return renderToStaticMarkup(createElement(Componente)) } finally { globalThis.__estados = null }
   }
+  // La página real de la materia: lo que le pasa a la barra de lectura, con su mensaje de avance.
+  // [materia, loading, error, tab, semana, alumnoId, completadas, materiaCompletada, glosario, guía, guardando]
+  let mensajesDeLaMateria = null
+  const materia = v.respuestaPropia
+  if (materia?.semanas?.length) {
+    globalThis.__propsAvance = []
+    pintar(paginaMateria.default, [materia, false, null, 'contenido', materia.semanas[0].id, alumno.id, new Set(), false, [], false, false])
+    const props = globalThis.__propsAvance.at(-1)
+    mensajesDeLaMateria = props ? (avance.mensajesDeAvance?.('es', props.esPrimaria === true) ?? []) : null
+  }
   return {
+    mensajesDeLaMateria,
     // [toasts, perfil, meses, demo, acreditadas, acreditadasIds, logros, ahora, racha, loading, primera, cursos]
     tablero: pintar(tablero.default, [[], perfil, esDemo ? [] : v.respuestaMeses, esDemo, 0, new Set(), [], null, 0, false, null, null]),
     // [data, loading, error]
@@ -186,6 +202,7 @@ const ALUMNOS = {
   secundariaSinPagar: { id: ID.secundaria, nivel: 'secundaria', modalidad: '3_meses', meses_desbloqueados: 0, inscripcion_pagada: false },
   secundariaPagada: { id: ID.secundaria, nivel: 'secundaria', modalidad: '3_meses', meses_desbloqueados: 1, inscripcion_pagada: true },
   preparatoriaSinPagar: { id: ID.preparatoria, nivel: 'preparatoria', modalidad: '3_meses', meses_desbloqueados: 0, inscripcion_pagada: false },
+  preparatoriaPagada: { id: ID.preparatoria, nivel: 'preparatoria', modalidad: '3_meses', meses_desbloqueados: 1, inscripcion_pagada: true },
 }
 
 const salida = {}
@@ -200,6 +217,7 @@ for (const [combo, fijar] of Object.entries(COMBOS)) {
     const p = pantallas(alumno, v)
     delete v.respuestaLista
     delete v.respuestaMeses
+    delete v.respuestaPropia
     salida[combo][nombre] = { ...v, ...p }
   }
 }

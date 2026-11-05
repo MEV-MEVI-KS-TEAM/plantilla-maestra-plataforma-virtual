@@ -35,6 +35,7 @@ const STUBS = {
     'const router = { push() {}, replace() {}, refresh() {}, back() {}, prefetch() {} }\n' +
     'export function useRouter() { return router }\n' +
     "export function usePathname() { return '/' }\n" +
+    "export function useParams() { return { id: 'arnes' } }\n" +
     'export function useSearchParams() { return new URLSearchParams() }\n' +
     'export function redirect() {}\n',
   'next/link':
@@ -54,6 +55,9 @@ const STUBS = {
   '@gsap/react': 'export function useGSAP() { return { context: () => {}, contextSafe: (f) => f } }\n',
   'gsap/ScrollTrigger': 'export const ScrollTrigger = {}\n',
   'gsap/SplitText': 'export const SplitText = {}\n',
+  // Solo con `globalThis.__espiarAvance`: guarda lo que la página le pasa al componente.
+  '@/components/alumno/ReadingProgress':
+    'export default function Espia(props) { (globalThis.__propsAvance ??= []).push(props); return null }\n',
   react:
     `import real from ${JSON.stringify(REACT_REAL + '?real')}\n` +
     'export default real\n' +
@@ -67,7 +71,8 @@ const STUBS = {
 
 registerHooks({
   resolve(especificador, contexto, siguiente) {
-    if (Object.prototype.hasOwnProperty.call(STUBS, especificador)) {
+    const espia = especificador === '@/components/alumno/ReadingProgress'
+    if (Object.prototype.hasOwnProperty.call(STUBS, especificador) && (!espia || globalThis.__espiarAvance)) {
       return { url: `portal:${especificador}`, shortCircuit: true }
     }
     if (especificador.endsWith('.css')) return { url: 'portal:css', shortCircuit: true }

@@ -103,9 +103,8 @@ const docsAdmin = await imp('src/app/(dashboard)/admin/documentos/page.tsx')
 salida.adminDocumentos = pintar(docsAdmin.default, {}, [[], false, null])
 
 const avance = await imp('src/components/alumno/ReadingProgress.tsx')
-const { primariaActiva } = await imp('src/lib/modalidades.ts')
 // Con `ARNES_RAIZ` se corre también sobre main, que no los tiene, para comparar el HTML.
-salida.mensajesAvance = avance.mensajesDeAvance?.('es', primariaActiva?.()) ?? []
+salida.mensajesAvance = avance.mensajesDeAvance?.('es', false) ?? []
 
 salida.errores = errores
 process.stdout.write(JSON.stringify(salida))

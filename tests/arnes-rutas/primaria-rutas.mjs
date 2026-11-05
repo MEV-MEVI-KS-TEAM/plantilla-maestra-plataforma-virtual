@@ -73,8 +73,28 @@ function bd(alumno = {}) {
 }
 
 /** Un escenario y la llamada: status, cuerpo, lo escrito en `alumnos` y la fila final. */
-async function correr({ base, actor, auth, rpc, llamar, fallaEscritura }) {
+async function correr({ base, actor, auth, rpc, llamar, fallaEscritura, relecturaFalla }) {
   const esc = crearEscenario({ bd: base, auth, actorId: actor, rpc })
+  const desde = errores.length
+  if (relecturaFalla) {
+    // A partir de que la RPC la encienda, la lectura del plan de la fila falla.
+    const original = esc.clienteServicio
+    esc.clienteServicio = () => {
+      const c = original()
+      const from = c.from.bind(c)
+      c.from = (tabla) => {
+        const q = from(tabla)
+        if (tabla !== 'alumnos') return q
+        return new Proxy(q, {
+          get(o, p) {
+            if (p !== 'select' || !base.__relecturaFalla) return Reflect.get(o, p)
+            return () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { code: 'XX000', message: 'falla simulada' } }) }) })
+          },
+        })
+      }
+      return c
+    }
+  }
   if (fallaEscritura) {
     const original = esc.clienteServicio
     esc.clienteServicio = () => {
@@ -102,6 +122,7 @@ async function correr({ base, actor, auth, rpc, llamar, fallaEscritura }) {
     escrituras: esc.bitacora.filter((e) => e.tabla === 'alumnos').map((e) => ({ op: e.op, valores: e.valores })),
     alumno: base.alumnos.find((a) => a.id === ALUMNO) ?? null,
     nuevo: base.alumnos.find((a) => a.id !== ALUMNO) ?? null,
+    log: errores.slice(desde).join('\n'),
   }
 }
 
@@ -166,8 +187,8 @@ const RPC_OK = { corregir_plan_estudio: (args, base) => {
   Object.assign(fila, { nivel: args.p_nivel, modalidad: args.p_modalidad, carrera: args.p_carrera })
   return { data: { ok: true, matricula: fila.matricula, notas_borradas: 0 }, error: null }
 } }
-const corregirPlan = (cuerpo, { rpc = RPC_OK, alumno, fallaEscritura } = {}) => correr({
-  base: bd(alumno), actor: ADMIN, auth: [{ id: ADMIN, email: 'a@qa.mx' }, { id: ALUMNO, email: 'x@qa.mx' }], rpc, fallaEscritura,
+const corregirPlan = (cuerpo, { rpc = RPC_OK, alumno, fallaEscritura, relecturaFalla } = {}) => correr({
+  base: bd(alumno), actor: ADMIN, auth: [{ id: ADMIN, email: 'a@qa.mx' }, { id: ALUMNO, email: 'x@qa.mx' }], rpc, fallaEscritura, relecturaFalla,
   llamar: () => corregir.POST(req(`/api/admin/alumnos/${ALUMNO}/corregir-plan`, cuerpo), { params: { id: ALUMNO } }),
 })
 const PLAN_PRI = { nivel: 'primaria', carrera: null, modalidad: '3_meses_pri', fecha_nacimiento: '2012-03-10', ...TUTOR }
@@ -183,8 +204,51 @@ casos.corregirRpcError = await corregirPlan(PLAN_PRI, {
   rpc: { corregir_plan_estudio: { data: null, error: { code: 'XX000', message: 'falla' } } },
 })
 casos.corregirTutorFalla = await corregirPlan(PLAN_PRI, { fallaEscritura: true })
+
+// El candado se mira antes de escribir: con uno puesto, la fila no se toca.
+casos.corregirCandadoPrevio = await corregirPlan({ ...PLAN_PRI, fecha_nacimiento: '1990-01-01' }, {
+  alumno: { ...PREVIO, fecha_nacimiento: '2012-03-10' },
+  rpc: { candado_corregir_plan: { data: 'pagos', error: null }, ...RPC_OK },
+})
+casos.corregirCandadoPrevioError = await corregirPlan(PLAN_PRI, {
+  alumno: PREVIO,
+  rpc: { candado_corregir_plan: { data: null, error: { code: 'XX000', message: 'falla' } }, ...RPC_OK },
+})
+
+// La RPC confirma y su respuesta se pierde: por error, por una respuesta vacía o por una excepción.
+const confirma = (args, base) => {
+  Object.assign(base.alumnos.find((a) => a.id === args.p_alumno), { nivel: args.p_nivel, modalidad: args.p_modalidad, carrera: args.p_carrera })
+}
+const PERDIDA = { code: '', message: 'TypeError: fetch failed' }
+casos.corregirPerdidaError = await corregirPlan(PLAN_PRI, {
+  alumno: PREVIO, rpc: { corregir_plan_estudio: (a, b) => { confirma(a, b); return { data: null, error: PERDIDA } } },
+})
+casos.corregirPerdidaVacia = await corregirPlan(PLAN_PRI, {
+  alumno: PREVIO, rpc: { corregir_plan_estudio: (a, b) => { confirma(a, b); return { data: null, error: null } } },
+})
+casos.corregirPerdidaExcepcion = await corregirPlan(PLAN_PRI, {
+  alumno: PREVIO, rpc: { corregir_plan_estudio: (a, b) => { confirma(a, b); throw new TypeError('fetch failed') } },
+})
+// No se puede releer: no se restaura, se registra y responde error.
+casos.corregirSinRelectura = await corregirPlan(PLAN_PRI, {
+  alumno: PREVIO, relecturaFalla: true,
+  rpc: { corregir_plan_estudio: (a, b) => { confirma(a, b); b.__relecturaFalla = true; return { data: null, error: PERDIDA } } },
+})
+// Otro plan distinto al pedido: alguien más la cambió. Tampoco se restaura.
+casos.corregirOtroPlan = await corregirPlan(PLAN_PRI, {
+  alumno: PREVIO,
+  rpc: { corregir_plan_estudio: (a, b) => { confirma({ ...a, p_modalidad: '6_meses_pri' }, b); return { data: null, error: PERDIDA } } },
+})
+// Sin respuesta y el plan sigue igual: no se corrigió, el tutor vuelve a como estaba.
+casos.corregirPerdidaSinCambio = await corregirPlan(PLAN_PRI, {
+  alumno: PREVIO, rpc: { corregir_plan_estudio: { data: null, error: PERDIDA } },
+})
+// Un CHECK que rechaza: `details` trae la fila, con el tutor.
+const CHECK_23514 = { code: '23514', message: 'viola CHECK', details: 'Failing row contains (Rosa López, 3312345678)' }
+casos.corregirCheck = await corregirPlan(PLAN_PRI, { alumno: PREVIO, rpc: { corregir_plan_estudio: { data: null, error: CHECK_23514 } } })
 sinAddOn()
 casos.corregirApagado = await corregirPlan({ nivel: 'secundaria', carrera: null, modalidad: '6_meses' })
+casos.corregirApagadoCheck = await corregirPlan({ nivel: 'secundaria', carrera: null, modalidad: '6_meses' }, { rpc: { corregir_plan_estudio: { data: null, error: CHECK_23514 } } })
 
 // ── Ficha ────────────────────────────────────────────────────────────────────
 const verFicha = (alumno) => correr({
