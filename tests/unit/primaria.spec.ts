@@ -323,8 +323,11 @@ test('17. Primaria pide acta, CURP, identificación y domicilio; nunca un certif
   const pagina = leer('src/app/(dashboard)/alumno/documentos/page.tsx')
   const lista = /const TIPOS_PRIMARIA: DocTipo\[\] = \[([\s\S]*?)\]/.exec(pagina)?.[1] ?? ''
   expect([...lista.matchAll(/'([a-z_]+)'/g)].map(m => m[1])).toEqual(['acta_nacimiento', 'curp', 'identificacion_oficial', 'comprobante_domicilio'])
-  // Se elige antes del respaldo, que sigue siendo Preparatoria.
-  expect(pagina.indexOf("plan.includes('rimaria')")).toBeLessThan(pagina.indexOf(': TIPOS_PREPA'))
+  // Se elige antes del respaldo, que sigue siendo Preparatoria. Lo que ve el alumno lo
+  // prueba primaria-conducta.spec.ts (V11): esto solo guarda el lugar en el fuente.
+  const eleccion = pagina.indexOf("plan.includes('rimaria')")
+  expect(eleccion).toBeGreaterThan(-1)
+  expect(eleccion).toBeLessThan(pagina.indexOf(': TIPOS_PREPA'))
   const ruta = leer('src/app/api/alumno/documentos/route.ts')
   expect(ruta).toContain("a.nivel === 'primaria'     ? 'Primaria'")
   expect(ruta).toContain("'comprobante_domicilio'")
