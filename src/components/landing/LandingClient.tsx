@@ -622,7 +622,10 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                   <div className="mb-5">
                     <h3 className={`text-2xl font-bold ${playfair.className}`} style={{ color: C.navy }}>Primaria</h3>
                   </div>
+                  {/* Sin cifra en la tabla no se anuncia «$0». */}
+                  {Number(tablaPri?.inscripcion ?? 0) > 0 && (
                   <p className="text-xs font-semibold mb-6" style={{ color: C.royalTexto }}>Inscripción: {fmt(Number(tablaPri?.inscripcion ?? 0))}</p>
+                  )}
                   <div className="space-y-3 flex-1">
                     {[
                       ...planesPri.map(m => ({ label: `Plan ${m.label}`, price: m.mensualidad, unit: '/mes' })),
@@ -631,7 +634,8 @@ export function LandingClient({ catalogo, config }: { catalogo: CursoCatalogo[];
                         ? planesPri.map(m => ({ label: `Total ${m.label}`, price: getTotalPlan({ ...m, activa: true }, Number(tablaPri?.inscripcion ?? 0)), unit: '' }))
                         : []),
                       ...(certifica ? [{ label: 'Certificación', price: Number(tablaPri?.certificacion ?? 0), unit: ' único' }] : []),
-                    ].map(row => (
+                    // Sin cifra en la tabla no se anuncia «$0».
+                    ].filter(row => row.price > 0).map(row => (
                       <div key={row.label} className="flex items-center justify-between rounded-xl px-4 py-3"
                         style={{ background: `${C.royal}08`, border: `1px solid ${C.royal}14` }}>
                         <span className="text-sm" style={{ color: C.navySuave }}>{row.label}</span>

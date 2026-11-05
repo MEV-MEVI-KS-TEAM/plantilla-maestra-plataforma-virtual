@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
+import { primariaActiva } from '@/lib/modalidades'
 
 gsap.registerPlugin(useGSAP)
 
@@ -21,6 +22,15 @@ const MSGS_EN = [
   'Your effort is worth it.',
   'Week mastered!',
 ]
+
+/**
+ * Los mensajes al completar una semana. Con Primaria en la escuela, ninguno habla de
+ * certificado: la materia demo la ve también ese alumno y aquí no se sabe su nivel.
+ */
+export function mensajesDeAvance(lang: string, conPrimaria: boolean): readonly string[] {
+  const msgs = lang === 'en' ? MSGS_EN : MSGS_ES
+  return conPrimaria ? msgs.filter(m => !/certific/i.test(m)) : msgs
+}
 
 interface ReadingProgressProps {
   semanaId: string
@@ -132,7 +142,7 @@ export default function ReadingProgress({
       setMinLectura(mins)
 
       // Mensaje motivacional aleatorio
-      const msgs = lang === 'en' ? MSGS_EN : MSGS_ES
+      const msgs = mensajesDeAvance(lang, primariaActiva())
       setMensaje(msgs[Math.floor(Math.random() * msgs.length)])
 
       // Animación del botón

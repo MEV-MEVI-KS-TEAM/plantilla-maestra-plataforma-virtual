@@ -27,6 +27,32 @@ export async function revisarEdadTutorDelAlumno(
   return revision.ok ? revision : { ok: false, status: 400, error: revision.error }
 }
 
+/** Las cuatro columnas tal como están, para poder volver a ellas. */
+export async function leerEdadTutor(
+  admin: SupabaseClient,
+  alumnoId: string,
+): Promise<{ ok: true; datos: EdadTutorLimpio } | { ok: false; error: string }> {
+  const { data, error } = await admin
+    .from('alumnos')
+    .select('fecha_nacimiento, tutor_nombre, tutor_telefono, tutor_parentesco')
+    .eq('id', alumnoId)
+    .maybeSingle()
+  if (error) {
+    console.error('[admin/edad-tutor] lectura de alumnos:', error.message)
+    return { ok: false, error: error.message }
+  }
+  const f = (data ?? {}) as Partial<EdadTutorLimpio>
+  return {
+    ok: true,
+    datos: {
+      fecha_nacimiento: f.fecha_nacimiento ?? null,
+      tutor_nombre: f.tutor_nombre ?? null,
+      tutor_telefono: f.tutor_telefono ?? null,
+      tutor_parentesco: f.tutor_parentesco ?? null,
+    },
+  }
+}
+
 /** Guarda las cuatro columnas. Devuelve el mensaje de error, o null si quedó. */
 export async function guardarEdadTutor(
   admin: SupabaseClient,

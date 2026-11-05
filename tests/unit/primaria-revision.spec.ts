@@ -378,7 +378,7 @@ test('C4. corregir desde la ficha: lo guardado más lo que llega, con la misma r
   expect(revisarEdicionEdadTutor({ tutor_nombre: 'Ana' }, { nivel: 'preparatoria' }, HOY)).toEqual({ ok: false, error: M.noAplica })
 })
 
-test('C5. las rutas: datos valida antes de Auth y solo con el add-on; corregir-plan guarda tras los candados', () => {
+test('C5. las rutas: datos valida antes de Auth y solo con el add-on; corregir-plan guarda el tutor antes del plan', () => {
   const datos = leer('src/app/api/admin/alumnos/[id]/datos/route.ts')
   expect(datos).toContain('if (primariaActiva() && CAMPOS_EDAD_TUTOR.some(campo => campo in body)) {')
   expect(datos.indexOf('revisarEdadTutorDelAlumno(admin')).toBeGreaterThan(-1)
@@ -386,8 +386,10 @@ test('C5. las rutas: datos valida antes de Auth y solo con el add-on; corregir-p
   // El módulo que escribe solo conoce las cuatro columnas: el plan sigue sin pasar por aquí.
   expect(leer('src/lib/admin/edad-tutor-alumno.ts')).toContain('.update(datos)')
   const corregir = leer('src/app/api/admin/alumnos/[id]/corregir-plan/route.ts')
+  // Sin RPC nueva no hay transacción: primero el tutor, y el plan solo si quedó. Lo que
+  // escribe de verdad cada camino lo prueba primaria-conducta.spec.ts (R3 y R4).
   expect(corregir.indexOf("admin.rpc('corregir_plan_estudio'")).toBeGreaterThan(-1)
-  expect(corregir.indexOf("admin.rpc('corregir_plan_estudio'")).toBeLessThan(corregir.indexOf('guardarEdadTutor(admin'))
+  expect(corregir.indexOf('guardarEdadTutor(admin')).toBeLessThan(corregir.indexOf("admin.rpc('corregir_plan_estudio'"))
 })
 
 test('C6. la ficha ofrece capturarlos y corregirlos, y solo con el add-on', () => {
