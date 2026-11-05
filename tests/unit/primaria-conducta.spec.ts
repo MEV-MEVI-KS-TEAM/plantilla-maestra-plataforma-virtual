@@ -334,8 +334,8 @@ test.describe('páginas reales: lo que se ve', () => {
   test('V8b. el menú y la franja acotan la sección de validez en un combo mixto', () => {
     const menu = (h: string) => [...h.matchAll(/href="#validez"[^>]*>([^<]*)</g)].map(m => m[1])
     expect(menu(conValidez.mixto.animada).length).toBeGreaterThan(0)
-    for (const etiqueta of menu(conValidez.mixto.animada)) expect(etiqueta).toBe('Validez oficial en Sec y Prepa')
-    for (const etiqueta of menu(conValidez['mixto-sec'].animada)) expect(etiqueta).toBe('Validez oficial en Secundaria')
+    for (const etiqueta of menu(conValidez.mixto.animada)) expect(etiqueta).toBe('Validez Sec y Prepa')
+    for (const etiqueta of menu(conValidez['mixto-sec'].animada)) expect(etiqueta).toBe('Validez Secundaria')
     // La franja: ninguna «Validez oficial» suelta.
     expect(sinEtiquetas(conValidez.mixto.animada).match(/Validez oficial(?! en Sec y Prepa| de Secundaria y Preparatoria)/g) ?? []).toEqual([])
     // Sin la sección, ni el menú la anuncia.
