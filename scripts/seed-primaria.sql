@@ -48,7 +48,7 @@ INSERT INTO public.meses_contenido (id, materia_id, numero_mes, titulo, descripc
 INSERT INTO public.meses_contenido (id, materia_id, numero_mes, titulo, descripcion) VALUES ('f2e33029-3df3-5dd7-8375-f33bcf0dadc6', '518e09bc-0345-519b-a865-e8d367fe69d0', 9, 'Mes 9 — Derechos, ciudadanía y convivencia', 'Contenido del mes 9') ON CONFLICT DO NOTHING;
 INSERT INTO public.meses_contenido (id, materia_id, numero_mes, titulo, descripcion) VALUES ('0e86d4ba-f7bf-5616-b479-8aafba99a83e', '0ca2857f-b555-528a-8e28-4b09b9bf7b97', 9, 'Mes 9 — Trabajo y emprendimiento', 'Contenido del mes 9') ON CONFLICT DO NOTHING;
 
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('2b0f1a6b-79b3-5dc9-9e5b-a342954dc7ea', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 1, 'Para qué leemos: avisos, recados y etiquetas', 'Descubre para qué sirve leer en la vida diaria y aprende a entender avisos, recados y etiquetas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás decir para qué sirve un texto y entender un aviso, un recado y una etiqueta.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('2b0f1a6b-79b3-5dc9-9e5b-a342954dc7ea', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 1, 'Para qué leemos: avisos, recados y etiquetas', 'Descubre para qué sirve leer en la vida diaria y aprende a entender avisos, recados y etiquetas.', 'https://player.mediadelivery.net/embed/775332/dd502d12-4620-4907-a631-f7bcdea497f3', 60, '**Objetivo:** Al terminar esta semana podrás decir para qué sirve un texto y entender un aviso, un recado y una etiqueta.
 
 Rosa llega a la parada del camión. Hay un papel pegado en el poste. Lo lee y se entera de que hoy no pasa su ruta. Gracias a ese papel, busca otro camino.
 
@@ -89,7 +89,7 @@ Luis lee este aviso en su edificio: «Mañana no habrá agua de 9 de la mañana 
 - **Recado:** mensaje corto que se deja para otra persona.
 - **Etiqueta:** papel pegado a un producto con datos sobre él.
 - **Caducar:** dejar de servir después de una fecha.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ffeb142f-dc44-5afe-ae84-2c0ae386208c', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 2, 'Letras, sílabas y palabras: leer con fluidez', 'Aprende cómo las letras forman sílabas y palabras, y practica para leer con más soltura.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás separar palabras en sílabas y leerlas con más soltura.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ffeb142f-dc44-5afe-ae84-2c0ae386208c', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 2, 'Letras, sílabas y palabras: leer con fluidez', 'Aprende cómo las letras forman sílabas y palabras, y practica para leer con más soltura.', 'https://player.mediadelivery.net/embed/775332/fdc1855e-1671-4beb-8df2-215a057ff53d', 60, '**Objetivo:** Al terminar esta semana podrás separar palabras en sílabas y leerlas con más soltura.
 
 Doña Carmen ve en la tienda una palabra larga: «mantequilla». Al principio se detiene. Luego la lee por partes: man-te-qui-lla. Así la palabra deja de ser difícil. Leer por partes es un buen truco.
 
@@ -130,7 +130,7 @@ Luis quiere leer la palabra «medicina».
 - **Sílaba:** cada golpe de voz con el que se dice una palabra.
 - **Vocal:** una de las letras a, e, i, o, u.
 - **Fluidez:** leer sin trabarse y con ritmo parejo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e59cb85a-5c84-54a3-8109-9d173b6378fb', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 3, 'Idea principal y detalles', 'Aprende a encontrar la idea más importante de un texto y a distinguirla de los detalles.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás encontrar la idea principal de un texto corto y sus detalles.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e59cb85a-5c84-54a3-8109-9d173b6378fb', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 3, 'Idea principal y detalles', 'Aprende a encontrar la idea más importante de un texto y a distinguirla de los detalles.', 'https://player.mediadelivery.net/embed/775332/c1136f08-3fa4-4910-a1d7-5c4a48de8bd1', 60, '**Objetivo:** Al terminar esta semana podrás encontrar la idea principal de un texto corto y sus detalles.
 
 Rosa le cuenta a una vecina: «Ayer fui al mercado. Compré tomates, cebolla y chiles. Quiero hacer salsa para la comida del domingo». La vecina entiende de inmediato lo central. Rosa va a hacer salsa. Lo demás son datos que lo explican.
 
@@ -169,7 +169,7 @@ Lee este texto: «La señora Lupe vende tamales en la esquina. Abre a las siete 
 - **Idea principal:** lo más importante que dice un texto.
 - **Detalle:** dato que acompaña a la idea principal y la explica.
 - **Texto:** conjunto de oraciones que dicen algo completo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('94e748ac-d6cf-5d82-b7bb-0d8ee23162dd', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 4, 'Textos informativos: noticias y avisos', 'Aprende a leer noticias y avisos para encontrar los datos principales que cuentan.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás encontrar los datos principales de una noticia y de un aviso.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('94e748ac-d6cf-5d82-b7bb-0d8ee23162dd', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 4, 'Textos informativos: noticias y avisos', 'Aprende a leer noticias y avisos para encontrar los datos principales que cuentan.', 'https://player.mediadelivery.net/embed/775332/74edc298-09b0-474a-85d2-36bdff0212e0', 60, '**Objetivo:** Al terminar esta semana podrás encontrar los datos principales de una noticia y de un aviso.
 
 Luis escucha en el trabajo: «Cerraron una calle por una obra». Él quiere saber más. ¿Qué calle? ¿Hasta cuándo? Si lee la noticia, encuentra las respuestas. Un texto informativo sirve para eso.
 
@@ -216,7 +216,7 @@ Noticia: «El sábado, vecinos de la colonia Centro limpiaron el parque. Partici
 - **Noticia:** texto que cuenta un hecho reciente.
 - **Titular:** título corto que dice de qué trata la noticia.
 - **Inventario:** conteo de todo lo que hay en una tienda.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('63790875-086c-5b0c-96b3-d32b6c947997', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 5, 'Textos narrativos: inicio, desarrollo y final', 'Aprende las tres partes de una historia y cómo reconocer personajes, lugar y problema en un cuento.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer el inicio, el desarrollo y el final de una historia.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('63790875-086c-5b0c-96b3-d32b6c947997', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 5, 'Textos narrativos: inicio, desarrollo y final', 'Aprende las tres partes de una historia y cómo reconocer personajes, lugar y problema en un cuento.', 'https://player.mediadelivery.net/embed/775332/60e893c8-833a-43e4-88d3-924db9b3da62', 60, '**Objetivo:** Al terminar esta semana podrás reconocer el inicio, el desarrollo y el final de una historia.
 
 Doña Carmen cuenta una anécdota en la comida. Dice dónde estaba, qué le pasó y cómo terminó todo. Todos la siguen sin perderse. Una buena historia tiene un orden. Ese orden también existe en los cuentos que lees.
 
@@ -256,7 +256,7 @@ Lee este cuento corto: «Pedro tenía una tienda en su pueblo. Un día se fue la
 - **Narrativo:** que cuenta una historia.
 - **Personaje:** persona o animal que vive la historia.
 - **Desarrollo:** parte de la historia donde aparece el problema.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('8f5b8122-57c5-580a-b502-d536ec9206ae', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 6, 'Vocabulario: sinónimos, antónimos y diccionario', 'Aprende qué son los sinónimos y los antónimos, y cómo buscar una palabra en el diccionario.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás encontrar sinónimos y antónimos y buscar una palabra en el diccionario.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('8f5b8122-57c5-580a-b502-d536ec9206ae', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 6, 'Vocabulario: sinónimos, antónimos y diccionario', 'Aprende qué son los sinónimos y los antónimos, y cómo buscar una palabra en el diccionario.', 'https://player.mediadelivery.net/embed/775332/36493405-60db-4961-8c6a-fa712ebd351e', 60, '**Objetivo:** Al terminar esta semana podrás encontrar sinónimos y antónimos y buscar una palabra en el diccionario.
 
 Luis lee en un recibo la palabra «vencimiento». No la conoce. Se pregunta si es la fecha de pago. Para salir de dudas, la busca en un diccionario. Aprendió una palabra nueva y ya puede usarla.
 
@@ -299,7 +299,7 @@ Rosa quiere buscar la palabra «rápido».
 - **Antónimo:** palabra que significa lo contrario de otra.
 - **Diccionario:** libro que explica el significado de las palabras.
 - **Significado:** lo que quiere decir una palabra.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ff7ede3f-3bef-5d8f-8b8b-762ecf5fc34b', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 7, 'Leer instrucciones y seguir pasos', 'Aprende a leer instrucciones con cuidado y a seguir los pasos en el orden correcto.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer una instrucción y seguir sus pasos en orden.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ff7ede3f-3bef-5d8f-8b8b-762ecf5fc34b', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 7, 'Leer instrucciones y seguir pasos', 'Aprende a leer instrucciones con cuidado y a seguir los pasos en el orden correcto.', 'https://player.mediadelivery.net/embed/775332/dba5707f-218a-4e8a-aca7-f2791c883526', 60, '**Objetivo:** Al terminar esta semana podrás leer una instrucción y seguir sus pasos en orden.
 
 Doña Carmen compra un sobre de gelatina. Atrás vienen unas instrucciones. Si las lee con cuidado, la gelatina queda bien. Si se salta un paso, queda aguada. Leer instrucciones es una forma de evitar errores.
 
@@ -340,7 +340,7 @@ Luis lee las instrucciones de un jabón en polvo: «1. Llena la tina con agua. 2
 - **Instrucción:** texto que explica cómo hacer algo paso a paso.
 - **Paso:** cada acción que se hace en un orden.
 - **Advertencia:** aviso sobre un riesgo o algo que debes cuidar.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('493ebe1a-d3ed-520e-894d-d4fa74789ccb', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('493ebe1a-d3ed-520e-894d-d4fa74789ccb', '1c8b6401-b892-51aa-b6b0-a3897c32e61c', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/3d0da3e1-c25b-422b-b816-b06ac383246d', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Para qué leemos:** Cada texto tiene un propósito. El aviso informa, el recado pide algo y la etiqueta describe un producto.
 
@@ -365,7 +365,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Cuento: «Luis perdió su llave. Buscó en su mochila y en la calle. La encontró en su bolsa». ¿Cuáles son el inicio, el desarrollo y el final? Respuesta: inicio, Luis perdió su llave. Desarrollo, la buscó en la mochila y en la calle. Final, la encontró en su bolsa.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f3904e90-4032-55cc-853c-30f0712276a5', 'b6731eae-45bb-567b-9700-6764785f3da9', 1, 'Leer y escribir números hasta millones', 'Aprende a leer y escribir con cifras y con letra números grandes, hasta los millones.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer y escribir números de hasta siete cifras.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f3904e90-4032-55cc-853c-30f0712276a5', 'b6731eae-45bb-567b-9700-6764785f3da9', 1, 'Leer y escribir números hasta millones', 'Aprende a leer y escribir con cifras y con letra números grandes, hasta los millones.', 'https://player.mediadelivery.net/embed/775332/a3d11e3f-283a-4ba5-a167-b455127b0227', 60, '**Objetivo:** Al terminar esta semana podrás leer y escribir números de hasta siete cifras.
 
 Rosa ve en el papel de un terreno el número 1,250,000. No sabe cómo se lee. Los números grandes parecen difíciles. Se leen fácil si los separas en grupos.
 
@@ -409,7 +409,7 @@ Ahora escribe «dos millones ochocientos mil quince».
 - **Millón:** el número 1,000,000, que se escribe con un 1 y seis ceros.
 - **Miles:** el grupo de tres cifras que está después de las unidades.
 - **Cero:** la cifra que guarda un lugar vacío.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('73517621-87cf-5968-ba8e-f1f30ef18963', 'b6731eae-45bb-567b-9700-6764785f3da9', 2, 'Valor posicional', 'Entiende por qué una misma cifra vale distinto según el lugar donde está dentro del número.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás decir cuánto vale cada cifra de un número según su lugar.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('73517621-87cf-5968-ba8e-f1f30ef18963', 'b6731eae-45bb-567b-9700-6764785f3da9', 2, 'Valor posicional', 'Entiende por qué una misma cifra vale distinto según el lugar donde está dentro del número.', 'https://player.mediadelivery.net/embed/775332/064e7434-cd61-49fb-96d5-66f91da8ac2e', 60, '**Objetivo:** Al terminar esta semana podrás decir cuánto vale cada cifra de un número según su lugar.
 
 Luis cobra $252 por un trabajo. Ve que el número tiene dos veces la cifra 2. ¿Valen lo mismo? No. El primer 2 vale doscientos pesos. El último 2 vale solo dos pesos. Cada cifra vale según el lugar donde está: 200 + 50 + 2 = 252.
 
@@ -460,7 +460,7 @@ El cero no suma nada, pero guarda el lugar.
 - **Decena:** un grupo de 10 unidades.
 - **Centena:** un grupo de 100 unidades.
 - **Descomponer:** separar un número en el valor de cada una de sus cifras.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('87c37fbc-3132-55b9-b92b-4a651ead35e0', 'b6731eae-45bb-567b-9700-6764785f3da9', 3, 'Suma y resta con números grandes', 'Aprende a sumar y restar números de varias cifras en columnas, y a comprobar tu resultado.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás sumar y restar números de varias cifras y comprobar tu resultado.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('87c37fbc-3132-55b9-b92b-4a651ead35e0', 'b6731eae-45bb-567b-9700-6764785f3da9', 3, 'Suma y resta con números grandes', 'Aprende a sumar y restar números de varias cifras en columnas, y a comprobar tu resultado.', 'https://player.mediadelivery.net/embed/775332/6d40cebc-9086-4b73-b589-d97baa23922b', 60, '**Objetivo:** Al terminar esta semana podrás sumar y restar números de varias cifras y comprobar tu resultado.
 
 Doña Carmen vende tamales. El sábado ganó $2,485 y el domingo ganó $1,376. Quiere saber cuánto juntó en total. Conviene trabajar por columnas. Escribe un número debajo del otro. Alinea las unidades con las unidades y las decenas con las decenas.
 
@@ -502,7 +502,7 @@ Suma el resultado de la resta con el número que restaste: 3,552 + 2,873 = 6,425
 - **Llevar:** pasar una cantidad a la siguiente columna al sumar.
 - **Pedir prestado:** quitar una unidad a la columna de la izquierda para poder restar.
 - **Comprobar:** revisar que un resultado esté bien.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ce201e9b-185f-5427-8b0e-7ef6805df614', 'b6731eae-45bb-567b-9700-6764785f3da9', 4, 'Problemas de suma y resta de la vida diaria', 'Aprende a leer un problema, elegir si sumar o restar y revisar que la respuesta tenga sentido.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás resolver problemas de suma y resta de tu vida diaria.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ce201e9b-185f-5427-8b0e-7ef6805df614', 'b6731eae-45bb-567b-9700-6764785f3da9', 4, 'Problemas de suma y resta de la vida diaria', 'Aprende a leer un problema, elegir si sumar o restar y revisar que la respuesta tenga sentido.', 'https://player.mediadelivery.net/embed/775332/b1bc4ae9-0ba7-4738-bb94-ab29e0d58d4f', 60, '**Objetivo:** Al terminar esta semana podrás resolver problemas de suma y resta de tu vida diaria.
 
 Rosa va al mercado. Compra jitomate, cebolla y aguacate. Quiere saber cuánto gastó y cuánto cambio le deben. Esa es una situación común. Para resolverla, sigue unos pasos fijos.
 
@@ -550,7 +550,7 @@ Si su meta es juntar $5,000, le faltan 5,000 − 2,650 = 2,350 pesos.
 - **Total:** lo que resulta de juntar todas las cantidades.
 - **Cambio:** el dinero que te regresan cuando pagas de más.
 - **Diferencia:** lo que una cantidad tiene de más que la otra.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('131e2ac8-64ae-51ae-b404-1432c5ec766a', 'b6731eae-45bb-567b-9700-6764785f3da9', 5, 'Comparar y ordenar números', 'Aprende a decir cuál número es mayor o menor y a ordenar varios números de menor a mayor.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás comparar números y ordenarlos de menor a mayor.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('131e2ac8-64ae-51ae-b404-1432c5ec766a', 'b6731eae-45bb-567b-9700-6764785f3da9', 5, 'Comparar y ordenar números', 'Aprende a decir cuál número es mayor o menor y a ordenar varios números de menor a mayor.', 'https://player.mediadelivery.net/embed/775332/14a0e8b2-dda5-4905-89e3-4ec7f641de8c', 60, '**Objetivo:** Al terminar esta semana podrás comparar números y ordenarlos de menor a mayor.
 
 Luis quiere comprar un celular. Una tienda lo vende en $4,899 y otra en $4,989. ¿Cuál cuesta menos? Para saberlo, necesitas comparar los dos números.
 
@@ -600,7 +600,7 @@ El orden es 987; 9,807; 9,870 y 10,200. Entre los dos últimos hay 10,200 − 9,
 - **Comparar:** ver cuál de dos números es mayor, menor o igual.
 - **Mayor que:** quiere decir que una cantidad es más grande que otra.
 - **Menor que:** quiere decir que una cantidad es más pequeña que otra.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('45fdce63-05d7-5383-9702-73d963606c05', 'b6731eae-45bb-567b-9700-6764785f3da9', 6, 'Redondeo y estimación', 'Aprende a redondear números a la decena, la centena y el millar, y a estimar resultados.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás redondear números y estimar el resultado de una cuenta.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('45fdce63-05d7-5383-9702-73d963606c05', 'b6731eae-45bb-567b-9700-6764785f3da9', 6, 'Redondeo y estimación', 'Aprende a redondear números a la decena, la centena y el millar, y a estimar resultados.', 'https://player.mediadelivery.net/embed/775332/be5e264c-43d5-48b9-a142-629c5077722c', 60, '**Objetivo:** Al terminar esta semana podrás redondear números y estimar el resultado de una cuenta.
 
 Rosa va a pagar en la caja. Lleva en la canasta cosas de $198, $302 y $97. Antes de pagar, quiere saber más o menos cuánto le van a cobrar. No necesita la cuenta exacta. Le basta una cuenta rápida con números redondos.
 
@@ -644,7 +644,7 @@ Rosa redondea sus compras a la centena. El 97 está cerca de 100, así que se re
 - **Redondear:** cambiar un número por otro cercano que termina en ceros.
 - **Estimar:** calcular un resultado cercano, sin hacer la cuenta exacta.
 - **Millar:** un grupo de 1,000 unidades.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1ba9ee9b-1a03-56be-a845-b83723e972f9', 'b6731eae-45bb-567b-9700-6764785f3da9', 7, 'Números romanos, calendario y hora', 'Aprende a leer números romanos, a usar el calendario y a calcular cuánto tiempo pasa entre dos horas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer números romanos, usar el calendario y calcular un lapso de tiempo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1ba9ee9b-1a03-56be-a845-b83723e972f9', 'b6731eae-45bb-567b-9700-6764785f3da9', 7, 'Números romanos, calendario y hora', 'Aprende a leer números romanos, a usar el calendario y a calcular cuánto tiempo pasa entre dos horas.', 'https://player.mediadelivery.net/embed/775332/664961bf-29a7-4b4f-806f-8bfb0891c7c1', 60, '**Objetivo:** Al terminar esta semana podrás leer números romanos, usar el calendario y calcular un lapso de tiempo.
 
 Luis ve un reloj de pared con letras en lugar de números. Son números romanos.
 
@@ -687,7 +687,7 @@ Rosa sale a las 7:45 y llega al trabajo a las 9:10. ¿Cuánto dura el camino?
 - **Número romano:** número escrito con letras, como X o XLVII.
 - **Año bisiesto:** año con un día más en febrero.
 - **Lapso:** el tiempo que pasa entre dos momentos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5bba9f77-22d2-5cca-8ffe-4c76a1b91860', 'b6731eae-45bb-567b-9700-6764785f3da9', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5bba9f77-22d2-5cca-8ffe-4c76a1b91860', 'b6731eae-45bb-567b-9700-6764785f3da9', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/f4400944-f597-4c98-8234-0b6bff61106e', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Leer y escribir números hasta millones:** Las cifras se agrupan de tres en tres, de derecha a izquierda. Los grupos son unidades, miles y millones. Un millón es 1,000,000.
 
@@ -712,7 +712,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Lee XIV. XIV es X y IV: 10 + 4 = 14.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('12de90a2-74ca-56d7-a55c-095dbbb1bdc6', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 1, 'El cuerpo humano: aparatos y sistemas', 'Conoce los principales aparatos y sistemas del cuerpo y para qué sirve cada uno.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar los principales aparatos y sistemas del cuerpo y decir para qué sirve cada uno.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('12de90a2-74ca-56d7-a55c-095dbbb1bdc6', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 1, 'El cuerpo humano: aparatos y sistemas', 'Conoce los principales aparatos y sistemas del cuerpo y para qué sirve cada uno.', 'https://player.mediadelivery.net/embed/775332/e360f12d-9f28-4d5e-9ff4-15a639617c62', 60, '**Objetivo:** Al terminar esta semana podrás nombrar los principales aparatos y sistemas del cuerpo y decir para qué sirve cada uno.
 
 Después de subir una escalera, tu corazón late más rápido y respiras más hondo. Tu cuerpo respondió a la subida sin que se lo pidieras. Eso lo hacen varias partes que trabajan juntas.
 
@@ -753,7 +753,7 @@ Luis come una torta a la hora del almuerzo. Así trabajan sus aparatos y sistema
 - **Aparato:** órganos distintos que hacen juntos una tarea, como el digestivo.
 - **Sistema:** órganos del mismo tipo que hacen una tarea, como el muscular.
 - **Nervio:** hilo delgado que lleva mensajes entre el cerebro y el cuerpo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('17abce22-d27d-582c-884a-905bdb9cf0ad', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 2, 'Alimentación correcta: el Plato del Bien Comer', 'Aprende los tres grupos de alimentos del Plato del Bien Comer y cómo armar comidas variadas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar los tres grupos del Plato del Bien Comer y armar una comida variada.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('17abce22-d27d-582c-884a-905bdb9cf0ad', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 2, 'Alimentación correcta: el Plato del Bien Comer', 'Aprende los tres grupos de alimentos del Plato del Bien Comer y cómo armar comidas variadas.', 'https://player.mediadelivery.net/embed/775332/ab27d327-0cfc-40b7-971b-57284a7da9ee', 60, '**Objetivo:** Al terminar esta semana podrás nombrar los tres grupos del Plato del Bien Comer y armar una comida variada.
 
 Doña Carmen prepara la comida del día. Pone arroz, frijoles y un poco de pollo. Después agrega calabacitas y una naranja de postre. Sin saberlo, usó los tres grupos de alimentos.
 
@@ -798,7 +798,7 @@ Con eso su desayuno tiene los tres grupos.
 - **Inocua:** que no hace daño porque no tiene contaminantes.
 - **Fibra:** parte de las plantas que ayuda a digerir.
 - **Leguminosa:** semilla que crece en vaina, como el frijol o la lenteja.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('db59ed62-1a82-5a81-8279-1de735beb5d2', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 3, 'Higiene y prevención de enfermedades', 'Aprende hábitos de higiene que evitan contagios y cómo cuidar tu casa, tus alimentos y tu agua.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué hábitos de higiene evitan enfermedades y cuándo debes aplicarlos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('db59ed62-1a82-5a81-8279-1de735beb5d2', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 3, 'Higiene y prevención de enfermedades', 'Aprende hábitos de higiene que evitan contagios y cómo cuidar tu casa, tus alimentos y tu agua.', 'https://player.mediadelivery.net/embed/775332/163bc07b-9d37-4104-89bc-89f60033aaa8', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué hábitos de higiene evitan enfermedades y cuándo debes aplicarlos.
 
 Una persona toca el pasamanos del camión y luego se come un taco sin lavarse las manos. Los gérmenes del pasamanos pasan a su boca. Un gesto tan simple puede enfermarla.
 
@@ -839,7 +839,7 @@ Luis llega del trabajo y quiere cenar. Antes hace lo siguiente:
 - **Contagio:** paso de una enfermedad de una persona a otra.
 - **Prevenir:** actuar antes de que ocurra un problema.
 - **Potable:** agua que es segura para beber.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d210d9bb-b1c4-53c7-a0bc-90fbff574466', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 4, 'Vacunas y servicios de salud', 'Entiende para qué sirven las vacunas y cómo encontrar servicios de salud cerca de ti.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar para qué sirven las vacunas y dónde pedir servicios de salud.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d210d9bb-b1c4-53c7-a0bc-90fbff574466', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 4, 'Vacunas y servicios de salud', 'Entiende para qué sirven las vacunas y cómo encontrar servicios de salud cerca de ti.', 'https://player.mediadelivery.net/embed/775332/a4d4a72e-b1b0-44f2-b178-3ef425474b05', 60, '**Objetivo:** Al terminar esta semana podrás explicar para qué sirven las vacunas y dónde pedir servicios de salud.
 
 Una vecina quiere saber si su familia tiene sus vacunas al día. Busca la cartilla de vacunación y no sabe qué revisar. Después va al centro de salud y allí le explican.
 
@@ -880,7 +880,7 @@ Rosa quiere revisar las vacunas de su familia. Hace lo siguiente:
 - **Defensas:** parte del cuerpo que lucha contra los gérmenes.
 - **Cartilla:** documento donde se anotan tus vacunas.
 - **Centro de salud:** lugar donde te dan atención médica básica.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('988e2f6f-ae9f-580b-8859-ad1c54459ce8', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 5, 'Salud emocional y manejo del estrés', 'Aprende a reconocer el estrés y las emociones difíciles, y qué hacer para sentirte mejor.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer señales de estrés y practicar acciones sencillas para sentirte mejor.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('988e2f6f-ae9f-580b-8859-ad1c54459ce8', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 5, 'Salud emocional y manejo del estrés', 'Aprende a reconocer el estrés y las emociones difíciles, y qué hacer para sentirte mejor.', 'https://player.mediadelivery.net/embed/775332/e9b0ff2d-89ce-4493-ad11-41d000f5b4eb', 60, '**Objetivo:** Al terminar esta semana podrás reconocer señales de estrés y practicar acciones sencillas para sentirte mejor.
 
 Luis tiene mucho trabajo y varias cuentas por pagar. Duerme poco y se enoja con facilidad. Su cuerpo y sus emociones le avisan que algo pesa demasiado.
 
@@ -927,7 +927,7 @@ Si la tristeza o la angustia duran mucho, acude a tu centro de salud. También p
 - **Emoción:** lo que sientes ante algo que pasa, como alegría o miedo.
 - **Estrés:** respuesta del cuerpo ante una presión.
 - **Angustia:** sensación de preocupación y de ahogo que no se va.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('707d4035-38e9-5423-9ed1-05c5bf4092ef', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 6, 'Prevención de adicciones', 'Entiende qué es una adicción, cómo prevenirla y dónde buscar ayuda sin juzgar a nadie.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es una adicción, cómo prevenirla y dónde buscar ayuda.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('707d4035-38e9-5423-9ed1-05c5bf4092ef', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 6, 'Prevención de adicciones', 'Entiende qué es una adicción, cómo prevenirla y dónde buscar ayuda sin juzgar a nadie.', 'https://player.mediadelivery.net/embed/775332/d8743c58-ab4c-4c02-8b1a-feb917769741', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es una adicción, cómo prevenirla y dónde buscar ayuda.
 
 Un compañero de trabajo dice que ya no puede dejar de usar algo, aunque le causa problemas. Quiere cambiar, pero le cuesta mucho. Esto le puede pasar a cualquier persona. Hablar del tema con respeto ayuda a prevenirlo.
 
@@ -968,7 +968,7 @@ Una adicción se puede tratar. Acude a tu centro de salud. También puedes llama
 - **Adicción:** necesidad fuerte de usar algo, aunque cause daño.
 - **Sustancia:** producto que cambia cómo funciona el cuerpo o la mente.
 - **Prevención:** acciones que se toman antes de que aparezca un problema.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7d1799ef-2315-551a-90fd-a570df92540d', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 7, 'Primeros auxilios básicos', 'Aprende acciones básicas y seguras ante accidentes comunes y cuándo llamar al 911.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás aplicar acciones básicas ante un accidente común y saber cuándo llamar al 911.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7d1799ef-2315-551a-90fd-a570df92540d', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 7, 'Primeros auxilios básicos', 'Aprende acciones básicas y seguras ante accidentes comunes y cuándo llamar al 911.', 'https://player.mediadelivery.net/embed/775332/506462c1-3a93-4f51-a9b6-d6f90a695571', 60, '**Objetivo:** Al terminar esta semana podrás aplicar acciones básicas ante un accidente común y saber cuándo llamar al 911.
 
 Una vecina se corta la mano mientras prepara la comida. La herida sangra y todos se ponen nerviosos. Saber qué hacer en esos primeros minutos ayuda mucho. Esa ayuda se llama primeros auxilios.
 
@@ -1011,7 +1011,7 @@ Luis ve que Rosa se quemó la mano con agua caliente. La quemadura es pequeña. 
 - **Primeros auxilios:** ayuda básica que se da mientras llega atención médica.
 - **Gasa:** tela suave y limpia para cubrir heridas.
 - **Convulsión:** movimientos fuertes del cuerpo que la persona no controla.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('75a8efde-bb52-54ab-a989-b98eb69969f6', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('75a8efde-bb52-54ab-a989-b98eb69969f6', 'a18f0c2e-3dd0-52d2-8d9b-0f80a6aa4233', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/53e72d74-38d2-4fa4-b98a-eff1dd5f353d', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — El cuerpo humano: aparatos y sistemas:** Varios órganos que trabajan juntos forman un aparato o un sistema. El digestivo procesa la comida. El respiratorio lleva aire. El circulatorio mueve la sangre. El nervioso manda mensajes.
 
@@ -1036,7 +1036,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Una persona no responde después de una caída. ¿Qué haces? No la muevas y llama al 911.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d95163f9-a8be-521f-99b6-547893e277d4', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 1, 'Mayúsculas, punto y coma', 'Aprende cuándo escribir con mayúscula y cómo usar el punto, la coma y el punto y coma.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás usar las mayúsculas, el punto, la coma y el punto y coma al escribir.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d95163f9-a8be-521f-99b6-547893e277d4', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 1, 'Mayúsculas, punto y coma', 'Aprende cuándo escribir con mayúscula y cómo usar el punto, la coma y el punto y coma.', 'https://player.mediadelivery.net/embed/775332/7174403d-d918-46be-a73d-f6ea94f9aa7a', 60, '**Objetivo:** Al terminar esta semana podrás usar las mayúsculas, el punto, la coma y el punto y coma al escribir.
 
 Rosa le manda este mensaje a una vecina: «mañana voy al mercado compro frutas verduras y pan». La vecina lo lee dos veces. No sabe dónde termina cada idea. Las mayúsculas y los signos ponen orden en lo que escribes.
 
@@ -1078,7 +1078,7 @@ Queda así: «Mañana voy al mercado. Compro frutas, verduras y pan; después pa
 - **Mayúscula:** letra grande con la que empiezan los textos y los nombres propios.
 - **Coma:** signo (,) que marca una pausa corta.
 - **Punto y coma:** signo (;) que marca una pausa más larga que la coma.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c431580b-079b-5337-922e-fcbf4ac443e2', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 2, 'La oración: sujeto y predicado', 'Aprende a reconocer una oración completa y a separar el sujeto del predicado.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer una oración y separar su sujeto y su predicado.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c431580b-079b-5337-922e-fcbf4ac443e2', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 2, 'La oración: sujeto y predicado', 'Aprende a reconocer una oración completa y a separar el sujeto del predicado.', 'https://player.mediadelivery.net/embed/775332/02850f25-d326-43be-8712-7595c05a7c55', 60, '**Objetivo:** Al terminar esta semana podrás reconocer una oración y separar su sujeto y su predicado.
 
 Luis encuentra un papel en la mesa. Solo dice «tortillas». No sabe quién las compró ni qué pasó con ellas. Después encuentra otro papel: «Rosa compró tortillas». Ahora sí entiende. La segunda frase es una oración.
 
@@ -1116,7 +1116,7 @@ Analizamos esta oración: «La vecina de Rosa vende tamales en la esquina».
 - **Oración:** grupo de palabras con sentido completo.
 - **Sujeto:** persona, animal o cosa de quien se habla.
 - **Predicado:** lo que se dice del sujeto, con su acción.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('401765fd-0cb6-52e2-a166-7a86dcb04d46', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 3, 'Sustantivos, adjetivos y verbos', 'Aprende a reconocer las palabras que nombran, las que describen y las que dicen una acción.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer sustantivos, adjetivos y verbos en una oración.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('401765fd-0cb6-52e2-a166-7a86dcb04d46', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 3, 'Sustantivos, adjetivos y verbos', 'Aprende a reconocer las palabras que nombran, las que describen y las que dicen una acción.', 'https://player.mediadelivery.net/embed/775332/39905490-f21f-4f16-8aac-548746b8f855', 60, '**Objetivo:** Al terminar esta semana podrás reconocer sustantivos, adjetivos y verbos en una oración.
 
 Doña Carmen cuenta: «Rosa vende tamales calientes». Cada palabra hace un trabajo distinto. Unas nombran, otras dicen cómo es algo y otra dice qué se hace. Conocer ese trabajo te ayuda a escribir mejor.
 
@@ -1151,7 +1151,7 @@ Analizamos la oración «Luis compra pan fresco».
 - **Sustantivo:** palabra que nombra personas, animales, cosas o lugares.
 - **Adjetivo:** palabra que dice cómo es un sustantivo.
 - **Verbo:** palabra que dice una acción o un estado.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6bd652d0-96a2-5f8c-aa1b-e2533f7aa31c', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 4, 'Escribir recados y notas', 'Aprende a escribir un recado claro y corto, con los datos que la otra persona necesita.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás escribir un recado claro con los datos que la otra persona necesita.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6bd652d0-96a2-5f8c-aa1b-e2533f7aa31c', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 4, 'Escribir recados y notas', 'Aprende a escribir un recado claro y corto, con los datos que la otra persona necesita.', 'https://player.mediadelivery.net/embed/775332/32a20bb6-c3cf-47c2-a5e9-6ceb1a417fd4', 60, '**Objetivo:** Al terminar esta semana podrás escribir un recado claro con los datos que la otra persona necesita.
 
 Rosa sale de casa antes de que llegue Luis. Quiere avisarle dónde está la comida y a qué hora regresa. Deja un papel en la mesa. Ese papel es un recado. Un recado es un mensaje corto para una persona.
 
@@ -1193,7 +1193,7 @@ Queda así: «Luis: Salí al mercado y regreso a las 3 de la tarde. Los frijoles
 - **Recado:** mensaje corto que se deja a otra persona.
 - **Firma:** nombre escrito al final para decir quién manda el mensaje.
 - **Legible:** que se puede leer con facilidad.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5a0c7f90-004e-592f-be5f-bfb2d24ff23a', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 5, 'Ortografía básica: b/v, c/s/z, h', 'Conoce reglas sencillas para escribir bien las letras b y v, c, s y z, y la h.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás aplicar reglas sencillas para escribir b y v, c, s y z, y h.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5a0c7f90-004e-592f-be5f-bfb2d24ff23a', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 5, 'Ortografía básica: b/v, c/s/z, h', 'Conoce reglas sencillas para escribir bien las letras b y v, c, s y z, y la h.', 'https://player.mediadelivery.net/embed/775332/fe0922cf-e063-4568-8217-ff25f9113863', 60, '**Objetivo:** Al terminar esta semana podrás aplicar reglas sencillas para escribir b y v, c, s y z, y h.
 
 Luis quiere invitar a Rosa y escribe «imbitar». Algo no le suena bien. La ortografía es la forma correcta de escribir las palabras. Las reglas te ayudan cuando dos letras suenan igual.
 
@@ -1233,7 +1233,7 @@ Luis duda con «invitar».
 
 - **Ortografía:** forma correcta de escribir las palabras.
 - **Plural:** forma de la palabra que habla de más de uno.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('003b09f1-4ff5-5c35-8fad-0fed65a4a92b', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 6, 'Acentuación: agudas, graves y esdrújulas', 'Aprende a clasificar las palabras por su sílaba fuerte y a saber cuándo llevan tilde.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás saber si una palabra es aguda, grave o esdrújula y si lleva tilde.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('003b09f1-4ff5-5c35-8fad-0fed65a4a92b', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 6, 'Acentuación: agudas, graves y esdrújulas', 'Aprende a clasificar las palabras por su sílaba fuerte y a saber cuándo llevan tilde.', 'https://player.mediadelivery.net/embed/775332/6341aab7-dbd3-4996-adf1-144f5bd46d7e', 60, '**Objetivo:** Al terminar esta semana podrás saber si una palabra es aguda, grave o esdrújula y si lleva tilde.
 
 Rosa dice «camión» y Luis dice «camion». Al hablar suenan igual, pero al escribir una lleva tilde. La tilde es la rayita (´) que va sobre una vocal. Para saber cuándo se pone, hay que oír la sílaba fuerte de cada palabra.
 
@@ -1267,7 +1267,7 @@ Luis duda con «lapiz».
 - **Tilde:** rayita que se escribe sobre una vocal.
 - **Sílaba tónica:** la sílaba que suena con más fuerza.
 - **Esdrújula:** palabra con la fuerza en la antepenúltima sílaba.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c1d168ef-ac04-57b1-b6fb-3e9a8dfe69b6', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 7, 'Escribir un párrafo con orden', 'Aprende a escribir un párrafo con una idea principal, detalles en orden y un cierre.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás escribir un párrafo con una idea principal, detalles en orden y un cierre.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c1d168ef-ac04-57b1-b6fb-3e9a8dfe69b6', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 7, 'Escribir un párrafo con orden', 'Aprende a escribir un párrafo con una idea principal, detalles en orden y un cierre.', 'https://player.mediadelivery.net/embed/775332/79310ce0-971a-4daa-8fcf-6a1e7c24c60a', 60, '**Objetivo:** Al terminar esta semana podrás escribir un párrafo con una idea principal, detalles en orden y un cierre.
 
 Luis tiene que explicar en un formato cómo es su sábado. Escribe todo mezclado y nadie lo entiende. Un párrafo es un grupo de oraciones sobre un mismo tema. Si sigue un orden, se lee con facilidad.
 
@@ -1307,7 +1307,7 @@ Queda así: «Mi sábado empieza temprano. Primero barro la casa. Luego voy al m
 - **Párrafo:** grupo de oraciones sobre un mismo tema.
 - **Conector:** palabra que ayuda a seguir el orden de las ideas.
 - **Punto y aparte:** punto que cierra un párrafo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9d4dbaf5-0f75-5cd8-b020-93b04fd49e13', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9d4dbaf5-0f75-5cd8-b020-93b04fd49e13', 'cb082a92-b294-5294-8f2d-8dfb079403ad', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/f248c198-e052-43fc-9b27-40075c728a14', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Mayúsculas, punto y coma:** Se escribe mayúscula al empezar y después de un punto. El punto cierra la oración; la coma separa una lista; el punto y coma une dos ideas cercanas.
 
@@ -1337,7 +1337,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
    - Solución: «Mi sábado empieza temprano. Primero barro la casa. Al final preparo la comida».
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5be1633e-994a-5a2c-a00b-a9890397824c', '614a7590-00a0-5066-8fda-7fd112f630e8', 1, 'La multiplicación y las tablas', 'Entiende la multiplicación como una suma que se repite y aprende a usar las tablas para calcular más rápido.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás usar la multiplicación y las tablas cuando una cantidad se repite.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5be1633e-994a-5a2c-a00b-a9890397824c', '614a7590-00a0-5066-8fda-7fd112f630e8', 1, 'La multiplicación y las tablas', 'Entiende la multiplicación como una suma que se repite y aprende a usar las tablas para calcular más rápido.', 'https://player.mediadelivery.net/embed/775332/59ffa8f6-4872-45e1-8a08-80fa3ee85c33', 60, '**Objetivo:** Al terminar esta semana podrás usar la multiplicación y las tablas cuando una cantidad se repite.
 
 Rosa compra 4 bolsas de tortillas. Cada bolsa cuesta $15. Puede sumar 15 + 15 + 15 + 15 = 60. Pero hay un camino más corto.
 
@@ -1380,7 +1380,7 @@ Rosa paga $60. Luis compra 7 cajas con 6 huevos cada una. Para saber cuántos hu
 - **Factor:** cada número que se multiplica.
 - **Producto:** el resultado de una multiplicación.
 - **Tabla de multiplicar:** lista de resultados de un número por 1, 2, 3 y hasta 10.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3dd3b890-1013-5d2c-b913-4a690cfa24ed', '614a7590-00a0-5066-8fda-7fd112f630e8', 2, 'Multiplicar por varias cifras', 'Aprende a multiplicar números de dos y tres cifras separándolos por su valor posicional y sumando las partes.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás multiplicar números de varias cifras por una o dos cifras.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3dd3b890-1013-5d2c-b913-4a690cfa24ed', '614a7590-00a0-5066-8fda-7fd112f630e8', 2, 'Multiplicar por varias cifras', 'Aprende a multiplicar números de dos y tres cifras separándolos por su valor posicional y sumando las partes.', 'https://player.mediadelivery.net/embed/775332/8bc36184-ad6b-4b42-ac76-8f2852b8e9d1', 60, '**Objetivo:** Al terminar esta semana podrás multiplicar números de varias cifras por una o dos cifras.
 
 Luis vende 35 vasos de jugo cada día. Trabaja 24 días al mes. ¿Cuántos vasos vende en total? La cuenta es 35 × 24. Tiene dos cifras en cada lado, pero se resuelve por partes.
 
@@ -1420,7 +1420,7 @@ Luis vende 840 vasos en 24 días.
 - **Unidades:** las cifras que valen de 1 en 1, como el 4 en 24.
 - **Decenas:** las cifras que valen de 10 en 10, como el 2 en 24.
 - **Cifra:** cada número que forma una cantidad, como el 3, el 5 y el 7 en 357.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d70f12e6-c106-5e3f-92f9-b50a46275236', '614a7590-00a0-5066-8fda-7fd112f630e8', 3, 'La división: repartir y agrupar', 'Aprende a dividir para repartir cantidades en partes iguales o formar grupos, y a comprobar con la multiplicación.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás dividir para repartir y para agrupar, y comprobar el resultado.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d70f12e6-c106-5e3f-92f9-b50a46275236', '614a7590-00a0-5066-8fda-7fd112f630e8', 3, 'La división: repartir y agrupar', 'Aprende a dividir para repartir cantidades en partes iguales o formar grupos, y a comprobar con la multiplicación.', 'https://player.mediadelivery.net/embed/775332/70bfeb9f-48f6-4ce9-bb48-5d8ee0714482', 60, '**Objetivo:** Al terminar esta semana podrás dividir para repartir y para agrupar, y comprobar el resultado.
 
 Cuatro compañeros de trabajo comparten una comida de $480. Cada uno debe pagar lo mismo. Para saber cuánto paga cada quien, necesitas dividir.
 
@@ -1460,7 +1460,7 @@ A cada persona le tocan $250.
 - **Dividendo:** la cantidad que se divide, como el 480.
 - **Divisor:** el número entre el que se divide, como el 4.
 - **Cociente:** el resultado de dividir.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e3ac081e-f40f-544b-80e1-9f495dd69d40', '614a7590-00a0-5066-8fda-7fd112f630e8', 4, 'División con residuo', 'Aprende a dividir cuando sobra algo, a escribir el residuo y a decidir qué hacer con lo que sobra.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás dividir con residuo, comprobar la cuenta y decidir qué hacer con lo que sobra.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e3ac081e-f40f-544b-80e1-9f495dd69d40', '614a7590-00a0-5066-8fda-7fd112f630e8', 4, 'División con residuo', 'Aprende a dividir cuando sobra algo, a escribir el residuo y a decidir qué hacer con lo que sobra.', 'https://player.mediadelivery.net/embed/775332/a1288b65-456c-40e4-ac70-c38e062171bb', 60, '**Objetivo:** Al terminar esta semana podrás dividir con residuo, comprobar la cuenta y decidir qué hacer con lo que sobra.
 
 Rosa tiene 23 huevos. Quiere guardarlos en cajas de 6. Llena 3 cajas, pero le sobran 5 huevos. No alcanzan para otra caja completa. Eso que sobra se llama residuo.
 
@@ -1504,7 +1504,7 @@ Ahora, 47 personas viajan en autobuses de 10 lugares. Como 47 ÷ 10 = 4 con resi
 
 - **Residuo:** lo que sobra cuando una división no es exacta.
 - **División exacta:** la que no deja residuo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1bbf3f9e-4e50-5f01-a35f-30e7c669c0ba', '614a7590-00a0-5066-8fda-7fd112f630e8', 5, 'Problemas de multiplicación y división', 'Aprende a elegir entre multiplicar y dividir en problemas de compras, repartos y ahorro, y a comprobar la respuesta.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás resolver problemas de compras, repartos y ahorro con multiplicación y división.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1bbf3f9e-4e50-5f01-a35f-30e7c669c0ba', '614a7590-00a0-5066-8fda-7fd112f630e8', 5, 'Problemas de multiplicación y división', 'Aprende a elegir entre multiplicar y dividir en problemas de compras, repartos y ahorro, y a comprobar la respuesta.', 'https://player.mediadelivery.net/embed/775332/f48468c3-13ad-4922-9430-f9e4e0c50b50', 60, '**Objetivo:** Al terminar esta semana podrás resolver problemas de compras, repartos y ahorro con multiplicación y división.
 
 Rosa compra 6 cajas de refresco. Cada caja cuesta $48. Paga con un billete de $500. ¿Cuánto le regresan? Para resolverlo, necesitas elegir bien las operaciones.
 
@@ -1549,7 +1549,7 @@ Y otro más. Luis ahorra $150 cada semana durante 8 semanas. Junta 8 × $150 = $
 - **Dato:** información del problema que sirve para calcular.
 - **Ahorrar:** guardar dinero para usarlo después.
 - **Renta:** dinero que se paga por usar una casa o un cuarto.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d7fecf1b-80a0-5039-9cc5-77045a8f7f26', '614a7590-00a0-5066-8fda-7fd112f630e8', 6, 'Múltiplos, divisores, pares e impares', 'Aprende a reconocer múltiplos, divisores, números pares y números impares con ejemplos sencillos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás encontrar múltiplos y divisores de un número y reconocer pares e impares.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d7fecf1b-80a0-5039-9cc5-77045a8f7f26', '614a7590-00a0-5066-8fda-7fd112f630e8', 6, 'Múltiplos, divisores, pares e impares', 'Aprende a reconocer múltiplos, divisores, números pares y números impares con ejemplos sencillos.', 'https://player.mediadelivery.net/embed/775332/e6861851-2ade-49e4-a729-f1ac2393b6f2', 60, '**Objetivo:** Al terminar esta semana podrás encontrar múltiplos y divisores de un número y reconocer pares e impares.
 
 Rosa tiene 12 sillas. Quiere hacer filas iguales, sin que sobre ninguna. Puede hacer filas de 1, de 2, de 3, de 4, de 6 o de 12. En cambio, no puede hacer filas de 5.
 
@@ -1592,7 +1592,7 @@ El 35 termina en 5, así que es impar. Compruébalo: 35 ÷ 2 = 17 con residuo 1.
 - **Divisor:** número que divide a otro sin dejar residuo.
 - **Par:** número que se puede repartir en dos partes iguales.
 - **Impar:** número que al repartirlo entre 2 deja residuo 1.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5a1e76f6-e442-5484-861a-433f940c48ac', '614a7590-00a0-5066-8fda-7fd112f630e8', 7, 'Orden de las operaciones', 'Aprende en qué orden se resuelven las sumas, restas, multiplicaciones, divisiones y paréntesis de una cuenta.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás resolver cuentas con varias operaciones en el orden correcto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('5a1e76f6-e442-5484-861a-433f940c48ac', '614a7590-00a0-5066-8fda-7fd112f630e8', 7, 'Orden de las operaciones', 'Aprende en qué orden se resuelven las sumas, restas, multiplicaciones, divisiones y paréntesis de una cuenta.', 'https://player.mediadelivery.net/embed/775332/bb478123-627b-4495-b884-0b56da619a1d', 60, '**Objetivo:** Al terminar esta semana podrás resolver cuentas con varias operaciones en el orden correcto.
 
 Luis compra un pan de $10 y 3 tamales de $15 cada uno. Escribe la cuenta 10 + 3 × 15. Si suma primero, saca 13 × 15 y se equivoca. Hay un orden que todos usamos para que la respuesta sea la misma.
 
@@ -1633,7 +1633,7 @@ Con el pan y los tamales de Luis: 3 × 15 = 45, y después 10 + 45 = 55. Luis pa
 
 - **Paréntesis:** signos ( ) que encierran la parte de la cuenta que se hace primero.
 - **Operación:** una cuenta como sumar, restar, multiplicar o dividir.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9746c070-a3f1-5132-a42d-992776643199', '614a7590-00a0-5066-8fda-7fd112f630e8', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios resueltos antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego revisa los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9746c070-a3f1-5132-a42d-992776643199', '614a7590-00a0-5066-8fda-7fd112f630e8', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios resueltos antes del examen final.', 'https://player.mediadelivery.net/embed/775332/12d84655-9d41-422d-a456-7b119bf17974', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego revisa los ejercicios.
 
 **Semana 1 — La multiplicación y las tablas:** Multiplicar es sumar la misma cantidad varias veces. El orden de los factores no cambia el producto.
 
@@ -1657,7 +1657,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 4. ¿Es 7 divisor de 12? 12 ÷ 7 = 1 con residuo 5, así que no.
 5. Luis vende 28 vasos al día durante 15 días. 28 × 10 = 280 y 28 × 5 = 140. Luego 280 + 140 = 420. Vende 420 vasos.
 Antes del examen, vuelve a leer lo que te costó más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('660e4c70-7fe2-553f-865f-3d87f18863f9', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 1, 'La computadora y el celular: partes y uso', 'Conoce las partes de la computadora y del celular, y aprende los pasos básicos para usarlos con seguridad.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar las partes de una computadora y de un celular, y usarlos con pasos sencillos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('660e4c70-7fe2-553f-865f-3d87f18863f9', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 1, 'La computadora y el celular: partes y uso', 'Conoce las partes de la computadora y del celular, y aprende los pasos básicos para usarlos con seguridad.', 'https://player.mediadelivery.net/embed/775332/482a68d3-7adb-4849-b212-9be9b02d545d', 60, '**Objetivo:** Al terminar esta semana podrás nombrar las partes de una computadora y de un celular, y usarlos con pasos sencillos.
 
 Rosa recibe una foto de su hermana en el celular. Quiere verla más grande en una computadora. Antes de tocar algo, le conviene saber qué es cada parte del equipo.
 
@@ -1696,7 +1696,7 @@ Luis escribe una lista del mercado en la computadora. Antes de apagar, guarda el
 - **Archivo:** un documento, una foto o un video guardado en el equipo.
 - **Procesador:** pieza que hace funcionar los programas.
 - **Disco:** pieza que guarda tus archivos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a4520f5c-d86e-5e91-8587-89eda07c26e3', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 2, 'Internet y buscadores', 'Aprende qué es internet, cómo buscar información con un buscador y cómo saber si un resultado es confiable.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás buscar información en internet y revisar si un resultado es confiable.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a4520f5c-d86e-5e91-8587-89eda07c26e3', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 2, 'Internet y buscadores', 'Aprende qué es internet, cómo buscar información con un buscador y cómo saber si un resultado es confiable.', 'https://player.mediadelivery.net/embed/775332/28fec489-bf47-4c38-afac-6dd4af2af286', 60, '**Objetivo:** Al terminar esta semana podrás buscar información en internet y revisar si un resultado es confiable.
 
 Luis tiene una mancha de aceite en su camisa de trabajo. Quiere saber cómo quitarla. En lugar de preguntar a varias personas, puede buscar la respuesta en internet.
 
@@ -1738,7 +1738,7 @@ Algunos resultados son anuncios. Suelen tener una marca que dice «anuncio». Qu
 - **Palabra clave:** palabra importante que escribes para encontrar algo.
 - **Navegador:** aplicación con una barra arriba para entrar a páginas de internet.
 - **Fuente:** persona o institución que dio la información.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1f15a688-5e2c-58ff-80a6-e891bd25e6cb', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 3, 'Correo electrónico', 'Aprende a leer tu bandeja, escribir un correo con asunto claro, adjuntar un archivo y cuidarte de mensajes dudosos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás escribir y enviar un correo electrónico con un archivo adjunto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1f15a688-5e2c-58ff-80a6-e891bd25e6cb', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 3, 'Correo electrónico', 'Aprende a leer tu bandeja, escribir un correo con asunto claro, adjuntar un archivo y cuidarte de mensajes dudosos.', 'https://player.mediadelivery.net/embed/775332/1736bc09-d883-4039-b311-4a261c934df3', 60, '**Objetivo:** Al terminar esta semana podrás escribir y enviar un correo electrónico con un archivo adjunto.
 
 Rosa quiere mandar su currículum a una vacante. Le piden que lo envíe por correo. Con un correo electrónico puede mandar un mensaje y un documento en pocos minutos.
 
@@ -1778,7 +1778,7 @@ En tu bandeja de entrada llegan los mensajes nuevos. Algunos son publicidad o en
 - **Bandeja de entrada:** lugar donde llegan tus mensajes nuevos.
 - **Asunto:** frase corta que dice de qué trata el correo.
 - **Adjunto:** archivo que se manda junto con el mensaje.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('43f4190f-4b0f-53dd-b949-0235776c810d', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 4, 'Trámites y servicios en línea', 'Aprende a reconocer un sitio oficial, seguir los pasos de un trámite en línea y guardar tu comprobante.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer un sitio oficial y seguir los pasos de un trámite en línea.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('43f4190f-4b0f-53dd-b949-0235776c810d', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 4, 'Trámites y servicios en línea', 'Aprende a reconocer un sitio oficial, seguir los pasos de un trámite en línea y guardar tu comprobante.', 'https://player.mediadelivery.net/embed/775332/ea355bae-593b-43fb-9396-1a4081630ce7', 60, '**Objetivo:** Al terminar esta semana podrás reconocer un sitio oficial y seguir los pasos de un trámite en línea.
 
 Luis necesita sacar una cita para un trámite. Podría ir a la oficina y formarse desde temprano. Muchas instituciones permiten hacer parte del trámite en línea. Así ahorra tiempo y viajes.
 
@@ -1815,7 +1815,7 @@ Luis pide una cita. Al terminar, el sitio le da un folio. Luis toma una foto de 
 - **Folio:** número que identifica tu solicitud.
 - **Comprobante:** papel o imagen que prueba que hiciste el trámite.
 - **Requisito:** documento o dato que te piden para hacerlo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ee702ff3-ce45-597e-9c7a-a2f96a0c45f1', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 5, 'Seguridad digital: contraseñas y fraudes', 'Aprende a crear contraseñas seguras, reconocer mensajes de fraude y saber qué hacer si recibes uno.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás crear una contraseña segura y reconocer un mensaje de fraude.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ee702ff3-ce45-597e-9c7a-a2f96a0c45f1', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 5, 'Seguridad digital: contraseñas y fraudes', 'Aprende a crear contraseñas seguras, reconocer mensajes de fraude y saber qué hacer si recibes uno.', 'https://player.mediadelivery.net/embed/775332/d7ba9ba1-b04a-4396-a5ab-218519b1d4cd', 60, '**Objetivo:** Al terminar esta semana podrás crear una contraseña segura y reconocer un mensaje de fraude.
 
 A Rosa le llega un mensaje: «Tu cuenta del banco se bloqueará hoy. Entra y confirma tus datos». Siente prisa y miedo. Esa prisa es justo lo que busca quien quiere engañarla.
 
@@ -1857,7 +1857,7 @@ Rosa no responde ni toca el enlace. Llama al número que viene en su tarjeta del
 - **Fraude:** engaño para quitarte datos o dinero.
 - **Verificación en dos pasos:** segundo paso para entrar a tu cuenta, como un código que te llega al celular.
 - **Enlace:** texto o botón que, al tocarlo, te lleva a otra página.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('dbe124f9-b534-5128-af23-5f796172d350', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 6, 'Redes sociales con responsabilidad', 'Aprende a cuidar tu privacidad, publicar con respeto, revisar noticias dudosas y reportar el mal trato en redes.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás usar una red social cuidando tu privacidad y tratando bien a los demás.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('dbe124f9-b534-5128-af23-5f796172d350', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 6, 'Redes sociales con responsabilidad', 'Aprende a cuidar tu privacidad, publicar con respeto, revisar noticias dudosas y reportar el mal trato en redes.', 'https://player.mediadelivery.net/embed/775332/9f0fa087-f9fa-43f7-a20b-ad57dfaa470b', 60, '**Objetivo:** Al terminar esta semana podrás usar una red social cuidando tu privacidad y tratando bien a los demás.
 
 Luis publica una foto de su casa donde se ve el nombre de la calle y el número. Días después recibe llamadas de números desconocidos. Una publicación puede llegar más lejos de lo que imaginas.
 
@@ -1894,7 +1894,7 @@ Una noticia falsa puede esparcirse rápido si la gente la comparte sin leerla. M
 - **Perfil:** tu página personal en una red social.
 - **Privacidad:** lo que decides mantener solo para ti.
 - **Bloquear:** impedir que una persona te escriba o vea tu perfil.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('396a37fc-a9ed-52ed-88ff-9f5c3ba51578', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 7, 'Mapas, calendario y documentos', 'Aprende a buscar una ruta en una aplicación de mapas, anotar citas con recordatorio y guardar documentos en orden.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás buscar una ruta, anotar una cita en el calendario y guardar un documento con orden.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('396a37fc-a9ed-52ed-88ff-9f5c3ba51578', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 7, 'Mapas, calendario y documentos', 'Aprende a buscar una ruta en una aplicación de mapas, anotar citas con recordatorio y guardar documentos en orden.', 'https://player.mediadelivery.net/embed/775332/ce9c5ce2-d2ec-454d-bdde-7f91e3236b00', 60, '**Objetivo:** Al terminar esta semana podrás buscar una ruta, anotar una cita en el calendario y guardar un documento con orden.
 
 Rosa tiene cita en una clínica que no conoce. Debe llegar el martes a las 10:00. No quiere llegar tarde ni perderse. Tres herramientas del celular le ayudan.
 
@@ -1933,7 +1933,7 @@ Rosa se prepara para su cita.
 - **Recordatorio:** aviso que te llega antes de la hora de un evento.
 - **Respaldo:** copia de un archivo guardada en otro lugar.
 - **Nube:** espacio en internet donde puedes guardar archivos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ec4afa0b-d12a-51ee-8cb4-f11ed50f40cb', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ec4afa0b-d12a-51ee-8cb4-f11ed50f40cb', '190e803a-7183-5166-9cb8-851c4bcf2bdf', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/eba4aa8d-543f-46fb-82c6-ddc1eeaeac0d', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — La computadora y el celular: partes y uso:** La pantalla muestra, el teclado escribe y el ratón mueve la flecha. El celular tiene pantalla táctil y batería. Guarda tu trabajo antes de apagar.
 
@@ -1958,7 +1958,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Rosa tiene cita el martes. ¿Cómo evita olvidarla? Agrega un evento en el calendario con recordatorio.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('514e38d2-9e32-523b-868b-05eb69428cd2', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 1, 'Tipos de texto y su propósito', 'Aprende a reconocer si un texto informa, cuenta, explica pasos o busca convencer.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer el tipo de un texto y decir para qué fue escrito.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('514e38d2-9e32-523b-868b-05eb69428cd2', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 1, 'Tipos de texto y su propósito', 'Aprende a reconocer si un texto informa, cuenta, explica pasos o busca convencer.', 'https://player.mediadelivery.net/embed/775332/e7dc0190-9be0-43ef-9484-59b5267c31d6', 60, '**Objetivo:** Al terminar esta semana podrás reconocer el tipo de un texto y decir para qué fue escrito.
 
 Rosa recibe tres papeles en un día. Uno es una receta. Otro es un cuento que le prestó una vecina. El tercero es un volante que dice: «Compra aquí, es lo mejor». Los tres son textos, pero cada uno busca algo distinto.
 
@@ -1996,7 +1996,7 @@ Ahora el volante: «Compra aquí, es lo mejor». No da datos que se puedan compr
 - **Propósito:** lo que alguien quiere lograr con lo que escribe.
 - **Instructivo:** texto que explica pasos para hacer algo.
 - **Publicidad:** texto que busca que compres o uses algo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c2d89ff6-6864-5c9d-bc3c-ba1b05d3b19b', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 2, 'Hechos y opiniones', 'Aprende a distinguir lo que se puede comprobar de lo que una persona piensa o siente.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás separar los hechos de las opiniones en un texto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c2d89ff6-6864-5c9d-bc3c-ba1b05d3b19b', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 2, 'Hechos y opiniones', 'Aprende a distinguir lo que se puede comprobar de lo que una persona piensa o siente.', 'https://player.mediadelivery.net/embed/775332/806f206d-b478-4ddc-b251-020e433f8443', 60, '**Objetivo:** Al terminar esta semana podrás separar los hechos de las opiniones en un texto.
 
 Luis escucha a dos compañeros. Uno dice: «El camión llegó a las ocho». El otro dice: «Ese camión es el peor de todos». Los dos hablan del mismo camión. Pero no dicen la misma clase de cosa.
 
@@ -2035,7 +2035,7 @@ Decide si cada frase es un hecho o una opinión.
 - **Hecho:** algo que se puede comprobar.
 - **Opinión:** lo que una persona piensa o siente sobre algo.
 - **Comprobar:** revisar que algo sea cierto.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b2406ebf-79d2-5a5e-8691-da808c1c2c13', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 3, 'Inferencias: leer entre líneas', 'Aprende a descubrir lo que un texto no dice con palabras, usando pistas y lo que ya sabes.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás sacar conclusiones de un texto usando las pistas que da.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b2406ebf-79d2-5a5e-8691-da808c1c2c13', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 3, 'Inferencias: leer entre líneas', 'Aprende a descubrir lo que un texto no dice con palabras, usando pistas y lo que ya sabes.', 'https://player.mediadelivery.net/embed/775332/8d86c6a4-b704-4200-a90d-002b7379014f', 60, '**Objetivo:** Al terminar esta semana podrás sacar conclusiones de un texto usando las pistas que da.
 
 Rosa llega a su casa y huele a quemado. En la cocina hay humo y la olla está negra. Nadie le dijo «se quemó la comida». Ella lo supo con las pistas. Eso se llama hacer una inferencia.
 
@@ -2078,7 +2078,7 @@ El texto nunca dice la palabra «lluvia». Tú la descubriste con las pistas.
 - **Inferencia:** conclusión que sacas al unir pistas con lo que ya sabes.
 - **Pista:** dato del texto que te ayuda a descubrir algo.
 - **Conclusión:** idea a la que llegas después de pensar.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9cceabd0-a0b4-5858-b9d8-4eb7c5e42daf', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 4, 'Recibos, facturas y contratos sencillos', 'Aprende a leer un recibo, una factura y un contrato sencillo antes de pagar o firmar.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer un recibo y un contrato sencillo y encontrar sus datos clave.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9cceabd0-a0b4-5858-b9d8-4eb7c5e42daf', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 4, 'Recibos, facturas y contratos sencillos', 'Aprende a leer un recibo, una factura y un contrato sencillo antes de pagar o firmar.', 'https://player.mediadelivery.net/embed/775332/7a56dad7-24e6-4ec7-a013-49a3816777fa', 60, '**Objetivo:** Al terminar esta semana podrás leer un recibo y un contrato sencillo y encontrar sus datos clave.
 
 Luis paga en una papelería y le dan un papel con números. Él lo guarda sin leerlo. Después hay una duda con el cobro y ya no recuerda qué compró.
 
@@ -2127,7 +2127,7 @@ Contrato ficticio: «Rosa renta un cuarto a don Pedro por $2,500 al mes, durante
 - **Factura:** comprobante de una venta con datos de las dos partes.
 - **Contrato:** acuerdo por escrito entre dos personas.
 - **Cláusula:** cada punto que se acuerda en un contrato.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('34eaee7c-8465-52f5-8c45-7339aea6d286', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 5, 'Poemas, refranes y dichos', 'Aprende a leer poemas, refranes y dichos y a entender su sentido más allá de las palabras.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer un poema, un refrán y un dicho, y explicar qué quieren decir.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('34eaee7c-8465-52f5-8c45-7339aea6d286', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 5, 'Poemas, refranes y dichos', 'Aprende a leer poemas, refranes y dichos y a entender su sentido más allá de las palabras.', 'https://player.mediadelivery.net/embed/775332/553f7750-2a86-4db5-9aa9-8482ba51f09b', 60, '**Objetivo:** Al terminar esta semana podrás reconocer un poema, un refrán y un dicho, y explicar qué quieren decir.
 
 Doña Carmen le dice a su vecino: «Al que madruga, Dios lo ayuda». No habla solo de despertar temprano. Habla de que el esfuerzo cuenta. Así funcionan los refranes. Dicen una cosa y quieren decir otra.
 
@@ -2171,7 +2171,7 @@ Refrán: «Camarón que se duerme se lo lleva la corriente». Quiere decir que q
 - **Verso:** cada renglón de un poema.
 - **Rima:** sonido igual al final de dos palabras.
 - **Sentido figurado:** lo que algo quiere decir más allá de las palabras.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('50859a10-b2bc-5bd0-a302-15930183eb27', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 6, 'Leer tablas, horarios y mapas', 'Aprende a encontrar datos en una tabla, un horario y un mapa sencillo.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás encontrar datos en una tabla, un horario y un croquis.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('50859a10-b2bc-5bd0-a302-15930183eb27', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 6, 'Leer tablas, horarios y mapas', 'Aprende a encontrar datos en una tabla, un horario y un mapa sencillo.', 'https://player.mediadelivery.net/embed/775332/ecdb221e-5ade-4abb-ac4b-32fb430123f1', 60, '**Objetivo:** Al terminar esta semana podrás encontrar datos en una tabla, un horario y un croquis.
 
 Rosa quiere llegar al hospital. En la parada hay un papel con filas y columnas. Si aprende a leerlo, encuentra la hora de salida.
 
@@ -2215,7 +2215,7 @@ Ejemplo: la escuela queda al norte de la plaza. La farmacia queda al sur. La igl
 - **Fila:** línea de datos que va de lado a lado.
 - **Croquis:** mapa sencillo de un lugar.
 - **Leyenda:** explicación de los símbolos de un mapa.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('41071924-5b97-5080-9b92-89e5638b6330', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 7, 'Resumen y esquema', 'Aprende a resumir un texto con tus palabras y a ordenar sus ideas en un esquema.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás hacer el resumen y el esquema de un texto corto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('41071924-5b97-5080-9b92-89e5638b6330', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 7, 'Resumen y esquema', 'Aprende a resumir un texto con tus palabras y a ordenar sus ideas en un esquema.', 'https://player.mediadelivery.net/embed/775332/1025081d-3a7e-4898-84c2-453194c4fac9', 60, '**Objetivo:** Al terminar esta semana podrás hacer el resumen y el esquema de un texto corto.
 
 Luis lee un aviso largo del trabajo. Al día siguiente quiere contarle a un compañero lo más importante. Si recuerda todo, se enreda. Si recuerda solo las ideas clave, lo explica en pocas palabras. Eso es resumir.
 
@@ -2258,7 +2258,7 @@ Resumen: Cada martes llega el mercado sobre ruedas, con frutas y verduras fresca
 - **Resumen:** versión corta de un texto con lo más importante.
 - **Esquema:** dibujo de ideas ordenadas por importancia.
 - **Esencial:** lo más importante.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3e5fabdb-f539-56b5-a4ca-4bb7480a2f73', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3e5fabdb-f539-56b5-a4ca-4bb7480a2f73', 'e37ff3ae-24ee-5b95-bedf-e2346579a2b2', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/8f0aadf8-e934-4f33-84e0-c31d0eed5ff9', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Tipos de texto y su propósito:** El propósito es lo que el autor quiere lograr. Informar, contar, dar pasos y convencer son propósitos distintos.
 
@@ -2283,7 +2283,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Aviso de una farmacia: «Este sábado la farmacia abre solo de 9 a 2 por inventario». Resumen en una frase: el sábado la farmacia abre un horario corto.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('125accbf-cf5c-55c6-9cd7-e27b96367f5e', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 1, 'Qué es una fracción', 'Aprende a leer una fracción, a entender sus dos números y a sacar una fracción de una cantidad.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer una fracción, decir qué significa cada número y sacar una fracción de una cantidad.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('125accbf-cf5c-55c6-9cd7-e27b96367f5e', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 1, 'Qué es una fracción', 'Aprende a leer una fracción, a entender sus dos números y a sacar una fracción de una cantidad.', 'https://player.mediadelivery.net/embed/775332/7a2f268c-e49a-4441-816c-9a807e90c685', 60, '**Objetivo:** Al terminar esta semana podrás leer una fracción, decir qué significa cada número y sacar una fracción de una cantidad.
 
 Rosa compra una pizza y la corta en 4 partes iguales. Ella se come 1 parte. ¿Qué parte de la pizza se comió? Se comió una de cuatro partes. Eso se escribe con una fracción.
 
@@ -2325,7 +2325,7 @@ Luis tiene 20 huevos. Usa 3/4 de ellos para un pedido. ¿Cuántos huevos usa?
 - **Numerador:** el número de arriba; dice cuántas partes tomas.
 - **Denominador:** el número de abajo; dice en cuántas partes iguales se partió el entero.
 - **Entero:** la cosa completa, sin partir.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f6e8150f-9c3b-5128-ab3e-dc0255b325f5', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 2, 'Fracciones equivalentes y comparación', 'Aprende a encontrar fracciones que valen lo mismo y a decidir cuál de dos fracciones es mayor.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer fracciones equivalentes y decir cuál de dos fracciones es mayor.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f6e8150f-9c3b-5128-ab3e-dc0255b325f5', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 2, 'Fracciones equivalentes y comparación', 'Aprende a encontrar fracciones que valen lo mismo y a decidir cuál de dos fracciones es mayor.', 'https://player.mediadelivery.net/embed/775332/13715024-cecb-49e1-9f8a-c26f33d14d6f', 60, '**Objetivo:** Al terminar esta semana podrás reconocer fracciones equivalentes y decir cuál de dos fracciones es mayor.
 
 Luis y Rosa piden dos pizzas del mismo tamaño. Luis se come 1/2 de la suya. Rosa corta la suya en 4 partes y se come 2. ¿Quién comió más? Los dos comieron lo mismo. Sus fracciones se ven distintas, pero valen igual.
 
@@ -2362,7 +2362,7 @@ Quieres saber qué es mayor: 2/3 o 3/4 de un litro de agua.
 - **Fracciones equivalentes:** fracciones que valen lo mismo.
 - **Simplificar:** dividir numerador y denominador entre el mismo número.
 - **Denominador común:** un denominador igual en dos o más fracciones.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1fd5c0a9-130f-5e97-9c0e-ce9fa210f71b', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 3, 'Suma y resta de fracciones con igual denominador', 'Aprende a sumar y restar fracciones que tienen el mismo denominador y a simplificar el resultado.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás sumar y restar fracciones que tienen el mismo denominador.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1fd5c0a9-130f-5e97-9c0e-ce9fa210f71b', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 3, 'Suma y resta de fracciones con igual denominador', 'Aprende a sumar y restar fracciones que tienen el mismo denominador y a simplificar el resultado.', 'https://player.mediadelivery.net/embed/775332/66457cb6-f2f2-4221-8239-684fe7ce0f3c', 60, '**Objetivo:** Al terminar esta semana podrás sumar y restar fracciones que tienen el mismo denominador.
 
 Doña Carmen corta un pastel en 8 rebanadas iguales. El sábado se comen 3 rebanadas. El domingo se comen 2 más. ¿Qué parte del pastel se comió en total? Juntas las rebanadas: son 5 de las 8 partes.
 
@@ -2399,7 +2399,7 @@ Luis pinta una barda en dos días. El lunes pinta 2/8 de la barda. El martes pin
 - **Sumar fracciones:** juntar partes del mismo tamaño.
 - **Restar fracciones:** quitar partes del mismo tamaño.
 - **Resultado simplificado:** fracción que ya no se puede dividir entre un mismo número.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f8447bb3-ad2b-5675-916d-5c1195ad26ef', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 4, 'Los decimales y el dinero', 'Aprende a leer y escribir números decimales, a compararlos y a relacionarlos con el dinero y las fracciones.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer y comparar números decimales y relacionarlos con el dinero.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f8447bb3-ad2b-5675-916d-5c1195ad26ef', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 4, 'Los decimales y el dinero', 'Aprende a leer y escribir números decimales, a compararlos y a relacionarlos con el dinero y las fracciones.', 'https://player.mediadelivery.net/embed/775332/00bc30da-5509-4a82-8cdf-2f6fb686b506', 60, '**Objetivo:** Al terminar esta semana podrás leer y comparar números decimales y relacionarlos con el dinero.
 
 Rosa paga una bolsa de pan con $12.50. Ese número tiene un punto. Antes del punto están los pesos. Después del punto están los centavos. Un peso se parte en 100 centavos, así que el dinero ya usa decimales.
 
@@ -2442,7 +2442,7 @@ Ahora piensa en tres cuartos de peso: 3/4 = 75/100 = 0.75. Son 75 centavos.
 - **Décimo:** una de 10 partes iguales de un entero.
 - **Centésimo:** una de 100 partes iguales de un entero.
 - **Centavo:** la centésima parte de un peso.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e39702a8-e919-529d-b9cd-6e25fec0e5d9', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 5, 'Suma y resta de decimales', 'Aprende a sumar y restar números decimales alineando el punto, con ejemplos de compras y cambio.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás sumar y restar números decimales alineando el punto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e39702a8-e919-529d-b9cd-6e25fec0e5d9', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 5, 'Suma y resta de decimales', 'Aprende a sumar y restar números decimales alineando el punto, con ejemplos de compras y cambio.', 'https://player.mediadelivery.net/embed/775332/b9bf3a1f-dc4e-4913-b38a-60f789275a2b', 60, '**Objetivo:** Al terminar esta semana podrás sumar y restar números decimales alineando el punto.
 
 Rosa compra pan de $18.50 y leche de $24.75. Quiere saber cuánto debe pagar. También quiere saber cuánto cambio le darán si paga con un billete de $50. Son una suma y una resta con decimales.
 
@@ -2480,7 +2480,7 @@ Después Luis resta 7.35 de 20. Escribe 20 como 20.00:
 - **Alinear:** poner los números de modo que queden en la misma columna.
 - **Punto decimal:** el punto que separa los enteros de las partes menores que uno.
 - **Cambio:** el dinero que te regresan cuando pagas con más de lo que cuesta.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ed25511f-015c-51ef-aa58-8e19b35a86d4', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 6, 'Multiplicar y dividir decimales entre 10, 100 y 1000', 'Aprende a multiplicar y dividir números decimales entre 10, 100 y 1,000 moviendo el punto decimal.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás multiplicar y dividir un decimal entre 10, 100 y 1000 moviendo el punto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ed25511f-015c-51ef-aa58-8e19b35a86d4', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 6, 'Multiplicar y dividir decimales entre 10, 100 y 1000', 'Aprende a multiplicar y dividir números decimales entre 10, 100 y 1,000 moviendo el punto decimal.', 'https://player.mediadelivery.net/embed/775332/f835582b-228c-4e2f-8851-bf21b2dc8c6e', 60, '**Objetivo:** Al terminar esta semana podrás multiplicar y dividir un decimal entre 10, 100 y 1000 moviendo el punto.
 
 En una tienda venden 10 listones iguales. Cada uno cuesta $12.35. Para saber el total no hace falta una cuenta larga. Basta con mover el punto decimal.
 
@@ -2524,7 +2524,7 @@ Luis compra un paquete de 100 tornillos en $85. ¿Cuánto cuesta uno?
 
 - **Mover el punto:** recorrerlo a la derecha o a la izquierda, según la operación.
 - **Cero de relleno:** cero que se agrega para completar los lugares que faltan.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7cc366c8-8238-57cb-99ec-5d98326ff736', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 7, 'Fracciones y decimales en recetas y medidas', 'Aprende a usar fracciones y decimales para leer recetas, duplicar cantidades y cambiar medidas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás usar fracciones y decimales para leer una receta y cambiar medidas.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7cc366c8-8238-57cb-99ec-5d98326ff736', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 7, 'Fracciones y decimales en recetas y medidas', 'Aprende a usar fracciones y decimales para leer recetas, duplicar cantidades y cambiar medidas.', 'https://player.mediadelivery.net/embed/775332/aa43d53d-88c8-4806-8263-7bb81dbdd996', 60, '**Objetivo:** Al terminar esta semana podrás usar fracciones y decimales para leer una receta y cambiar medidas.
 
 Doña Carmen prepara atole para toda la familia. La receta pide 3/4 de litro de leche y 1/2 taza de masa. En la cocina, en la ferretería y en la costura aparecen fracciones y decimales. Se leen igual que en la cocina.
 
@@ -2568,7 +2568,7 @@ Medio litro es la mitad de 1,000 ml: 1,000 ÷ 2 = 500.
 - **Receta:** lista de ingredientes y cantidades para preparar un platillo.
 - **Equivalencia:** dos medidas distintas que valen lo mismo.
 - **Mililitro:** una milésima parte de un litro.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('49ce5213-acc5-5993-bced-ce92dbb8612d', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('49ce5213-acc5-5993-bced-ce92dbb8612d', 'ef2356a7-9ab9-5a39-ae09-3a540c434001', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/1c56d4ad-31f1-4ca9-b4de-ba632e732fba', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Qué es una fracción:** El denominador dice en cuántas partes iguales se partió el entero. El numerador dice cuántas partes tomas. Para sacar una fracción de una cantidad, divide entre el denominador y multiplica por el numerador.
 
@@ -2601,7 +2601,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. 1,000 ÷ 4 = 250. Luego 250 × 3 = 750. Son 750 ml.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9650faeb-8ef1-5ca4-8acc-5851ecd0ebc0', '2898d0bb-ad12-56db-91e8-54d521923ba9', 1, 'Seres vivos y su clasificación', 'Aprende qué tienen en común los seres vivos y cómo se agrupan en plantas, animales y hongos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás decir qué es un ser vivo y ubicarlo en su grupo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9650faeb-8ef1-5ca4-8acc-5851ecd0ebc0', '2898d0bb-ad12-56db-91e8-54d521923ba9', 1, 'Seres vivos y su clasificación', 'Aprende qué tienen en común los seres vivos y cómo se agrupan en plantas, animales y hongos.', 'https://player.mediadelivery.net/embed/775332/3ce528a2-0a5e-42cd-9052-4f256e87ad07', 60, '**Objetivo:** Al terminar esta semana podrás decir qué es un ser vivo y ubicarlo en su grupo.
 
 Luis llega al mercado y ve un jitomate, un pollo, un champiñón y una piedra en el piso. Todos están ahí, pero no todos son iguales. La piedra no es un ser vivo. Los otros tres sí lo son.
 
@@ -2641,7 +2641,7 @@ Rosa quiere saber qué es una rana.
 - **Clasificar:** juntar en grupos lo que se parece.
 - **Vertebrado:** animal que tiene huesos por dentro.
 - **Hongo:** ser vivo que no fabrica su alimento, como el champiñón.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b9d50c91-1f61-5333-b1b3-2dca4a3317f6', '2898d0bb-ad12-56db-91e8-54d521923ba9', 2, 'Las plantas: partes y funciones', 'Conoce las partes de una planta, para qué sirve cada una y cómo la planta fabrica su alimento.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar las partes de una planta y decir para qué sirve cada una.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b9d50c91-1f61-5333-b1b3-2dca4a3317f6', '2898d0bb-ad12-56db-91e8-54d521923ba9', 2, 'Las plantas: partes y funciones', 'Conoce las partes de una planta, para qué sirve cada una y cómo la planta fabrica su alimento.', 'https://player.mediadelivery.net/embed/775332/69eb3a79-6206-4078-8c31-25731a002368', 60, '**Objetivo:** Al terminar esta semana podrás nombrar las partes de una planta y decir para qué sirve cada una.
 
 Doña Carmen deja olvidada una planta cerca de la ventana. Días después, las hojas se voltean hacia la luz. La planta no se mueve de lugar, pero sabe buscar lo que necesita. Veamos cómo funciona.
 
@@ -2681,7 +2681,7 @@ Así, una sola comida puede traer cuatro partes distintas de plantas.
 - **Fotosíntesis:** proceso con el que la planta fabrica su alimento usando la luz.
 - **Semilla:** parte de la que nace una planta nueva.
 - **Oxígeno:** gas del aire que necesitamos para respirar.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('bdb2e6b5-6a26-5429-b6ea-7a0f9cea59bc', '2898d0bb-ad12-56db-91e8-54d521923ba9', 3, 'Animales y cadenas alimenticias', 'Descubre qué comen los animales y cómo se pasa la energía de un ser vivo a otro en una cadena alimenticia.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es una cadena alimenticia y armar una con tres seres vivos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('bdb2e6b5-6a26-5429-b6ea-7a0f9cea59bc', '2898d0bb-ad12-56db-91e8-54d521923ba9', 3, 'Animales y cadenas alimenticias', 'Descubre qué comen los animales y cómo se pasa la energía de un ser vivo a otro en una cadena alimenticia.', 'https://player.mediadelivery.net/embed/775332/77a4be1b-7177-4804-bc74-d9e16f9ff8a1', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es una cadena alimenticia y armar una con tres seres vivos.
 
 En el campo, un conejo come pasto. Más tarde, un águila caza al conejo. Nadie planeó esto, pero así se alimentan los seres vivos: unos comen a otros. Ese orden se llama cadena alimenticia.
 
@@ -2722,7 +2722,7 @@ Si desaparecen los conejos, el águila tiene menos alimento. Todos dependemos de
 - **Carnívoro:** animal que come otros animales.
 - **Productor:** ser vivo que fabrica su alimento, como una planta.
 - **Descomponedor:** ser vivo que se alimenta de restos, como un hongo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9b0e3e1f-fdae-5458-b046-aad0254a6a2c', '2898d0bb-ad12-56db-91e8-54d521923ba9', 4, 'El agua y su ciclo', 'Conoce el camino que sigue el agua entre el mar, el cielo y la tierra, y por qué conviene cuidarla.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar el ciclo del agua y decir por qué conviene cuidarla.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9b0e3e1f-fdae-5458-b046-aad0254a6a2c', '2898d0bb-ad12-56db-91e8-54d521923ba9', 4, 'El agua y su ciclo', 'Conoce el camino que sigue el agua entre el mar, el cielo y la tierra, y por qué conviene cuidarla.', 'https://player.mediadelivery.net/embed/775332/e0f6720b-c164-4a0d-b624-e1e212fed39a', 60, '**Objetivo:** Al terminar esta semana podrás explicar el ciclo del agua y decir por qué conviene cuidarla.
 
 Piensa en ropa mojada en un tendedero. Después de unas horas está seca. ¿A dónde se fue el agua? Subió al aire, aunque no la viste. Lo mismo pasa con el agua de los ríos, los lagos y el mar.
 
@@ -2759,7 +2759,7 @@ Doña Carmen encuentra una llave que gotea. Pide que la reparen. También cierra
 - **Vapor:** agua en forma de gas, que sube al aire.
 - **Precipitación:** agua que cae de las nubes como lluvia, granizo o nieve.
 - **Manto acuífero:** agua guardada bajo la tierra.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('58f587ba-d667-5755-8de1-a136c61445f4', '2898d0bb-ad12-56db-91e8-54d521923ba9', 5, 'Estados de la materia', 'Reconoce los estados sólido, líquido y gaseoso y los cambios que ocurren con el calor y el frío.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer los tres estados de la materia y explicar cómo cambian.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('58f587ba-d667-5755-8de1-a136c61445f4', '2898d0bb-ad12-56db-91e8-54d521923ba9', 5, 'Estados de la materia', 'Reconoce los estados sólido, líquido y gaseoso y los cambios que ocurren con el calor y el frío.', 'https://player.mediadelivery.net/embed/775332/47c94570-ce6b-4942-a982-526959465b4b', 60, '**Objetivo:** Al terminar esta semana podrás reconocer los tres estados de la materia y explicar cómo cambian.
 
 Rosa saca hielo del congelador y lo pone en un vaso. Poco a poco se vuelve agua. Si pone esa agua a calentar, sale vapor. Era la misma sustancia en tres formas distintas.
 
@@ -2802,7 +2802,7 @@ Luis pone mantequilla en un sartén caliente y se deshace. ¿Qué cambio ocurri�
 - **Fusión:** cambio de sólido a líquido por el calor.
 - **Condensación:** cambio de gas a líquido por el frío.
 - **Solidificación:** cambio de líquido a sólido por el frío.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('136a66df-5f10-5d72-9e28-fd42cfc3a205', '2898d0bb-ad12-56db-91e8-54d521923ba9', 6, 'Reducir, reusar y reciclar', 'Aprende qué son las tres erres y cómo aplicarlas en casa para producir menos basura.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar las tres erres y dar un ejemplo de cada una.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('136a66df-5f10-5d72-9e28-fd42cfc3a205', '2898d0bb-ad12-56db-91e8-54d521923ba9', 6, 'Reducir, reusar y reciclar', 'Aprende qué son las tres erres y cómo aplicarlas en casa para producir menos basura.', 'https://player.mediadelivery.net/embed/775332/b56eb073-773b-4de7-8718-319d6101acac', 60, '**Objetivo:** Al terminar esta semana podrás explicar las tres erres y dar un ejemplo de cada una.
 
 Una vecina vacía su bote de basura cada día. Se da cuenta de que casi todo es envase, papel y restos de comida. Si cambia algunos hábitos, el bote se llenará más despacio. Para eso sirven las tres erres.
 
@@ -2837,7 +2837,7 @@ Rosa revisa lo que va a tirar y decide qué hacer con cada cosa.
 - **Orgánico:** que viene de seres vivos, como una cáscara.
 - **Inorgánico:** que no viene de seres vivos, como el vidrio.
 - **Reciclar:** convertir un material usado en un material nuevo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6aac4f6d-be6b-5c35-b562-d993f4392a5a', '2898d0bb-ad12-56db-91e8-54d521923ba9', 7, 'Fenómenos naturales y protección civil', 'Conoce qué son los fenómenos naturales y qué acciones básicas ayudan ante un sismo, un huracán o una inundación.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar tres fenómenos naturales y las acciones básicas para cuidarte.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6aac4f6d-be6b-5c35-b562-d993f4392a5a', '2898d0bb-ad12-56db-91e8-54d521923ba9', 7, 'Fenómenos naturales y protección civil', 'Conoce qué son los fenómenos naturales y qué acciones básicas ayudan ante un sismo, un huracán o una inundación.', 'https://player.mediadelivery.net/embed/775332/3091e21f-4538-4bd7-a805-8b62120701ee', 60, '**Objetivo:** Al terminar esta semana podrás nombrar tres fenómenos naturales y las acciones básicas para cuidarte.
 
 Luis está en su casa cuando todo empieza a moverse. Él sabe qué hacer, porque antes lo habló con su familia.
 
@@ -2874,7 +2874,7 @@ Rosa hace un plan para su casa.
 - **Huracán:** ciclón tropical con vientos muy fuertes y lluvia.
 - **Inundación:** terreno cubierto de agua que normalmente no la tiene.
 - **Punto de reunión:** lugar seguro donde se junta la familia.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1a6dc91d-53e0-52f9-8423-409619973c29', '2898d0bb-ad12-56db-91e8-54d521923ba9', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1a6dc91d-53e0-52f9-8423-409619973c29', '2898d0bb-ad12-56db-91e8-54d521923ba9', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/eb75d080-5c7f-4f59-8d96-88eb44a0c8b9', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Seres vivos y su clasificación:** Un ser vivo nace, crece, se alimenta, respira, se reproduce y muere. Se agrupa en plantas, animales, hongos o seres muy pequeños.
 
@@ -2899,7 +2899,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Empieza a temblar. Mantén la calma, aléjate de las ventanas y sal sin correr al punto de reunión.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6b4e0236-dfea-5d57-a562-6df9ac3669dc', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 1, 'La carta y el correo electrónico', 'Aprende las partes de una carta y de un correo, y cómo escribir cada una con claridad.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás escribir una carta y un correo electrónico con todas sus partes.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6b4e0236-dfea-5d57-a562-6df9ac3669dc', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 1, 'La carta y el correo electrónico', 'Aprende las partes de una carta y de un correo, y cómo escribir cada una con claridad.', 'https://player.mediadelivery.net/embed/775332/74b32969-e7a6-4fdb-a7e2-1a2d26e2090e', 60, '**Objetivo:** Al terminar esta semana podrás escribir una carta y un correo electrónico con todas sus partes.
 
 Luis quiere avisar a la administración de su edificio que una lámpara del pasillo no funciona. Puede llevar un papel o mandar un mensaje. En los dos casos necesita ordenar lo que dice. Así lo entenderán a la primera.
 
@@ -2947,7 +2947,7 @@ Luis escribe su correo paso a paso.
 - **Asunto:** frase corta que dice de qué trata el correo.
 - **Adjunto:** archivo que se manda junto con el correo.
 - **Formal:** que usa un trato respetuoso, como el de usted.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3264b284-6e73-5026-8184-5c9d7bcd66f8', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 2, 'Llenar formatos y solicitudes', 'Aprende a leer un formato, llenar cada campo con datos claros y revisar todo antes de entregarlo.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás llenar un formato o una solicitud completa y sin errores.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3264b284-6e73-5026-8184-5c9d7bcd66f8', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 2, 'Llenar formatos y solicitudes', 'Aprende a leer un formato, llenar cada campo con datos claros y revisar todo antes de entregarlo.', 'https://player.mediadelivery.net/embed/775332/7d1cad81-a38b-4378-8436-81746919c198', 60, '**Objetivo:** Al terminar esta semana podrás llenar un formato o una solicitud completa y sin errores.
 
 Rosa quiere sacar su credencial de la biblioteca del barrio. La encargada le da una hoja con espacios vacíos. Esa hoja es un formato. Si Rosa lo llena mal, tendrá que repetirlo. Por eso conviene hacerlo con calma.
 
@@ -2993,7 +2993,7 @@ Después lee todo otra vez. Revisa que cada letra se entienda. Al final pone la 
 - **Campo:** espacio del formato donde se anota un dato.
 - **Solicitud:** formato donde pides un servicio o un permiso.
 - **Letra de molde:** letra separada y sin enlazar, fácil de leer.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('acb6d781-87fa-597f-a054-a92c9cd397ee', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 3, 'Conectores y signos de puntuación', 'Aprende a unir ideas con conectores y a usar punto, coma, dos puntos y signos de pregunta.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás unir ideas con conectores y usar bien los signos de puntuación.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('acb6d781-87fa-597f-a054-a92c9cd397ee', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 3, 'Conectores y signos de puntuación', 'Aprende a unir ideas con conectores y a usar punto, coma, dos puntos y signos de pregunta.', 'https://player.mediadelivery.net/embed/775332/0b092281-9103-4355-998c-2369ce775a96', 60, '**Objetivo:** Al terminar esta semana podrás unir ideas con conectores y usar bien los signos de puntuación.
 
 Leer esto es difícil: «Llegué al mercado estaba cerrado volví a casa». Faltan señales que separen y unan las ideas. Esas señales son los conectores y los signos de puntuación.
 
@@ -3036,7 +3036,7 @@ Queda así: «Llegué al mercado, pero estaba cerrado. Por eso volví a casa».
 - **Conector:** palabra que une ideas, como «pero» o «porque».
 - **Signo de puntuación:** marca escrita que ordena el texto, como el punto o la coma.
 - **Lista:** serie de cosas una tras otra, como «pan, leche y huevos».', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('47508186-6fd6-5048-9bba-377f4e41c265', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 4, 'Narrar una experiencia personal', 'Aprende a contar algo que viviste con orden: cómo empezó, qué pasó y cómo terminó.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás contar por escrito una experiencia que viviste, con inicio, desarrollo y final.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('47508186-6fd6-5048-9bba-377f4e41c265', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 4, 'Narrar una experiencia personal', 'Aprende a contar algo que viviste con orden: cómo empezó, qué pasó y cómo terminó.', 'https://player.mediadelivery.net/embed/775332/aac6439c-895f-40e7-b805-a20e07a58b02', 60, '**Objetivo:** Al terminar esta semana podrás contar por escrito una experiencia que viviste, con inicio, desarrollo y final.
 
 Todos tenemos historias: el primer día en un trabajo, un viaje en camión o una fiesta en el barrio. Cuando las cuentas en voz alta, las ideas salen solas. Al escribirlas, hay que ponerles orden para que otros las entiendan.
 
@@ -3074,7 +3074,7 @@ Luis no escribió todo lo que ocurrió ese día. Eligió solo lo que importa par
 - **Experiencia:** algo que te pasó o que viviste.
 - **Primera persona:** forma de contar con «yo», como «salí» o «vi».
 - **Desarrollo:** parte de la historia donde pasan las cosas.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('37ff0a7a-30ea-58d5-b1b8-790e9a19380a', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 5, 'Redactar un aviso o anuncio', 'Aprende a escribir un aviso corto que diga qué pasa, cuándo, dónde y con quién informarse.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás redactar un aviso o un anuncio claro y corto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('37ff0a7a-30ea-58d5-b1b8-790e9a19380a', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 5, 'Redactar un aviso o anuncio', 'Aprende a escribir un aviso corto que diga qué pasa, cuándo, dónde y con quién informarse.', 'https://player.mediadelivery.net/embed/775332/f7404bc6-94f5-4784-8867-c43953b8cefb', 60, '**Objetivo:** Al terminar esta semana podrás redactar un aviso o un anuncio claro y corto.
 
 En la entrada de un edificio hay un papel pegado. La gente lo lee de pie, en pocos segundos. Si el papel es largo o confuso, nadie lo termina. Un buen aviso se entiende de un vistazo.
 
@@ -3115,7 +3115,7 @@ También puede ser un anuncio. Rosa escribe: «Se vende bicicleta. Buen estado. 
 - **Aviso:** texto corto que informa algo a varias personas.
 - **Anuncio:** texto corto que ofrece un producto o un servicio.
 - **Contacto:** persona o dato para preguntar más.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7fc84a0d-58b4-509a-bdb8-ccc581b99c1c', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 6, 'Revisar y corregir lo que escribimos', 'Aprende a releer un texto y a corregir sus errores de mayúsculas, puntuación, ortografía y claridad.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás revisar un texto y corregir sus errores.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7fc84a0d-58b4-509a-bdb8-ccc581b99c1c', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 6, 'Revisar y corregir lo que escribimos', 'Aprende a releer un texto y a corregir sus errores de mayúsculas, puntuación, ortografía y claridad.', 'https://player.mediadelivery.net/embed/775332/37c76e3a-c831-4b10-beaf-08807eee4d02', 60, '**Objetivo:** Al terminar esta semana podrás revisar un texto y corregir sus errores.
 
 Luis escribe un mensaje importante y lo manda de inmediato. Después ve que una palabra salió mal escrita. Ya no puede arreglarlo. Una lectura más, antes de entregar, evita ese problema.
 
@@ -3157,7 +3157,7 @@ Queda así: «Ayer fui al mercado. Compré jitomates y cebolla, pero no encontr�
 - **Revisar:** leer de nuevo un texto para buscar errores.
 - **Corregir:** cambiar lo que está mal para dejarlo bien.
 - **Ortografía:** forma correcta de escribir las palabras.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b63ff696-da12-5ece-9950-ad4fa86c5325', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 7, 'Mensajes digitales con claridad y cortesía', 'Aprende a escribir mensajes de texto y de correo que se entiendan bien y traten con respeto.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás escribir mensajes digitales claros y corteses.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b63ff696-da12-5ece-9950-ad4fa86c5325', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 7, 'Mensajes digitales con claridad y cortesía', 'Aprende a escribir mensajes de texto y de correo que se entiendan bien y traten con respeto.', 'https://player.mediadelivery.net/embed/775332/57e1e1d8-9ea9-469a-ae7f-29bea1b55c76', 60, '**Objetivo:** Al terminar esta semana podrás escribir mensajes digitales claros y corteses.
 
 La señora Carmen recibe un mensaje en su celular: «oye ya mandame el recibo». No sabe quién lo manda ni qué recibo necesita. Además, el tono suena a orden. Lo mandó Luis. En un mensaje no se ve la cara de nadie. Por eso las palabras deben cuidar el trato.
 
@@ -3204,7 +3204,7 @@ En mensajes digitales basta una coma tras el saludo. Los dos puntos son para car
 - **Cortesía:** buen trato hacia los demás al hablar o escribir.
 - **Tono:** la forma en que suena un mensaje, amable o seco.
 - **Abreviatura:** palabra escrita en forma corta.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6d2c1430-a5a9-5296-9a56-1bc6979a49e5', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6d2c1430-a5a9-5296-9a56-1bc6979a49e5', '974e8f72-0af9-5772-98e3-19c4571ac6d6', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/bf6f7393-363f-48e5-8768-65b919843aca', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — La carta y el correo electrónico:** La carta lleva lugar y fecha, saludo, cuerpo, despedida y firma. El correo agrega destinatario, asunto y, si hace falta, un adjunto.
 
@@ -3229,7 +3229,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Corrige: «hola necesito el recibo». Respuesta: «Hola, buenas tardes. ¿Me puede enviar el recibo, por favor?».
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b8da219e-092f-5b33-8d2f-ef6c4598adfc', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 1, 'Líneas, ángulos y figuras planas', 'Reconoce líneas rectas y curvas, ángulos y figuras planas en los objetos que ves todos los días.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer líneas, ángulos y figuras planas en los objetos de tu casa.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b8da219e-092f-5b33-8d2f-ef6c4598adfc', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 1, 'Líneas, ángulos y figuras planas', 'Reconoce líneas rectas y curvas, ángulos y figuras planas en los objetos que ves todos los días.', 'https://player.mediadelivery.net/embed/775332/18d3a3be-f4a4-49d4-8be4-d0dd6ef790e1', 60, '**Objetivo:** Al terminar esta semana podrás reconocer líneas, ángulos y figuras planas en los objetos de tu casa.
 
 Mira la puerta de tu casa. Sus orillas son rectas y sus esquinas parecen cuadros. La llanta de una bicicleta, en cambio, es redonda. Las formas están por todas partes y tienen nombre.
 
@@ -3272,7 +3272,7 @@ Luis abre una puerta hasta formar un ángulo de 90° con la pared. Luego la abre
 - **Ángulo:** abertura que forman dos líneas que se juntan en un punto.
 - **Grado:** unidad con la que se mide un ángulo.
 - **Paralelas:** líneas que van lado a lado y nunca se juntan.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1b2dafcb-2054-5bdf-a36a-eb99414a9dfc', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 2, 'Triángulos y cuadriláteros', 'Distingue los tipos de triángulos y de cuadriláteros y calcula el ángulo que falta en cada uno.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar triángulos y cuadriláteros y calcular un ángulo que falta.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1b2dafcb-2054-5bdf-a36a-eb99414a9dfc', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 2, 'Triángulos y cuadriláteros', 'Distingue los tipos de triángulos y de cuadriláteros y calcula el ángulo que falta en cada uno.', 'https://player.mediadelivery.net/embed/775332/b8dc243c-df8a-4abc-8450-508d40d22273', 60, '**Objetivo:** Al terminar esta semana podrás nombrar triángulos y cuadriláteros y calcular un ángulo que falta.
 
 Una tienda de campaña tiene el frente en forma de triángulo. Una mesa del mercado tiene la tapa de cuatro lados. Los dos son figuras que verás seguido, y cada una tiene varios tipos.
 
@@ -3320,7 +3320,7 @@ Un cuadrilátero tiene ángulos de 90°, 90° y 100°. ¿Cuánto mide el cuarto?
 - **Equilátero:** triángulo con los tres lados iguales.
 - **Cuadrilátero:** figura de cuatro lados.
 - **Trapecio:** cuadrilátero con un solo par de lados paralelos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1b68d6f3-92f8-5c97-b4d7-81bacf61a68b', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 3, 'Perímetro', 'Aprende a calcular el perímetro de triángulos, cuadrados y rectángulos sumando sus lados.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás calcular el perímetro de un triángulo, un cuadrado y un rectángulo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1b68d6f3-92f8-5c97-b4d7-81bacf61a68b', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 3, 'Perímetro', 'Aprende a calcular el perímetro de triángulos, cuadrados y rectángulos sumando sus lados.', 'https://player.mediadelivery.net/embed/775332/beac6119-2d3b-49ba-96b5-634e7503c72a', 60, '**Objetivo:** Al terminar esta semana podrás calcular el perímetro de un triángulo, un cuadrado y un rectángulo.
 
 Don Pedro quiere cercar su terreno con alambre. Antes de comprar, necesita saber cuántos metros de alambre usará. Para eso mide el contorno completo del terreno.
 
@@ -3359,7 +3359,7 @@ Un letrero con forma de triángulo tiene lados de 6 cm, 7 cm y 9 cm. Su perímet
 - **Perímetro:** medida del contorno de una figura.
 - **Contorno:** línea que rodea una figura por fuera.
 - **Lado:** cada una de las líneas que forman una figura.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c06821a9-4c0b-54fa-b6c8-da07064f9a32', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 4, 'Área de cuadrados, rectángulos y triángulos', 'Aprende a calcular cuánta superficie cubren un cuadrado, un rectángulo y un triángulo.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás calcular el área de un cuadrado, un rectángulo y un triángulo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c06821a9-4c0b-54fa-b6c8-da07064f9a32', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 4, 'Área de cuadrados, rectángulos y triángulos', 'Aprende a calcular cuánta superficie cubren un cuadrado, un rectángulo y un triángulo.', 'https://player.mediadelivery.net/embed/775332/500be408-2fdf-48e4-8461-d374485f2fbb', 60, '**Objetivo:** Al terminar esta semana podrás calcular el área de un cuadrado, un rectángulo y un triángulo.
 
 Rosa quiere poner loseta en el piso de su cocina. Necesita saber cuánto piso hay que cubrir. Eso no es el contorno, sino toda la superficie de adentro.
 
@@ -3403,7 +3403,7 @@ Una bandera triangular tiene base de 10 cm y altura de 6 cm.
 - **Área:** medida de la superficie que cubre una figura.
 - **Base:** lado sobre el que se apoya una figura.
 - **Altura:** distancia recta desde la base hasta arriba.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('babda7cb-6e2d-5630-ac18-3f4633700335', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 5, 'Longitud: metro, centímetro y kilómetro', 'Aprende a medir longitudes y a cambiar entre metros, centímetros y kilómetros.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás medir longitudes y cambiar entre metros, centímetros y kilómetros.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('babda7cb-6e2d-5630-ac18-3f4633700335', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 5, 'Longitud: metro, centímetro y kilómetro', 'Aprende a medir longitudes y a cambiar entre metros, centímetros y kilómetros.', 'https://player.mediadelivery.net/embed/775332/03831363-30e7-4080-ab46-00519eebd323', 60, '**Objetivo:** Al terminar esta semana podrás medir longitudes y cambiar entre metros, centímetros y kilómetros.
 
 Doña Carmen compra 2 m de tela. Para coser necesita saber cuántos centímetros son. En la tienda la tela se mide en metros, pero la cinta de costura trae centímetros.
 
@@ -3445,7 +3445,7 @@ Una cuerda mide 450 cm. Para pasarla a metros, divide: 450 ÷ 100 = 4, y sobran 
 - **Longitud:** qué tan largo es algo.
 - **Equivalencia:** dos medidas distintas que valen lo mismo.
 - **Kilómetro:** unidad que vale 1000 metros.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('45f2e278-74e9-5068-b204-c278623b6c99', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 6, 'Peso y capacidad: kilo, gramo, litro y mililitro', 'Aprende a medir peso y capacidad y a cambiar entre kilos y gramos, y entre litros y mililitros.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás medir peso y capacidad y cambiar entre kilos y gramos, y entre litros y mililitros.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('45f2e278-74e9-5068-b204-c278623b6c99', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 6, 'Peso y capacidad: kilo, gramo, litro y mililitro', 'Aprende a medir peso y capacidad y a cambiar entre kilos y gramos, y entre litros y mililitros.', 'https://player.mediadelivery.net/embed/775332/445022c0-0561-4f06-8d44-d06e8a9540c7', 60, '**Objetivo:** Al terminar esta semana podrás medir peso y capacidad y cambiar entre kilos y gramos, y entre litros y mililitros.
 
 Rosa compra 2 kg de frijol en el mercado. Su receta pide 500 g. También compra una botella de agua de 1 L y quiere llenar vasos pequeños. Para esto necesita unidades de peso y de capacidad.
 
@@ -3488,7 +3488,7 @@ Ahora llena vasos de 250 ml con una botella de 1 L.
 - **Gramo:** unidad pequeña de peso. Mil gramos son un kilo.
 - **Capacidad:** cantidad de líquido que cabe en un recipiente.
 - **Mililitro:** unidad pequeña de capacidad. Mil mililitros son un litro.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('581175bb-8f06-5b13-94d8-881589809cca', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 7, 'Cuerpos geométricos y volumen sencillo', 'Reconoce cuerpos geométricos en objetos comunes y calcula el volumen de una caja multiplicando sus medidas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer cuerpos geométricos y calcular el volumen de una caja.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('581175bb-8f06-5b13-94d8-881589809cca', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 7, 'Cuerpos geométricos y volumen sencillo', 'Reconoce cuerpos geométricos en objetos comunes y calcula el volumen de una caja multiplicando sus medidas.', 'https://player.mediadelivery.net/embed/775332/129bd62f-0a55-4c00-8565-5603defd2c11', 60, '**Objetivo:** Al terminar esta semana podrás reconocer cuerpos geométricos y calcular el volumen de una caja.
 
 Una caja de zapatos, una lata de atún y un balón tienen forma distinta. No son figuras planas, porque tienen espacio por dentro. Se llaman cuerpos geométricos.
 
@@ -3531,7 +3531,7 @@ Una bodega mide 5 m de largo, 4 m de ancho y 2 m de alto. Su volumen es 5 × 4 �
 - **Cuerpo geométrico:** objeto que ocupa espacio, como un cubo o una esfera.
 - **Volumen:** espacio que ocupa un cuerpo.
 - **Arista:** línea donde se juntan dos caras.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c0a33145-fca0-5da5-811e-48e683583d5c', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c0a33145-fca0-5da5-811e-48e683583d5c', '1ed3053e-2aae-5c2b-b239-f77b5708dc77', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/831156ba-7d7d-434f-874a-a2869ada9724', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Líneas, ángulos y figuras planas:** Las líneas pueden ser rectas o curvas. El ángulo recto mide 90°. El agudo mide menos y el obtuso mide más.
 
@@ -3556,7 +3556,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Una caja mide 5 cm por 2 cm por 3 cm. Su volumen es 5 × 2 × 3 = 30 cm³.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1608d349-a6b4-556b-b19f-4081065b7ec4', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 1, 'Los pueblos originarios', 'Conoce a los pueblos que vivían en México antes de 1519 y qué dejaron en la vida de hoy.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar algunos pueblos originarios de México y decir qué aportan a la vida de hoy.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1608d349-a6b4-556b-b19f-4081065b7ec4', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 1, 'Los pueblos originarios', 'Conoce a los pueblos que vivían en México antes de 1519 y qué dejaron en la vida de hoy.', 'https://player.mediadelivery.net/embed/775332/10939c15-0319-4ca9-a67e-a88850a365bb', 60, '**Objetivo:** Al terminar esta semana podrás nombrar algunos pueblos originarios de México y decir qué aportan a la vida de hoy.
 
 Piensa en una tortilla caliente con frijoles. Es comida de todos los días en muchas casas. Su origen está en los pueblos que vivían aquí hace muchos siglos. Esos pueblos siguen vivos hoy.
 
@@ -3594,7 +3594,7 @@ Rosa prepara una salsa con tomate, chile y aguacate. Esas palabras vienen del n�
 - **Mesoamérica:** región donde vivieron varias culturas con rasgos comunes.
 - **Lengua:** idioma que habla un pueblo.
 - **Herencia:** lo que recibimos de quienes vivieron antes.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('738cceb6-288c-5f9f-a36d-d8c3973bd57e', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 2, 'La Conquista y el Virreinato', 'Entiende qué pasó entre 1519 y 1821, cómo se formó la Nueva España y qué cambió.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué fue la Conquista, qué fue el Virreinato y qué mezclas dejó.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('738cceb6-288c-5f9f-a36d-d8c3973bd57e', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 2, 'La Conquista y el Virreinato', 'Entiende qué pasó entre 1519 y 1821, cómo se formó la Nueva España y qué cambió.', 'https://player.mediadelivery.net/embed/775332/c2e6302e-9607-4b12-904c-14d90c8e41e2', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué fue la Conquista, qué fue el Virreinato y qué mezclas dejó.
 
 Cuando dices «buenos días», usas el español, que llegó de España hace siglos. En México también se hablan muchas lenguas de los pueblos originarios. Esa mezcla de idiomas tiene una historia.
 
@@ -3637,7 +3637,7 @@ Luis dibuja una línea de tiempo con tres fechas: 1519, 1521 y 1821. Entre la ll
 - **Conquista:** toma de un territorio por la fuerza.
 - **Virrey:** persona que gobernaba en nombre del rey.
 - **Mestizaje:** mezcla de personas y culturas distintas.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6834bbf8-eb19-58d0-a88d-522b8679ce91', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 3, 'La Independencia', 'Conoce cómo empezó la lucha de 1810, quiénes la encabezaron y cómo terminó en 1821.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás contar cómo empezó y cómo terminó la Independencia de México.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6834bbf8-eb19-58d0-a88d-522b8679ce91', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 3, 'La Independencia', 'Conoce cómo empezó la lucha de 1810, quiénes la encabezaron y cómo terminó en 1821.', 'https://player.mediadelivery.net/embed/775332/b2ed09e7-4738-44af-b8d7-46703633f1ae', 60, '**Objetivo:** Al terminar esta semana podrás contar cómo empezó y cómo terminó la Independencia de México.
 
 Cada 15 de septiembre por la noche, muchas plazas se llenan de gente. Alguien toca una campana y se da el Grito. Esta costumbre recuerda el inicio de la lucha por la Independencia.
 
@@ -3673,7 +3673,7 @@ Rosa quiere saber cuánto duró la lucha. Resta el año en que terminó menos el
 - **Independencia:** libertad de un país para gobernarse a sí mismo.
 - **Grito de Dolores:** llamado de Hidalgo para empezar la lucha.
 - **Insurgente:** persona que luchó por la Independencia.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d34a7323-71b9-503b-9cb9-517f329643cb', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 4, 'La Reforma y Benito Juárez', 'Conoce quién fue Benito Juárez, qué fue la Reforma y qué pasó en 1857, 1862 y 1867.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás decir quién fue Benito Juárez y qué fue la Reforma.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('d34a7323-71b9-503b-9cb9-517f329643cb', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 4, 'La Reforma y Benito Juárez', 'Conoce quién fue Benito Juárez, qué fue la Reforma y qué pasó en 1857, 1862 y 1867.', 'https://player.mediadelivery.net/embed/775332/4da589af-68d3-48af-a442-080af929f6af', 60, '**Objetivo:** Al terminar esta semana podrás decir quién fue Benito Juárez y qué fue la Reforma.
 
 Muchas calles, escuelas y pueblos de México llevan el nombre de Benito Juárez. Seguro conoces alguna. Vale la pena saber quién fue y por qué se le recuerda.
 
@@ -3709,7 +3709,7 @@ Luis compara dos fechas de la línea de tiempo. Entre la batalla de Puebla y el 
 - **Constitución:** ley más importante de un país.
 - **Reforma:** periodo de cambios en las leyes a mediados del siglo XIX.
 - **República:** forma de gobierno donde el pueblo elige a sus gobernantes.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e8e777ae-8977-520a-86a1-225685f90464', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 5, 'La Revolución Mexicana', 'Entiende por qué empezó la Revolución en 1910 y qué cambió con la Constitución de 1917.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar por qué empezó la Revolución Mexicana y qué pasó en 1917.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e8e777ae-8977-520a-86a1-225685f90464', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 5, 'La Revolución Mexicana', 'Entiende por qué empezó la Revolución en 1910 y qué cambió con la Constitución de 1917.', 'https://player.mediadelivery.net/embed/775332/62146860-3c85-430e-8eb7-640e9aa7b587', 60, '**Objetivo:** Al terminar esta semana podrás explicar por qué empezó la Revolución Mexicana y qué pasó en 1917.
 
 Cada 20 de noviembre hay desfiles en escuelas y plazas de todo el país. Recuerdan el inicio de la Revolución Mexicana. Veamos por qué empezó.
 
@@ -3747,7 +3747,7 @@ Rosa quiere saber cuántos años pasaron entre el inicio de la Revolución y la 
 - **Revolución:** gran cambio en un país, que suele venir con una lucha.
 - **Campesino:** persona que trabaja la tierra.
 - **Lema:** frase corta que resume una idea.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('69963727-f013-5867-8946-27b59d176c20', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 6, 'El México del siglo XX', 'Conoce algunos hechos y cambios del siglo XX en México, con fechas claras y sin juicios.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás ubicar algunos hechos importantes del siglo XX en México.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('69963727-f013-5867-8946-27b59d176c20', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 6, 'El México del siglo XX', 'Conoce algunos hechos y cambios del siglo XX en México, con fechas claras y sin juicios.', 'https://player.mediadelivery.net/embed/775332/7b41a2ea-9bcf-4f2b-9c80-c7e50d91b57d', 60, '**Objetivo:** Al terminar esta semana podrás ubicar algunos hechos importantes del siglo XX en México.
 
 Un siglo son 100 años. El siglo XX va de 1901 a 2000. Muchas personas hoy vivieron buena parte de esos años. Hoy veremos algunos hechos, uno por uno.
 
@@ -3780,7 +3780,7 @@ Luis ordena los hechos en una línea de tiempo. Quiere saber cuántos años pasa
 - **Siglo:** periodo de 100 años.
 - **Sismo:** movimiento fuerte de la tierra.
 - **Línea de tiempo:** dibujo que ordena hechos según su fecha.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('947edbbb-8ab3-5597-a7f5-a7026edbec5b', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 7, 'Símbolos patrios y fechas cívicas', 'Reconoce la bandera, el escudo y el himno, y ubica las fechas cívicas que se recuerdan cada año.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer los símbolos patrios y decir qué se recuerda en algunas fechas cívicas.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('947edbbb-8ab3-5597-a7f5-a7026edbec5b', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 7, 'Símbolos patrios y fechas cívicas', 'Reconoce la bandera, el escudo y el himno, y ubica las fechas cívicas que se recuerdan cada año.', 'https://player.mediadelivery.net/embed/775332/55a7bee5-9a2f-4f90-bb32-eaacd1e2ce50', 60, '**Objetivo:** Al terminar esta semana podrás reconocer los símbolos patrios y decir qué se recuerda en algunas fechas cívicas.
 
 En una ceremonia de tu escuela o de tu colonia, seguro viste una bandera. Quizá escuchaste el himno. Son símbolos que representan a todo el país.
 
@@ -3821,7 +3821,7 @@ Rosa ve un letrero que dice «20 de noviembre». Piensa en la tabla y recuerda q
 - **Símbolo patrio:** imagen o canto que representa a un país.
 - **Himno:** canto que representa a un país o a un grupo.
 - **Fecha cívica:** día en que se recuerda un hecho importante del país.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ab348e54-1cfa-5554-9c37-ea578cce41ab', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ab348e54-1cfa-5554-9c37-ea578cce41ab', 'f2e98415-87d6-5337-a3ca-5623cc720a84', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/d5d7aa90-d11a-43d5-83c5-d6891bbe1174', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Los pueblos originarios:** Son los pueblos que vivían aquí antes de 1519. Olmecas, mayas y mexicas dejaron obras y saberes. Sus lenguas siguen vivas hoy.
 
@@ -3846,7 +3846,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. ¿Qué se recuerda el 16 de septiembre? El inicio de la Independencia, en 1810.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6f583295-e184-54f5-8392-ec251e1dd014', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 1, 'Escuchar y hablar con respeto', 'Aprende a escuchar con atención, esperar tu turno y decir lo que piensas sin ofender a nadie.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás escuchar con atención y hablar con respeto en una conversación.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6f583295-e184-54f5-8392-ec251e1dd014', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 1, 'Escuchar y hablar con respeto', 'Aprende a escuchar con atención, esperar tu turno y decir lo que piensas sin ofender a nadie.', 'https://player.mediadelivery.net/embed/775332/a1880550-8a4d-4f57-b002-9a62299f5a84', 60, '**Objetivo:** Al terminar esta semana podrás escuchar con atención y hablar con respeto en una conversación.
 
 En una junta de vecinos, Rosa explica un problema con el agua. Luis la interrumpe dos veces. Otra vecina mira su celular. Al final nadie entendió bien qué pasó. Una conversación funciona cuando todos escuchan y todos hablan por turnos.
 
@@ -3895,7 +3895,7 @@ Repetir lo que oíste confirma que entendiste bien.
 - **Interrumpir:** hablar cuando otra persona todavía no termina.
 - **Opinión:** lo que una persona piensa sobre un tema.
 - **Respeto:** tratar bien a los demás, aunque piensen distinto.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1699f2a6-be0c-5eb4-a15a-d9557353697f', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 2, 'Presentarse y dar datos personales', 'Aprende a decir quién eres, qué datos compartir y cómo cuidar tu información personal.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás presentarte con claridad y dar tus datos personales de forma segura.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('1699f2a6-be0c-5eb4-a15a-d9557353697f', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 2, 'Presentarse y dar datos personales', 'Aprende a decir quién eres, qué datos compartir y cómo cuidar tu información personal.', 'https://player.mediadelivery.net/embed/775332/40a89b13-07ed-48cf-ad76-329fbf10ebdf', 60, '**Objetivo:** Al terminar esta semana podrás presentarte con claridad y dar tus datos personales de forma segura.
 
 Rosa llega a un taller nuevo. Todos son desconocidos. Ella saluda, dice su nombre y cuenta algo breve sobre ella. En un minuto la gente ya la conoce un poco. Así se hace una presentación.
 
@@ -3938,7 +3938,7 @@ Más tarde, una persona le pide su teléfono por un mensaje. Luis no la conoce. 
 - **Datos personales:** información que dice quién eres, como tu nombre o tu domicilio.
 - **Domicilio:** el lugar donde vives.
 - **Formulario:** hoja donde se escriben datos en los espacios que se piden.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ec8296c1-b0ba-5366-89fc-2da64ec20572', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 3, 'Exponer una idea ante otros', 'Aprende a preparar y explicar una idea ante un grupo, con orden, voz clara y seguridad.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás preparar y explicar una idea ante un grupo con orden y claridad.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ec8296c1-b0ba-5366-89fc-2da64ec20572', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 3, 'Exponer una idea ante otros', 'Aprende a preparar y explicar una idea ante un grupo, con orden, voz clara y seguridad.', 'https://player.mediadelivery.net/embed/775332/cb480dbf-48a5-40c8-abb8-edbdc0e4e83e', 60, '**Objetivo:** Al terminar esta semana podrás preparar y explicar una idea ante un grupo con orden y claridad.
 
 En una reunión de la colonia, doña Carmen quiere proponer una limpieza del parque. Se pone nerviosa. Habla muy rápido y salta de un tema a otro. Nadie entiende su propuesta. Para exponer una idea, conviene prepararla antes.
 
@@ -3982,7 +3982,7 @@ Antes de la reunión, ella lo practica frente al espejo.
 - **Propuesta:** idea que ofreces para resolver algo.
 - **Pausa:** pequeño silencio para respirar y dar tiempo de entender.
 - **Palabra clave:** palabra que te recuerda una idea importante.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b504e197-a2b4-541d-b80e-0952d33f4c81', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 4, 'Documentos de identidad: acta de nacimiento, CURP, INE', 'Conoce qué son el acta de nacimiento, la CURP y la credencial del INE, y cómo cuidar tus documentos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás decir qué son el acta de nacimiento, la CURP y la credencial del INE.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b504e197-a2b4-541d-b80e-0952d33f4c81', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 4, 'Documentos de identidad: acta de nacimiento, CURP, INE', 'Conoce qué son el acta de nacimiento, la CURP y la credencial del INE, y cómo cuidar tus documentos.', 'https://player.mediadelivery.net/embed/775332/b9cbe6c6-68df-424b-90a2-2c0fb8a4b24c', 60, '**Objetivo:** Al terminar esta semana podrás decir qué son el acta de nacimiento, la CURP y la credencial del INE.
 
 Luis llena un formulario. Le piden su nombre completo, su fecha de nacimiento y su CURP. Él no recuerda qué es cada documento. Estos papeles se usan en muchos trámites, así que conviene conocerlos.
 
@@ -4019,7 +4019,7 @@ Rosa revisa sus papeles antes de un trámite.
 - **CURP:** clave de 18 caracteres que identifica a cada persona.
 - **INE:** institución que organiza las elecciones federales y expide la credencial para votar.
 - **Registro Civil:** oficina que guarda actas de nacimiento y otros registros.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('08620420-e577-5783-bd50-7eb2f3dc8197', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 5, 'Trámites comunes y cómo pedir información', 'Aprende a preparar un trámite, hacer preguntas claras en una oficina y anotar lo que te digan.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás preparar un trámite y pedir información con preguntas claras.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('08620420-e577-5783-bd50-7eb2f3dc8197', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 5, 'Trámites comunes y cómo pedir información', 'Aprende a preparar un trámite, hacer preguntas claras en una oficina y anotar lo que te digan.', 'https://player.mediadelivery.net/embed/775332/ed649f08-dd96-4399-b6ed-e4eeaac3a321', 60, '**Objetivo:** Al terminar esta semana podrás preparar un trámite y pedir información con preguntas claras.
 
 Rosa necesita una copia de su acta de nacimiento. Llega a la oficina sin saber qué documentos llevar. Hace fila mucho rato y al final le dicen que le falta un papel. Preguntar antes habría evitado el viaje.
 
@@ -4064,7 +4064,7 @@ Si no sabe a qué oficina ir, llama al teléfono de la institución o pregunta e
 - **Requisito:** lo que te piden para poder hacer un trámite.
 - **Cita:** día y hora que te dan para ser atendido.
 - **Vigente:** que sigue valiendo hoy.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c30453c9-5761-514b-933b-4bcd55c00692', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 6, 'Diálogo y acuerdos ante un desacuerdo', 'Aprende a conversar cuando piensas distinto, escuchar al otro y llegar a un acuerdo en paz.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás dialogar ante un desacuerdo y llegar a un acuerdo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c30453c9-5761-514b-933b-4bcd55c00692', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 6, 'Diálogo y acuerdos ante un desacuerdo', 'Aprende a conversar cuando piensas distinto, escuchar al otro y llegar a un acuerdo en paz.', 'https://player.mediadelivery.net/embed/775332/57d5efd7-21cb-4d51-876d-b87b963dfa0f', 60, '**Objetivo:** Al terminar esta semana podrás dialogar ante un desacuerdo y llegar a un acuerdo.
 
 Dos compañeros de un edificio no se ponen de acuerdo. Uno deja su basura en el pasillo y al otro le molesta el olor. Se enojan y dejan de hablarse. El problema sigue igual. Si conversan con calma, pueden resolverlo.
 
@@ -4106,7 +4106,7 @@ Los dos ganaron algo y la relación sigue en buen tono.
 - **Diálogo:** conversación en la que cada quien habla y escucha.
 - **Acuerdo:** decisión que todos aceptan.
 - **Acusar:** echarle la culpa a otra persona.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a6cef619-23f2-5699-b438-bbba0c408f92', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 7, 'La entrevista de trabajo', 'Aprende a prepararte para una entrevista de trabajo y a responder con claridad y honestidad.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás prepararte para una entrevista de trabajo y responder con claridad.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a6cef619-23f2-5699-b438-bbba0c408f92', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 7, 'La entrevista de trabajo', 'Aprende a prepararte para una entrevista de trabajo y a responder con claridad y honestidad.', 'https://player.mediadelivery.net/embed/775332/a2c55fff-dce5-406d-9f3d-39ed286992a7', 60, '**Objetivo:** Al terminar esta semana podrás prepararte para una entrevista de trabajo y responder con claridad.
 
 Rosa tiene una cita para platicar sobre un puesto. Esa plática se llama entrevista de trabajo. Ella se pone nerviosa. Pero si se prepara, se sentirá más segura. Nadie puede asegurar el resultado, pero prepararte siempre ayuda.
 
@@ -4146,7 +4146,7 @@ Si aún no has trabajado, cuenta lo que has hecho en la escuela o en tu casa. Ro
 - **Puesto:** el trabajo que alguien hace en un lugar.
 - **Perfil:** lo que una persona sabe hacer y ha vivido.
 - **Honestidad:** decir siempre la verdad.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('0ab0a6c8-86c1-54ce-8544-6bba48e08bc3', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('0ab0a6c8-86c1-54ce-8544-6bba48e08bc3', 'f8ae7b30-0bda-5623-87f9-a6a587ede078', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/74528807-30e1-43a6-b0dc-5d4fce38b458', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Escuchar y hablar con respeto:** Escuchar es poner atención, no solo oír. No interrumpas, espera tu turno y habla sin burlas.
 
@@ -4171,7 +4171,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. En una entrevista te piden «Cuéntame de ti». Saluda, di tu nombre, cuenta lo que sabes hacer y cierra con una pregunta sobre el puesto.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f2721ce6-2eaa-539f-87ca-bc30f2b5bc4f', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 1, 'Billetes, monedas y cambio', 'Aprende a sumar lo que compras, comparar con tu pago y calcular el cambio que te deben regresar.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás calcular el cambio de una compra y comprobar que sea correcto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f2721ce6-2eaa-539f-87ca-bc30f2b5bc4f', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 1, 'Billetes, monedas y cambio', 'Aprende a sumar lo que compras, comparar con tu pago y calcular el cambio que te deben regresar.', 'https://player.mediadelivery.net/embed/775332/822802d9-2fab-42f5-83d6-e9bd61206975', 60, '**Objetivo:** Al terminar esta semana podrás calcular el cambio de una compra y comprobar que sea correcto.
 
 Luis compra en la tienda de la esquina. Paga con un billete y la encargada le da unas monedas. Luis se pregunta si el cambio está bien. Con una resta puede comprobarlo.
 
@@ -4213,7 +4213,7 @@ Si hay centavos, la cuenta es igual. Una cuenta de $87.50 pagada con $100 da 100
 - **Cambio:** dinero que te regresan cuando pagas de más.
 - **Total:** la suma de todo lo que compraste.
 - **Centavo:** la centésima parte de un peso. Cien centavos son un peso.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f3a2805a-47ea-5d0f-bdba-20a4eceaa9b7', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 2, 'Presupuesto familiar: ingresos y gastos', 'Aprende a anotar lo que entra y lo que sale cada mes para saber cuánto dinero te queda.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás armar un presupuesto sencillo y saber si te sobra o te falta dinero.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f3a2805a-47ea-5d0f-bdba-20a4eceaa9b7', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 2, 'Presupuesto familiar: ingresos y gastos', 'Aprende a anotar lo que entra y lo que sale cada mes para saber cuánto dinero te queda.', 'https://player.mediadelivery.net/embed/775332/7d594980-21e3-4f33-aef5-2e1119273168', 60, '**Objetivo:** Al terminar esta semana podrás armar un presupuesto sencillo y saber si te sobra o te falta dinero.
 
 Rosa llega a fin de mes y no sabe a dónde se fue su dinero. Decide anotar todo lo que recibe y todo lo que paga. Con esas dos listas puede ver el panorama completo. Esa idea se llama presupuesto.
 
@@ -4260,7 +4260,7 @@ A Rosa le sobran $900. Puede guardarlos para una meta o para una emergencia.
 - **Gasto:** dinero que pagas.
 - **Presupuesto:** plan que compara tus ingresos con tus gastos.
 - **Sobrante:** dinero que queda después de pagar los gastos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('af504194-020f-5190-adf9-2bdc42d69e13', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 3, 'Porcentajes básicos: 10 %, 25 % y 50 %', 'Aprende a sacar el 10 %, el 25 % y el 50 % de una cantidad con cuentas sencillas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás sacar el 10 %, el 25 % y el 50 % de una cantidad.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('af504194-020f-5190-adf9-2bdc42d69e13', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 3, 'Porcentajes básicos: 10 %, 25 % y 50 %', 'Aprende a sacar el 10 %, el 25 % y el 50 % de una cantidad con cuentas sencillas.', 'https://player.mediadelivery.net/embed/775332/2cafe10d-e9d9-4e9b-94a0-228b1d23aea4', 60, '**Objetivo:** Al terminar esta semana podrás sacar el 10 %, el 25 % y el 50 % de una cantidad.
 
 Rosa quiere comprar unos zapatos de $600. En la tienda hay un letrero: «50 % de descuento». ¿Cuánto dinero le descuentan? Para saberlo, necesita entender los porcentajes.
 
@@ -4305,7 +4305,7 @@ Otro caso: el 10 % de $350 se calcula con 350 ÷ 10 = 35. Son $35.
 - **Porcentaje:** una parte de una cantidad, contada de cada 100.
 - **Descuento:** dinero que te quitan del precio.
 - **Décima parte:** lo que resulta al dividir algo en 10 partes iguales.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e3942113-a6a9-503d-b00a-38adeed02042', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 4, 'Descuentos y ofertas', 'Aprende a calcular el precio final de un producto con descuento y a comparar dos ofertas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás calcular el precio final con descuento y decir qué oferta conviene más.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e3942113-a6a9-503d-b00a-38adeed02042', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 4, 'Descuentos y ofertas', 'Aprende a calcular el precio final de un producto con descuento y a comparar dos ofertas.', 'https://player.mediadelivery.net/embed/775332/48ca5430-bd9a-43e2-829b-616a9150fd57', 60, '**Objetivo:** Al terminar esta semana podrás calcular el precio final con descuento y decir qué oferta conviene más.
 
 Doña Carmen ve dos letreros en dos tiendas. Uno dice «25 % de descuento». El otro dice «10 % de descuento». Parece que el primero conviene más. Pero los precios de cada tienda no son iguales. Hay que hacer la cuenta.
 
@@ -4349,7 +4349,7 @@ Compara: 300 − 288 = 12. En la tienda B pagas $12 menos, aunque su descuento s
 - **Oferta:** precio especial por un tiempo.
 - **Precio final:** lo que pagas después de quitar el descuento.
 - **Comparar:** ver dos cosas juntas para saber cuál conviene más.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a6fae7fd-6a49-5468-9136-e61326b0ada1', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 5, 'Ahorro y metas', 'Aprende a poner una meta de ahorro y a dividirla en partes iguales para saber cuánto guardar.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás poner una meta de ahorro y calcular cuánto guardar en cada periodo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a6fae7fd-6a49-5468-9136-e61326b0ada1', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 5, 'Ahorro y metas', 'Aprende a poner una meta de ahorro y a dividirla en partes iguales para saber cuánto guardar.', 'https://player.mediadelivery.net/embed/775332/fac6f5f5-a4ac-41e4-a02d-b88bc049dbcb', 60, '**Objetivo:** Al terminar esta semana podrás poner una meta de ahorro y calcular cuánto guardar en cada periodo.
 
 Luis necesita $1,200 para arreglar su celular. No los tiene hoy. Si espera a juntarlos de golpe, quizá nunca llegue. Mejor decide guardar una cantidad pequeña cada semana. Así avanza poco a poco.
 
@@ -4392,7 +4392,7 @@ Si a mitad del camino Luis lleva $450, ve cuánto falta: 1,200 − 450 = 750. Le
 - **Ahorro:** dinero que guardas para usarlo después.
 - **Meta:** lo que quieres lograr, con una cantidad clara.
 - **Periodo:** cada tramo de tiempo, como una semana o un mes.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f1b48147-ae62-5050-a7c5-68fa58aedb70', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 6, 'Créditos e intereses: lo básico', 'Aprende qué es un crédito, qué es el interés y qué preguntar antes de aceptar dinero prestado.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es un crédito y calcular cuánto pagas de más.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f1b48147-ae62-5050-a7c5-68fa58aedb70', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 6, 'Créditos e intereses: lo básico', 'Aprende qué es un crédito, qué es el interés y qué preguntar antes de aceptar dinero prestado.', 'https://player.mediadelivery.net/embed/775332/b7bfe093-39d2-452b-ad8b-f5cd37569c62', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es un crédito y calcular cuánto pagas de más.
 
 Rosa quiere comprar un aparato y le ofrecen pagarlo en abonos. Los pagos chicos parecen cómodos. Pero hay una pregunta importante: ¿cuánto voy a pagar en total? Esa pregunta te protege.
 
@@ -4443,7 +4443,7 @@ Los pagos son más chicos, pero el interés es mayor. Por eso no basta con ver c
 - **Interés:** dinero extra que pagas por usar un préstamo.
 - **Abono:** cada pago pequeño que haces para saldar una deuda.
 - **Deuda:** dinero que debes.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('756e0903-b552-5f87-b04d-25d9e8cee32b', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 7, 'Recibos de luz, agua y teléfono', 'Aprende a leer un recibo, encontrar el total y la fecha límite, y revisar cuánto consumiste.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer un recibo, encontrar lo que debes pagar y comprobar el consumo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('756e0903-b552-5f87-b04d-25d9e8cee32b', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 7, 'Recibos de luz, agua y teléfono', 'Aprende a leer un recibo, encontrar el total y la fecha límite, y revisar cuánto consumiste.', 'https://player.mediadelivery.net/embed/775332/8f3292d9-b32a-4cb4-b8ae-4a0a5d073377', 60, '**Objetivo:** Al terminar esta semana podrás leer un recibo, encontrar lo que debes pagar y comprobar el consumo.
 
 Luis recibe un papel de la compañía de luz. Tiene muchos números y no sabe cuál importa. En casi todos los recibos hay cuatro datos clave. Si los encuentras, ya entiendes lo esencial.
 
@@ -4489,7 +4489,7 @@ Si pagas tarde, pueden cobrarte un cargo extra. Mira la fecha límite.
 - **Medidor:** aparato que cuenta cuánto usas.
 - **Lectura:** el número que marca el medidor.
 - **Fecha límite:** último día para pagar sin cargo extra.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('4c9b02a3-2222-57e3-b202-230c089207ec', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('4c9b02a3-2222-57e3-b202-230c089207ec', 'd83a5528-2564-5fb6-a7ee-92ceecfe8a23', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/3570f9fa-f7ea-4664-9cf9-febb66a23b2e', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Billetes, monedas y cambio:** El cambio es lo que sobra de tu pago. Resta el precio al dinero que entregaste. Si pagas $200 por algo de $135, te regresan $65.
 
@@ -4514,7 +4514,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Un préstamo ficticio de $1,000 se paga con 5 abonos de $240. 5 × 240 = 1,200. El interés es 1,200 − 1,000 = 200. Pagas $200 de más.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a94b9777-fedd-581a-aa05-9b8e6a824133', '8966fd85-c111-55b6-8335-5c52d025c3a1', 1, 'Mapas y puntos cardinales', 'Aprende a leer un mapa, usar los puntos cardinales y ubicar a México y sus vecinos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer un mapa y ubicar lugares con los puntos cardinales.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('a94b9777-fedd-581a-aa05-9b8e6a824133', '8966fd85-c111-55b6-8335-5c52d025c3a1', 1, 'Mapas y puntos cardinales', 'Aprende a leer un mapa, usar los puntos cardinales y ubicar a México y sus vecinos.', 'https://player.mediadelivery.net/embed/775332/3e4a0552-71c1-400f-b652-48989c321621', 60, '**Objetivo:** Al terminar esta semana podrás leer un mapa y ubicar lugares con los puntos cardinales.
 
 Luis llega a una colonia que no conoce. Busca una farmacia. Una vecina le dice: «Camina hacia el norte dos calles y la verás a tu derecha». Luis necesita saber dónde queda el norte. Para eso sirven los puntos cardinales.
 
@@ -4556,7 +4556,7 @@ Rosa mira el mapa de su colonia. Quiere ir del mercado a la escuela.
 - **Punto cardinal:** una de las cuatro direcciones para ubicarte.
 - **Mapa:** dibujo de un lugar visto desde arriba.
 - **Simbología:** dibujos que explican las marcas del mapa.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('21f33d24-b69f-5c33-a996-4ce54ce4fa56', '8966fd85-c111-55b6-8335-5c52d025c3a1', 2, 'Las 32 entidades federativas', 'Conoce cómo se divide México en 31 estados y la Ciudad de México, y cómo ubicarlos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás decir cómo se divide México y nombrar sus 32 entidades.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('21f33d24-b69f-5c33-a996-4ce54ce4fa56', '8966fd85-c111-55b6-8335-5c52d025c3a1', 2, 'Las 32 entidades federativas', 'Conoce cómo se divide México en 31 estados y la Ciudad de México, y cómo ubicarlos.', 'https://player.mediadelivery.net/embed/775332/9997b79c-591a-49b3-aebd-812ef6ed9943', 60, '**Objetivo:** Al terminar esta semana podrás decir cómo se divide México y nombrar sus 32 entidades.
 
 Doña Carmen tiene familia en varios lugares del país. Un sobrino vive en Yucatán. Una prima vive en Sonora. Una amiga vive en la Ciudad de México. Cada lugar es una parte distinta de México. Cada parte se llama entidad federativa.
 
@@ -4620,7 +4620,7 @@ Rosa vive en Puebla. Eso es en el centro. Su tío vive en Sonora. Eso es en el n
 - **Entidad federativa:** cada una de las 32 partes en que se divide México.
 - **Capital:** ciudad principal donde trabaja el gobierno de una entidad.
 - **Municipio:** parte de un estado con su propio gobierno local.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('afdee67d-63b5-5bb5-97ac-65be2a35c905', '8966fd85-c111-55b6-8335-5c52d025c3a1', 3, 'Relieve, climas y regiones', 'Conoce las formas del terreno, los climas de México y cómo influyen en la vida diaria.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás describir el relieve y los climas de México y explicar cómo influyen en la vida diaria.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('afdee67d-63b5-5bb5-97ac-65be2a35c905', '8966fd85-c111-55b6-8335-5c52d025c3a1', 3, 'Relieve, climas y regiones', 'Conoce las formas del terreno, los climas de México y cómo influyen en la vida diaria.', 'https://player.mediadelivery.net/embed/775332/b27602f8-9a07-4d17-b2d5-b0da313eb40f', 60, '**Objetivo:** Al terminar esta semana podrás describir el relieve y los climas de México y explicar cómo influyen en la vida diaria.
 
 Luis sale en autobús de la costa y llega a una ciudad en la sierra. En la costa sudaba de calor. En la sierra se pone una chamarra. Eso pasa porque México tiene lugares muy distintos.
 
@@ -4661,7 +4661,7 @@ Una región es una zona con rasgos parecidos. El norte es seco. El sureste es c�
 - **Relieve:** forma que tiene el terreno.
 - **Clima:** cómo suele ser el tiempo en un lugar durante muchos años.
 - **Región:** zona con rasgos parecidos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6f1dd0f9-a091-516b-9a66-985e9bda54c0', '8966fd85-c111-55b6-8335-5c52d025c3a1', 4, 'Recursos naturales', 'Aprende qué son los recursos naturales de México, cuáles se renuevan y cómo usarlos con cuidado.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás reconocer los recursos naturales de México y decir cómo cuidarlos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('6f1dd0f9-a091-516b-9a66-985e9bda54c0', '8966fd85-c111-55b6-8335-5c52d025c3a1', 4, 'Recursos naturales', 'Aprende qué son los recursos naturales de México, cuáles se renuevan y cómo usarlos con cuidado.', 'https://player.mediadelivery.net/embed/775332/2c52c989-5e26-4173-92b5-b480d4fd8566', 60, '**Objetivo:** Al terminar esta semana podrás reconocer los recursos naturales de México y decir cómo cuidarlos.
 
 Rosa prepara tortillas con maíz y las pone en un comal. Usa agua para lavar y gas para cocinar. Casi todo lo que usa en su cocina viene de la naturaleza. Esas cosas se llaman recursos naturales.
 
@@ -4704,7 +4704,7 @@ Usar un recurso no es malo. Lo que daña es usarlo sin cuidado. Algunas acciones
 - **Renovable:** recurso que vuelve a existir si se cuida.
 - **No renovable:** recurso que se acaba y no vuelve pronto.
 - **Reciclar:** volver a usar materiales para hacer cosas nuevas.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9880b69a-5275-5338-87f0-1ff95fb18a20', '8966fd85-c111-55b6-8335-5c52d025c3a1', 5, 'Diversidad cultural y lenguas indígenas', 'Conoce la riqueza cultural de México, sus pueblos y lenguas indígenas, y por qué merecen respeto.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la diversidad cultural y por qué las lenguas indígenas merecen respeto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9880b69a-5275-5338-87f0-1ff95fb18a20', '8966fd85-c111-55b6-8335-5c52d025c3a1', 5, 'Diversidad cultural y lenguas indígenas', 'Conoce la riqueza cultural de México, sus pueblos y lenguas indígenas, y por qué merecen respeto.', 'https://player.mediadelivery.net/embed/775332/552be0bb-7170-42c9-98ba-6edc204cc36e', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la diversidad cultural y por qué las lenguas indígenas merecen respeto.
 
 Doña Carmen va a una fiesta en un pueblo. Escucha una música que no conocía. Prueba una comida distinta a la suya. Oye a unas señoras hablar en su lengua materna. Todo eso forma parte de la cultura de México.
 
@@ -4742,7 +4742,7 @@ Todas las personas tienen derecho a hablar su lengua y a vivir su cultura. Convi
 - **Diversidad:** que hay muchas formas distintas.
 - **Pueblo indígena:** comunidad con historia anterior a la llegada de los españoles.
 - **Lengua materna:** la primera lengua que aprendes en tu casa.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('428ea9dd-ab83-5b8c-989d-3d063055e888', '8966fd85-c111-55b6-8335-5c52d025c3a1', 6, 'Mi comunidad: servicios y organización', 'Conoce los servicios públicos de tu comunidad y cómo se organizan sus habitantes y su gobierno.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar los servicios de tu comunidad y decir cómo se organiza.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('428ea9dd-ab83-5b8c-989d-3d063055e888', '8966fd85-c111-55b6-8335-5c52d025c3a1', 6, 'Mi comunidad: servicios y organización', 'Conoce los servicios públicos de tu comunidad y cómo se organizan sus habitantes y su gobierno.', 'https://player.mediadelivery.net/embed/775332/e7c7f29d-f693-48cf-bed1-dd08fab0b562', 60, '**Objetivo:** Al terminar esta semana podrás nombrar los servicios de tu comunidad y decir cómo se organiza.
 
 Rosa abre la llave y sale agua. Prende el foco y hay luz. Saca la basura y pasa el camión. Todo eso parece normal. Pero detrás hay personas y reglas que lo hacen posible.
 
@@ -4785,7 +4785,7 @@ En la calle de Luis hay un foco fundido desde hace días. Luis habla con sus vec
 - **Servicio público:** servicio que ayuda a todos los habitantes.
 - **Ayuntamiento:** gobierno local de un municipio.
 - **Comité:** grupo de vecinos que se reúne para una tarea.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f8284429-e576-5704-8d9a-4ce601598153', '8966fd85-c111-55b6-8335-5c52d025c3a1', 7, 'Población y migración', 'Entiende qué es la población, cómo se distribuye en México y por qué las personas migran.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la población, cómo se reparte en México y por qué las personas migran.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f8284429-e576-5704-8d9a-4ce601598153', '8966fd85-c111-55b6-8335-5c52d025c3a1', 7, 'Población y migración', 'Entiende qué es la población, cómo se distribuye en México y por qué las personas migran.', 'https://player.mediadelivery.net/embed/775332/2ed6eaa4-811e-414a-b4a4-093f5ab64fda', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la población, cómo se reparte en México y por qué las personas migran.
 
 Luis nació en un pueblo pequeño. Hoy trabaja en una ciudad grande. Rosa hizo lo contrario. Vivió en la ciudad y ahora vive en un pueblo cerca de la playa. Los dos cambiaron de lugar. Eso es parte de la vida de muchas personas.
 
@@ -4824,7 +4824,7 @@ Migrar es una decisión que toman las personas por muchas razones. Merece respet
 - **Migrar:** cambiar el lugar donde vives.
 - **Zona rural:** lugar con menos habitantes y más campo.
 - **Censo:** conteo de las personas que viven en el país.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('384e4193-1a66-53df-a7e2-370f089b0138', '8966fd85-c111-55b6-8335-5c52d025c3a1', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('384e4193-1a66-53df-a7e2-370f089b0138', '8966fd85-c111-55b6-8335-5c52d025c3a1', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/31c68ed8-cc5a-4928-a52a-cfbb0e9b9f5e', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Mapas y puntos cardinales:** Los puntos cardinales son norte, sur, este y oeste. El Sol sale más o menos por el este. La rosa de los vientos y la simbología ayudan a leer un mapa.
 
@@ -4849,7 +4849,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. ¿Qué es migrar? Es cambiar el lugar donde vives. Se hace por muchas razones y merece respeto.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('db2c9875-6008-5c31-a885-c5fe65ecd8ee', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 1, 'Tablas de conteo', 'Aprende a contar datos con rayitas y a ordenarlos en una tabla fácil de leer.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás anotar datos con rayitas y armar una tabla de conteo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('db2c9875-6008-5c31-a885-c5fe65ecd8ee', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 1, 'Tablas de conteo', 'Aprende a contar datos con rayitas y a ordenarlos en una tabla fácil de leer.', 'https://player.mediadelivery.net/embed/775332/1baa4ca6-edd8-4a03-bb5d-50c07926e4e4', 60, '**Objetivo:** Al terminar esta semana podrás anotar datos con rayitas y armar una tabla de conteo.
 
 Rosa vende fruta en un puesto. En la mañana, 20 clientes le piden la fruta que prefieren. Si intenta recordar todo, se confunde. Mejor la anota en una hoja.
 
@@ -4884,7 +4884,7 @@ Rosa quiere saber cuántos clientes hubo y cuál fruta se pidió más.
 - **Dato:** un número o un nombre que anotas para saber algo.
 - **Conteo:** la cuenta que haces con una rayita por cada dato.
 - **Total:** el resultado de sumar todo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('781ad924-9d78-5bab-9f49-ccec56cf981f', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 2, 'Gráficas de barras', 'Aprende a leer una gráfica de barras y a sacar de ella el mayor, el menor y la diferencia.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer una gráfica de barras y comparar sus datos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('781ad924-9d78-5bab-9f49-ccec56cf981f', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 2, 'Gráficas de barras', 'Aprende a leer una gráfica de barras y a sacar de ella el mayor, el menor y la diferencia.', 'https://player.mediadelivery.net/embed/775332/260e4851-61a4-43c6-aa75-f66064f05d10', 60, '**Objetivo:** Al terminar esta semana podrás leer una gráfica de barras y comparar sus datos.
 
 Una panadería anota cuántas cajas de pan vende cada día. Con los números sueltos cuesta trabajo comparar. Con una gráfica se ve de un vistazo. Los datos de este ejemplo son inventados.
 
@@ -4924,7 +4924,7 @@ Responde con la gráfica de arriba.
 - **Gráfica:** un dibujo que muestra datos para compararlos.
 - **Escala:** lo que vale cada marca de la gráfica.
 - **Diferencia:** lo que resulta al restar un dato de otro.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('04459f1a-58da-519b-a2b4-e3cd9bb96065', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 3, 'Pictogramas y gráficas de línea sencillas', 'Aprende a leer pictogramas y gráficas de línea para ver cuánto vale cada dibujo y cómo cambia un dato.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer un pictograma y una gráfica de línea sencilla.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('04459f1a-58da-519b-a2b4-e3cd9bb96065', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 3, 'Pictogramas y gráficas de línea sencillas', 'Aprende a leer pictogramas y gráficas de línea para ver cuánto vale cada dibujo y cómo cambia un dato.', 'https://player.mediadelivery.net/embed/775332/02d1490c-b718-4f56-b0f6-9e8e77ec0540', 60, '**Objetivo:** Al terminar esta semana podrás leer un pictograma y una gráfica de línea sencilla.
 
 Una tienda de la esquina anota los litros de leche que vende. En lugar de escribir números, dibuja círculos. Así ve rápido qué día vendió más. Los datos de este ejemplo son inventados.
 
@@ -4968,7 +4968,7 @@ Si pones cada hora como un punto, más alto cuanto más grados, y unes los punto
 - **Pictograma:** una gráfica hecha con dibujos.
 - **Clave:** lo que vale cada dibujo del pictograma.
 - **Gráfica de línea:** una gráfica que muestra cambios con una línea.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('39bf407e-39a0-5c0c-b09e-efb67e585246', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 4, 'El promedio', 'Aprende a sacar el promedio de varios datos sumando y dividiendo, y a entender qué significa.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás sacar el promedio de varios datos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('39bf407e-39a0-5c0c-b09e-efb67e585246', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 4, 'El promedio', 'Aprende a sacar el promedio de varios datos sumando y dividiendo, y a entender qué significa.', 'https://player.mediadelivery.net/embed/775332/7bcb80da-d55c-4131-915c-e22cdb0b23d7', 60, '**Objetivo:** Al terminar esta semana podrás sacar el promedio de varios datos.
 
 Una vecina vende tamales. El lunes vendió 4 docenas, el martes 5 y el miércoles 9. Ella quiere saber cuánto vende en un día común. Para eso sirve el promedio.
 
@@ -5007,7 +5007,7 @@ Otro caso: Luis gastó en pasajes $20, $30, $25 y $25 en cuatro días.
 - **Promedio:** el valor que tendría cada dato si todos fueran iguales.
 - **Suma:** el resultado de juntar todos los datos.
 - **Reparto parejo:** dividir algo en partes iguales.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ee8ea1c3-7059-5b35-b62e-ae9622e22b68', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 5, 'La moda: el dato más frecuente', 'Aprende a encontrar la moda de una lista de datos contando cuántas veces se repite cada uno.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás encontrar la moda de una lista de datos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ee8ea1c3-7059-5b35-b62e-ae9622e22b68', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 5, 'La moda: el dato más frecuente', 'Aprende a encontrar la moda de una lista de datos contando cuántas veces se repite cada uno.', 'https://player.mediadelivery.net/embed/775332/f0312bae-a40b-4841-80a1-7cb06f9dc28e', 60, '**Objetivo:** Al terminar esta semana podrás encontrar la moda de una lista de datos.
 
 Una zapatería anota las tallas que vendió en un día: 25, 26, 25, 27, 25, 26 y 28. El dueño quiere pedir más zapatos de la talla que más se vende. Para decidir, busca la moda.
 
@@ -5049,7 +5049,7 @@ La moda es el dato que más se repite. Para encontrarla no sumas ni divides. Sol
 - **Moda:** el dato que más veces se repite.
 - **Frecuencia:** cuántas veces sale un dato.
 - **Repetir:** aparecer más de una vez.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3eb52459-090f-50e7-8fa1-336b2ee32fc2', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 6, 'Probabilidad sencilla: seguro, posible, imposible', 'Aprende a decir si algo es seguro, posible o imposible, y a comparar qué es más probable.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás decir si algo es seguro, posible o imposible.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('3eb52459-090f-50e7-8fa1-336b2ee32fc2', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 6, 'Probabilidad sencilla: seguro, posible, imposible', 'Aprende a decir si algo es seguro, posible o imposible, y a comparar qué es más probable.', 'https://player.mediadelivery.net/embed/775332/837e4ed6-910d-40af-9819-93bcb7e79ee9', 60, '**Objetivo:** Al terminar esta semana podrás decir si algo es seguro, posible o imposible.
 
 Rosa va a sacar una canica de una bolsa sin ver. No sabe cuál saldrá. Pero sí puede decir qué cosas pueden pasar y cuáles no. Eso es hablar de probabilidad.
 
@@ -5088,7 +5088,7 @@ Ahora piensa en un dado de 6 caras, con los números del 1 al 6.
 - **Probabilidad:** qué tan fácil es que algo pase.
 - **Seguro:** lo que va a pasar siempre.
 - **Imposible:** lo que nunca va a pasar.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b910ad40-ad39-54b1-9bb4-b605df1f4106', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 7, 'Leer gráficas en noticias y recibos', 'Aprende a leer con cuidado las gráficas de recibos y noticias, y a no dejarte engañar por la escala.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás leer una gráfica de un recibo o de una noticia con cuidado.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('b910ad40-ad39-54b1-9bb4-b605df1f4106', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 7, 'Leer gráficas en noticias y recibos', 'Aprende a leer con cuidado las gráficas de recibos y noticias, y a no dejarte engañar por la escala.', 'https://player.mediadelivery.net/embed/775332/81295309-c756-47d0-aade-8e673d4aaabb', 60, '**Objetivo:** Al terminar esta semana podrás leer una gráfica de un recibo o de una noticia con cuidado.
 
 En muchos recibos de luz viene una gráfica con lo que usaste en cada periodo. En las noticias también hay gráficas. Leerlas bien te ayuda a revisar si algo subió o bajó.
 
@@ -5129,7 +5129,7 @@ Una gráfica puede exagerar si su escala no empieza en cero. Dos barras de 50 y 
 - **Consumo:** la cantidad que usaste de algo en un periodo.
 - **Kilowatt-hora:** la medida de la energía eléctrica que usas.
 - **Fuente:** el lugar de donde salen los datos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7958f52e-0eb6-5567-87b0-86a2e818577e', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('7958f52e-0eb6-5567-87b0-86a2e818577e', '06be62fe-d3f1-5840-a36b-d5ca4cfbb656', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/6d8d2094-c6d3-4ad2-a1f5-680770acf64d', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Tablas de conteo:** Anotas una rayita por cada dato y cuentas de cinco en cinco. Al final sumas los totales para saber cuántos datos hay.
 
@@ -5154,7 +5154,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 5. Una bolsa tiene 4 canicas verdes. Sacar una verde es seguro. Sacar una roja es imposible.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('55f0c1f8-0f66-59d5-bc02-5a79aa00e6e4', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 1, 'Los derechos humanos', 'Aprende qué son los derechos humanos, cómo son y cuáles te protegen todos los días.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué son los derechos humanos y dar ejemplos de ellos.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('55f0c1f8-0f66-59d5-bc02-5a79aa00e6e4', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 1, 'Los derechos humanos', 'Aprende qué son los derechos humanos, cómo son y cuáles te protegen todos los días.', 'https://player.mediadelivery.net/embed/775332/b9aa5a03-4278-4542-9a6f-b3c9ae1089db', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué son los derechos humanos y dar ejemplos de ellos.
 
 Rosa vende fruta en el mercado. Nadie le impide trabajar y nadie la trata con violencia. Si se enferma, puede ir a un centro de salud. Todo eso es posible porque las personas tenemos derechos.
 
@@ -5197,7 +5197,7 @@ Doña Carmen y Luis no coinciden en cómo arreglar el patio de su unidad. Cada q
 - **Derecho:** algo que puedes pedir y que te protege.
 - **Dignidad:** el valor que tiene toda persona y que exige respeto.
 - **Universal:** que es para todas las personas, sin excepción.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('07f95dda-f6ba-52c5-8fe4-4910e2be94ef', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 2, 'La Constitución y los tres poderes', 'Conoce qué es la Constitución y cómo se reparte el poder en tres partes para cuidar tus derechos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la Constitución y qué hace cada uno de los tres poderes.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('07f95dda-f6ba-52c5-8fe4-4910e2be94ef', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 2, 'La Constitución y los tres poderes', 'Conoce qué es la Constitución y cómo se reparte el poder en tres partes para cuidar tus derechos.', 'https://player.mediadelivery.net/embed/775332/8200213c-364c-4754-8ad7-37cc9c1450d4', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la Constitución y qué hace cada uno de los tres poderes.
 
 En una unidad de vecinos hay reglas. Se cuida la limpieza y se respetan los horarios. Sin reglas, habría muchos pleitos. Un país también necesita reglas, y la más importante se llama Constitución.
 
@@ -5236,7 +5236,7 @@ Una vecina cree que una multa que recibió fue injusta. Veamos quién participa 
 - **Poder:** una parte del gobierno con una tarea propia.
 - **Congreso:** el lugar donde trabajan los diputados y los senadores.
 - **Tribunal:** el lugar donde los jueces resuelven conflictos.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f2ad4f65-6b21-505c-9a0d-3284ee5d9df4', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 3, 'Municipio, estado y federación', 'Distingue los tres niveles de gobierno y aprende a quién acudir según el problema.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás distinguir el municipio, el estado y la federación, y saber qué atiende cada uno.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('f2ad4f65-6b21-505c-9a0d-3284ee5d9df4', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 3, 'Municipio, estado y federación', 'Distingue los tres niveles de gobierno y aprende a quién acudir según el problema.', 'https://player.mediadelivery.net/embed/775332/6625170d-f6fe-4ef2-89f0-af0935a7134f', 60, '**Objetivo:** Al terminar esta semana podrás distinguir el municipio, el estado y la federación, y saber qué atiende cada uno.
 
 Luis ve que la lámpara de su calle no prende. ¿A quién le avisa? Para saberlo, conviene conocer los tres niveles de gobierno. Cada uno atiende cosas distintas.
 
@@ -5275,7 +5275,7 @@ Si el daño estuviera en una carretera federal, el aviso iría a la autoridad fe
 - **Ayuntamiento:** el grupo que gobierna un municipio.
 - **Entidad:** cada una de las partes en que se divide el país.
 - **Federación:** el gobierno de todo el país.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('608f2ef2-ab2c-5d51-9945-620b16eafaf3', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 4, 'Derechos de niñas, niños, adolescentes y personas mayores', 'Conoce los derechos de la niñez, la adolescencia y las personas mayores, y cómo la comunidad puede protegerlos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar derechos de la niñez, la adolescencia y las personas mayores.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('608f2ef2-ab2c-5d51-9945-620b16eafaf3', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 4, 'Derechos de niñas, niños, adolescentes y personas mayores', 'Conoce los derechos de la niñez, la adolescencia y las personas mayores, y cómo la comunidad puede protegerlos.', 'https://player.mediadelivery.net/embed/775332/b0a65f1e-d3a3-4e7f-beb2-7f379778ebb2', 60, '**Objetivo:** Al terminar esta semana podrás nombrar derechos de la niñez, la adolescencia y las personas mayores.
 
 Rosa lleva a su sobrina Ana a la escuela. Después acompaña a doña Carmen a su cita médica. Las dos reciben cuidados distintos. Eso es porque la niñez y las personas mayores necesitan una protección especial.
 
@@ -5319,7 +5319,7 @@ Ana tiene 13 años y quiere seguir estudiando. En su casa le piden que trabaje t
 - **Adolescente:** persona de 12 a 17 años.
 - **Persona mayor:** persona de 60 años o más.
 - **Maltrato:** daño que se hace a otra persona.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('606f2b32-7acc-556a-a268-318b81ad7bb0', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 5, 'Igualdad y no discriminación', 'Aprende qué es la igualdad, qué es la discriminación y qué puedes hacer para respetar a todas las personas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la discriminación y cómo ayudar a evitarla.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('606f2b32-7acc-556a-a268-318b81ad7bb0', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 5, 'Igualdad y no discriminación', 'Aprende qué es la igualdad, qué es la discriminación y qué puedes hacer para respetar a todas las personas.', 'https://player.mediadelivery.net/embed/775332/92e17667-2b36-414e-b51e-10ce78ff4333', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la discriminación y cómo ayudar a evitarla.
 
 Marta llega a una tienda con su bastón. Le dicen que no puede entrar porque estorba. Ella se siente mal y se va. Lo que le pasó no debería pasarle a nadie.
 
@@ -5369,7 +5369,7 @@ Si vives discriminación, no es tu culpa. Si hay peligro, llama al 911.
 - **Igualdad:** que todas las personas tienen los mismos derechos.
 - **Discriminación:** trato peor hacia una persona por una característica suya.
 - **Discapacidad:** una condición que dificulta hacer algunas actividades sin apoyo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ffaa99d9-1fdd-5115-8931-f5f8e4c4c5e5', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 6, 'Participación ciudadana y el voto', 'Conoce qué es ser ciudadano, cómo participar en tu comunidad y cómo se ejerce el voto.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la participación ciudadana y cómo se vota.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('ffaa99d9-1fdd-5115-8931-f5f8e4c4c5e5', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 6, 'Participación ciudadana y el voto', 'Conoce qué es ser ciudadano, cómo participar en tu comunidad y cómo se ejerce el voto.', 'https://player.mediadelivery.net/embed/775332/31b2c8fb-8095-451f-8c3f-2bb6601d8717', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué es la participación ciudadana y cómo se vota.
 
 En la unidad de Rosa, el agua falla seguido. Los vecinos hacen una junta. Escriben una petición firmada y la entregan a la autoridad. Así participaron en un asunto de su comunidad.
 
@@ -5411,7 +5411,7 @@ Luis cumplió 18 años y quiere votar.
 - **Casilla:** el lugar donde se vota.
 - **Boleta:** el papel donde se marca el voto.
 - **Urna:** la caja donde se depositan las boletas.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('598148e3-c04f-58b2-9cef-52ae0cc83581', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 7, 'Convivencia pacífica y prevención de la violencia', 'Aprende a resolver conflictos sin violencia, a reconocer sus tipos y a pedir ayuda cuando la necesites.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás resolver un conflicto sin violencia y saber dónde pedir ayuda.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('598148e3-c04f-58b2-9cef-52ae0cc83581', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 7, 'Convivencia pacífica y prevención de la violencia', 'Aprende a resolver conflictos sin violencia, a reconocer sus tipos y a pedir ayuda cuando la necesites.', 'https://player.mediadelivery.net/embed/775332/649f9349-c007-42ac-8d49-04700453a457', 60, '**Objetivo:** Al terminar esta semana podrás resolver un conflicto sin violencia y saber dónde pedir ayuda.
 
 Rosa y su vecino discuten por un lugar para estacionarse. Las voces suben. Los dos están molestos.
 
@@ -5455,7 +5455,7 @@ No es tu culpa. Nadie merece que lo traten así. Puedes pedir ayuda:
 - **Conflicto:** un desacuerdo entre personas.
 - **Violencia:** daño que una persona causa a otra.
 - **Acuerdo:** una solución en la que las dos partes están de acuerdo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('fb5f8b51-3c2e-5ceb-8c5d-6bade874426a', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('fb5f8b51-3c2e-5ceb-8c5d-6bade874426a', 'f2e33029-3df3-5dd7-8375-f33bcf0dadc6', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/1c2b0bc2-624b-4683-8ab0-73ed1b7fbb48', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Los derechos humanos:** Son lo que toda persona necesita para vivir con dignidad. Son universales e iguales. Tus derechos terminan donde empiezan los de otra persona.
 
@@ -5482,7 +5482,7 @@ INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, vide
 7. A una persona le niegan un servicio por su religión. ¿Qué es eso? Discriminación. No es su culpa y puede pedir orientación.
 
 Antes del examen, vuelve a leer las partes que te costaron más trabajo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('bd770a6a-4798-5979-929f-fab052c4849b', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 1, 'Mis habilidades y mi plan de vida', 'Descubre qué sabes hacer y escribe una meta con pasos claros para avanzar.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás nombrar tus habilidades y escribir un plan sencillo para una meta.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('bd770a6a-4798-5979-929f-fab052c4849b', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 1, 'Mis habilidades y mi plan de vida', 'Descubre qué sabes hacer y escribe una meta con pasos claros para avanzar.', 'https://player.mediadelivery.net/embed/775332/920c9bcc-c2e7-4f32-930c-7df0ade49e02', 60, '**Objetivo:** Al terminar esta semana podrás nombrar tus habilidades y escribir un plan sencillo para una meta.
 
 Luis arregla las bicicletas de sus vecinos. Nadie se lo enseñó en una escuela. Aprendió viendo y practicando. Si le preguntan qué sabe hacer, responde «nada especial». Pero sí sabe hacer algo muy útil.
 
@@ -5522,7 +5522,7 @@ Luis escribe su plan.
 - **Actitud:** la forma en que te comportas ante las cosas.
 - **Meta:** algo que quieres lograr.
 - **Obstáculo:** algo que te estorba para avanzar.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9448c90e-f6d5-55c3-92e6-b22cb633500f', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 2, 'Buscar empleo: currículum y solicitud', 'Aprende a armar un currículum sencillo y a llenar una solicitud de empleo con datos verdaderos.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás armar un currículum sencillo y llenar una solicitud de empleo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('9448c90e-f6d5-55c3-92e6-b22cb633500f', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 2, 'Buscar empleo: currículum y solicitud', 'Aprende a armar un currículum sencillo y a llenar una solicitud de empleo con datos verdaderos.', 'https://player.mediadelivery.net/embed/775332/44250df3-615a-4d20-bf2c-dc0b235bc510', 60, '**Objetivo:** Al terminar esta semana podrás armar un currículum sencillo y llenar una solicitud de empleo.
 
 Rosa ve un letrero en una tienda: «Se solicita ayudante». Quiere presentarse, pero no sabe qué decir de ella. Necesita una hoja que cuente quién es y qué sabe hacer.
 
@@ -5564,7 +5564,7 @@ Así arma Rosa su currículum.
 - **Currículum:** hoja que resume tus estudios, tu experiencia y tus habilidades.
 - **Solicitud de empleo:** formato que llenas para pedir un trabajo.
 - **Experiencia:** lo que ya has hecho en otros trabajos o actividades.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('61c35b55-39a7-5057-94f3-5150159b3bde', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 3, 'Derechos laborales: contrato, salario y seguridad social', 'Conoce qué es un contrato de trabajo, el salario y la seguridad social, y qué conviene preguntar.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás explicar qué son el contrato, el salario y la seguridad social.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('61c35b55-39a7-5057-94f3-5150159b3bde', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 3, 'Derechos laborales: contrato, salario y seguridad social', 'Conoce qué es un contrato de trabajo, el salario y la seguridad social, y qué conviene preguntar.', 'https://player.mediadelivery.net/embed/775332/333c922d-6c15-4278-8988-b757dcc7472e', 60, '**Objetivo:** Al terminar esta semana podrás explicar qué son el contrato, el salario y la seguridad social.
 
 Luis consigue un trabajo en una bodega. Le dicen: «Empiezas mañana, ya luego vemos los detalles». Luis se pregunta cuánto le pagarán.
 
@@ -5606,7 +5606,7 @@ Antes de aceptar, Luis revisa su contrato.
 - **Contrato:** acuerdo escrito entre quien trabaja y quien contrata.
 - **Salario:** dinero que recibes por tu trabajo.
 - **Seguridad social:** protección de salud y apoyo que da el trabajo con contrato y registro en el IMSS.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('8b563749-b0fb-5cf8-9647-dcce41e80ca9', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 4, 'Trabajo en equipo y comunicación', 'Aprende a escuchar, dar mensajes claros y llegar a acuerdos cuando trabajas con otras personas.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás comunicarte con claridad y llegar a acuerdos en un equipo.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('8b563749-b0fb-5cf8-9647-dcce41e80ca9', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 4, 'Trabajo en equipo y comunicación', 'Aprende a escuchar, dar mensajes claros y llegar a acuerdos cuando trabajas con otras personas.', 'https://player.mediadelivery.net/embed/775332/f4ef44fd-8364-44ad-84fb-fcd7eaf873e5', 60, '**Objetivo:** Al terminar esta semana podrás comunicarte con claridad y llegar a acuerdos en un equipo.
 
 Rosa y dos vecinos atienden un puesto en el tianguis. Dos de ellos quieren abrir temprano. El tercero prefiere cerrar tarde. Si no hablan, cada quien hace lo que quiere y el puesto se desordena.
 
@@ -5649,7 +5649,7 @@ Rosa y sus vecinos resuelven el desacuerdo.
 - **Equipo:** grupo de personas que trabaja por un mismo fin.
 - **Acuerdo:** decisión que todas las personas aceptan.
 - **Desacuerdo:** cuando las personas piensan distinto sobre algo.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c62fae2b-35da-5aab-b0a0-5668ac3fafa7', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 5, 'Ideas de negocio', 'Aprende a encontrar una necesidad de tu comunidad y a revisar si una idea de negocio es posible.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás revisar con preguntas sencillas si una idea de negocio es posible.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('c62fae2b-35da-5aab-b0a0-5668ac3fafa7', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 5, 'Ideas de negocio', 'Aprende a encontrar una necesidad de tu comunidad y a revisar si una idea de negocio es posible.', 'https://player.mediadelivery.net/embed/775332/72405adb-97d0-4e4e-b249-258b9a3f928b', 60, '**Objetivo:** Al terminar esta semana podrás revisar con preguntas sencillas si una idea de negocio es posible.
 
 Doña Carmen nota que en su calle nadie vende desayunos para quienes salen temprano a trabajar. Piensa que podría preparar algo. Antes de gastar, quiere saber si la idea es buena.
 
@@ -5693,7 +5693,7 @@ Doña Carmen revisa su idea de vender desayunos.
 - **Producto:** algo que se puede tocar y vender.
 - **Servicio:** ayuda que das a otra persona a cambio de un pago.
 - **Competencia:** otras personas que venden lo mismo cerca de ti.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('50d0f0a2-f5af-58d3-b0b5-9f0bfe28e50e', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 6, 'Costos, precio y ganancia', 'Aprende a sumar tus costos, poner un precio y calcular cuánto te queda con cada venta.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás sumar los costos de un producto, fijar su precio y calcular la ganancia.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('50d0f0a2-f5af-58d3-b0b5-9f0bfe28e50e', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 6, 'Costos, precio y ganancia', 'Aprende a sumar tus costos, poner un precio y calcular cuánto te queda con cada venta.', 'https://player.mediadelivery.net/embed/775332/a5bc1c9a-4b4d-447f-8036-2383d6917930', 60, '**Objetivo:** Al terminar esta semana podrás sumar los costos de un producto, fijar su precio y calcular la ganancia.
 
 Rosa prepara 20 gelatinas para vender en su colonia. Compra leche y azúcar. También paga el gas y las bolsas. Antes de poner un precio, quiere saber cuánto le costó todo.
 
@@ -5730,7 +5730,7 @@ Con menos ventas, la ganancia baja.
 - **Precio:** dinero que cobras al cliente.
 - **Ganancia:** dinero que te queda después de pagar los costos.
 - **Pérdida:** cuando gastas más de lo que cobras.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('93a9c813-7352-5b80-9213-e629d318c160', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 7, 'Vender y atender clientes', 'Aprende a saludar, informar el precio, cobrar, dar cambio y atender una queja con respeto.', NULL, 60, '**Objetivo:** Al terminar esta semana podrás atender a un cliente, cobrar con claridad y dar el cambio correcto.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('93a9c813-7352-5b80-9213-e629d318c160', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 7, 'Vender y atender clientes', 'Aprende a saludar, informar el precio, cobrar, dar cambio y atender una queja con respeto.', 'https://player.mediadelivery.net/embed/775332/f4fc19ca-f877-468b-9868-242b376d4096', 60, '**Objetivo:** Al terminar esta semana podrás atender a un cliente, cobrar con claridad y dar el cambio correcto.
 
 Luis entra a una papelería a comprar cuadernos. La persona que atiende lo saluda, lo escucha y le dice el precio. Luis se siente cómodo. Vuelve a comprar ahí.
 
@@ -5771,7 +5771,7 @@ Una clienta compra 3 gelatinas de $15 y paga con un billete de $50.
 - **Cliente:** persona que compra un producto o servicio.
 - **Cambio:** dinero que regresas cuando te pagan con más de lo que cuesta.
 - **Queja:** aviso de que algo no quedó bien.', NULL, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e478f71f-a6cb-50da-8a3b-c8cf65cc9be8', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', NULL, 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
+INSERT INTO public.semanas (id, mes_id, numero_semana, titulo, descripcion, video_url, tiempo_estimado_minutos, contenido, video_url_2, video_url_3) VALUES ('e478f71f-a6cb-50da-8a3b-c8cf65cc9be8', '0e86d4ba-f7bf-5616-b479-8aafba99a83e', 8, 'Repaso general y preparación para examen final', 'Repasa lo más importante de cada semana y practica con ejercicios antes del examen final.', 'https://player.mediadelivery.net/embed/775332/f6af8ec6-071b-41d5-aae9-1245567723d6', 60, 'Esta semana repasas lo que viste en la materia. Lee cada apartado y luego resuelve los ejercicios.
 
 **Semana 1 — Mis habilidades y mi plan de vida:** Una habilidad es algo que sabes hacer bien. Una meta se divide en pasos pequeños. Un plan se puede cambiar.
 
