@@ -378,7 +378,7 @@ test.describe('páginas reales: lo que se ve', () => {
       expect(sinEtiquetas(p.clasica), c).toContain(NOTA)
     }
     // La FAQ de fábrica de un combo mixto termina con la misma idea, acotada a Primaria y más corta:
-    // el editor admite 500 caracteres por respuesta (V1 la publica completa con validarOverrides).
+    // el editor admite 500 caracteres por respuesta (X5 la publica completa con validarOverrides).
     for (const n of [['secundaria', 'preparatoria'], ['secundaria'], ['preparatoria']]) {
       const faq = Object.values(textosMixtoPrimaria(n)).find(t => t.includes('Fungimos como Centro de Apoyo')) ?? ''
       expect(faq.endsWith(` En Primaria, la constancia acredita el avance y ${APARTE.charAt(0).toLowerCase()}${APARTE.slice(1)}`), n.join('+')).toBe(true)
@@ -404,7 +404,7 @@ test.describe('páginas reales: lo que se ve', () => {
     expect(animada).toContain('En Secundaria y Preparatoria, el plan de')
   })
 
-  test('V10. Solo-Primaria: portadas y legales sin autoridad ni validez; solo la negación de la nota', () => {
+  test('V10. Solo-Primaria: portadas y legales sin autoridad ni validez, y con la nota de la constancia', () => {
     const p = combos.solo
     for (const portada of [p.animada, p.clasica]) {
       // Sin excepción: la nota nueva no nombra autoridad ni validez.

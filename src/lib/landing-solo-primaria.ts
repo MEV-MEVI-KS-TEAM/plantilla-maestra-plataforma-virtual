@@ -31,14 +31,17 @@ const esPlano = (v: unknown): v is Plano => typeof v === 'object' && v !== null 
  * sí la ofrecen. La leyenda anterior («Entrega constancia de avance; no incluye certificado
  * oficial») contradecía ese precio. Esta dice qué acredita la constancia y que la
  * certificación va aparte, con la institución: sin nombrar autoridades ni prometer validez.
- * Viven aquí porque este módulo ya es puro y lo leen las dos portadas y el PDF de entrega.
+ * Viven aquí porque este módulo ya es puro y ya lo importan las dos portadas; la constancia
+ * del alumno también los lee. Lo vigila tests/unit/primaria-conducta.spec.ts (V3, V5-V10).
  */
 export const CERTIFICACION_APARTE_PRIMARIA =
   'No sustituye al certificado de estudios; la certificación se tramita por separado con la institución.'
 
-/** Al pie de la constancia del alumno de Primaria: el texto exacto de Kevin, en dos piezas (la segunda va en negritas). */
+/**
+ * Al pie de la constancia del alumno de Primaria va el texto exacto de Kevin, en dos piezas:
+ * esta y, en negritas, CERTIFICACION_APARTE_PRIMARIA.
+ */
 export const AVANCE_CONSTANCIA_PRIMARIA = 'Esta constancia acredita el avance del alumno en la plataforma.'
-export const LEYENDA_CONSTANCIA_PRIMARIA = `${AVANCE_CONSTANCIA_PRIMARIA} ${CERTIFICACION_APARTE_PRIMARIA}`
 
 /** Junto a la cifra de Primaria en las portadas. «La» y no «Esta»: ahí no hay constancia a la vista. */
 export const NOTA_PRECIOS_PRIMARIA =
