@@ -59,7 +59,7 @@ test('4. la premisa sigue en pie: el aula apila en móvil y alinea al inicio', (
   const m = leer(AULA).match(/className="([^"]*)">\s*\{\/\* Columna izquierda: roadmap/)
   expect(m, 'no se encontró el contenedor de las dos columnas').not.toBeNull()
   const clases = m![1].split(/\s+/)
-  expect(clases).toEqual(expect.arrayContaining(['flex', 'flex-col', 'md:flex-row']))
+  expect(clases).toEqual(expect.arrayContaining(['flex', 'flex-col', 'md:flex-row', 'items-start']))
 })
 
 test('5. tablas y `pre` del Markdown conservan su propio desplazamiento', () => {
