@@ -302,8 +302,12 @@ export default function MateriaPage() {
                 </div>
               </div>
 
-              {/* Columna derecha: contenido de la semana seleccionada */}
-              <div className="flex-1 min-w-0 space-y-4">
+              {/* Columna derecha: contenido de la semana seleccionada. Mismo arreglo
+                  que el aula de cursos (Bug 303): `w-full` porque en columna
+                  `items-start` la deja en fit-content y un `pre` o una tabla la
+                  estiraban; en fila manda `flex-1`. `break-words` parte palabras o
+                  URLs largas que ya no ensanchan la columna. */}
+              <div className="w-full flex-1 min-w-0 space-y-4 break-words">
                 {(() => {
                   const semana = materia.semanas.find(s => s.id === semanaSeleccionada)
                   if (!semana) return (

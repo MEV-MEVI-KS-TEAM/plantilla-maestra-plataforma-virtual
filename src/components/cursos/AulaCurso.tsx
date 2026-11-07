@@ -334,8 +334,12 @@ export default function AulaCurso({ cursoId, vistaAdmin = false }: { cursoId: st
                 </div>
               </div>
 
-              {/* Columna derecha: lección seleccionada */}
-              <div ref={leccionRef} className="flex-1 min-w-0 space-y-4 scroll-mt-20">
+              {/* Columna derecha: lección seleccionada. `w-full` es para móvil: en
+                  columna, `items-start` la deja en fit-content y un `pre` o una tabla
+                  que no caben la estiraban con todo el texto (Bug 303). En fila manda
+                  `flex-1`. `break-words`: una palabra o URL larga ya no ensancha la
+                  columna, así que debe partirse para no salirse de la tarjeta. */}
+              <div ref={leccionRef} className="w-full flex-1 min-w-0 space-y-4 scroll-mt-20 break-words">
                 {(() => {
                   const texto = normalizarContenido(activa.contenido_texto)
                   const palabras = texto.trim() ? texto.trim().split(/\s+/).length : 0
