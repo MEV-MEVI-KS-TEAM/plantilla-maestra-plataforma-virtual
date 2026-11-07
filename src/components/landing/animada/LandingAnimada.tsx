@@ -49,7 +49,7 @@ import {
 
 import { CONFIG } from '@/lib/config'
 import { formatearMoneda } from '@/lib/moneda'
-import { validezDeLaOferta } from '@/lib/landing-solo-primaria'
+import { NOTA_PRECIOS_PRIMARIA, NOTA_PRECIOS_PRIMARIA_ACOTADA, validezDeLaOferta } from '@/lib/landing-solo-primaria'
 import { planesPorNivel, esSoloPrimaria, getDuracionOferta, getModalidadesPrimaria, getPlanLabelPublico, getPlanLabelConDuracion, type ModalidadPrograma } from '@/lib/modalidades'
 import { preciosDePrimaria } from '@/lib/precios-primaria'
 import { interpolar, type LandingConfig, type Placeholder } from '@/lib/site-config-core'
@@ -118,9 +118,6 @@ const COLUMNAS_PROCESO: Record<number, string> = {
  * no en los textos editables. Un nivel que no esté en el mapa simplemente no
  * pinta la línea.
  */
-/** Junto a la cifra de Primaria: que nadie la lea como un certificado oficial. */
-const NOTA_TARJETA_PRIMARIA = 'Entrega constancia de avance; no incluye certificado oficial.'
-
 const PARA_QUIEN: Partial<Record<(typeof NIVELES)[number] | 'primaria', string>> = {
   primaria: 'Para personas de 12 años en adelante que quieren estudiar su primaria.',
   secundaria: 'Para quien ya concluyó la primaria.',
@@ -775,7 +772,7 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                             Certificación: <strong className="text-lg" style={{ color: tNiveles.titulo }}>{dinero(certificacion)}</strong>
                           </p>
                         )}
-                        {nivel === 'primaria' && <p style={{ color: tNiveles.textoSuave }}>{NOTA_TARJETA_PRIMARIA}</p>}
+                        {nivel === 'primaria' && <p style={{ color: tNiveles.textoSuave }}>{NOTA_PRECIOS_PRIMARIA}</p>}
                       </div>
                       {/* Enlace en el color de marca: la tarjeta va sobre superficie, donde
                           un acento vivo suele quedarse corto. */}
@@ -988,8 +985,8 @@ export function LandingAnimada({ catalogo, config }: { catalogo: CursoCatalogoPu
                   La certificación no está incluida en el total del plan.
                   {/* La caja lista varios niveles: sin alcance, sería falso para Sec y Prepa. */}
                   {nivelesCertificacion.includes('primaria') && (nivelesCertificacion.length > 1
-                    ? ` En Primaria: ${NOTA_TARJETA_PRIMARIA.charAt(0).toLowerCase()}${NOTA_TARJETA_PRIMARIA.slice(1)}`
-                    : ` ${NOTA_TARJETA_PRIMARIA}`)}
+                    ? ` ${NOTA_PRECIOS_PRIMARIA_ACOTADA}`
+                    : ` ${NOTA_PRECIOS_PRIMARIA}`)}
                 </p>
               </div>
             )}

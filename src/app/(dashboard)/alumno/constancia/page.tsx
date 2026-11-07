@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Loader2, Printer, Download } from 'lucide-react'
 import { getPlanNombre } from '@/lib/licenciatura-utils'
 import { useSiteConfig } from '@/components/site-config-provider'
+import { AVANCE_CONSTANCIA_PRIMARIA, CERTIFICACION_APARTE_PRIMARIA } from '@/lib/landing-solo-primaria'
 
 type Estado = 'Acreditada' | 'No acreditada' | 'Pendiente'
 
@@ -393,15 +394,16 @@ export default function ConstanciaPage() {
           {/* Nota legal */}
           <div style={{ padding: '0 48px 24px', textAlign: 'center' }}>
             <p style={{ fontSize: 10, color: '#64748b', fontStyle: 'italic', lineHeight: 1.7 }}>
-              Este documento es de carácter informativo y refleja el avance académico del alumno dentro de la plataforma.{' '}
-              {/* Primaria: la plataforma no menciona autoridades educativas ni sugiere validez oficial. */}
+              {/* Primaria: la plataforma no menciona autoridades educativas ni sugiere validez oficial.
+                  Sec/Prepa: palabra por palabra lo de siempre. */}
               {datos.nivel === 'primaria' ? (
                 <>
-                  <strong style={{ fontWeight: 700 }}>No constituye certificación oficial ni es válido para trámites.</strong>{' '}
-                  Consulta con tu escuela el proceso de certificación.
+                  {AVANCE_CONSTANCIA_PRIMARIA}{' '}
+                  <strong style={{ fontWeight: 700 }}>{CERTIFICACION_APARTE_PRIMARIA}</strong>
                 </>
               ) : (
                 <>
+              Este documento es de carácter informativo y refleja el avance académico del alumno dentro de la plataforma.{' '}
               <strong style={{ fontWeight: 700 }}>No constituye certificación oficial ni es válido para trámites ante la SEP u otras instituciones.</strong>{' '}
               Para obtener el certificado oficial con validez SEP, debe completar el proceso de certificación correspondiente.
                 </>

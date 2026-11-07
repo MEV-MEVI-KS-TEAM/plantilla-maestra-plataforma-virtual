@@ -191,7 +191,17 @@ type Portal = {
 const sinEtiquetas = (h: string) => h.replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ')
 /** Lo que no puede leer un alumno de Primaria. */
 const PROHIBIDO = /\bSEP\b|\bINEA\b|Secretar[ií]a de Educaci|validez|certificado oficial|Acreditaci[oó]n|\bCCT\b/i
-const NOTA = 'Entrega constancia de avance; no incluye certificado oficial.'
+/**
+ * La leyenda de Primaria (Kevin, 7-nov-2026). Escrita aquí a mano, no importada: si alguien cambia
+ * la constante, estas pruebas lo ven. La de la constancia es el texto exacto; en las portadas va
+ * con «La» porque ahí no hay constancia a la vista.
+ */
+const APARTE = 'No sustituye al certificado de estudios; la certificación se tramita por separado con la institución.'
+const LEYENDA = `Esta constancia acredita el avance del alumno en la plataforma. ${APARTE}`
+const NOTA = `La constancia acredita el avance del alumno en la plataforma. ${APARTE}`
+const NOTA_ACOTADA = `En Primaria, la constancia acredita el avance del alumno en la plataforma. ${APARTE}`
+/** La leyenda vieja contradecía el precio de certificación: no queda en ninguna parte. */
+const VIEJA = /no incluye certificado oficial|Entrega constancia de avance|No constituye certificación oficial ni es válido para trámites\.|Consulta con tu escuela el proceso/i
 
 /** La tarjeta `<article>` de un nivel en la portada animada. */
 const tarjetaAnimada = (html: string, nivel: string) => {
@@ -241,8 +251,11 @@ test.describe('páginas reales: lo que se ve', () => {
   test('V3. la constancia de un alumno de Primaria no nombra autoridad, CCT ni certificación oficial', () => {
     for (const c of ['apagado', 'mixto', 'solo']) {
       const texto = sinEtiquetas(combos[c].constanciaPrimaria)
-      const sinNegacion = texto.replace('No constituye certificación oficial ni es válido para trámites.', '')
-      expect(sinNegacion, c).not.toMatch(PROHIBIDO)
+      // Sin excepción: la leyenda nueva no niega nada que haya que quitar antes de buscar.
+      expect(texto, c).not.toMatch(PROHIBIDO)
+      expect(texto, c).toContain(LEYENDA)
+      expect(texto, c).not.toMatch(VIEJA)
+      expect(texto, c).not.toContain('Este documento es de carácter informativo')
       expect(texto, c).not.toContain('Se certifica')
       expect(texto, c).toContain('Constancia de avance')
       expect(texto, c).not.toContain('CCT-DE-PRUEBA')
@@ -252,7 +265,10 @@ test.describe('páginas reales: lo que se ve', () => {
     expect(sec).toContain('Centro de Apoyo para la Acreditación de Conocimientos · CCT: CCT-DE-PRUEBA')
     expect(sec).toContain('Se certifica que el alumno')
     expect(sec).toContain('Constancia de Estudios')
-    expect(sec).toContain('No constituye certificación oficial ni es válido para trámites ante la SEP')
+    expect(sec).toContain('Este documento es de carácter informativo y refleja el avance académico del alumno dentro de la plataforma. '
+      + 'No constituye certificación oficial ni es válido para trámites ante la SEP u otras instituciones. '
+      + 'Para obtener el certificado oficial con validez SEP, debe completar el proceso de certificación correspondiente.')
+    expect(sec).not.toContain(APARTE)
   })
 
   test('V4. login y registro con Primaria: sin SEP, sin acreditación, sin certificación', () => {
@@ -313,10 +329,6 @@ test.describe('páginas reales: lo que se ve', () => {
           const frases = sinEtiquetas(sinPropias(portada)).match(FRASE) ?? []
           expect(frases.length, c).toBeGreaterThan(0)
           for (const frase of frases) {
-            if (frase.includes('no incluye certificado oficial')) {
-              expect(frase, c).toContain('Primaria')
-              continue
-            }
             // La FAQ y el paso del proceso la nombran seguida: «…corresponde a la SEP» es la misma respuesta.
             if (/mientras la validez oficial corresponde a la SEP/.test(frase)) continue
             expect(frase, c).toMatch(nombres)
@@ -348,11 +360,36 @@ test.describe('páginas reales: lo que se ve', () => {
       expect(i).toBeGreaterThan(-1)
       return sinEtiquetas(h.slice(i, h.indexOf('</p>', h.indexOf('no está incluida en el total del plan', i))))
     }
-    expect(caja(combos.mixto.animada)).toContain('En Primaria: entrega constancia de avance; no incluye certificado oficial.')
-    expect(caja(combos['mixto-sec'].animada)).toContain('En Primaria: entrega constancia de avance; no incluye certificado oficial.')
+    expect(caja(combos.mixto.animada)).toContain(`La certificación no está incluida en el total del plan. ${NOTA_ACOTADA}`)
+    expect(caja(combos['mixto-sec'].animada)).toContain(NOTA_ACOTADA)
     // Sola en la caja no hace falta aclarar.
-    expect(caja(combos.solo.animada)).toContain(NOTA)
-    expect(caja(combos.solo.animada)).not.toContain('En Primaria:')
+    expect(caja(combos.solo.animada)).toContain(`La certificación no está incluida en el total del plan. ${NOTA}`)
+    expect(caja(combos.solo.animada)).not.toContain('En Primaria,')
+  })
+
+  test('V8d. la leyenda vieja no queda en ninguna página y la nueva dice lo mismo en portadas, FAQ y constancia', () => {
+    for (const c of ['mixto', 'mixto-sec', 'solo', 'sin-cifras']) {
+      const p = combos[c]
+      for (const [nombre, html] of Object.entries({ animada: p.animada, clasica: p.clasica, aviso: p.aviso, terminos: p.terminos, constancia: p.constanciaPrimaria })) {
+        expect(sinEtiquetas(html), `${c} ${nombre}`).not.toMatch(VIEJA)
+      }
+      // La tarjeta de Primaria trae la nota en las dos portadas, con o sin cifras.
+      expect(tarjetaAnimada(p.animada, 'Primaria'), c).toContain(NOTA)
+      expect(sinEtiquetas(p.clasica), c).toContain(NOTA)
+    }
+    // La FAQ de fábrica de un combo mixto termina con la misma idea, acotada a Primaria y más corta:
+    // el editor admite 500 caracteres por respuesta (X5 la publica completa con validarOverrides).
+    for (const n of [['secundaria', 'preparatoria'], ['secundaria'], ['preparatoria']]) {
+      const faq = Object.values(textosMixtoPrimaria(n)).find(t => t.includes('Fungimos como Centro de Apoyo')) ?? ''
+      expect(faq.endsWith(` En Primaria, la constancia acredita el avance y ${APARTE.charAt(0).toLowerCase()}${APARTE.slice(1)}`), n.join('+')).toBe(true)
+      expect(faq.length, n.join('+')).toBeLessThanOrEqual(500)
+    }
+    // Y el aviso de un combo mixto con cifra: la certificación de Primaria con la institución, sin autoridad.
+    const parrafo = sinEtiquetas(combos.mixto.aviso).match(/Certificación de Primaria\.[^.]*\./)?.[0] ?? ''
+    expect(parrafo).toContain('compartiremos con la institución con la que se gestione')
+    expect(parrafo).not.toMatch(PROHIBIDO)
+    // Apagado: ni la nota nueva.
+    for (const portada of [combos.apagado.animada, combos.apagado.clasica]) expect(sinEtiquetas(portada)).not.toContain(APARTE)
   })
 
   test('V9. portadas mixtas: la duración, los documentos y los ritmos incluyen a Primaria', () => {
@@ -367,10 +404,12 @@ test.describe('páginas reales: lo que se ve', () => {
     expect(animada).toContain('En Secundaria y Preparatoria, el plan de')
   })
 
-  test('V10. Solo-Primaria: portadas y legales sin autoridad ni validez; solo la negación de la nota', () => {
+  test('V10. Solo-Primaria: portadas y legales sin autoridad ni validez, y con la nota de la constancia', () => {
     const p = combos.solo
     for (const portada of [p.animada, p.clasica]) {
-      expect(sinEtiquetas(portada).replaceAll(NOTA, '').replaceAll('no incluye certificado oficial', '')).not.toMatch(PROHIBIDO)
+      // Sin excepción: la nota nueva no nombra autoridad ni validez.
+      expect(sinEtiquetas(portada)).not.toMatch(PROHIBIDO)
+      expect(sinEtiquetas(portada)).toContain(NOTA)
     }
     for (const legal of [p.aviso, p.terminos]) {
       expect(sinEtiquetas(legal)).not.toMatch(/\bSEP\b|\bINEA\b|Secretar[ií]a de Educaci/)
