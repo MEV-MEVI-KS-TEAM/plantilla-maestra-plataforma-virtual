@@ -250,9 +250,10 @@ cd scripts && psql "$CLIENT_DB_URL" -v ON_ERROR_STOP=1 -f setup-primaria.sql
 
 Siembra 18 materias, 144 semanas con su video de Bunny, 432 preguntas de quiz, 180 de examen y
 sus actividades, y termina con `post-setup-primaria-check.sql`, que tiene que salir ✅. Una
-semana sin video es falla: un clon sembrado antes de `f3df046` no los recibe volviendo a correr
-`setup-primaria.sql` (no pisa `video_url`), sino con `scripts/videos_primaria_cliente.py` del
-banco de Sec/Prepa.
+semana sin video de Bunny es falla: un clon sembrado antes de `f3df046` no los recibe volviendo a
+correr `setup-primaria.sql` (no pisa `video_url`), sino con `scripts/videos_primaria_cliente.py`
+del banco de Sec/Prepa, que llena las semanas sin video (una semana con otro video, como YouTube,
+se revisa a mano).
 La materia demo (Tutoría de Ingreso) no se toca: un alumno de Primaria no la ve, ni sin pagar ni
 por URL (ve sus meses con candado y el aviso de pago), y en un combo mixto Sec y Prepa siguen
 viendo su Tutoría.

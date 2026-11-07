@@ -128,10 +128,11 @@ SELECT 'Materias de Secundaria y Preparatoria (debe ser 24)' AS check_name, COUN
   FROM public.materias WHERE nivel IN ('secundaria', 'preparatoria');
 
 -- ─── P12: Videos ───────────────────────────────────────────
--- Cuenta solo URLs que la app reproduce: el mismo criterio que parseBunnyUrl y que el
--- smoke 9.12 (host player/iframe, biblioteca numérica y GUID completo).
+-- Cuenta las URLs de Bunny en la forma canónica que guardan el seed y canonizarVideoUrl
+-- (https, host player/iframe, biblioteca numérica y GUID completo, sin query): el mismo
+-- regex que el smoke 9.12 de mev-tools. Un video de otro origen (YouTube) no cuenta.
 SELECT 'Semanas de Primaria con video de Bunny (debe ser 144)' AS check_name, COUNT(*)::text AS valor,
-       CASE WHEN COUNT(*) = 144 THEN '✅ OK' ELSE '❌ FAIL → el seed trae los 144; un clon sembrado antes de f3df046 los recibe con videos_primaria_cliente.py del banco' END AS resultado
+       CASE WHEN COUNT(*) = 144 THEN '✅ OK' ELSE '❌ FAIL → el seed trae los 144; en un clon sembrado antes de f3df046, videos_primaria_cliente.py del banco llena las semanas sin video (una con otro video se revisa a mano)' END AS resultado
   FROM public.semanas s
   JOIN public.meses_contenido mc ON mc.id = s.mes_id
   JOIN public.materias m ON m.id = mc.materia_id
