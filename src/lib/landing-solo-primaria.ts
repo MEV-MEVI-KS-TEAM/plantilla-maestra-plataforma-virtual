@@ -24,6 +24,38 @@ type Plano = Record<string, unknown>
 
 const esPlano = (v: unknown): v is Plano => typeof v === 'object' && v !== null && !Array.isArray(v)
 
+/**
+ * La leyenda de Primaria sobre la constancia y la certificación (Kevin, 7-nov-2026).
+ *
+ * Primaria trae un precio sugerido de certificación que el cliente edita, porque las escuelas
+ * sí la ofrecen. La leyenda anterior («Entrega constancia de avance; no incluye certificado
+ * oficial») contradecía ese precio. Esta dice qué acredita la constancia y que la
+ * certificación va aparte, con la institución: sin nombrar autoridades ni prometer validez.
+ * Viven aquí porque este módulo ya es puro y lo leen las dos portadas y el PDF de entrega.
+ */
+export const CERTIFICACION_APARTE_PRIMARIA =
+  'No sustituye al certificado de estudios; la certificación se tramita por separado con la institución.'
+
+/** Al pie de la constancia del alumno de Primaria: el texto exacto de Kevin, en dos piezas (la segunda va en negritas). */
+export const AVANCE_CONSTANCIA_PRIMARIA = 'Esta constancia acredita el avance del alumno en la plataforma.'
+export const LEYENDA_CONSTANCIA_PRIMARIA = `${AVANCE_CONSTANCIA_PRIMARIA} ${CERTIFICACION_APARTE_PRIMARIA}`
+
+/** Junto a la cifra de Primaria en las portadas. «La» y no «Esta»: ahí no hay constancia a la vista. */
+export const NOTA_PRECIOS_PRIMARIA =
+  `La constancia acredita el avance del alumno en la plataforma. ${CERTIFICACION_APARTE_PRIMARIA}`
+
+const primeraMinuscula = (s: string) => `${s.charAt(0).toLowerCase()}${s.slice(1)}`
+
+/** La misma nota cuando la caja habla de varios niveles: dice que es de Primaria. */
+export const NOTA_PRECIOS_PRIMARIA_ACOTADA = `En Primaria, ${primeraMinuscula(NOTA_PRECIOS_PRIMARIA)}`
+
+/**
+ * Al final de la respuesta de fábrica sobre validez en un combo mixto. Sin «del alumno en la
+ * plataforma»: el editor admite 500 caracteres por respuesta y con la nota completa esa
+ * respuesta llegaba a 516 (Sec + Prepa), así que «Restaurar» no la podría volver a publicar.
+ */
+export const NOTA_FAQ_MIXTO_PRIMARIA = `En Primaria, la constancia acredita el avance y ${primeraMinuscula(CERTIFICACION_APARTE_PRIMARIA)}`
+
 /** Texto de fábrica (config.ts) → texto neutral. Lo vigila tests/unit/primaria-revision.spec.ts. */
 export const TEXTOS_SOLO_PRIMARIA: Readonly<Record<string, string>> = {
   // Lema y hero
@@ -133,7 +165,7 @@ export function textosMixtoPrimaria(nivelesConTramite: readonly string[]): Reado
     // Preguntas
     '¿El certificado tiene validez oficial en todo México?': `¿El certificado de ${N} tiene validez oficial en todo México?`,
     'Te acompañamos en el proceso para obtener tu certificado oficial SEP, el cual es reconocido a nivel nacional para trámites laborales, universitarios y gubernamentales. Fungimos como Centro de Apoyo para la Acreditación de Conocimientos: facilitamos el camino, mientras la validez oficial corresponde a la SEP.':
-      `En ${N}, te acompañamos en el proceso para obtener tu certificado oficial SEP, el cual es reconocido a nivel nacional para trámites laborales, universitarios y gubernamentales. Fungimos como Centro de Apoyo para la Acreditación de Conocimientos: facilitamos el camino, mientras la validez oficial corresponde a la SEP. Primaria entrega constancia de avance y no incluye certificado oficial.`,
+      `En ${N}, te acompañamos en el proceso para obtener tu certificado oficial SEP, el cual es reconocido a nivel nacional para trámites laborales, universitarios y gubernamentales. Fungimos como Centro de Apoyo para la Acreditación de Conocimientos: facilitamos el camino, mientras la validez oficial corresponde a la SEP. ${NOTA_FAQ_MIXTO_PRIMARIA}`,
     'Secundaria: Certificado de Primaria, CURP, Acta de Nacimiento, Identificación Oficial y foto de perfil fondo blanco. Preparatoria: los mismos más Certificado de Secundaria.':
       'Primaria: Acta de Nacimiento, CURP, Identificación Oficial y Comprobante de Domicilio; si el alumno es menor de 18 años, también los datos de su madre, padre o tutor. Secundaria: Certificado de Primaria, CURP, Acta de Nacimiento, Identificación Oficial y foto de perfil fondo blanco. Preparatoria: los mismos más Certificado de Secundaria.',
   }
