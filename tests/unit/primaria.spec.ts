@@ -523,9 +523,14 @@ test('30. la auditoría de Primaria exige los conteos del plan, y el orden de ap
   expect(c).toContain('COUNT(*) = 432')
   expect(c).toContain('COUNT(*) = 180')
   expect(c).toContain('HAVING COUNT(p.id) <> 10')
-  // Sin video no es falla: se publican después.
+  // Desde la F5 (f3df046) el seed trae los 144 videos: una semana sin video de Bunny es FAIL.
   const videos = c.slice(c.indexOf('P12: Videos'))
-  expect(videos).not.toContain('❌')
+  expect(videos).toContain('(debe ser 144)')
+  expect(videos).toContain("CASE WHEN COUNT(*) = 144 THEN '✅ OK' ELSE '❌ FAIL")
+  expect(videos).toContain("s.video_url ~* '^https://(player|iframe)\\.mediadelivery\\.net/embed/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/?$'")
+  expect(videos).not.toContain('IS NOT NULL')
+  expect(c).not.toMatch(/se publican después|informativo|Sin video NO es falla/i)
+  expect((leer('scripts/seed-primaria.sql').match(/https:\/\/player\.mediadelivery\.net\/embed\/\d+\/[0-9a-f-]{36}/g) ?? []).length).toBe(144)
   expect(PLAN.orden_apertura).toHaveLength(18)
 })
 

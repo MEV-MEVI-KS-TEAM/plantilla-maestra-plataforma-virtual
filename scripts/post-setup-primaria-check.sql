@@ -3,8 +3,11 @@
 -- ============================================================
 -- Se corre al final de scripts/setup-primaria.sql, y solo en combos con Primaria.
 -- Reporta ✅ o ❌ por renglón. Si algo sale ❌, Primaria no está lista para entregar.
--- Sin video NO es falla: los videos se publican después de las lecciones. Ese
--- renglón solo informa cuántas semanas ya lo traen.
+-- Los 144 videos de Bunny vienen en seed-primaria.sql desde la F5 del banco (6-nov-2026,
+-- plantilla f3df046): una semana sin video es FAIL (P12), igual que en el smoke 9.12.
+-- Un clon sembrado antes no los recibe volviendo a correr setup-primaria.sql (su
+-- ON CONFLICT DO NOTHING no pisa video_url): van con scripts/videos_primaria_cliente.py
+-- del banco de Sec/Prepa, cliente por cliente.
 -- ============================================================
 
 \echo ''
@@ -124,10 +127,13 @@ SELECT 'Materias de Secundaria y Preparatoria (debe ser 24)' AS check_name, COUN
        CASE WHEN COUNT(*) = 24 THEN '✅ OK' ELSE '❌ FAIL' END AS resultado
   FROM public.materias WHERE nivel IN ('secundaria', 'preparatoria');
 
--- ─── P12: Videos (informativo) ─────────────────────────────
-SELECT 'Semanas de Primaria con video (informativo)' AS check_name, COUNT(*)::text AS valor,
-       CASE WHEN COUNT(*) = 144 THEN '✅ completos' ELSE 'ℹ️  sin video se ve la lección; se publican después' END AS resultado
+-- ─── P12: Videos ───────────────────────────────────────────
+-- Cuenta solo URLs que la app reproduce: el mismo criterio que parseBunnyUrl y que el
+-- smoke 9.12 (host player/iframe, biblioteca numérica y GUID completo).
+SELECT 'Semanas de Primaria con video de Bunny (debe ser 144)' AS check_name, COUNT(*)::text AS valor,
+       CASE WHEN COUNT(*) = 144 THEN '✅ OK' ELSE '❌ FAIL → el seed trae los 144; un clon sembrado antes de f3df046 los recibe con videos_primaria_cliente.py del banco' END AS resultado
   FROM public.semanas s
   JOIN public.meses_contenido mc ON mc.id = s.mes_id
   JOIN public.materias m ON m.id = mc.materia_id
- WHERE m.nivel = 'primaria' AND s.video_url IS NOT NULL;
+ WHERE m.nivel = 'primaria'
+   AND s.video_url ~* '^https://(player|iframe)\.mediadelivery\.net/embed/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/?$';

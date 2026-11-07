@@ -903,10 +903,8 @@ const datos = {
   funcionalidad: [
     `Registro público de alumnos con matrícula automática (prefijo ${CONFIG.prefijoMatricula}-)`,
     'Desbloqueo progresivo del contenido, mes a mes, a tu ritmo de cobro',
-    // Los videos de Primaria se publican después que sus lecciones: no se promete de más.
-    CONFIG.primaria?.activa === true
-      ? 'Lección, quiz semanal y examen final en cada materia, con video de clase donde ya está publicado'
-      : 'Video, quiz semanal y examen final en cada materia',
+    // Primaria trae sus 144 videos en el seed desde la F5 (f3df046): ya no hace falta el matiz.
+    'Video, quiz semanal y examen final en cada materia',
     VALIDEZ && (FOLIO_VERIFICABLE
       ? 'Sección de Validez Oficial México + Estados Unidos, con folio verificable en el portal SIGED de la SEP'
       : 'Sección de Validez Oficial México + Estados Unidos, con los dos documentos oficiales que recibe el alumno'),
